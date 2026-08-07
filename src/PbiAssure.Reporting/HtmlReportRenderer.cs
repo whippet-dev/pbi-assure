@@ -139,7 +139,8 @@ public static class HtmlReportRenderer
             html.Append("<br><span class=\"secondary\">").Append(Encode(finding.Category))
                 .Append(" · ").Append(Encode(finding.AssessmentType)).AppendLine("</span></td>");
             html.Append("              <td>").Append(Encode(finding.Message)).AppendLine("</td>");
-            html.Append("              <td><strong>").Append(Encode(FormatLocation(finding))).AppendLine("</strong>");
+            html.AppendLine("              <td>");
+            AppendFindingLocation(html, inventory, finding);
             AppendEvidence(html, finding);
             html.AppendLine("              </td>");
             html.Append("              <td>").Append(Encode(finding.Recommendation)).AppendLine("</td>");
@@ -202,18 +203,20 @@ public static class HtmlReportRenderer
         html.AppendLine("      <h3>Visuals</h3>");
         html.AppendLine("      <div class=\"table-scroll\"><table>");
         html.AppendLine("        <caption>Visual types, semantic references, navigation, and detectable accessibility metadata</caption>");
-        html.AppendLine("        <thead><tr><th scope=\"col\">Report</th><th scope=\"col\">Page</th><th scope=\"col\">Visual</th><th scope=\"col\">Type</th><th scope=\"col\">Fields</th><th scope=\"col\">Actions</th><th scope=\"col\">Tooltip pages</th><th scope=\"col\">Tab order</th><th scope=\"col\">Alt text</th></tr></thead><tbody>");
+        html.AppendLine("        <thead><tr><th scope=\"col\">Report</th><th scope=\"col\">Page</th><th scope=\"col\">Visual</th><th scope=\"col\">Approximate location</th><th scope=\"col\">Fields</th><th scope=\"col\">Actions</th><th scope=\"col\">Tooltip pages</th><th scope=\"col\">Tab order</th><th scope=\"col\">Alt text</th></tr></thead><tbody>");
         foreach (var report in inventory.Reports)
         {
             foreach (var page in report.Pages)
             {
                 foreach (var visual in page.Visuals)
                 {
-                    html.Append("          <tr><td>").Append(Encode(report.Name)).Append("</td><td>")
-                        .Append(Encode(page.DisplayName)).Append("</td><th scope=\"row\"><code>")
-                        .Append(Encode(visual.Name)).Append("</code></th><td>")
-                        .Append(Encode(visual.VisualType ?? "Unknown")).Append("</td>");
-                    AppendNumberCell(html, visual.FieldReferenceCount);
+                    html.Append("          <tr id=\"").Append(Encode(VisualAnchor(report, page, visual)))
+                        .Append("\"><td>").Append(Encode(report.Name)).Append("</td><td>")
+                        .Append(Encode(page.DisplayName)).Append("</td><th scope=\"row\">");
+                    AppendVisualIdentity(html, visual, includeTechnicalId: true);
+                    html.Append("</th><td>").Append(Encode(DescribePosition(page, visual))).Append("</td><td>");
+                    AppendFieldSummary(html, visual);
+                    html.Append("</td>");
                     AppendNumberCell(html, visual.ActionCount);
                     AppendNumberCell(html, visual.TooltipBindingCount);
                     html.Append("<td>").Append(Encode(visual.Position.TabOrder?.ToString(CultureInfo.InvariantCulture) ?? "Excluded"))
@@ -352,8 +355,13 @@ public static class HtmlReportRenderer
 
     private static void AppendEvidence(StringBuilder html, AssuranceFinding finding)
     {
-        html.Append("                <details><summary>Evidence (")
+        html.Append("                <details class=\"technical-details\"><summary>Technical details and evidence (")
             .Append(finding.EvidencePaths.Count.ToString(CultureInfo.InvariantCulture)).AppendLine(")</summary>");
+        if (!string.IsNullOrWhiteSpace(finding.Visual))
+        {
+            html.Append("                  <p>Source visual ID: <code>").Append(Encode(finding.Visual)).AppendLine("</code></p>");
+        }
+
         html.Append("                  <p><code>").Append(Encode(finding.ArtifactPath)).AppendLine("</code></p>");
         if (finding.EvidencePaths.Count > 0)
         {
@@ -369,25 +377,311 @@ public static class HtmlReportRenderer
         html.AppendLine("                </details>");
     }
 
-    private static string FormatLocation(AssuranceFinding finding)
+    private static void AppendFindingLocation(StringBuilder html, ProjectInventory inventory, AssuranceFinding finding)
     {
-        var values = new List<string>();
-        AddIfPresent(values, finding.Report);
-        AddIfPresent(values, finding.PageDisplayName ?? finding.Page);
-        AddIfPresent(values, finding.Visual);
-        AddIfPresent(values, finding.SemanticModel);
-        AddIfPresent(values, finding.Table);
-        AddIfPresent(values, finding.ObjectName);
-        return values.Count == 0 ? "Project" : string.Join(" › ", values.Distinct(StringComparer.OrdinalIgnoreCase));
+        var visualContext = ResolveVisualContext(inventory, finding);
+        html.AppendLine("                <dl class=\"finding-location\">");
+        if (inventory.ReportCount > 1 && !string.IsNullOrWhiteSpace(finding.Report))
+        {
+            AppendLocationItem(html, "Report", finding.Report);
+        }
+
+        if (visualContext is not null)
+        {
+            var pageNumber = visualContext.Page.Order is null
+                ? null
+                : (visualContext.Page.Order.Value + 1).ToString(CultureInfo.InvariantCulture);
+            var pageLabel = pageNumber is null
+                ? visualContext.Page.DisplayName
+                : $"{visualContext.Page.DisplayName} (page {pageNumber})";
+            AppendLocationItem(html, "Page", pageLabel, emphasize: true);
+
+            html.AppendLine("                  <div><dt>Visual</dt><dd>");
+            AppendVisualIdentity(html, visualContext.Visual);
+            html.AppendLine("                  </dd></div>");
+            AppendLocationItem(html, "Position", DescribePosition(visualContext.Page, visualContext.Visual));
+            if (visualContext.Visual.FieldReferenceCount > 0)
+            {
+                html.AppendLine("                  <div><dt>Uses</dt><dd>");
+                AppendFieldSummary(html, visualContext.Visual);
+                html.AppendLine("                  </dd></div>");
+            }
+
+            html.AppendLine("                </dl>");
+            html.Append("                <a class=\"inventory-link\" href=\"#")
+                .Append(Encode(VisualAnchor(visualContext.Report, visualContext.Page, visualContext.Visual)))
+                .AppendLine("\">View this visual in the inventory</a>");
+            return;
+        }
+
+        AppendLocationItem(html, "Page", finding.PageDisplayName ?? finding.Page);
+        if (!string.IsNullOrWhiteSpace(finding.Visual))
+        {
+            AppendLocationItem(html, "Visual", "Not present in the current page definition");
+        }
+
+        AppendLocationItem(html, "Semantic model", finding.SemanticModel);
+        AppendLocationItem(html, "Table", finding.Table);
+        AppendLocationItem(html, "Object", finding.ObjectName);
+        if (string.IsNullOrWhiteSpace(finding.PageDisplayName) &&
+            string.IsNullOrWhiteSpace(finding.Page) &&
+            string.IsNullOrWhiteSpace(finding.SemanticModel) &&
+            string.IsNullOrWhiteSpace(finding.Table) &&
+            string.IsNullOrWhiteSpace(finding.ObjectName))
+        {
+            AppendLocationItem(html, "Scope", "Project");
+        }
+
+        html.AppendLine("                </dl>");
     }
 
-    private static void AddIfPresent(List<string> values, string? value)
+    private static void AppendLocationItem(StringBuilder html, string label, string? value, bool emphasize = false)
     {
-        if (!string.IsNullOrWhiteSpace(value))
+        if (string.IsNullOrWhiteSpace(value))
         {
-            values.Add(value);
+            return;
+        }
+
+        html.Append("                  <div><dt>").Append(Encode(label)).Append("</dt><dd>");
+        if (emphasize)
+        {
+            html.Append("<strong>");
+        }
+
+        html.Append(Encode(value));
+        if (emphasize)
+        {
+            html.Append("</strong>");
+        }
+
+        html.AppendLine("</dd></div>");
+    }
+
+    private static void AppendVisualIdentity(
+        StringBuilder html,
+        VisualInventory visual,
+        bool includeTechnicalId = false)
+    {
+        var visualType = HumanizeVisualType(visual.VisualType);
+        var hasVisibleStaticTitle = visual.Accessibility.TitleIsVisible != false &&
+                                    !visual.Accessibility.TitleTextIsDynamic &&
+                                    !string.IsNullOrWhiteSpace(visual.Accessibility.TitleText);
+        var hasUsefulCanvasText = !visual.OnCanvasTextIsDynamic && IsUsefulVisualText(visual.OnCanvasText);
+
+        if (hasVisibleStaticTitle)
+        {
+            html.Append("<strong>“").Append(Encode(visual.Accessibility.TitleText!)).Append("”</strong><br>")
+                .Append("<span class=\"secondary\">").Append(Encode(visualType)).Append("</span>");
+        }
+        else if (hasUsefulCanvasText)
+        {
+            html.Append("<strong>“").Append(Encode(visual.OnCanvasText!)).Append("”</strong><br>")
+                .Append("<span class=\"secondary\">").Append(Encode(visualType)).Append("</span>");
+        }
+        else
+        {
+            html.Append("<strong>").Append(Encode(visualType)).Append("</strong>");
+            if (visual.Accessibility.TitleTextIsDynamic || visual.OnCanvasTextIsDynamic)
+            {
+                html.Append("<br><span class=\"secondary\">Uses dynamic display text</span>");
+            }
+        }
+
+        if (visual.Accessibility.TitleIsVisible == false &&
+            !visual.Accessibility.TitleTextIsDynamic &&
+            !string.IsNullOrWhiteSpace(visual.Accessibility.TitleText))
+        {
+            html.Append("<br><span class=\"secondary\">Configured title is hidden: “")
+                .Append(Encode(visual.Accessibility.TitleText)).Append("”</span>");
+        }
+
+        if (visual.IsHidden)
+        {
+            html.Append("<br><span class=\"badge badge-neutral\">Hidden in saved report state</span>");
+        }
+
+        if (includeTechnicalId)
+        {
+            html.Append("<details class=\"technical-details\"><summary>Technical ID</summary><code>")
+                .Append(Encode(visual.Name)).Append("</code></details>");
         }
     }
+
+    private static void AppendFieldSummary(StringBuilder html, VisualInventory visual)
+    {
+        var fields = visual.FieldReferences
+            .DistinctBy(reference => $"{reference.Table}\u001f{reference.ObjectName}", StringComparer.OrdinalIgnoreCase)
+            .Take(4)
+            .ToArray();
+        if (fields.Length == 0)
+        {
+            html.Append("None detected");
+            return;
+        }
+
+        for (var index = 0; index < fields.Length && index < 3; index++)
+        {
+            if (index > 0)
+            {
+                html.Append(", ");
+            }
+
+            html.Append("<code>").Append(Encode($"{fields[index].Table}[{fields[index].ObjectName}]")).Append("</code>");
+        }
+
+        if (fields.Length > 3 || visual.DistinctFieldCount > 3)
+        {
+            html.Append(" <span class=\"secondary\">+")
+                .Append((visual.DistinctFieldCount - 3).ToString(CultureInfo.InvariantCulture))
+                .Append(" more</span>");
+        }
+    }
+
+    private static VisualContext? ResolveVisualContext(ProjectInventory inventory, AssuranceFinding finding)
+    {
+        if (string.IsNullOrWhiteSpace(finding.Visual))
+        {
+            return null;
+        }
+
+        foreach (var report in inventory.Reports)
+        {
+            if (!string.IsNullOrWhiteSpace(finding.Report) &&
+                !string.Equals(report.Name, finding.Report, StringComparison.OrdinalIgnoreCase))
+            {
+                continue;
+            }
+
+            var page = report.Pages.FirstOrDefault(candidate =>
+                string.Equals(candidate.Name, finding.Page, StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(candidate.DisplayName, finding.PageDisplayName, StringComparison.OrdinalIgnoreCase));
+            var visual = page?.Visuals.FirstOrDefault(candidate =>
+                string.Equals(candidate.Name, finding.Visual, StringComparison.OrdinalIgnoreCase));
+            if (page is not null && visual is not null)
+            {
+                return new VisualContext(report, page, visual);
+            }
+        }
+
+        return null;
+    }
+
+    private static string DescribePosition(PageInventory page, VisualInventory visual)
+    {
+        if (page.Width is null or <= 0 || page.Height is null or <= 0 ||
+            visual.Position.X is null || visual.Position.Y is null)
+        {
+            return "Position unavailable";
+        }
+
+        var centreX = visual.Position.X.Value + (visual.Position.Width ?? 0) / 2;
+        var centreY = visual.Position.Y.Value + (visual.Position.Height ?? 0) / 2;
+        var horizontal = (centreX / page.Width.Value) switch
+        {
+            < 1d / 3d => "left",
+            > 2d / 3d => "right",
+            _ => "centre",
+        };
+        var vertical = (centreY / page.Height.Value) switch
+        {
+            < 1d / 3d => "upper",
+            > 2d / 3d => "lower",
+            _ => "centre",
+        };
+
+        var description = (vertical, horizontal) switch
+        {
+            ("centre", "centre") => "centre",
+            ("centre", _) => $"centre-{horizontal}",
+            _ => $"{vertical}-{horizontal}",
+        };
+        return $"{char.ToUpperInvariant(description[0])}{description[1..]} of page";
+    }
+
+    private static string HumanizeVisualType(string? visualType)
+    {
+        if (string.IsNullOrWhiteSpace(visualType))
+        {
+            return "Unknown visual type";
+        }
+
+        if (visualType.StartsWith("PBI_CV_", StringComparison.OrdinalIgnoreCase))
+        {
+            return "Custom visual";
+        }
+
+        var knownType = visualType switch
+        {
+            "actionButton" => "Button",
+            "basicShape" => "Shape",
+            "barChart" => "Bar chart",
+            "card" => "Card",
+            "columnChart" => "Column chart",
+            "donutChart" => "Donut chart",
+            "image" => "Image",
+            "keyDriversVisual" => "Key influencers",
+            "lineChart" => "Line chart",
+            "pageNavigator" => "Page navigator",
+            "pieChart" => "Pie chart",
+            "pivotTable" => "Matrix",
+            "qnaVisual" => "Q&A visual",
+            "slicer" => "Slicer",
+            "tableEx" => "Table",
+            "textbox" => "Text box",
+            _ => null,
+        };
+        if (knownType is not null)
+        {
+            return knownType;
+        }
+
+        var words = new StringBuilder(visualType.Length + 8);
+        for (var index = 0; index < visualType.Length; index++)
+        {
+            var character = visualType[index];
+            if (index > 0 && char.IsUpper(character) && char.IsLower(visualType[index - 1]))
+            {
+                words.Append(' ');
+            }
+
+            words.Append(index == 0 ? char.ToUpperInvariant(character) : character);
+        }
+
+        return words.ToString();
+    }
+
+    private static bool IsUsefulVisualText(string? value)
+    {
+        return !string.IsNullOrWhiteSpace(value) && value.Count(char.IsLetterOrDigit) >= 2;
+    }
+
+    private static string VisualAnchor(ReportInventory report, PageInventory page, VisualInventory visual)
+    {
+        return $"visual-{DomToken(report.Name)}-{DomToken(page.Name)}-{DomToken(visual.Name)}";
+    }
+
+    private static string DomToken(string value)
+    {
+        var result = new StringBuilder(value.Length);
+        var previousWasSeparator = false;
+        foreach (var character in value)
+        {
+            if (char.IsAsciiLetterOrDigit(character))
+            {
+                result.Append(char.ToLowerInvariant(character));
+                previousWasSeparator = false;
+            }
+            else if (!previousWasSeparator)
+            {
+                result.Append('-');
+                previousWasSeparator = true;
+            }
+        }
+
+        return result.ToString().Trim('-');
+    }
+
+    private sealed record VisualContext(ReportInventory Report, PageInventory Page, VisualInventory Visual);
 
     private static string PageRole(PageInventory page)
     {
@@ -532,9 +826,17 @@ public static class HtmlReportRenderer
     .badge-error { color: var(--error); background: var(--error-bg); }
     .badge-warning { color: var(--warning); background: var(--warning-bg); }
     .badge-information { color: var(--info); background: var(--info-bg); }
+    .badge-neutral { color: #364152; background: #eef2f6; }
     .badge-used { color: var(--used); background: var(--used-bg); }
     .badge-indirect, .badge-structural { color: var(--info); background: var(--info-bg); }
     .badge-unused-branch, .badge-unused { color: #553080; background: #f2ecfa; }
+    .finding-location { display: grid; gap: .45rem; margin: 0; }
+    .finding-location div { display: grid; grid-template-columns: minmax(4.5rem, auto) 1fr; gap: .65rem; }
+    .finding-location dt { color: var(--muted); font-weight: 700; }
+    .finding-location dd { margin: 0; }
+    .inventory-link { display: inline-block; margin-top: .65rem; font-weight: 650; }
+    .technical-details { color: var(--muted); font-size: .92em; }
+    tbody tr:target { outline: 4px solid var(--focus); outline-offset: -4px; background: #fff8df; }
     details { margin-top: .5rem; }
     summary { cursor: pointer; color: var(--link); font-weight: 650; }
     tr[hidden] { display: none; }

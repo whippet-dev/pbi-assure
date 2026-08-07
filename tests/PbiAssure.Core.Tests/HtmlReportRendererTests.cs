@@ -31,6 +31,16 @@ public sealed class HtmlReportRendererTests : IDisposable
         Assert.Contains("<label for=\"finding-search\">", html, StringComparison.Ordinal);
         Assert.Contains("id=\"finding-filter-status\"", html, StringComparison.Ordinal);
         Assert.Contains("id=\"usage-filter-status\"", html, StringComparison.Ordinal);
+        Assert.Contains("<dt>Page</dt>", html, StringComparison.Ordinal);
+        Assert.Contains("(page 1)", html, StringComparison.Ordinal);
+        Assert.Contains("“Quarterly revenue”", html, StringComparison.Ordinal);
+        Assert.Contains("Upper-left of page", html, StringComparison.Ordinal);
+        Assert.Contains("“Go to details”", html, StringComparison.Ordinal);
+        Assert.Contains("Lower-left of page", html, StringComparison.Ordinal);
+        Assert.Contains("Hidden in saved report state", html, StringComparison.Ordinal);
+        Assert.Contains("View this visual in the inventory", html, StringComparison.Ordinal);
+        Assert.DoesNotContain("<strong>sales-card</strong>", html, StringComparison.Ordinal);
+        Assert.Contains("<summary>Technical ID</summary><code>sales-card</code>", html, StringComparison.Ordinal);
         Assert.Contains("@media print", html, StringComparison.Ordinal);
         Assert.DoesNotContain("<script>alert('unsafe')</script>", html, StringComparison.Ordinal);
         Assert.Contains("&lt;script&gt;alert(&#x27;unsafe&#x27;)&lt;/script&gt;", html, StringComparison.Ordinal);
@@ -44,6 +54,10 @@ public sealed class HtmlReportRendererTests : IDisposable
 
         var inventory = ProjectScanner.Scan(testRoot);
         var html = HtmlReportRenderer.Render(inventory);
+
+        var button = inventory.Reports.Single().Pages.Single().Visuals.Single(visual => visual.Name == "details-button");
+        Assert.Equal("Go to details", button.OnCanvasText);
+        Assert.False(button.OnCanvasTextIsDynamic);
 
         Assert.Contains("Assurance summary", html, StringComparison.Ordinal);
         Assert.Contains("Important interpretation boundaries", html, StringComparison.Ordinal);
@@ -127,6 +141,43 @@ public sealed class HtmlReportRendererTests : IDisposable
                       ]
                     }
                   }
+                },
+                "visualContainerObjects": {
+                  "title": [
+                    {
+                      "properties": {
+                        "show": { "expr": { "Literal": { "Value": "true" } } },
+                        "text": { "expr": { "Literal": { "Value": "'Quarterly revenue'" } } }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+            """);
+        WriteFile(
+            Path.Combine("Assurance.Report", "definition", "pages", "overview", "visuals", "details-button", "visual.json"),
+            """
+            {
+              "name": "details-button",
+              "isHidden": true,
+              "position": {
+                "x": 20,
+                "y": 620,
+                "height": 50,
+                "width": 140,
+                "tabOrder": 1
+              },
+              "visual": {
+                "visualType": "actionButton",
+                "objects": {
+                  "text": [
+                    {
+                      "properties": {
+                        "text": { "expr": { "Literal": { "Value": "'Go to details'" } } }
+                      }
+                    }
+                  ]
                 }
               }
             }

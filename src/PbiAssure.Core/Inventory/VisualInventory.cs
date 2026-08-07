@@ -8,6 +8,8 @@ public sealed record VisualInventory(
     bool IsHidden,
     VisualPosition Position,
     VisualAccessibilityInventory Accessibility,
+    string? OnCanvasText,
+    bool OnCanvasTextIsDynamic,
     IReadOnlyList<VisualFieldReference> FieldReferences,
     IReadOnlyList<VisualActionInventory> Actions,
     IReadOnlyList<VisualTooltipBindingInventory> TooltipBindings)

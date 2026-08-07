@@ -189,6 +189,7 @@ internal static class PbirReportParser
         var visualType = TryGetObject(visualRoot, "visual", out var visualElement)
             ? GetString(visualElement, "visualType")
             : null;
+        var onCanvasText = PbirVisualTextParser.Parse(visualElement);
 
         TryGetObject(visualRoot, "position", out var position);
 
@@ -206,6 +207,8 @@ internal static class PbirReportParser
                 Height: GetDouble(position, "height"),
                 TabOrder: GetInteger(position, "tabOrder")),
             Accessibility: PbirVisualAccessibilityParser.Parse(visualElement),
+            OnCanvasText: onCanvasText.Text,
+            OnCanvasTextIsDynamic: onCanvasText.IsDynamic,
             FieldReferences: PbirFieldReferenceExtractor.Extract(visualRoot),
             Actions: PbirVisualActionParser.Parse(visualElement),
             TooltipBindings: PbirVisualTooltipParser.Parse(visualElement));
