@@ -95,7 +95,10 @@ internal static class TmdlSemanticModelParser
                 partitions.Add(new SemanticPartitionInventory(
                     Name: partitionName,
                     SourceType: sourceType ?? string.Empty,
-                    Mode: FindProperty(lines, index, endIndex, "mode")));
+                    Mode: FindProperty(lines, index, endIndex, "mode"),
+                    Expression: string.Equals(sourceType, "calculated", StringComparison.OrdinalIgnoreCase)
+                        ? ReadAssignmentExpression(lines, index, endIndex, "source")
+                        : null));
             }
 
             index = endIndex - 1;
@@ -254,6 +257,63 @@ internal static class TmdlSemanticModelParser
             {
                 return lines[index].Trimmed[prefix.Length..].Trim();
             }
+        }
+
+        return null;
+    }
+
+    private static string? ReadAssignmentExpression(
+        IReadOnlyList<TmdlLine> lines,
+        int declarationIndex,
+        int endIndex,
+        string propertyName)
+    {
+        var propertyIndent = lines[declarationIndex].Indent + 4;
+        var prefix = propertyName + " =";
+        for (var index = declarationIndex + 1; index < endIndex; index++)
+        {
+            if (lines[index].Indent != propertyIndent ||
+                !lines[index].Trimmed.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
+            {
+                continue;
+            }
+
+            var inlineExpression = lines[index].Trimmed[prefix.Length..].Trim();
+            if (inlineExpression.Length > 0)
+            {
+                return inlineExpression;
+            }
+
+            var expressionLines = new List<TmdlLine>();
+            for (var expressionIndex = index + 1; expressionIndex < endIndex; expressionIndex++)
+            {
+                if (!string.IsNullOrWhiteSpace(lines[expressionIndex].Text) &&
+                    lines[expressionIndex].Indent <= propertyIndent)
+                {
+                    break;
+                }
+
+                expressionLines.Add(lines[expressionIndex]);
+            }
+
+            while (expressionLines.Count > 0 && string.IsNullOrWhiteSpace(expressionLines[^1].Text))
+            {
+                expressionLines.RemoveAt(expressionLines.Count - 1);
+            }
+
+            if (expressionLines.Count == 0)
+            {
+                return string.Empty;
+            }
+
+            var commonIndent = expressionLines
+                .Where(line => !string.IsNullOrWhiteSpace(line.Text))
+                .Min(line => line.Text.Length - line.Text.TrimStart().Length);
+            return string.Join(
+                Environment.NewLine,
+                expressionLines.Select(line => line.Text.Length >= commonIndent
+                    ? line.Text[commonIndent..]
+                    : string.Empty));
         }
 
         return null;

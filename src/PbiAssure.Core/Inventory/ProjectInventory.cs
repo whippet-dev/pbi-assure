@@ -8,7 +8,10 @@ public sealed record ProjectInventory(
     IReadOnlyList<ReportInventory> Reports,
     IReadOnlyList<SemanticModelInventory> SemanticModels,
     IReadOnlyList<SemanticObjectUsage> SemanticObjectUsages,
-    IReadOnlyList<UnresolvedSemanticReference> UnresolvedSemanticReferences)
+    IReadOnlyList<SemanticTableUsage> SemanticTableUsages,
+    IReadOnlyList<SemanticDependencyEdge> SemanticDependencies,
+    IReadOnlyList<UnresolvedSemanticReference> UnresolvedSemanticReferences,
+    IReadOnlyList<UnresolvedSemanticDependency> UnresolvedSemanticDependencies)
 {
     public int ReportCount => Artifacts.Count(artifact => artifact.Kind == ArtifactKinds.Report);
 
@@ -49,4 +52,10 @@ public sealed record ProjectInventory(
         .Count();
 
     public int NotDirectlyReferencedTableCount => SemanticTableCount - DirectlyReferencedTableCount;
+
+    public int ApparentlyUnusedSemanticObjectCount => SemanticObjectUsages
+        .Count(usage => usage.UsageState == SemanticUsageStates.ApparentlyUnused);
+
+    public int ApparentlyUnusedTableCount => SemanticTableUsages
+        .Count(usage => usage.UsageState == SemanticUsageStates.ApparentlyUnused);
 }

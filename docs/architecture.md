@@ -46,15 +46,17 @@ These should be introduced only when their boundaries are real; empty architectu
 
 ## Dependency graph
 
-The graph will use directed edges. For example, a visual has an edge to the measure it uses, while a measure has edges to the columns and measures referenced by its DAX expression. Starting at user-facing roots and traversing these edges makes usage classification explainable.
+The graph uses directed edges. A report visual provides direct roots, while a measure has edges to the columns, measures, and tables referenced by its DAX expression. Sort-by columns, hierarchy levels, relationship endpoints, and containing tables provide structural edges. Starting at report-facing and structural roots and traversing these edges makes usage classification explainable.
 
-Initial usage states will be:
+Initial usage states are:
 
 - Directly used.
 - Indirectly used.
+- Structurally required.
 - Used only by an otherwise unused branch.
 - Apparently unused within scope.
-- Usage unknown or external to scope.
+
+References that cannot be resolved are emitted separately with their evidence and reason. See [usage classification](usage-classification.md) for state precedence and current analysis boundaries.
 
 ## Format evolution
 

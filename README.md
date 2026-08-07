@@ -2,7 +2,9 @@
 
 PBI Assure is the provisional name for an internally owned Power BI assurance tool. Its intended purpose is to inspect Power BI Project (PBIP) source without changing it, document the report and semantic model, trace dependencies, and produce evidence-led quality and accessibility findings.
 
-The repository is at foundation stage. The executable can discover the report and semantic-model parts of a PBIP project; parse PBIR pages and visual containers; extract evidence-rich field references from visual projections, filters, sorting, and formatting; inventory TMDL tables, columns, measures, hierarchies, partitions, and relationships; and reconcile direct report references with those model objects. DAX dependency analysis is not yet implemented, so an object that is not directly referenced by the report must not yet be treated as safe to remove.
+The repository is at foundation stage. The executable can discover the report and semantic-model parts of a PBIP project; parse PBIR pages and visual containers; extract evidence-rich field references from visual projections, filters, sorting, and formatting; inventory TMDL tables, columns, measures, hierarchies, partitions, and relationships; and build an evidence-backed dependency graph across DAX, sort-by columns, hierarchy levels, relationship endpoints, and containing tables.
+
+The graph classifies semantic objects as directly used, indirectly used, structurally required, used only by an unused branch, or apparently unused within the analysed scope. Power Query M dependencies and consumers outside the selected PBIP project are not yet analysed, so “apparently unused” does not mean “safe to delete.” See [usage classification](docs/usage-classification.md) for the exact contract.
 
 ## Why a command-line tool first?
 
@@ -52,5 +54,6 @@ Start with [the architecture overview](docs/architecture.md) and [the contributo
 
 - PBIP/PBIR and TMDL are the initial supported input formats.
 - Analysis is metadata-only by default.
+- Current dependency analysis covers PBIR, DAX expressions, sort-by columns, hierarchy levels, and relationship endpoints; it does not yet parse Power Query M dependencies.
 - A finding is evidence for review, not a declaration of legal or WCAG compliance.
 - “Unused” always means “not referenced within the analysed scope,” never automatically “safe to delete.”

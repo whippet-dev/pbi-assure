@@ -6,7 +6,8 @@ public sealed record SemanticObjectUsage(
     string ObjectName,
     string ObjectType,
     string? HierarchyName,
-    IReadOnlyList<SemanticUsageEvidence> DirectReportReferences)
+    IReadOnlyList<SemanticUsageEvidence> DirectReportReferences,
+    string UsageState)
 {
     public bool IsDirectlyReferencedByReport => DirectReportReferences.Count > 0;
 

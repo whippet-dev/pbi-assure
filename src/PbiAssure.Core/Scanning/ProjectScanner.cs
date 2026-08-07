@@ -31,9 +31,10 @@ public static class ProjectScanner
             .ToArray();
         var (semanticObjectUsages, unresolvedSemanticReferences) =
             SemanticUsageReconciler.Reconcile(semanticModels, reports);
+        var dependencyAnalysis = SemanticDependencyAnalyzer.Analyze(semanticModels, semanticObjectUsages);
 
         return new ProjectInventory(
-            SchemaVersion: "0.3",
+            SchemaVersion: "0.4",
             RootPath: fullRootPath,
             ScannedAtUtc: DateTimeOffset.UtcNow,
             Artifacts: artifacts
@@ -42,8 +43,11 @@ public static class ProjectScanner
                 .ToArray(),
             Reports: reports,
             SemanticModels: semanticModels,
-            SemanticObjectUsages: semanticObjectUsages,
-            UnresolvedSemanticReferences: unresolvedSemanticReferences);
+            SemanticObjectUsages: dependencyAnalysis.ObjectUsages,
+            SemanticTableUsages: dependencyAnalysis.TableUsages,
+            SemanticDependencies: dependencyAnalysis.Dependencies,
+            UnresolvedSemanticReferences: unresolvedSemanticReferences,
+            UnresolvedSemanticDependencies: dependencyAnalysis.UnresolvedDependencies);
     }
 
     private static void AddProjectFiles(string rootPath, List<ArtifactInventory> artifacts)

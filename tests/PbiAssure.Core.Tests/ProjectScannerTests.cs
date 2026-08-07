@@ -24,7 +24,7 @@ public sealed class ProjectScannerTests : IDisposable
 
         var result = ProjectScanner.Scan(testRoot);
 
-        Assert.Equal("0.3", result.SchemaVersion);
+        Assert.Equal("0.4", result.SchemaVersion);
         Assert.Equal(1, result.ReportCount);
         Assert.Equal(1, result.SemanticModelCount);
         Assert.Contains(result.Artifacts, artifact =>
@@ -343,6 +343,7 @@ public sealed class ProjectScannerTests : IDisposable
         Assert.True(salesTable.Columns[1].IsHidden);
         Assert.Equal("SUM('Sales Data'[Amount])", Assert.Single(salesTable.Measures).Expression);
         Assert.Equal("Calculated Label", Assert.Single(salesTable.Hierarchies).Levels[0].Column);
+        Assert.Equal("ROW(\"StoreID\", 1)", model.Tables.Single(table => table.Name == "Store").Partitions[0].Expression);
 
         var relationship = Assert.Single(model.Relationships);
         Assert.False(relationship.IsActive);
@@ -360,6 +361,169 @@ public sealed class ProjectScannerTests : IDisposable
         Assert.Equal(1, result.DirectlyReferencedTableCount);
         Assert.Equal(1, result.NotDirectlyReferencedTableCount);
         Assert.Empty(result.UnresolvedSemanticReferences);
+
+        Assert.Equal(SemanticUsageStates.DirectlyUsed, netSalesUsage.UsageState);
+        var amountUsage = Assert.Single(result.SemanticObjectUsages, usage =>
+            usage.Table == "Sales Data" && usage.ObjectName == "Amount");
+        Assert.Equal(SemanticUsageStates.IndirectlyUsed, amountUsage.UsageState);
+        var calculatedLabelUsage = Assert.Single(result.SemanticObjectUsages, usage =>
+            usage.Table == "Sales Data" && usage.ObjectName == "Calculated Label");
+        Assert.Equal(SemanticUsageStates.UsedOnlyByUnusedBranch, calculatedLabelUsage.UsageState);
+        var hierarchyLevelUsage = Assert.Single(result.SemanticObjectUsages, usage =>
+            usage.Table == "Sales Data" && usage.ObjectName == "Band");
+        Assert.Equal(SemanticUsageStates.ApparentlyUnused, hierarchyLevelUsage.UsageState);
+        var storeIdUsage = Assert.Single(result.SemanticObjectUsages, usage =>
+            usage.Table == "Store" && usage.ObjectName == "StoreID");
+        Assert.Equal(SemanticUsageStates.StructurallyRequired, storeIdUsage.UsageState);
+
+        Assert.Contains(result.SemanticDependencies, dependency =>
+            dependency.DependencyKind == SemanticDependencyKinds.Dax &&
+            dependency.FromObjectName == "Net Sales" &&
+            dependency.ToTable == "Sales Data" &&
+            dependency.ToObjectName == "Amount");
+        Assert.Contains(result.SemanticDependencies, dependency =>
+            dependency.DependencyKind == SemanticDependencyKinds.HierarchyLevel &&
+            dependency.FromObjectName == "Band" &&
+            dependency.ToObjectName == "Calculated Label");
+        Assert.Contains(result.SemanticDependencies, dependency =>
+            dependency.DependencyKind == SemanticDependencyKinds.RelationshipEndpoint &&
+            dependency.FromObjectName == "relationship-1" &&
+            dependency.ToObjectName == "StoreID");
+
+        Assert.Equal(
+            SemanticUsageStates.DirectlyUsed,
+            result.SemanticTableUsages.Single(usage => usage.Table == "Sales Data").UsageState);
+        Assert.Equal(
+            SemanticUsageStates.StructurallyRequired,
+            result.SemanticTableUsages.Single(usage => usage.Table == "Store").UsageState);
+        Assert.Empty(result.UnresolvedSemanticDependencies);
+    }
+
+    [Fact]
+    public void ScanExtractsDaxReferencesWithoutTreatingStringsCommentsOrHierarchySuffixesAsObjects()
+    {
+        WriteFile(
+            Path.Combine("Model.SemanticModel", "definition", "tables", "Calendar.tmdl"),
+            """
+            table Calendar
+                column Date
+                    dataType: dateTime
+
+                column Month
+                    dataType: string
+
+                measure Target = COUNTROWS(Calendar)
+
+                measure Root =
+                        CALCULATE(
+                            [Target],
+                            ALL('Calendar'[Date].[Month]),
+                            FILTER('Calendar', 'Calendar'[Date] > DATE(2020, 1, 1))
+                        )
+                        & "[StringOnly]"
+                        // [LineCommentOnly]
+                        /* [BlockCommentOnly] */
+
+                partition Calendar = calculated
+                    mode: import
+                    source = CALENDAR(DATE(2020, 1, 1), DATE(2020, 12, 31))
+            """);
+        WriteFile(
+            Path.Combine("Model.Report", "definition", "pages", "pages.json"),
+            """
+            {
+              "pageOrder": ["page-1"],
+              "activePageName": "page-1"
+            }
+            """);
+        WriteFile(
+            Path.Combine("Model.Report", "definition", "pages", "page-1", "page.json"),
+            """
+            {
+              "name": "page-1",
+              "displayName": "Overview",
+              "displayOption": "FitToPage",
+              "height": 720,
+              "width": 1280
+            }
+            """);
+        WriteFile(
+            Path.Combine("Model.Report", "definition", "pages", "page-1", "visuals", "visual-1", "visual.json"),
+            """
+            {
+              "name": "visual-1",
+              "visual": {
+                "visualType": "card",
+                "query": {
+                  "queryState": {
+                    "values": {
+                      "projections": [
+                        {
+                          "field": {
+                            "Measure": {
+                              "Expression": { "SourceRef": { "Entity": "Calendar" } },
+                              "Property": "Root"
+                            }
+                          }
+                        }
+                      ]
+                    }
+                  }
+                }
+              }
+            }
+            """);
+
+        var result = ProjectScanner.Scan(testRoot);
+
+        Assert.Empty(result.UnresolvedSemanticDependencies);
+        Assert.Equal(
+            SemanticUsageStates.DirectlyUsed,
+            result.SemanticObjectUsages.Single(usage => usage.ObjectName == "Root").UsageState);
+        Assert.Equal(
+            SemanticUsageStates.IndirectlyUsed,
+            result.SemanticObjectUsages.Single(usage => usage.ObjectName == "Target").UsageState);
+        Assert.Equal(
+            SemanticUsageStates.IndirectlyUsed,
+            result.SemanticObjectUsages.Single(usage => usage.ObjectName == "Date").UsageState);
+        Assert.Equal(
+            SemanticUsageStates.ApparentlyUnused,
+            result.SemanticObjectUsages.Single(usage => usage.ObjectName == "Month").UsageState);
+        Assert.Contains(result.SemanticDependencies, dependency =>
+            dependency.FromObjectName == "Root" &&
+            dependency.ToObjectName == "Target" &&
+            dependency.DependencyKind == SemanticDependencyKinds.Dax);
+        Assert.Contains(result.SemanticDependencies, dependency =>
+            dependency.FromObjectName == "Root" &&
+            dependency.ToObjectType == SemanticObjectTypes.Table &&
+            dependency.ToTable == "Calendar");
+        Assert.DoesNotContain(result.SemanticDependencies, dependency =>
+            dependency.ToObjectName is "StringOnly" or "LineCommentOnly" or "BlockCommentOnly" or "Month");
+    }
+
+    [Fact]
+    public void ScanRetainsUnresolvedDaxReferencesWithEvidence()
+    {
+        var tablePath = Path.Combine("Model.SemanticModel", "definition", "tables", "Measures.tmdl");
+        WriteFile(
+            tablePath,
+            """
+            table Measures
+                measure Broken = [Missing Measure]
+
+                partition Measures = m
+                    mode: import
+                    source = #table({}, {})
+            """);
+
+        var result = ProjectScanner.Scan(testRoot);
+
+        var unresolved = Assert.Single(result.UnresolvedSemanticDependencies);
+        Assert.Equal("Broken", unresolved.FromObjectName);
+        Assert.Equal("[Missing Measure]", unresolved.ReferenceText);
+        Assert.Equal(SemanticDependencyKinds.Dax, unresolved.DependencyKind);
+        Assert.Equal(tablePath, unresolved.EvidencePath);
+        Assert.Contains("was found", unresolved.Reason, StringComparison.OrdinalIgnoreCase);
     }
 
     public void Dispose()

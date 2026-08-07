@@ -38,7 +38,10 @@ internal static class SemanticUsageReconciler
                     ObjectName: semanticObject.ObjectName,
                     ObjectType: semanticObject.ObjectType,
                     HierarchyName: semanticObject.HierarchyName,
-                    DirectReportReferences: evidence));
+                    DirectReportReferences: evidence,
+                    UsageState: evidence.Count > 0
+                        ? SemanticUsageStates.DirectlyUsed
+                        : SemanticUsageStates.ApparentlyUnused));
             }
         }
 
