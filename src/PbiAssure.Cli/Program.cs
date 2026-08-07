@@ -1,5 +1,6 @@
 using System.Text.Json;
 using PbiAssure.Core.Scanning;
+using PbiAssure.Reporting;
 
 return await RunAsync(args);
 
@@ -18,7 +19,7 @@ static async Task<int> RunAsync(string[] arguments)
         return 2;
     }
 
-    if (!TryParseScanArguments(arguments[1..], out var projectPath, out var outputPath, out var error))
+    if (!TryParseScanArguments(arguments[1..], out var projectPath, out var outputPath, out var requestedFormat, out var error))
     {
         Console.Error.WriteLine(error);
         WriteUsage(Console.Error);
@@ -28,11 +29,14 @@ static async Task<int> RunAsync(string[] arguments)
     try
     {
         var inventory = ProjectScanner.Scan(projectPath!);
-        var json = JsonSerializer.Serialize(inventory, new JsonSerializerOptions { WriteIndented = true });
+        var format = ResolveFormat(requestedFormat, outputPath);
+        var content = format == OutputFormat.Html
+            ? HtmlReportRenderer.Render(inventory)
+            : JsonSerializer.Serialize(inventory, new JsonSerializerOptions { WriteIndented = true }) + Environment.NewLine;
 
         if (outputPath is null)
         {
-            Console.Out.WriteLine(json);
+            Console.Out.Write(content);
         }
         else
         {
@@ -43,8 +47,8 @@ static async Task<int> RunAsync(string[] arguments)
                 Directory.CreateDirectory(outputDirectory);
             }
 
-            await File.WriteAllTextAsync(fullOutputPath, json + Environment.NewLine);
-            Console.Out.WriteLine($"Inventory written to {fullOutputPath}");
+            await File.WriteAllTextAsync(fullOutputPath, content);
+            Console.Out.WriteLine($"{(format == OutputFormat.Html ? "HTML report" : "JSON inventory")} written to {fullOutputPath}");
         }
 
         return 0;
@@ -60,10 +64,12 @@ static bool TryParseScanArguments(
     string[] arguments,
     out string? projectPath,
     out string? outputPath,
+    out OutputFormat? requestedFormat,
     out string? error)
 {
     projectPath = null;
     outputPath = null;
+    requestedFormat = null;
     error = null;
 
     for (var index = 0; index < arguments.Length; index++)
@@ -78,6 +84,30 @@ static bool TryParseScanArguments(
             }
 
             outputPath = arguments[index];
+            continue;
+        }
+
+        if (argument is "--format" or "-f")
+        {
+            if (++index >= arguments.Length)
+            {
+                error = "The --format option requires json or html.";
+                return false;
+            }
+
+            requestedFormat = arguments[index].ToLowerInvariant() switch
+            {
+                "json" => OutputFormat.Json,
+                "html" => OutputFormat.Html,
+                _ => null
+            };
+
+            if (requestedFormat is null)
+            {
+                error = $"Unsupported output format: {arguments[index]}. Use json or html.";
+                return false;
+            }
+
             continue;
         }
 
@@ -105,10 +135,30 @@ static bool TryParseScanArguments(
     return true;
 }
 
+static OutputFormat ResolveFormat(OutputFormat? requestedFormat, string? outputPath)
+{
+    if (requestedFormat is not null)
+    {
+        return requestedFormat.Value;
+    }
+
+    return string.Equals(Path.GetExtension(outputPath), ".html", StringComparison.OrdinalIgnoreCase)
+        ? OutputFormat.Html
+        : OutputFormat.Json;
+}
+
 static void WriteUsage(TextWriter writer)
 {
     writer.WriteLine("PBI Assure - read-only Power BI project assurance");
     writer.WriteLine();
     writer.WriteLine("Usage:");
-    writer.WriteLine("  pbiassure scan <project-directory> [--output <file>]");
+    writer.WriteLine("  pbiassure scan <project-directory> [--output <file>] [--format json|html]");
+    writer.WriteLine();
+    writer.WriteLine("The output format defaults to HTML for .html files and JSON otherwise.");
+}
+
+enum OutputFormat
+{
+    Json,
+    Html
 }

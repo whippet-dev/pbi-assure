@@ -35,12 +35,15 @@ Contains the domain model, parsers, dependency engine, and rules. It must not de
 
 Provides automation and an early user interface. It translates command-line input into calls to the core and serialises results.
 
+### `PbiAssure.Reporting`
+
+Renders normalized inventories into accessible, human-readable outputs. It depends on the core domain model but contains no scanning or Power BI parsing logic.
+
 ### Future projects
 
 - `PbiAssure.Pbir`: detailed PBIR parsing if it becomes large enough to isolate.
 - `PbiAssure.Tabular`: TMDL/TOM and XMLA integration.
 - `PbiAssure.Desktop`: an accessible graphical interface.
-- `PbiAssure.Reporting`: HTML and other human-readable reports.
 
 These should be introduced only when their boundaries are real; empty architectural layers add maintenance cost.
 

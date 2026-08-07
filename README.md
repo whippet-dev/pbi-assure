@@ -27,30 +27,33 @@ dotnet build PbiAssure.slnx --no-restore
 dotnet test PbiAssure.slnx --no-build
 ```
 
-## Run the initial scanner
+## Generate assurance results
+
+Write the accessible, self-contained HTML report:
 
 ```powershell
-dotnet run --project src/PbiAssure.Cli -- scan "C:\path\to\YourProject"
+dotnet run --project src/PbiAssure.Cli -- scan "C:\path\to\YourProject" --output assurance.pbiassure.html
 ```
 
-Write the JSON inventory to a file:
+Write the machine-readable JSON inventory:
 
 ```powershell
 dotnet run --project src/PbiAssure.Cli -- scan "C:\path\to\YourProject" --output inventory.pbiassure.json
 ```
 
-The scanner is read-only with respect to the selected Power BI project. Supplying `--output` writes only to the output path chosen by the operator.
+The output format is inferred from a `.html` extension and otherwise defaults to JSON. Use `--format html` or `--format json` to override this, including when writing to standard output. The scanner is read-only with respect to the selected Power BI project; `--output` writes only to the location chosen by the operator.
 
 ## Repository structure
 
 ```text
 src/PbiAssure.Core/       Domain types and analysis logic
+src/PbiAssure.Reporting/  Accessible human-readable report rendering
 src/PbiAssure.Cli/        Thin command-line entry point
 tests/                    Automated tests using synthetic files
 docs/                     Architecture, assurance, and security decisions
 ```
 
-Start with [the architecture overview](docs/architecture.md), [the rule catalog](docs/rule-catalog.md), and [the contributor guide](CONTRIBUTING.md).
+Start with [the architecture overview](docs/architecture.md), [the product roadmap](docs/roadmap.md), [the rule catalog](docs/rule-catalog.md), and [the contributor guide](CONTRIBUTING.md).
 
 ## Current boundaries
 

@@ -12,6 +12,7 @@
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="../../src/PbiAssure.Core/PbiAssure.Core.csproj" />
+    <ProjectReference Include="../../src/PbiAssure.Reporting/PbiAssure.Reporting.csproj" />
     <Using Include="Xunit" />
   </ItemGroup>
 </Project>
