@@ -43,7 +43,7 @@ dotnet run --project src/PbiAssure.Cli -- scan "C:\path\to\YourProject" --output
 
 The output format is inferred from a `.html` extension and otherwise defaults to JSON. Use `--format html` or `--format json` to override this, including when writing to standard output. The scanner is read-only with respect to the selected Power BI project; `--output` writes only to the location chosen by the operator.
 
-The HTML report identifies visuals using Power BI developer-facing information: report page and page number, visible title or on-canvas label where available, friendly visual type, approximate page position, referenced fields, and saved visibility state. Internal PBIR visual IDs remain available only inside collapsed technical details. Finding locations link to the corresponding visual-inventory row.
+The HTML report is organised as expandable review cards rather than long data tables. Each report page contains collapsible visual summaries showing the visible title or on-canvas label, friendly visual type, approximate page position, referenced columns and measures, behaviour, accessibility metadata, and related findings. Findings and semantic-model tables are separately searchable and collapsible. Internal PBIR identifiers remain available only inside technical details.
 
 ## Repository structure
 

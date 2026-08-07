@@ -27,10 +27,17 @@ public sealed class HtmlReportRendererTests : IDisposable
         Assert.Contains("href=\"#main-content\">Skip to main content", html, StringComparison.Ordinal);
         Assert.Contains("<main id=\"main-content\"", html, StringComparison.Ordinal);
         Assert.Contains("<dl class=\"metrics\">", html, StringComparison.Ordinal);
-        Assert.Contains("<caption>Automated findings, evidence, and recommended actions</caption>", html, StringComparison.Ordinal);
+        Assert.Contains("id=\"finding-list\" class=\"card-list\"", html, StringComparison.Ordinal);
+        Assert.Contains("class=\"finding-card\"", html, StringComparison.Ordinal);
+        Assert.Contains("class=\"page-card\"", html, StringComparison.Ordinal);
+        Assert.Contains("class=\"visual-card\"", html, StringComparison.Ordinal);
+        Assert.Contains("class=\"semantic-table\"", html, StringComparison.Ordinal);
         Assert.Contains("<label for=\"finding-search\">", html, StringComparison.Ordinal);
+        Assert.Contains("<label for=\"page-search\">", html, StringComparison.Ordinal);
         Assert.Contains("id=\"finding-filter-status\"", html, StringComparison.Ordinal);
         Assert.Contains("id=\"usage-filter-status\"", html, StringComparison.Ordinal);
+        Assert.Contains("Expand all pages", html, StringComparison.Ordinal);
+        Assert.Contains("Objects used by this visual", html, StringComparison.Ordinal);
         Assert.Contains("<dt>Page</dt>", html, StringComparison.Ordinal);
         Assert.Contains("(page 1)", html, StringComparison.Ordinal);
         Assert.Contains("“Quarterly revenue”", html, StringComparison.Ordinal);
@@ -38,9 +45,12 @@ public sealed class HtmlReportRendererTests : IDisposable
         Assert.Contains("“Go to details”", html, StringComparison.Ordinal);
         Assert.Contains("Lower-left of page", html, StringComparison.Ordinal);
         Assert.Contains("Hidden in saved report state", html, StringComparison.Ordinal);
-        Assert.Contains("View this visual in the inventory", html, StringComparison.Ordinal);
+        Assert.Contains("This visual links to a bookmark that no longer exists.", html, StringComparison.Ordinal);
+        Assert.Contains("Open this visual under its report page", html, StringComparison.Ordinal);
         Assert.DoesNotContain("<strong>sales-card</strong>", html, StringComparison.Ordinal);
-        Assert.Contains("<summary>Technical ID</summary><code>sales-card</code>", html, StringComparison.Ordinal);
+        Assert.Contains("<summary>Technical details</summary>", html, StringComparison.Ordinal);
+        Assert.Contains("sales-card", html, StringComparison.Ordinal);
+        Assert.DoesNotContain("<table", html, StringComparison.OrdinalIgnoreCase);
         Assert.Contains("@media print", html, StringComparison.Ordinal);
         Assert.DoesNotContain("<script>alert('unsafe')</script>", html, StringComparison.Ordinal);
         Assert.Contains("&lt;script&gt;alert(&#x27;unsafe&#x27;)&lt;/script&gt;", html, StringComparison.Ordinal);
@@ -62,8 +72,8 @@ public sealed class HtmlReportRendererTests : IDisposable
         Assert.Contains("Assurance summary", html, StringComparison.Ordinal);
         Assert.Contains("Important interpretation boundaries", html, StringComparison.Ordinal);
         Assert.Contains("Bookmark-captured semantic state", html, StringComparison.Ordinal);
-        Assert.Contains("Report inventory", html, StringComparison.Ordinal);
-        Assert.Contains("Semantic usage", html, StringComparison.Ordinal);
+        Assert.Contains("Report pages", html, StringComparison.Ordinal);
+        Assert.Contains("Semantic model", html, StringComparison.Ordinal);
         Assert.Contains("data-usage-state=\"DirectlyUsed\"", html, StringComparison.Ordinal);
         Assert.Contains("data-usage-state=\"ApparentlyUnused\"", html, StringComparison.Ordinal);
         Assert.Contains("Apparently unused", html, StringComparison.Ordinal);
@@ -175,6 +185,17 @@ public sealed class HtmlReportRendererTests : IDisposable
                     {
                       "properties": {
                         "text": { "expr": { "Literal": { "Value": "'Go to details'" } } }
+                      }
+                    }
+                  ]
+                },
+                "visualContainerObjects": {
+                  "visualLink": [
+                    {
+                      "properties": {
+                        "show": { "expr": { "Literal": { "Value": "true" } } },
+                        "type": { "expr": { "Literal": { "Value": "'Bookmark'" } } },
+                        "bookmark": { "expr": { "Literal": { "Value": "'missing-bookmark'" } } }
                       }
                     }
                   ]

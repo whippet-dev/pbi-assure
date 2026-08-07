@@ -54,8 +54,8 @@ public static class HtmlReportRenderer
         html.AppendLine("        <ul class=\"section-nav\">");
         html.AppendLine("          <li><a href=\"#summary\">Summary</a></li>");
         html.AppendLine("          <li><a href=\"#findings\">Findings</a></li>");
-        html.AppendLine("          <li><a href=\"#reports\">Report inventory</a></li>");
-        html.AppendLine("          <li><a href=\"#semantic-usage\">Semantic usage</a></li>");
+        html.AppendLine("          <li><a href=\"#reports\">Report pages</a></li>");
+        html.AppendLine("          <li><a href=\"#semantic-usage\">Semantic model</a></li>");
         html.AppendLine("        </ul>");
         html.AppendLine("      </nav>");
         html.AppendLine("    </div>");
@@ -100,6 +100,7 @@ public static class HtmlReportRenderer
     {
         html.AppendLine("    <section id=\"findings\" aria-labelledby=\"findings-heading\">");
         html.AppendLine("      <h2 id=\"findings-heading\">Findings</h2>");
+        html.AppendLine("      <p>Expand an issue to see where it occurs and the suggested action.</p>");
         if (inventory.Findings.Count == 0)
         {
             html.AppendLine("      <p>No automated findings were produced. Manual review is still required.</p>");
@@ -116,39 +117,41 @@ public static class HtmlReportRenderer
                      .Distinct(StringComparer.OrdinalIgnoreCase)
                      .OrderBy(category => category, StringComparer.OrdinalIgnoreCase))
         {
-            html.Append("          <option>").Append(Encode(category)).AppendLine("</option>");
+            html.Append("          <option value=\"").Append(Encode(category)).Append("\">")
+                .Append(Encode(HumanizeIdentifier(category))).AppendLine("</option>");
         }
 
         html.AppendLine("        </select></div>");
         html.AppendLine("      </div>");
         html.Append("      <p id=\"finding-filter-status\" class=\"filter-status\" role=\"status\">")
             .Append(inventory.Findings.Count.ToString(CultureInfo.InvariantCulture)).AppendLine(" findings shown.</p>");
-        html.AppendLine("      <div class=\"table-scroll\">");
-        html.AppendLine("        <table id=\"findings-table\">");
-        html.AppendLine("          <caption>Automated findings, evidence, and recommended actions</caption>");
-        html.AppendLine("          <thead><tr><th scope=\"col\">Severity</th><th scope=\"col\">Rule</th><th scope=\"col\">Finding</th><th scope=\"col\">Location and evidence</th><th scope=\"col\">Recommendation</th></tr></thead>");
-        html.AppendLine("          <tbody>");
-        foreach (var finding in inventory.Findings)
+        AppendDetailsControls(html, "finding-list", "issues");
+        html.AppendLine("      <div id=\"finding-list\" class=\"card-list\">");
+        for (var index = 0; index < inventory.Findings.Count; index++)
         {
-            html.Append("            <tr data-severity=\"").Append(Encode(finding.Severity))
-                .Append("\" data-category=\"").Append(Encode(finding.Category)).AppendLine("\">");
-            html.Append("              <td><span class=\"badge ").Append(SeverityClass(finding.Severity))
-                .Append("\">").Append(Encode(finding.Severity)).AppendLine("</span></td>");
-            html.Append("              <td>");
-            AppendRuleReference(html, finding);
-            html.Append("<br><span class=\"secondary\">").Append(Encode(finding.Category))
-                .Append(" · ").Append(Encode(finding.AssessmentType)).AppendLine("</span></td>");
-            html.Append("              <td>").Append(Encode(finding.Message)).AppendLine("</td>");
-            html.AppendLine("              <td>");
+            var finding = inventory.Findings[index];
+            var context = ResolveVisualContext(inventory, finding);
+            html.Append("        <details id=\"").Append(FindingAnchor(index)).Append("\" class=\"finding-card\" data-severity=\"")
+                .Append(Encode(finding.Severity)).Append("\" data-category=\"").Append(Encode(finding.Category)).AppendLine("\">");
+            html.Append("          <summary><span class=\"badge ").Append(SeverityClass(finding.Severity))
+                .Append("\">").Append(Encode(finding.Severity)).Append("</span><span class=\"summary-copy\"><strong>")
+                .Append(Encode(FriendlyFindingMessage(finding, context))).Append("</strong><span>")
+                .Append(Encode(FindingLocationSummary(finding, context))).AppendLine("</span></span></summary>");
+            html.AppendLine("          <div class=\"card-body\">");
             AppendFindingLocation(html, inventory, finding);
+            html.AppendLine("            <h3>Suggested action</h3>");
+            html.Append("            <p>").Append(Encode(finding.Recommendation)).AppendLine("</p>");
+            if (finding.ReferenceUrl is not null && IsSafeHttpUrl(finding.ReferenceUrl))
+            {
+                html.Append("            <p><a href=\"").Append(Encode(finding.ReferenceUrl))
+                    .AppendLine("\">Open supporting guidance</a></p>");
+            }
+
             AppendEvidence(html, finding);
-            html.AppendLine("              </td>");
-            html.Append("              <td>").Append(Encode(finding.Recommendation)).AppendLine("</td>");
-            html.AppendLine("            </tr>");
+            html.AppendLine("          </div>");
+            html.AppendLine("        </details>");
         }
 
-        html.AppendLine("          </tbody>");
-        html.AppendLine("        </table>");
         html.AppendLine("      </div>");
         html.AppendLine("    </section>");
     }
@@ -156,7 +159,8 @@ public static class HtmlReportRenderer
     private static void AppendReportInventory(StringBuilder html, ProjectInventory inventory)
     {
         html.AppendLine("    <section id=\"reports\" aria-labelledby=\"reports-heading\">");
-        html.AppendLine("      <h2 id=\"reports-heading\">Report inventory</h2>");
+        html.AppendLine("      <h2 id=\"reports-heading\">Report pages</h2>");
+        html.AppendLine("      <p>Expand a page for its visuals, then expand a visual to see the columns and measures it uses.</p>");
         if (inventory.Reports.Count == 0)
         {
             html.AppendLine("      <p>No PBIR report definitions were found.</p>");
@@ -164,76 +168,36 @@ public static class HtmlReportRenderer
             return;
         }
 
-        html.AppendLine("      <div class=\"table-scroll\"><table>");
-        html.AppendLine("        <caption>Reports and high-level metadata counts</caption>");
-        html.AppendLine("        <thead><tr><th scope=\"col\">Report</th><th scope=\"col\">Pages</th><th scope=\"col\">Visuals</th><th scope=\"col\">Filters</th><th scope=\"col\">Bookmarks</th><th scope=\"col\">Actions</th><th scope=\"col\">Tooltip bindings</th></tr></thead><tbody>");
+        html.AppendLine("      <div class=\"filters page-tools\" aria-label=\"Find report pages and visuals\">");
+        html.AppendLine("        <div><label for=\"page-search\">Find a page, visual, column or measure</label><input id=\"page-search\" type=\"search\" autocomplete=\"off\"></div>");
+        html.AppendLine("      </div>");
+        html.Append("      <p id=\"page-filter-status\" class=\"filter-status\" role=\"status\">")
+            .Append(inventory.PageCount.ToString(CultureInfo.InvariantCulture)).Append(" pages and ")
+            .Append(inventory.VisualCount.ToString(CultureInfo.InvariantCulture)).AppendLine(" visuals shown.</p>");
+        AppendDetailsControls(html, "page-list", "pages");
+        html.AppendLine("      <div id=\"page-list\" class=\"page-list\">");
         foreach (var report in inventory.Reports)
         {
-            html.Append("          <tr><th scope=\"row\">").Append(Encode(report.Name)).Append("</th>");
-            AppendNumberCell(html, report.PageCount);
-            AppendNumberCell(html, report.VisualCount);
-            AppendNumberCell(html, report.FilterCount);
-            AppendNumberCell(html, report.BookmarkCount);
-            AppendNumberCell(html, report.ActionCount);
-            AppendNumberCell(html, report.TooltipBindingCount);
-            html.AppendLine("</tr>");
-        }
+            if (inventory.ReportCount > 1)
+            {
+                html.Append("        <h3>").Append(Encode(report.Name)).AppendLine("</h3>");
+            }
 
-        html.AppendLine("        </tbody></table></div>");
-        html.AppendLine("      <h3>Pages</h3>");
-        html.AppendLine("      <div class=\"table-scroll\"><table>");
-        html.AppendLine("        <caption>Page roles, visibility, and contained metadata</caption>");
-        html.AppendLine("        <thead><tr><th scope=\"col\">Report</th><th scope=\"col\">Page</th><th scope=\"col\">Role</th><th scope=\"col\">Visibility</th><th scope=\"col\">Visuals</th><th scope=\"col\">Filters</th><th scope=\"col\">Interactions</th><th scope=\"col\">Field references</th></tr></thead><tbody>");
-        foreach (var report in inventory.Reports)
-        {
             foreach (var page in report.Pages)
             {
-                html.Append("          <tr><td>").Append(Encode(report.Name)).Append("</td><th scope=\"row\">")
-                    .Append(Encode(page.DisplayName)).Append("</th><td>").Append(Encode(PageRole(page)))
-                    .Append("</td><td>").Append(Encode(PageVisibility(page))).Append("</td>");
-                AppendNumberCell(html, page.VisualCount);
-                AppendNumberCell(html, page.FilterCount);
-                AppendNumberCell(html, page.VisualInteractionCount);
-                AppendNumberCell(html, page.FieldReferenceCount);
-                html.AppendLine("</tr>");
+                AppendPageCard(html, inventory, report, page);
             }
         }
 
-        html.AppendLine("        </tbody></table></div>");
-        html.AppendLine("      <h3>Visuals</h3>");
-        html.AppendLine("      <div class=\"table-scroll\"><table>");
-        html.AppendLine("        <caption>Visual types, semantic references, navigation, and detectable accessibility metadata</caption>");
-        html.AppendLine("        <thead><tr><th scope=\"col\">Report</th><th scope=\"col\">Page</th><th scope=\"col\">Visual</th><th scope=\"col\">Approximate location</th><th scope=\"col\">Fields</th><th scope=\"col\">Actions</th><th scope=\"col\">Tooltip pages</th><th scope=\"col\">Tab order</th><th scope=\"col\">Alt text</th></tr></thead><tbody>");
-        foreach (var report in inventory.Reports)
-        {
-            foreach (var page in report.Pages)
-            {
-                foreach (var visual in page.Visuals)
-                {
-                    html.Append("          <tr id=\"").Append(Encode(VisualAnchor(report, page, visual)))
-                        .Append("\"><td>").Append(Encode(report.Name)).Append("</td><td>")
-                        .Append(Encode(page.DisplayName)).Append("</td><th scope=\"row\">");
-                    AppendVisualIdentity(html, visual, includeTechnicalId: true);
-                    html.Append("</th><td>").Append(Encode(DescribePosition(page, visual))).Append("</td><td>");
-                    AppendFieldSummary(html, visual);
-                    html.Append("</td>");
-                    AppendNumberCell(html, visual.ActionCount);
-                    AppendNumberCell(html, visual.TooltipBindingCount);
-                    html.Append("<td>").Append(Encode(visual.Position.TabOrder?.ToString(CultureInfo.InvariantCulture) ?? "Excluded"))
-                        .Append("</td><td>").Append(visual.Accessibility.HasAltText ? "Configured" : "Not detected")
-                        .AppendLine("</td></tr>");
-                }
-            }
-        }
-
-        html.AppendLine("        </tbody></table></div>");
+        html.AppendLine("      </div>");
         html.AppendLine("    </section>");
     }
 
     private static void AppendSemanticUsage(StringBuilder html, ProjectInventory inventory)
     {
         html.AppendLine("    <section id=\"semantic-usage\" aria-labelledby=\"semantic-usage-heading\">");
-        html.AppendLine("      <h2 id=\"semantic-usage-heading\">Semantic usage</h2>");
+        html.AppendLine("      <h2 id=\"semantic-usage-heading\">Semantic model</h2>");
+        html.AppendLine("      <p>Browse model objects by table. Usage labels describe what PBI Assure found in this project.</p>");
         if (inventory.SemanticModels.Count == 0)
         {
             html.AppendLine("      <p>No supported semantic model definition was found.</p>");
@@ -241,20 +205,6 @@ public static class HtmlReportRenderer
             return;
         }
 
-        html.AppendLine("      <div class=\"table-scroll\"><table>");
-        html.AppendLine("        <caption>Semantic model inventory</caption>");
-        html.AppendLine("        <thead><tr><th scope=\"col\">Model</th><th scope=\"col\">Tables</th><th scope=\"col\">Columns</th><th scope=\"col\">Measures</th><th scope=\"col\">Relationships</th></tr></thead><tbody>");
-        foreach (var model in inventory.SemanticModels)
-        {
-            html.Append("          <tr><th scope=\"row\">").Append(Encode(model.Name)).Append("</th>");
-            AppendNumberCell(html, model.TableCount);
-            AppendNumberCell(html, model.ColumnCount);
-            AppendNumberCell(html, model.MeasureCount);
-            AppendNumberCell(html, model.RelationshipCount);
-            html.AppendLine("</tr>");
-        }
-
-        html.AppendLine("        </tbody></table></div>");
         html.AppendLine("      <div class=\"filters\" aria-label=\"Filter semantic objects\">");
         html.AppendLine("        <div><label for=\"usage-search\">Search semantic objects</label><input id=\"usage-search\" type=\"search\" autocomplete=\"off\"></div>");
         html.AppendLine("        <div><label for=\"usage-state\">Usage state</label><select id=\"usage-state\"><option value=\"\">All usage states</option>");
@@ -271,23 +221,461 @@ public static class HtmlReportRenderer
         html.AppendLine("      </div>");
         html.Append("      <p id=\"usage-filter-status\" class=\"filter-status\" role=\"status\">")
             .Append(inventory.SemanticObjectUsages.Count.ToString(CultureInfo.InvariantCulture)).AppendLine(" semantic objects shown.</p>");
-        html.AppendLine("      <div class=\"table-scroll\"><table id=\"usage-table\">");
-        html.AppendLine("        <caption>Semantic objects and evidence-backed usage classifications</caption>");
-        html.AppendLine("        <thead><tr><th scope=\"col\">Model</th><th scope=\"col\">Table</th><th scope=\"col\">Object</th><th scope=\"col\">Type</th><th scope=\"col\">Usage state</th><th scope=\"col\">Direct evidence</th></tr></thead><tbody>");
-        foreach (var usage in inventory.SemanticObjectUsages)
+        AppendDetailsControls(html, "semantic-table-list", "tables");
+        html.AppendLine("      <div id=\"semantic-table-list\" class=\"semantic-table-list\">");
+        foreach (var model in inventory.SemanticModels)
         {
-            html.Append("          <tr data-usage-state=\"").Append(Encode(usage.UsageState)).Append("\"><td>")
-                .Append(Encode(usage.SemanticModel)).Append("</td><td>").Append(Encode(usage.Table))
-                .Append("</td><th scope=\"row\">").Append(Encode(usage.ObjectName)).Append("</th><td>")
-                .Append(Encode(usage.ObjectType)).Append("</td><td><span class=\"badge ")
-                .Append(UsageClass(usage.UsageState)).Append("\">").Append(Encode(UsageLabel(usage.UsageState)))
-                .Append("</span></td>");
-            AppendNumberCell(html, usage.DirectReportReferenceCount);
-            html.AppendLine("</tr>");
+            AppendSemanticModel(html, inventory, model);
         }
 
-        html.AppendLine("        </tbody></table></div>");
+        html.AppendLine("      </div>");
         html.AppendLine("    </section>");
+    }
+
+    private static void AppendDetailsControls(StringBuilder html, string targetId, string itemLabel)
+    {
+        html.Append("      <div class=\"details-controls\"><button type=\"button\" data-details-action=\"expand\" data-target=\"")
+            .Append(Encode(targetId)).Append("\">Expand all ").Append(Encode(itemLabel))
+            .Append("</button><button type=\"button\" data-details-action=\"collapse\" data-target=\"")
+            .Append(Encode(targetId)).Append("\">Collapse all ").Append(Encode(itemLabel)).AppendLine("</button></div>");
+    }
+
+    private static void AppendPageCard(
+        StringBuilder html,
+        ProjectInventory inventory,
+        ReportInventory report,
+        PageInventory page)
+    {
+        int? pageNumber = page.Order is null ? null : page.Order.Value + 1;
+        var pageFindings = inventory.Findings.Count(finding =>
+            string.Equals(finding.Report, report.Name, StringComparison.OrdinalIgnoreCase) &&
+            (string.Equals(finding.Page, page.Name, StringComparison.OrdinalIgnoreCase) ||
+             string.Equals(finding.PageDisplayName, page.DisplayName, StringComparison.OrdinalIgnoreCase)));
+
+        html.Append("        <details class=\"page-card\" data-page-name=\"").Append(Encode(page.DisplayName)).Append('"');
+        if (page.IsActive)
+        {
+            html.Append(" open");
+        }
+
+        html.AppendLine(">");
+        html.Append("          <summary><span class=\"summary-copy\"><span class=\"kicker\">")
+            .Append(pageNumber is null ? "Report page" : $"Page {pageNumber}").Append("</span><strong>")
+            .Append(Encode(page.DisplayName)).Append("</strong><span>")
+            .Append(Encode($"{PageRole(page)} · {PageVisibility(page)} · {page.VisualCount} visuals"))
+            .AppendLine("</span></span>");
+        if (pageFindings > 0)
+        {
+            html.Append("            <span class=\"count-pill\">").Append(pageFindings.ToString(CultureInfo.InvariantCulture))
+                .Append(pageFindings == 1 ? " issue" : " issues").AppendLine("</span>");
+        }
+
+        html.AppendLine("          </summary>");
+        html.AppendLine("          <div class=\"page-body\">");
+        html.AppendLine("            <dl class=\"fact-strip\">");
+        AppendFact(html, "Visuals", page.VisualCount.ToString(CultureInfo.InvariantCulture));
+        AppendFact(html, "Page filters", page.FilterCount.ToString(CultureInfo.InvariantCulture));
+        AppendFact(html, "Interactions", page.VisualInteractionCount.ToString(CultureInfo.InvariantCulture));
+        AppendFact(html, "Object uses", page.FieldReferenceCount.ToString(CultureInfo.InvariantCulture));
+        html.AppendLine("            </dl>");
+
+        if (page.FieldReferences.Count > 0)
+        {
+            html.AppendLine("            <h3>Objects used at page level</h3>");
+            html.AppendLine("            <p class=\"secondary\">These are used by page filters, drillthrough or other page-level settings.</p>");
+            AppendFieldReferenceList(html, page.FieldReferences);
+        }
+
+        html.AppendLine("            <h3>Visuals on this page</h3>");
+        if (page.Visuals.Count == 0)
+        {
+            html.AppendLine("            <p>No visuals were found on this page.</p>");
+        }
+        else
+        {
+            html.AppendLine("            <div class=\"visual-list\">");
+            foreach (var visual in page.Visuals)
+            {
+                AppendVisualCard(html, inventory, report, page, visual);
+            }
+
+            html.AppendLine("            </div>");
+        }
+
+        html.AppendLine("          </div>");
+        html.AppendLine("        </details>");
+    }
+
+    private static void AppendVisualCard(
+        StringBuilder html,
+        ProjectInventory inventory,
+        ReportInventory report,
+        PageInventory page,
+        VisualInventory visual)
+    {
+        var relatedFindings = inventory.Findings
+            .Select((finding, index) => (Finding: finding, Index: index))
+            .Where(item =>
+                string.Equals(item.Finding.Report, report.Name, StringComparison.OrdinalIgnoreCase) &&
+                string.Equals(item.Finding.Page, page.Name, StringComparison.OrdinalIgnoreCase) &&
+                string.Equals(item.Finding.Visual, visual.Name, StringComparison.OrdinalIgnoreCase))
+            .ToArray();
+
+        html.Append("              <details id=\"").Append(Encode(VisualAnchor(report, page, visual)))
+            .AppendLine("\" class=\"visual-card\">");
+        html.AppendLine("                <summary><span class=\"summary-copy\">");
+        html.Append("                  <span class=\"visual-name\">");
+        AppendVisualIdentity(html, visual);
+        html.Append("</span><span>").Append(Encode(DescribePosition(page, visual))).Append(" · ")
+            .Append(visual.DistinctFieldCount.ToString(CultureInfo.InvariantCulture))
+            .Append(visual.DistinctFieldCount == 1 ? " object used" : " objects used").AppendLine("</span></span>");
+        if (relatedFindings.Length > 0)
+        {
+            html.Append("                  <span class=\"count-pill\">").Append(relatedFindings.Length.ToString(CultureInfo.InvariantCulture))
+                .Append(relatedFindings.Length == 1 ? " issue" : " issues").AppendLine("</span>");
+        }
+
+        html.AppendLine("                </summary>");
+        html.AppendLine("                <div class=\"visual-body\">");
+        html.AppendLine("                  <h4>Objects used by this visual</h4>");
+        if (visual.FieldReferences.Count == 0)
+        {
+            html.AppendLine("                  <p>No model columns or measures were detected for this visual.</p>");
+        }
+        else
+        {
+            AppendFieldReferenceList(html, visual.FieldReferences);
+        }
+
+        AppendVisualBehaviour(html, report, visual);
+        AppendAccessibilitySummary(html, visual);
+
+        if (relatedFindings.Length > 0)
+        {
+            html.AppendLine("                  <h4>Issues for this visual</h4>");
+            html.AppendLine("                  <ul class=\"related-findings\">");
+            foreach (var item in relatedFindings)
+            {
+                html.Append("                    <li><span class=\"badge ").Append(SeverityClass(item.Finding.Severity))
+                    .Append("\">").Append(Encode(item.Finding.Severity)).Append("</span> <a href=\"#")
+                    .Append(FindingAnchor(item.Index)).Append("\">")
+                    .Append(Encode(FriendlyFindingMessage(item.Finding, new VisualContext(report, page, visual))))
+                    .AppendLine("</a></li>");
+            }
+
+            html.AppendLine("                  </ul>");
+        }
+
+        html.AppendLine("                  <details class=\"technical-details\"><summary>Technical details</summary>");
+        html.AppendLine("                    <dl class=\"technical-list\">");
+        AppendFact(html, "Visual ID", visual.Name, code: true);
+        AppendFact(html, "Source file", visual.RelativePath, code: true);
+        AppendFact(html, "Position", FormatCoordinates(visual.Position));
+        AppendFact(
+            html,
+            "Keyboard order value",
+            visual.Position.TabOrder?.ToString(CultureInfo.InvariantCulture) ?? "Not included");
+        html.AppendLine("                    </dl>");
+        html.AppendLine("                  </details>");
+        html.AppendLine("                </div>");
+        html.AppendLine("              </details>");
+    }
+
+    private static void AppendFieldReferenceList(StringBuilder html, IReadOnlyList<VisualFieldReference> references)
+    {
+        var objects = references
+            .DistinctBy(reference => $"{reference.Table}\u001f{reference.ObjectName}\u001f{reference.ObjectType}", StringComparer.OrdinalIgnoreCase)
+            .OrderBy(reference => reference.Table, StringComparer.OrdinalIgnoreCase)
+            .ThenBy(reference => reference.ObjectName, StringComparer.OrdinalIgnoreCase)
+            .ToArray();
+
+        html.AppendLine("                  <ul class=\"object-list\">");
+        foreach (var reference in objects)
+        {
+            html.Append("                    <li><code>").Append(Encode($"{reference.Table}[{reference.ObjectName}]")).Append("</code><span>")
+                .Append(Encode(HumanizeIdentifier(reference.ObjectType)));
+            if (!string.IsNullOrWhiteSpace(reference.Role))
+            {
+                html.Append(" · ").Append(Encode(HumanizeIdentifier(reference.Role)));
+            }
+
+            html.AppendLine("</span></li>");
+        }
+
+        html.AppendLine("                  </ul>");
+    }
+
+    private static void AppendVisualBehaviour(StringBuilder html, ReportInventory report, VisualInventory visual)
+    {
+        if (visual.Actions.Count == 0 && visual.TooltipBindings.Count == 0)
+        {
+            return;
+        }
+
+        html.AppendLine("                  <h4>Behaviour</h4>");
+        html.AppendLine("                  <ul class=\"plain-list\">");
+        foreach (var action in visual.Actions)
+        {
+            html.Append("                    <li>").Append(Encode(DescribeAction(report, action))).AppendLine("</li>");
+        }
+
+        foreach (var tooltip in visual.TooltipBindings)
+        {
+            var state = tooltip.IsEnabled == false ? "Disabled" : "Report-page tooltip";
+            var target = string.IsNullOrWhiteSpace(tooltip.TargetPage)
+                ? "dynamic or unspecified page"
+                : $"page “{FriendlyPageName(report, tooltip.TargetPage)}”";
+            html.Append("                    <li>").Append(Encode($"{state}: {target}")).AppendLine("</li>");
+        }
+
+        html.AppendLine("                  </ul>");
+    }
+
+    private static void AppendAccessibilitySummary(StringBuilder html, VisualInventory visual)
+    {
+        html.AppendLine("                  <h4>Accessibility snapshot</h4>");
+        html.AppendLine("                  <dl class=\"fact-strip compact\">");
+        var altText = visual.Accessibility.AltTextIsDynamic
+            ? "Dynamic alt text"
+            : visual.Accessibility.HasAltText
+                ? visual.Accessibility.AltText ?? "Configured"
+                : "Not configured";
+        AppendFact(html, "Alt text", altText);
+        AppendFact(
+            html,
+            "Keyboard order",
+            visual.Position.TabOrder is null ? "Not included" : "Included");
+        AppendFact(
+            html,
+            "Title",
+            visual.Accessibility.TitleIsVisible == false ? "Hidden" : "Visible or default");
+        html.AppendLine("                  </dl>");
+    }
+
+    private static void AppendSemanticModel(
+        StringBuilder html,
+        ProjectInventory inventory,
+        SemanticModelInventory model)
+    {
+        html.AppendLine("        <section class=\"model-block\">");
+        html.Append("          <h3>").Append(Encode(model.Name)).AppendLine("</h3>");
+        html.AppendLine("          <dl class=\"fact-strip\">");
+        AppendFact(html, "Tables", model.TableCount.ToString(CultureInfo.InvariantCulture));
+        AppendFact(html, "Columns", model.ColumnCount.ToString(CultureInfo.InvariantCulture));
+        AppendFact(html, "Measures", model.MeasureCount.ToString(CultureInfo.InvariantCulture));
+        AppendFact(html, "Relationships", model.RelationshipCount.ToString(CultureInfo.InvariantCulture));
+        html.AppendLine("          </dl>");
+
+        foreach (var table in model.Tables.OrderBy(table => table.Name, StringComparer.OrdinalIgnoreCase))
+        {
+            var usages = inventory.SemanticObjectUsages
+                .Where(usage =>
+                    string.Equals(usage.SemanticModel, model.Name, StringComparison.OrdinalIgnoreCase) &&
+                    string.Equals(usage.Table, table.Name, StringComparison.OrdinalIgnoreCase))
+                .OrderBy(usage => usage.ObjectType, StringComparer.OrdinalIgnoreCase)
+                .ThenBy(usage => usage.ObjectName, StringComparer.OrdinalIgnoreCase)
+                .ToArray();
+            var unusedCount = usages.Count(usage => usage.UsageState == SemanticUsageStates.ApparentlyUnused);
+
+            html.Append("          <details class=\"semantic-table\"><summary><span class=\"summary-copy\"><strong>")
+                .Append(Encode(table.Name)).Append("</strong><span>")
+                .Append(usages.Length.ToString(CultureInfo.InvariantCulture)).Append(" objects");
+            if (table.IsHidden)
+            {
+                html.Append(" · hidden table");
+            }
+
+            html.Append("</span></span>");
+            if (unusedCount > 0)
+            {
+                html.Append("<span class=\"count-pill\">").Append(unusedCount.ToString(CultureInfo.InvariantCulture))
+                    .Append(" apparently unused</span>");
+            }
+
+            html.AppendLine("</summary>");
+            html.AppendLine("            <ul class=\"semantic-object-list\">");
+            foreach (var usage in usages)
+            {
+                html.Append("              <li class=\"semantic-object\" data-usage-state=\"").Append(Encode(usage.UsageState))
+                    .Append("\"><span class=\"object-name\"><strong>").Append(Encode(usage.ObjectName))
+                    .Append("</strong><span>").Append(Encode(HumanizeIdentifier(usage.ObjectType)));
+                if (usage.DirectReportReferenceCount > 0)
+                {
+                    html.Append(" · used in ").Append(usage.DirectReportReferenceCount.ToString(CultureInfo.InvariantCulture))
+                        .Append(usage.DirectReportReferenceCount == 1 ? " report location" : " report locations");
+                }
+
+                html.Append("</span></span><span class=\"badge ").Append(UsageClass(usage.UsageState)).Append("\">")
+                    .Append(Encode(UsageLabel(usage.UsageState))).AppendLine("</span></li>");
+            }
+
+            html.AppendLine("            </ul>");
+            html.AppendLine("          </details>");
+        }
+
+        html.AppendLine("        </section>");
+    }
+
+    private static void AppendFact(StringBuilder html, string label, string value, bool code = false)
+    {
+        html.Append("              <div><dt>").Append(Encode(label)).Append("</dt><dd>");
+        if (code)
+        {
+            html.Append("<code>");
+        }
+
+        html.Append(Encode(value));
+        if (code)
+        {
+            html.Append("</code>");
+        }
+
+        html.AppendLine("</dd></div>");
+    }
+
+    private static string FindingAnchor(int index)
+    {
+        return $"finding-{index + 1}";
+    }
+
+    private static string FriendlyFindingMessage(AssuranceFinding finding, VisualContext? context)
+    {
+        var conciseMessage = finding.RuleId switch
+        {
+            "PBI-NAV-001" => "This visual links to a bookmark that no longer exists.",
+            "PBI-NAV-004" => "A bookmark refers to a visual that is no longer on this page.",
+            "PBI-NAV-013" => "This visual's header tooltip links to a report page that no longer exists.",
+            _ => finding.Message,
+        };
+
+        if (context?.Visual.VisualType is not { Length: > 0 } visualType)
+        {
+            return conciseMessage;
+        }
+
+        var friendlyType = HumanizeVisualType(visualType).ToLowerInvariant();
+        var replacement = friendlyType.EndsWith("visual", StringComparison.Ordinal)
+            ? friendlyType
+            : $"{friendlyType} visual";
+        return conciseMessage.Replace(
+            $"{visualType} visual",
+            replacement,
+            StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static string FindingLocationSummary(AssuranceFinding finding, VisualContext? context)
+    {
+        if (context is not null)
+        {
+            var identity = VisualDisplayName(context.Visual);
+            return $"Page {context.Page.DisplayName} · {identity} · {DescribePosition(context.Page, context.Visual)}";
+        }
+
+        if (!string.IsNullOrWhiteSpace(finding.PageDisplayName ?? finding.Page))
+        {
+            return $"Page {finding.PageDisplayName ?? finding.Page}";
+        }
+
+        if (!string.IsNullOrWhiteSpace(finding.Table) || !string.IsNullOrWhiteSpace(finding.ObjectName))
+        {
+            return string.Join(" · ", new[] { finding.Table, finding.ObjectName }.Where(value => !string.IsNullOrWhiteSpace(value)));
+        }
+
+        return "Project-wide";
+    }
+
+    private static string VisualDisplayName(VisualInventory visual)
+    {
+        if (visual.Accessibility.TitleIsVisible != false &&
+            !visual.Accessibility.TitleTextIsDynamic &&
+            !string.IsNullOrWhiteSpace(visual.Accessibility.TitleText))
+        {
+            return $"“{visual.Accessibility.TitleText}”";
+        }
+
+        if (!visual.OnCanvasTextIsDynamic && IsUsefulVisualText(visual.OnCanvasText))
+        {
+            return $"“{visual.OnCanvasText}”";
+        }
+
+        return HumanizeVisualType(visual.VisualType);
+    }
+
+    private static string DescribeAction(ReportInventory report, VisualActionInventory action)
+    {
+        var state = action.IsEnabled == false ? "Disabled action" : "Action";
+        if (action.HasDynamicConfiguration)
+        {
+            return $"{state}: destination is set dynamically";
+        }
+
+        if (!string.IsNullOrWhiteSpace(action.PageTarget))
+        {
+            return $"{state}: opens report page “{FriendlyPageName(report, action.PageTarget)}”";
+        }
+
+        if (!string.IsNullOrWhiteSpace(action.BookmarkTarget))
+        {
+            var bookmark = report.Bookmarks.FirstOrDefault(candidate =>
+                string.Equals(candidate.Name, action.BookmarkTarget, StringComparison.OrdinalIgnoreCase));
+            return bookmark is null
+                ? $"{state}: applies a bookmark that is no longer present"
+                : $"{state}: applies bookmark “{bookmark.DisplayName}”";
+        }
+
+        if (!string.IsNullOrWhiteSpace(action.WebUrl))
+        {
+            return $"{state}: opens a web link";
+        }
+
+        return string.IsNullOrWhiteSpace(action.ActionType)
+            ? $"{state}: destination is not specified"
+            : $"{state}: {HumanizeIdentifier(action.ActionType)}";
+    }
+
+    private static string FriendlyPageName(ReportInventory report, string pageName)
+    {
+        var page = report.Pages.FirstOrDefault(candidate =>
+            string.Equals(candidate.Name, pageName, StringComparison.OrdinalIgnoreCase));
+        return page?.DisplayName ?? "missing page";
+    }
+
+    private static string FormatCoordinates(VisualPosition position)
+    {
+        static string Number(double? value) => value?.ToString("0.#", CultureInfo.InvariantCulture) ?? "?";
+        return $"x {Number(position.X)}, y {Number(position.Y)}, width {Number(position.Width)}, height {Number(position.Height)}";
+    }
+
+    private static string HumanizeIdentifier(string value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return value;
+        }
+
+        var words = new StringBuilder(value.Length + 8);
+        for (var index = 0; index < value.Length; index++)
+        {
+            var character = value[index];
+            if (character is '_' or '-')
+            {
+                if (words.Length > 0 && words[^1] != ' ')
+                {
+                    words.Append(' ');
+                }
+
+                continue;
+            }
+
+            if (index > 0 && char.IsUpper(character) && char.IsLower(value[index - 1]))
+            {
+                words.Append(' ');
+            }
+
+            words.Append(words.Length == 0 ? char.ToUpperInvariant(character) : character);
+        }
+
+        return words.ToString();
     }
 
     private static void AppendDocumentEnd(StringBuilder html, ProjectInventory inventory)
@@ -335,46 +723,43 @@ public static class HtmlReportRenderer
             .Append(Encode(value)).AppendLine("</dd></div>");
     }
 
-    private static void AppendNumberCell(StringBuilder html, int value)
-    {
-        html.Append("<td class=\"number\">").Append(value.ToString("N0", CultureInfo.InvariantCulture)).Append("</td>");
-    }
-
-    private static void AppendRuleReference(StringBuilder html, AssuranceFinding finding)
-    {
-        if (finding.ReferenceUrl is not null && IsSafeHttpUrl(finding.ReferenceUrl))
-        {
-            html.Append("<a href=\"").Append(Encode(finding.ReferenceUrl)).Append("\"><code>")
-                .Append(Encode(finding.RuleId)).Append("</code></a>");
-        }
-        else
-        {
-            html.Append("<code>").Append(Encode(finding.RuleId)).Append("</code>");
-        }
-    }
-
     private static void AppendEvidence(StringBuilder html, AssuranceFinding finding)
     {
-        html.Append("                <details class=\"technical-details\"><summary>Technical details and evidence (")
+        html.Append("            <details class=\"technical-details\"><summary>Technical details and evidence (")
             .Append(finding.EvidencePaths.Count.ToString(CultureInfo.InvariantCulture)).AppendLine(")</summary>");
+        html.AppendLine("              <dl class=\"technical-list\">");
+        AppendFact(html, "Rule", finding.RuleId, code: true);
+        AppendFact(html, "Category", HumanizeIdentifier(finding.Category));
+        AppendFact(html, "Assessment", HumanizeIdentifier(finding.AssessmentType));
         if (!string.IsNullOrWhiteSpace(finding.Visual))
         {
-            html.Append("                  <p>Source visual ID: <code>").Append(Encode(finding.Visual)).AppendLine("</code></p>");
+            AppendFact(html, "Visual ID", finding.Visual, code: true);
         }
 
-        html.Append("                  <p><code>").Append(Encode(finding.ArtifactPath)).AppendLine("</code></p>");
+        if (!string.IsNullOrWhiteSpace(finding.Table))
+        {
+            AppendFact(html, "Table", finding.Table, code: true);
+        }
+
+        if (!string.IsNullOrWhiteSpace(finding.ObjectName))
+        {
+            AppendFact(html, "Object or target", finding.ObjectName, code: true);
+        }
+
+        AppendFact(html, "Source file", finding.ArtifactPath, code: true);
+        html.AppendLine("              </dl>");
         if (finding.EvidencePaths.Count > 0)
         {
-            html.AppendLine("                  <ul>");
+            html.AppendLine("              <ul>");
             foreach (var evidencePath in finding.EvidencePaths)
             {
-                html.Append("                    <li><code>").Append(Encode(evidencePath)).AppendLine("</code></li>");
+                html.Append("                <li><code>").Append(Encode(evidencePath)).AppendLine("</code></li>");
             }
 
-            html.AppendLine("                  </ul>");
+            html.AppendLine("              </ul>");
         }
 
-        html.AppendLine("                </details>");
+        html.AppendLine("            </details>");
     }
 
     private static void AppendFindingLocation(StringBuilder html, ProjectInventory inventory, AssuranceFinding finding)
@@ -410,7 +795,7 @@ public static class HtmlReportRenderer
             html.AppendLine("                </dl>");
             html.Append("                <a class=\"inventory-link\" href=\"#")
                 .Append(Encode(VisualAnchor(visualContext.Report, visualContext.Page, visualContext.Visual)))
-                .AppendLine("\">View this visual in the inventory</a>");
+                .AppendLine("\">Open this visual under its report page</a>");
             return;
         }
 
@@ -457,10 +842,7 @@ public static class HtmlReportRenderer
         html.AppendLine("</dd></div>");
     }
 
-    private static void AppendVisualIdentity(
-        StringBuilder html,
-        VisualInventory visual,
-        bool includeTechnicalId = false)
+    private static void AppendVisualIdentity(StringBuilder html, VisualInventory visual)
     {
         var visualType = HumanizeVisualType(visual.VisualType);
         var hasVisibleStaticTitle = visual.Accessibility.TitleIsVisible != false &&
@@ -500,11 +882,6 @@ public static class HtmlReportRenderer
             html.Append("<br><span class=\"badge badge-neutral\">Hidden in saved report state</span>");
         }
 
-        if (includeTechnicalId)
-        {
-            html.Append("<details class=\"technical-details\"><summary>Technical ID</summary><code>")
-                .Append(Encode(visual.Name)).Append("</code></details>");
-        }
     }
 
     private static void AppendFieldSummary(StringBuilder html, VisualInventory visual)
@@ -621,6 +998,7 @@ public static class HtmlReportRenderer
             "image" => "Image",
             "keyDriversVisual" => "Key influencers",
             "lineChart" => "Line chart",
+            "multiRowCard" => "Multi-row card",
             "pageNavigator" => "Page navigator",
             "pieChart" => "Pie chart",
             "pivotTable" => "Matrix",
@@ -785,7 +1163,7 @@ public static class HtmlReportRenderer
     code { overflow-wrap: anywhere; font-size: .92em; }
     .skip-link { position: absolute; left: .75rem; top: -5rem; z-index: 10; padding: .75rem 1rem; background: #111827; color: #fff; font-weight: 700; }
     .skip-link:focus { top: .75rem; }
-    .content { width: min(96rem, calc(100% - 2rem)); margin-inline: auto; }
+    .content { width: min(82rem, calc(100% - 2rem)); margin-inline: auto; }
     .site-header { background: #15324b; color: #fff; padding: 2.5rem 0 1.5rem; }
     .site-header code { color: #fff; }
     .site-header a { color: #fff; }
@@ -799,7 +1177,7 @@ public static class HtmlReportRenderer
     .report-meta dt { font-weight: 700; }
     .report-meta dd { margin: 0; }
     .section-nav { list-style: none; }
-    main > section { margin: 1.5rem 0; padding: 1.5rem; background: var(--surface); border: 1px solid var(--border); border-radius: .4rem; }
+    main > section { min-width: 0; margin: 1.5rem 0; padding: 1.5rem; background: var(--surface); border: 1px solid var(--border); border-radius: .4rem; }
     .metrics { display: grid; grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr)); gap: .8rem; }
     .metric { padding: 1rem; border: 1px solid var(--border); border-left: .5rem solid #66788a; border-radius: .25rem; }
     .metric dt { color: var(--muted); font-weight: 700; }
@@ -814,14 +1192,45 @@ public static class HtmlReportRenderer
     .filters div { min-width: min(100%, 14rem); flex: 1; }
     label { display: block; margin-bottom: .3rem; font-weight: 700; }
     input, select { width: 100%; min-height: 2.75rem; padding: .5rem; border: 2px solid #5f6c79; border-radius: .2rem; background: #fff; color: var(--text); font: inherit; }
-    .table-scroll { max-width: 100%; overflow-x: auto; margin-block: 1rem; }
-    table { width: 100%; border-collapse: collapse; background: #fff; }
-    caption { padding: .6rem; text-align: left; font-size: 1.05rem; font-weight: 700; }
-    th, td { padding: .65rem; border: 1px solid var(--border); text-align: left; vertical-align: top; }
-    thead th { background: #e4eaf0; }
-    tbody tr:nth-child(even) { background: #f8fafc; }
-    tbody tr:hover { background: #fff8df; }
-    .number { text-align: right; font-variant-numeric: tabular-nums; }
+    button { min-height: 2.5rem; padding: .45rem .8rem; border: 2px solid var(--link); border-radius: .25rem; background: #fff; color: var(--link); font: inherit; font-weight: 700; cursor: pointer; }
+    button:hover { background: var(--info-bg); }
+    .details-controls { display: flex; flex-wrap: wrap; gap: .5rem; margin: .75rem 0; }
+    .card-list, .page-list, .semantic-table-list, .visual-list { display: grid; min-width: 0; grid-template-columns: minmax(0, 1fr); gap: .75rem; }
+    .finding-card, .page-card, .visual-card, .semantic-table { min-width: 0; max-width: 100%; margin: 0; border: 1px solid var(--border); border-radius: .45rem; background: #fff; overflow: clip; }
+    .page-card { border-color: #91a2b3; box-shadow: 0 1px 3px rgb(24 34 48 / 10%); }
+    .visual-card { background: #f9fbfc; }
+    .finding-card[data-severity="Error"] { border-left: .45rem solid var(--error); }
+    .finding-card[data-severity="Warning"] { border-left: .45rem solid #a66b00; }
+    .finding-card[data-severity="Information"] { border-left: .45rem solid var(--info); }
+    .finding-card > summary, .page-card > summary, .visual-card > summary, .semantic-table > summary { display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem; padding: .9rem 1rem; color: var(--text); }
+    .finding-card > summary::after, .page-card > summary::after, .visual-card > summary::after, .semantic-table > summary::after { align-self: center; content: "+"; color: var(--link); font-size: 1.35rem; font-weight: 800; line-height: 1; }
+    .finding-card[open] > summary::after, .page-card[open] > summary::after, .visual-card[open] > summary::after, .semantic-table[open] > summary::after { content: "−"; }
+    .finding-card > summary { justify-content: flex-start; }
+    .page-card > summary { padding: 1rem 1.1rem; background: #f4f7fa; }
+    .visual-card > summary { padding: .8rem .9rem; }
+    .finding-card[open] > summary, .page-card[open] > summary, .visual-card[open] > summary, .semantic-table[open] > summary { border-bottom: 1px solid var(--border); }
+    .summary-copy { display: flex; min-width: 0; flex: 1; flex-direction: column; gap: .15rem; overflow-wrap: anywhere; }
+    .summary-copy > strong, .visual-name > strong { font-size: 1.05rem; color: var(--text); }
+    .summary-copy > span:not(.kicker), .visual-name .secondary { color: var(--muted); font-weight: 450; }
+    .kicker { color: var(--link); font-size: .78rem; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; }
+    .count-pill { align-self: center; padding: .2rem .5rem; border-radius: 999px; background: #e4eaf0; color: #344054; font-size: .84rem; font-weight: 750; white-space: nowrap; }
+    .card-body, .page-body, .visual-body { min-width: 0; max-width: 100%; padding: 1rem; }
+    .card-body > :first-child, .page-body > :first-child, .visual-body > :first-child { margin-top: 0; }
+    .card-body h3, .page-body h3, .visual-body h4 { margin: 1.25rem 0 .4rem; }
+    .fact-strip { display: grid; grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr)); gap: .65rem; margin: .25rem 0 1rem; padding: 0; }
+    .fact-strip div { padding: .65rem .75rem; border-radius: .3rem; background: #eef2f6; }
+    .fact-strip dt { color: var(--muted); font-size: .83rem; font-weight: 700; }
+    .fact-strip dd { margin: .15rem 0 0; font-weight: 650; }
+    .fact-strip.compact { grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr)); }
+    .object-list, .semantic-object-list, .related-findings { display: grid; min-width: 0; grid-template-columns: repeat(auto-fit, minmax(min(100%, 16rem), 1fr)); gap: .5rem; margin: .6rem 0 1rem; padding: 0; list-style: none; }
+    .object-list li, .semantic-object-list li { display: flex; justify-content: space-between; gap: .75rem; padding: .65rem .75rem; border: 1px solid #d7dee5; border-radius: .35rem; background: #fff; }
+    .object-list li > span, .object-name > span { color: var(--muted); font-size: .86rem; }
+    .object-name { display: flex; flex-direction: column; }
+    .plain-list { margin: .5rem 0 1rem; }
+    .related-findings li { display: flex; align-items: flex-start; gap: .45rem; }
+    .model-block + .model-block { margin-top: 2rem; }
+    .model-block h3 { margin-bottom: .65rem; }
+    .semantic-table[hidden], .semantic-object[hidden], .finding-card[hidden], .page-card[hidden], .visual-card[hidden] { display: none; }
     .badge { display: inline-block; padding: .2rem .45rem; border: 1px solid currentColor; border-radius: .2rem; font-weight: 700; white-space: nowrap; }
     .badge-error { color: var(--error); background: var(--error-bg); }
     .badge-warning { color: var(--warning); background: var(--warning-bg); }
@@ -831,27 +1240,37 @@ public static class HtmlReportRenderer
     .badge-indirect, .badge-structural { color: var(--info); background: var(--info-bg); }
     .badge-unused-branch, .badge-unused { color: #553080; background: #f2ecfa; }
     .finding-location { display: grid; gap: .45rem; margin: 0; }
-    .finding-location div { display: grid; grid-template-columns: minmax(4.5rem, auto) 1fr; gap: .65rem; }
+    .finding-location div { display: grid; min-width: 0; grid-template-columns: minmax(4.5rem, auto) minmax(0, 1fr); gap: .65rem; }
     .finding-location dt { color: var(--muted); font-weight: 700; }
     .finding-location dd { margin: 0; }
     .inventory-link { display: inline-block; margin-top: .65rem; font-weight: 650; }
     .technical-details { color: var(--muted); font-size: .92em; }
-    tbody tr:target { outline: 4px solid var(--focus); outline-offset: -4px; background: #fff8df; }
+    details:target { outline: 4px solid var(--focus); outline-offset: 2px; }
     details { margin-top: .5rem; }
-    summary { cursor: pointer; color: var(--link); font-weight: 650; }
-    tr[hidden] { display: none; }
+    summary { cursor: pointer; color: var(--link); font-weight: 650; list-style: none; }
+    summary::-webkit-details-marker { display: none; }
+    .technical-details { margin-top: 1rem; padding-top: .4rem; border-top: 1px solid #d7dee5; }
+    .technical-list { display: grid; gap: .4rem; padding: 0; }
+    .technical-list div { display: grid; min-width: 0; grid-template-columns: minmax(6rem, auto) minmax(0, 1fr); gap: .75rem; }
+    .technical-list dt { font-weight: 700; }
+    .technical-list dd { margin: 0; }
     .site-footer { padding: 1.5rem 0; color: var(--muted); }
     @media (max-width: 45rem) {
-      .content { width: min(100% - 1rem, 96rem); }
+      .content { width: min(100% - 1rem, 82rem); }
       main > section { padding: 1rem .65rem; }
       .filters { display: block; }
       .filters div + div { margin-top: .8rem; }
+      .finding-card > summary, .page-card > summary, .visual-card > summary, .semantic-table > summary { gap: .6rem; padding: .75rem; }
+      .card-body, .page-body, .visual-body { padding: .75rem; }
+      .object-list, .semantic-object-list { grid-template-columns: 1fr; }
+      .count-pill { white-space: normal; }
+      .technical-list div, .finding-location div { grid-template-columns: 1fr; gap: .15rem; }
     }
     @media print {
       body { background: #fff; }
-      .skip-link, .section-nav, .filters, .filter-status { display: none; }
+      .skip-link, .section-nav, .filters, .filter-status, .details-controls { display: none; }
       main > section { break-inside: avoid; border-color: #777; }
-      .table-scroll { overflow: visible; }
+      details { break-inside: avoid; }
       a { color: #000; }
     }
     """;
@@ -863,20 +1282,20 @@ public static class HtmlReportRenderer
       const findingSearch = document.getElementById('finding-search');
       const findingSeverity = document.getElementById('finding-severity');
       const findingCategory = document.getElementById('finding-category');
-      const findingTable = document.getElementById('findings-table');
+      const findingList = document.getElementById('finding-list');
       const findingStatus = document.getElementById('finding-filter-status');
 
       const filterFindings = () => {
-        if (!findingTable) return;
+        if (!findingList) return;
         const query = normalise(findingSearch.value.trim());
         const severity = findingSeverity.value;
         const category = findingCategory.value;
         let visible = 0;
-        findingTable.querySelectorAll('tbody tr').forEach(row => {
-          const show = (!query || normalise(row.textContent).includes(query)) &&
-            (!severity || row.dataset.severity === severity) &&
-            (!category || row.dataset.category === category);
-          row.hidden = !show;
+        findingList.querySelectorAll('.finding-card').forEach(card => {
+          const show = (!query || normalise(card.textContent).includes(query)) &&
+            (!severity || card.dataset.severity === severity) &&
+            (!category || card.dataset.category === category);
+          card.hidden = !show;
           if (show) visible += 1;
         });
         findingStatus.textContent = `${visible} ${visible === 1 ? 'finding' : 'findings'} shown.`;
@@ -886,27 +1305,91 @@ public static class HtmlReportRenderer
         if (control) control.addEventListener('input', filterFindings);
       });
 
+      const pageSearch = document.getElementById('page-search');
+      const pageList = document.getElementById('page-list');
+      const pageStatus = document.getElementById('page-filter-status');
+
+      const filterPages = () => {
+        if (!pageList) return;
+        const query = normalise(pageSearch.value.trim());
+        let visiblePages = 0;
+        let visibleVisuals = 0;
+        pageList.querySelectorAll('.page-card').forEach(page => {
+          const pageSummary = page.querySelector(':scope > summary');
+          const pageMatches = !query || normalise(pageSummary?.textContent).includes(query);
+          let pageVisuals = 0;
+          page.querySelectorAll('.visual-card').forEach(visual => {
+            const show = pageMatches || !query || normalise(visual.textContent).includes(query);
+            visual.hidden = !show;
+            if (show) pageVisuals += 1;
+          });
+          const showPage = pageMatches || pageVisuals > 0;
+          page.hidden = !showPage;
+          if (showPage) {
+            visiblePages += 1;
+            visibleVisuals += pageVisuals;
+            if (query) page.open = true;
+          }
+        });
+        pageStatus.textContent = `${visiblePages} ${visiblePages === 1 ? 'page' : 'pages'} and ${visibleVisuals} ${visibleVisuals === 1 ? 'visual' : 'visuals'} shown.`;
+      };
+
+      if (pageSearch) pageSearch.addEventListener('input', filterPages);
+
       const usageSearch = document.getElementById('usage-search');
       const usageState = document.getElementById('usage-state');
-      const usageTable = document.getElementById('usage-table');
+      const semanticTableList = document.getElementById('semantic-table-list');
       const usageStatus = document.getElementById('usage-filter-status');
 
       const filterUsage = () => {
-        if (!usageTable) return;
+        if (!semanticTableList) return;
         const query = normalise(usageSearch.value.trim());
         const state = usageState.value;
         let visible = 0;
-        usageTable.querySelectorAll('tbody tr').forEach(row => {
-          const show = (!query || normalise(row.textContent).includes(query)) &&
-            (!state || row.dataset.usageState === state);
-          row.hidden = !show;
-          if (show) visible += 1;
+        semanticTableList.querySelectorAll('.semantic-table').forEach(table => {
+          let tableVisible = 0;
+          table.querySelectorAll('.semantic-object').forEach(item => {
+            const show = (!query || normalise(item.textContent).includes(query)) &&
+              (!state || item.dataset.usageState === state);
+            item.hidden = !show;
+            if (show) {
+              tableVisible += 1;
+              visible += 1;
+            }
+          });
+          table.hidden = tableVisible === 0;
+          if (tableVisible > 0 && (query || state)) table.open = true;
         });
         usageStatus.textContent = `${visible} semantic ${visible === 1 ? 'object' : 'objects'} shown.`;
       };
 
       [usageSearch, usageState].forEach(control => {
         if (control) control.addEventListener('input', filterUsage);
+      });
+
+      document.querySelectorAll('[data-details-action]').forEach(button => {
+        button.addEventListener('click', () => {
+          const target = document.getElementById(button.dataset.target);
+          if (!target) return;
+          const details = button.dataset.target === 'semantic-table-list'
+            ? target.querySelectorAll('.semantic-table')
+            : target.querySelectorAll(':scope > details');
+          details.forEach(item => { item.open = button.dataset.detailsAction === 'expand'; });
+        });
+      });
+
+      document.querySelectorAll('a[href^="#visual-"], a[href^="#finding-"]').forEach(link => {
+        link.addEventListener('click', () => {
+          const target = document.getElementById(link.getAttribute('href').slice(1));
+          if (!(target instanceof HTMLDetailsElement)) return;
+          target.open = true;
+          let parent = target.parentElement?.closest('details');
+          while (parent) {
+            parent.open = true;
+            parent = parent.parentElement?.closest('details');
+          }
+          requestAnimationFrame(() => target.scrollIntoView({ block: 'start' }));
+        });
       });
     })();
     """;
