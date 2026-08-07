@@ -1,0 +1,17 @@
+**/bin/
+**/obj/
+.vs/
+.vscode/
+TestResults/
+artifacts/
+samples-local/
+*.user
+*.suo
+
+# Power BI local cache and user settings
+**/.pbi/cache.abf
+**/.pbi/localSettings.json
+
+# Generated assurance reports
+*.pbiassure.json
+*.pbiassure.html
