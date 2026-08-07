@@ -62,6 +62,8 @@ Report filters, page filters, drillthrough parameters, and visual references all
 
 Bookmark and action reconciliation is kept alongside, rather than inside, the semantic dependency graph. It compares enabled typed actions with bookmark definitions and report pages, and compares bookmark state with page and visual inventories. Disabled action configuration remains visible in inventory but does not create a broken-target finding. Bookmark-captured semantic state is not yet treated as a dependency root.
 
+Page visual interactions are reconciled against the visuals on their own page. Report-tooltip page bindings are parsed only when PBIR provides a `section` expression or explicitly requests a canvas tooltip; built-in default tooltip settings and visual-header text tooltips are not page bindings. Disabled bindings remain in inventory without producing stale-target findings, while dynamic targets require human review.
+
 ## Format evolution
 
 PBIR files declare JSON schemas and format versions. Parsers must record the encountered schema and fail with a useful unsupported-version finding rather than silently misinterpreting a newer format. Parser fixtures should cover each supported version.

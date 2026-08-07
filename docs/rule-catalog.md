@@ -24,6 +24,11 @@ PBI Assure rules turn parsed facts into reviewable results. Rule identifiers and
 | `PBI-NAV-009` | 1.0.0 | Navigation | Error | Finding | A page is configured as a drillthrough destination but has no drillthrough parameters. |
 | `PBI-NAV-010` | 1.0.0 | Navigation | Warning | Finding | A drillthrough parameter has no bound page-filter name. |
 | `PBI-NAV-011` | 1.0.0 | Navigation | Error | Finding | A drillthrough parameter names a bound page filter that does not exist on the page. |
+| `PBI-NAV-012` | 1.0.0 | Navigation | Error | Finding | A page visual interaction has a source or target visual that does not exist on that page. |
+| `PBI-NAV-013` | 1.0.0 | Navigation | Error | Finding | An enabled report-tooltip or visual-header-tooltip binding targets a page that does not exist in the report. |
+| `PBI-NAV-014` | 1.0.0 | Navigation | Warning | Finding | An enabled static report-page tooltip binding has no target page. Built-in default and text-only tooltip settings are excluded. |
+| `PBI-NAV-015` | 1.0.0 | Navigation | Warning | Finding | An enabled report-page tooltip binding targets an existing page that is not configured as a Tooltip page. |
+| `PBI-NAV-016` | 1.0.0 | Navigation | Information | Review required | A report-page tooltip binding contains a dynamic expression that cannot be fully resolved by static analysis. |
 
 ## Interpretation
 
@@ -37,5 +42,6 @@ The report author should test keyboard operation, screen-reader announcements, b
 - [Microsoft: Create a Q&A visual in a report](https://learn.microsoft.com/power-bi/visuals/power-bi-visualization-q-and-a)
 - [Microsoft: Power BI Desktop project report folder and PBIR schemas](https://learn.microsoft.com/power-bi/developer/projects/projects-report)
 - [Microsoft: Use report page drillthrough](https://learn.microsoft.com/power-bi/guidance/report-drillthrough)
+- [Microsoft: Create report tooltips](https://learn.microsoft.com/power-bi/create-reports/desktop-tooltips)
 - [DWP Accessibility Manual: QA tester](https://accessibility-manual.dwp.gov.uk/guidance-for-your-job-role/qa-tester)
 - [GOV.UK accessibility requirements](https://www.gov.uk/guidance/accessibility-requirements-for-public-sector-websites-and-apps)

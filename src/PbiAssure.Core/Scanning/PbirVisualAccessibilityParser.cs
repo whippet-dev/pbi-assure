@@ -9,23 +9,23 @@ internal static class PbirVisualAccessibilityParser
     {
         var altTextProperty = FindProperty(visual, "altText");
         var altTextValue = altTextProperty is { } altText
-            ? ReadExpression(altText)
-            : ExpressionValue.Missing;
+            ? PbirExpressionReader.Read(altText)
+            : PbirExpressionValue.Missing;
         var titleProperties = ReadTitleProperties(visual);
         var titleShow = titleProperties is { } properties &&
                         properties.TryGetProperty("show", out var show)
-            ? ReadExpression(show)
-            : ExpressionValue.Missing;
+            ? PbirExpressionReader.Read(show)
+            : PbirExpressionValue.Missing;
         var titleText = titleProperties is { } title &&
                         title.TryGetProperty("text", out var text)
-            ? ReadExpression(text)
-            : ExpressionValue.Missing;
+            ? PbirExpressionReader.Read(text)
+            : PbirExpressionValue.Missing;
 
         return new VisualAccessibilityInventory(
             HasAltText: altTextValue.IsDynamic || !string.IsNullOrWhiteSpace(altTextValue.Literal),
             AltText: altTextValue.Literal,
             AltTextIsDynamic: altTextValue.IsDynamic,
-            TitleIsVisible: ParseBoolean(titleShow.Literal),
+            TitleIsVisible: PbirExpressionReader.ParseBoolean(titleShow.Literal),
             HasConfiguredTitleText: titleText.IsDynamic || !string.IsNullOrWhiteSpace(titleText.Literal),
             TitleText: titleText.Literal,
             TitleTextIsDynamic: titleText.IsDynamic);
@@ -82,75 +82,6 @@ internal static class PbirVisualAccessibilityParser
         return null;
     }
 
-    private static ExpressionValue ReadExpression(JsonElement property)
-    {
-        var literal = FindLiteralValue(property);
-        if (literal is not null)
-        {
-            return new ExpressionValue(NormalizeLiteral(literal), IsDynamic: false, IsPresent: true);
-        }
-
-        return property.ValueKind is JsonValueKind.Null or JsonValueKind.Undefined ||
-               property.ValueKind == JsonValueKind.Object && !property.EnumerateObject().Any()
-            ? new ExpressionValue(null, IsDynamic: false, IsPresent: true)
-            : new ExpressionValue(null, IsDynamic: true, IsPresent: true);
-    }
-
-    private static string? FindLiteralValue(JsonElement element)
-    {
-        if (element.ValueKind == JsonValueKind.Object)
-        {
-            if (element.TryGetProperty("Literal", out var literal) &&
-                literal.ValueKind == JsonValueKind.Object &&
-                literal.TryGetProperty("Value", out var value))
-            {
-                return value.ValueKind switch
-                {
-                    JsonValueKind.String => value.GetString(),
-                    JsonValueKind.True => "true",
-                    JsonValueKind.False => "false",
-                    JsonValueKind.Number => value.GetRawText(),
-                    _ => null,
-                };
-            }
-
-            foreach (var property in element.EnumerateObject())
-            {
-                if (FindLiteralValue(property.Value) is { } nestedValue)
-                {
-                    return nestedValue;
-                }
-            }
-        }
-        else if (element.ValueKind == JsonValueKind.Array)
-        {
-            foreach (var item in element.EnumerateArray())
-            {
-                if (FindLiteralValue(item) is { } nestedValue)
-                {
-                    return nestedValue;
-                }
-            }
-        }
-
-        return null;
-    }
-
-    private static string NormalizeLiteral(string value)
-    {
-        if (value.Length >= 2 && value[0] == '\'' && value[^1] == '\'')
-        {
-            return value[1..^1].Replace("''", "'", StringComparison.Ordinal);
-        }
-
-        return value;
-    }
-
-    private static bool? ParseBoolean(string? value)
-    {
-        return bool.TryParse(value, out var result) ? result : null;
-    }
-
     private static bool TryGetObject(JsonElement parent, string propertyName, out JsonElement value)
     {
         if (parent.ValueKind == JsonValueKind.Object &&
@@ -162,10 +93,5 @@ internal static class PbirVisualAccessibilityParser
 
         value = default;
         return false;
-    }
-
-    private sealed record ExpressionValue(string? Literal, bool IsDynamic, bool IsPresent)
-    {
-        public static ExpressionValue Missing { get; } = new(null, IsDynamic: false, IsPresent: false);
     }
 }

@@ -15,6 +15,7 @@ internal static class AssuranceRuleEngine
         new NavigationAssuranceRule(),
         new DrillthroughPageRule(),
         new MissingDrillthroughBackActionRule(),
+        new ReportInteractionRule(),
     ];
 
     public static AssuranceFinding[] Evaluate(ProjectInventory inventory)

@@ -28,6 +28,10 @@ public sealed record ProjectInventory(
 
     public int FilterCount => Reports.Sum(report => report.FilterCount);
 
+    public int VisualInteractionCount => Reports.Sum(report => report.VisualInteractionCount);
+
+    public int TooltipBindingCount => Reports.Sum(report => report.TooltipBindingCount);
+
     public int FieldReferenceCount => Reports.Sum(report => report.FieldReferenceCount);
 
     public int DistinctFieldCount => Reports

@@ -9,13 +9,16 @@ public sealed record VisualInventory(
     VisualPosition Position,
     VisualAccessibilityInventory Accessibility,
     IReadOnlyList<VisualFieldReference> FieldReferences,
-    IReadOnlyList<VisualActionInventory> Actions)
+    IReadOnlyList<VisualActionInventory> Actions,
+    IReadOnlyList<VisualTooltipBindingInventory> TooltipBindings)
 {
     public bool IsInTabOrder => Position.TabOrder is not null;
 
     public int FieldReferenceCount => FieldReferences.Count;
 
     public int ActionCount => Actions.Count;
+
+    public int TooltipBindingCount => TooltipBindings.Count;
 
     public int DistinctFieldCount => FieldReferences
         .Select(FieldIdentity.Create)

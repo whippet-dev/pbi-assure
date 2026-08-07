@@ -24,6 +24,10 @@ public sealed record ReportInventory(
 
     public int FilterCount => Filters.Count + Pages.Sum(page => page.FilterCount);
 
+    public int VisualInteractionCount => Pages.Sum(page => page.VisualInteractionCount);
+
+    public int TooltipBindingCount => Pages.Sum(page => page.Visuals.Sum(visual => visual.TooltipBindingCount));
+
     public int FieldReferenceCount => FieldReferences.Count + Pages.Sum(page => page.FieldReferenceCount);
 
     public int DistinctFieldCount => Pages

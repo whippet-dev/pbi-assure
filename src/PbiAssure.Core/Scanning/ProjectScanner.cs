@@ -35,7 +35,7 @@ public static class ProjectScanner
         var dependencyAnalysis = SemanticDependencyAnalyzer.Analyze(semanticModels, semanticObjectUsages);
 
         var inventory = new ProjectInventory(
-            SchemaVersion: "0.7",
+            SchemaVersion: "0.8",
             RootPath: fullRootPath,
             ScannedAtUtc: DateTimeOffset.UtcNow,
             Artifacts: artifacts

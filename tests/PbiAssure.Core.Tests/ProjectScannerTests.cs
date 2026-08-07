@@ -24,7 +24,7 @@ public sealed class ProjectScannerTests : IDisposable
 
         var result = ProjectScanner.Scan(testRoot);
 
-        Assert.Equal("0.7", result.SchemaVersion);
+        Assert.Equal("0.8", result.SchemaVersion);
         Assert.Equal(1, result.ReportCount);
         Assert.Equal(1, result.SemanticModelCount);
         Assert.Contains(result.Artifacts, artifact =>
@@ -1114,6 +1114,157 @@ public sealed class ProjectScannerTests : IDisposable
         var backFinding = Assert.Single(result.Findings, finding => finding.RuleId == "PBI-ACCESS-005");
         Assert.Equal("empty-drillthrough", backFinding.Page);
         Assert.Equal(AssessmentTypes.ReviewRequired, backFinding.AssessmentType);
+    }
+
+    [Fact]
+    public void ScanReconcilesVisualInteractionsAndReportTooltipBindings()
+    {
+        WriteFile(
+            Path.Combine("Interactions.Report", "definition", "pages", "pages.json"),
+            """
+            {
+              "pageOrder": ["source-page", "tooltip-page", "ordinary-page"],
+              "activePageName": "source-page"
+            }
+            """);
+        WriteFile(
+            Path.Combine("Interactions.Report", "definition", "pages", "source-page", "page.json"),
+            """
+            {
+              "name": "source-page",
+              "displayName": "Source",
+              "visualInteractions": [
+                {
+                  "source": "source-visual",
+                  "target": "target-visual",
+                  "type": "DataFilter"
+                },
+                {
+                  "source": "deleted-source",
+                  "target": "target-visual",
+                  "type": "DataFilter"
+                },
+                {
+                  "source": "source-visual",
+                  "target": "deleted-target",
+                  "type": "HighlightFilter"
+                }
+              ]
+            }
+            """);
+        WriteFile(
+            Path.Combine("Interactions.Report", "definition", "pages", "source-page", "visuals", "source-visual", "visual.json"),
+            """
+            {
+              "name": "source-visual",
+              "visual": {
+                "visualType": "image",
+                "visualContainerObjects": {
+                  "visualTooltip": [
+                    {
+                      "properties": {
+                        "show": { "expr": { "Literal": { "Value": "true" } } },
+                        "section": { "expr": { "Literal": { "Value": "'tooltip-page'" } } },
+                        "type": { "expr": { "Literal": { "Value": "'Default'" } } }
+                      }
+                    },
+                    {
+                      "properties": {
+                        "show": { "expr": { "Literal": { "Value": "true" } } },
+                        "section": { "expr": { "Literal": { "Value": "'deleted-tooltip'" } } }
+                      }
+                    },
+                    {
+                      "properties": {
+                        "show": { "expr": { "Literal": { "Value": "true" } } },
+                        "type": { "expr": { "Literal": { "Value": "'Canvas'" } } }
+                      }
+                    },
+                    {
+                      "properties": {
+                        "show": { "expr": { "Literal": { "Value": "true" } } },
+                        "section": { "expr": { "Literal": { "Value": "'ordinary-page'" } } }
+                      }
+                    },
+                    {
+                      "properties": {
+                        "show": { "expr": { "Literal": { "Value": "false" } } },
+                        "section": { "expr": { "Literal": { "Value": "'deleted-tooltip'" } } }
+                      }
+                    }
+                  ],
+                  "visualHeaderTooltip": [
+                    {
+                      "properties": {
+                        "show": { "expr": { "Literal": { "Value": "true" } } },
+                        "section": { "expr": { "Conditional": {} } },
+                        "type": { "expr": { "Literal": { "Value": "'Canvas'" } } }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+            """);
+        WriteFile(
+            Path.Combine("Interactions.Report", "definition", "pages", "source-page", "visuals", "target-visual", "visual.json"),
+            """
+            {
+              "name": "target-visual",
+              "visual": { "visualType": "image" }
+            }
+            """);
+        WriteFile(
+            Path.Combine("Interactions.Report", "definition", "pages", "tooltip-page", "page.json"),
+            """
+            {
+              "name": "tooltip-page",
+              "displayName": "Tooltip",
+              "type": "Tooltip",
+              "visibility": "HiddenInViewMode"
+            }
+            """);
+        WriteFile(
+            Path.Combine("Interactions.Report", "definition", "pages", "ordinary-page", "page.json"),
+            """
+            {
+              "name": "ordinary-page",
+              "displayName": "Ordinary"
+            }
+            """);
+
+        var result = ProjectScanner.Scan(testRoot);
+
+        var report = Assert.Single(result.Reports);
+        var sourcePage = report.Pages.Single(page => page.Name == "source-page");
+        Assert.Equal(3, sourcePage.VisualInteractionCount);
+        Assert.Equal(3, report.VisualInteractionCount);
+        Assert.Equal(3, result.VisualInteractionCount);
+        Assert.Equal("DataFilter", sourcePage.VisualInteractions[0].InteractionType);
+        Assert.Equal("source-visual", sourcePage.VisualInteractions[0].SourceVisual);
+        Assert.Equal("target-visual", sourcePage.VisualInteractions[0].TargetVisual);
+
+        var sourceVisual = sourcePage.Visuals.Single(visual => visual.Name == "source-visual");
+        Assert.Equal(6, sourceVisual.TooltipBindingCount);
+        Assert.Equal(6, report.TooltipBindingCount);
+        Assert.Equal(6, result.TooltipBindingCount);
+        Assert.Equal("tooltip-page", sourceVisual.TooltipBindings[0].TargetPage);
+        Assert.Equal(VisualTooltipBindingKinds.VisualHeader, sourceVisual.TooltipBindings[5].BindingKind);
+        Assert.True(sourceVisual.TooltipBindings[5].HasDynamicConfiguration);
+
+        var interactionFindings = result.Findings
+            .Where(finding => finding.RuleId is "PBI-NAV-012" or "PBI-NAV-013" or
+                "PBI-NAV-014" or "PBI-NAV-015" or "PBI-NAV-016")
+            .ToArray();
+        Assert.Equal(6, interactionFindings.Length);
+        Assert.Equal(2, interactionFindings.Count(finding => finding.RuleId == "PBI-NAV-012"));
+        Assert.Single(interactionFindings, finding => finding.RuleId == "PBI-NAV-013");
+        Assert.Single(interactionFindings, finding => finding.RuleId == "PBI-NAV-014");
+        Assert.Single(interactionFindings, finding => finding.RuleId == "PBI-NAV-015");
+        var dynamicFinding = Assert.Single(interactionFindings, finding => finding.RuleId == "PBI-NAV-016");
+        Assert.Equal(AssessmentTypes.ReviewRequired, dynamicFinding.AssessmentType);
+        Assert.DoesNotContain(interactionFindings, finding =>
+            finding.EvidencePaths.Contains("$.visual.visualContainerObjects.visualTooltip[4]"));
     }
 
     public void Dispose()

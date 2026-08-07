@@ -16,11 +16,14 @@ public sealed record PageInventory(
     double? Height,
     IReadOnlyList<ReportFilterInventory> Filters,
     IReadOnlyList<VisualFieldReference> FieldReferences,
+    IReadOnlyList<VisualInteractionInventory> VisualInteractions,
     IReadOnlyList<VisualInventory> Visuals)
 {
     public int VisualCount => Visuals.Count;
 
     public int FilterCount => Filters.Count;
+
+    public int VisualInteractionCount => VisualInteractions.Count;
 
     public int FieldReferenceCount => FieldReferences.Count + Visuals.Sum(visual => visual.FieldReferenceCount);
 

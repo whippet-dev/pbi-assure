@@ -116,6 +116,7 @@ internal static class PbirReportParser
             Height: GetDouble(pageRoot, "height"),
             Filters: ParseFilters(pageRoot),
             FieldReferences: PbirFieldReferenceExtractor.Extract(pageRoot),
+            VisualInteractions: ParseVisualInteractions(pageRoot),
             Visuals: visuals);
     }
 
@@ -206,7 +207,35 @@ internal static class PbirReportParser
                 TabOrder: GetInteger(position, "tabOrder")),
             Accessibility: PbirVisualAccessibilityParser.Parse(visualElement),
             FieldReferences: PbirFieldReferenceExtractor.Extract(visualRoot),
-            Actions: PbirVisualActionParser.Parse(visualElement));
+            Actions: PbirVisualActionParser.Parse(visualElement),
+            TooltipBindings: PbirVisualTooltipParser.Parse(visualElement));
+    }
+
+    private static VisualInteractionInventory[] ParseVisualInteractions(JsonElement pageRoot)
+    {
+        if (!pageRoot.TryGetProperty("visualInteractions", out var interactions) ||
+            interactions.ValueKind != JsonValueKind.Array)
+        {
+            return [];
+        }
+
+        var result = new List<VisualInteractionInventory>();
+        var index = 0;
+        foreach (var interaction in interactions.EnumerateArray())
+        {
+            if (interaction.ValueKind == JsonValueKind.Object)
+            {
+                result.Add(new VisualInteractionInventory(
+                    SourceVisual: GetString(interaction, "source"),
+                    TargetVisual: GetString(interaction, "target"),
+                    InteractionType: GetString(interaction, "type"),
+                    EvidencePath: $"$.visualInteractions[{index}]"));
+            }
+
+            index++;
+        }
+
+        return result.ToArray();
     }
 
     private static Dictionary<string, int> ReadPageOrder(JsonElement metadataRoot)
