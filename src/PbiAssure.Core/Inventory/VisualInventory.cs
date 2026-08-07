@@ -8,11 +8,14 @@ public sealed record VisualInventory(
     bool IsHidden,
     VisualPosition Position,
     VisualAccessibilityInventory Accessibility,
-    IReadOnlyList<VisualFieldReference> FieldReferences)
+    IReadOnlyList<VisualFieldReference> FieldReferences,
+    IReadOnlyList<VisualActionInventory> Actions)
 {
     public bool IsInTabOrder => Position.TabOrder is not null;
 
     public int FieldReferenceCount => FieldReferences.Count;
+
+    public int ActionCount => Actions.Count;
 
     public int DistinctFieldCount => FieldReferences
         .Select(FieldIdentity.Create)

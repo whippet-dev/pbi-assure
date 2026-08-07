@@ -2,11 +2,11 @@
 
 PBI Assure is the provisional name for an internally owned Power BI assurance tool. Its intended purpose is to inspect Power BI Project (PBIP) source without changing it, document the report and semantic model, trace dependencies, and produce evidence-led quality and accessibility findings.
 
-The repository is at foundation stage. The executable can discover the report and semantic-model parts of a PBIP project; parse PBIR pages and visual containers; extract evidence-rich field references from visual projections, filters, sorting, and formatting; inventory TMDL tables, columns, measures, hierarchies, partitions, and relationships; and build an evidence-backed dependency graph across DAX, sort-by columns, hierarchy levels, relationship endpoints, and containing tables.
+The repository is at foundation stage. The executable can discover the report and semantic-model parts of a PBIP project; parse PBIR pages, visual containers, bookmarks, and visual actions; extract evidence-rich field references from visual projections, filters, sorting, and formatting; inventory TMDL tables, columns, measures, hierarchies, partitions, and relationships; and build an evidence-backed dependency graph across DAX, sort-by columns, hierarchy levels, relationship endpoints, and containing tables.
 
 The graph classifies semantic objects as directly used, indirectly used, structurally required, used only by an unused branch, or apparently unused within the analysed scope. Power Query M dependencies and consumers outside the selected PBIP project are not yet analysed, so “apparently unused” does not mean “safe to delete.” See [usage classification](docs/usage-classification.md) for the exact contract.
 
-The scanner also emits versioned assurance findings with severities, evidence paths, remediation guidance, assessment type, and authoritative references. The initial rules cover unresolved report bindings, Power BI Q&A retirement, alternative text, duplicate or excluded tab-order entries, and explicitly disabled data-visual titles. See the [rule catalog](docs/rule-catalog.md).
+The scanner also emits versioned assurance findings with severities, evidence paths, remediation guidance, assessment type, and authoritative references. The initial rules cover unresolved report bindings, Power BI Q&A retirement, alternative text, duplicate or excluded tab-order entries, explicitly disabled data-visual titles, and broken or incomplete bookmark and page navigation. See the [rule catalog](docs/rule-catalog.md).
 
 ## Why a command-line tool first?
 

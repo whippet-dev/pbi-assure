@@ -19,7 +19,7 @@ Severity and certainty are separate properties. A potentially severe screen-read
 
 ## Candidate automated rules
 
-The first implemented accessibility rules cover alternative text, duplicate tab positions, potentially meaningful visuals excluded from tab order, and explicitly disabled data-visual titles. Their stable identifiers and applicability boundaries are documented in the [rule catalog](rule-catalog.md).
+The first implemented accessibility rules cover alternative text, duplicate tab positions, potentially meaningful visuals excluded from tab order, explicitly disabled data-visual titles, and detectable broken bookmark or page navigation. Their stable identifiers and applicability boundaries are documented in the [rule catalog](rule-catalog.md).
 
 Further candidate rules include:
 
@@ -30,7 +30,6 @@ Further candidate rules include:
 - A chart appears to use colour as its only series differentiator.
 - Important content appears to be available only through a tooltip.
 - Slicer position or styling is inconsistent across similar pages.
-- Button or bookmark navigation has a missing destination.
 - Page contains an excessive number of focusable objects or visuals.
 - Media appears to autoplay or lacks detectable supporting text.
 - Custom visual requires explicit accessibility verification.

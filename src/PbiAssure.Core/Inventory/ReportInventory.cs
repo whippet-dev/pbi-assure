@@ -5,11 +5,18 @@ public sealed record ReportInventory(
     string RelativePath,
     string? PagesSchemaUri,
     string? ActivePageName,
-    IReadOnlyList<PageInventory> Pages)
+    IReadOnlyList<PageInventory> Pages,
+    string? BookmarksSchemaUri,
+    IReadOnlyList<string> BookmarkOrder,
+    IReadOnlyList<BookmarkInventory> Bookmarks)
 {
     public int PageCount => Pages.Count;
 
     public int VisualCount => Pages.Sum(page => page.VisualCount);
+
+    public int ActionCount => Pages.Sum(page => page.Visuals.Sum(visual => visual.ActionCount));
+
+    public int BookmarkCount => Bookmarks.Count;
 
     public int FieldReferenceCount => Pages.Sum(page => page.FieldReferenceCount);
 

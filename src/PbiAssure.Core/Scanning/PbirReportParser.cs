@@ -14,6 +14,7 @@ internal static class PbirReportParser
         }
 
         var relativeReportPath = Path.GetRelativePath(projectRoot, reportDirectory);
+        var bookmarkResult = PbirBookmarkParser.Parse(projectRoot, reportDirectory);
         var pagesDirectory = Path.Combine(reportDirectory, "definition", "pages");
         var pagesMetadataPath = Path.Combine(pagesDirectory, "pages.json");
 
@@ -24,7 +25,10 @@ internal static class PbirReportParser
                 RelativePath: relativeReportPath,
                 PagesSchemaUri: null,
                 ActivePageName: null,
-                Pages: []);
+                Pages: [],
+                BookmarksSchemaUri: bookmarkResult.SchemaUri,
+                BookmarkOrder: bookmarkResult.BookmarkOrder,
+                Bookmarks: bookmarkResult.Bookmarks);
         }
 
         using var pagesMetadata = OpenJsonDocument(pagesMetadataPath);
@@ -47,7 +51,10 @@ internal static class PbirReportParser
             RelativePath: relativeReportPath,
             PagesSchemaUri: schemaUri,
             ActivePageName: activePageName,
-            Pages: pages);
+            Pages: pages,
+            BookmarksSchemaUri: bookmarkResult.SchemaUri,
+            BookmarkOrder: bookmarkResult.BookmarkOrder,
+            Bookmarks: bookmarkResult.Bookmarks);
     }
 
     private static PageInventory? ParsePage(
@@ -125,7 +132,8 @@ internal static class PbirReportParser
                 Height: GetDouble(position, "height"),
                 TabOrder: GetInteger(position, "tabOrder")),
             Accessibility: PbirVisualAccessibilityParser.Parse(visualElement),
-            FieldReferences: PbirFieldReferenceExtractor.Extract(visualRoot));
+            FieldReferences: PbirFieldReferenceExtractor.Extract(visualRoot),
+            Actions: PbirVisualActionParser.Parse(visualElement));
     }
 
     private static Dictionary<string, int> ReadPageOrder(JsonElement metadataRoot)

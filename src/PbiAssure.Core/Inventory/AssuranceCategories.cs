@@ -7,4 +7,6 @@ public static class AssuranceCategories
     public const string Compatibility = "Compatibility";
 
     public const string ModelIntegrity = "ModelIntegrity";
+
+    public const string Navigation = "Navigation";
 }

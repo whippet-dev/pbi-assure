@@ -19,7 +19,7 @@ PBIP project
 Each stage has one responsibility:
 
 1. **Discovery** locates supported files and records their format versions.
-2. **Parsing** extracts facts without judging them.
+2. **Parsing** extracts facts without judging them, including pages, visuals, actions, bookmarks, semantic objects, and expressions.
 3. **Normalisation** gives report and model objects stable internal identities.
 4. **Dependency analysis** connects model objects, expressions, filters, pages, and visuals.
 5. **Rules** create findings from facts and graph relationships.
@@ -57,6 +57,8 @@ Initial usage states are:
 - Apparently unused within scope.
 
 References that cannot be resolved are emitted separately with their evidence and reason. See [usage classification](usage-classification.md) for state precedence and current analysis boundaries.
+
+Bookmark and action reconciliation is kept alongside, rather than inside, the semantic dependency graph. It compares enabled typed actions with bookmark definitions and report pages, and compares bookmark state with page and visual inventories. Disabled action configuration remains visible in inventory but does not create a broken-target finding.
 
 ## Format evolution
 

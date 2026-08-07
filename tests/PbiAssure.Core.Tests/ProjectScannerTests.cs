@@ -24,7 +24,7 @@ public sealed class ProjectScannerTests : IDisposable
 
         var result = ProjectScanner.Scan(testRoot);
 
-        Assert.Equal("0.5", result.SchemaVersion);
+        Assert.Equal("0.6", result.SchemaVersion);
         Assert.Equal(1, result.ReportCount);
         Assert.Equal(1, result.SemanticModelCount);
         Assert.Contains(result.Artifacts, artifact =>
@@ -709,6 +709,149 @@ public sealed class ProjectScannerTests : IDisposable
             finding => Assert.Equal(AssessmentTypes.ReviewRequired, finding.AssessmentType));
     }
 
+    [Fact]
+    public void ScanInventoriesAndReconcilesBookmarksAndVisualActions()
+    {
+        WriteFile(
+            Path.Combine("Navigation.Report", "definition", "pages", "pages.json"),
+            """
+            {
+              "pageOrder": ["page-1"],
+              "activePageName": "page-1"
+            }
+            """);
+        WriteFile(
+            Path.Combine("Navigation.Report", "definition", "pages", "page-1", "page.json"),
+            """
+            {
+              "name": "page-1",
+              "displayName": "Navigation"
+            }
+            """);
+        WriteFile(
+            Path.Combine("Navigation.Report", "definition", "pages", "page-1", "visuals", "actions", "visual.json"),
+            """
+            {
+              "name": "actions",
+              "visual": {
+                "visualType": "image",
+                "visualContainerObjects": {
+                  "visualLink": [
+                    {
+                      "properties": {
+                        "show": { "expr": { "Literal": { "Value": "true" } } },
+                        "type": { "expr": { "Literal": { "Value": "'Bookmark'" } } },
+                        "bookmark": { "expr": { "Literal": { "Value": "'BookmarkValid'" } } }
+                      }
+                    },
+                    {
+                      "properties": {
+                        "show": { "expr": { "Literal": { "Value": "true" } } },
+                        "type": { "expr": { "Literal": { "Value": "'Bookmark'" } } },
+                        "bookmark": { "expr": { "Literal": { "Value": "'BookmarkAbsent'" } } }
+                      }
+                    },
+                    {
+                      "properties": {
+                        "show": { "expr": { "Literal": { "Value": "false" } } },
+                        "type": { "expr": { "Literal": { "Value": "'Bookmark'" } } },
+                        "bookmark": { "expr": { "Literal": { "Value": "'BookmarkAbsent'" } } }
+                      }
+                    },
+                    {
+                      "properties": {
+                        "show": { "expr": { "Literal": { "Value": "true" } } },
+                        "type": { "expr": { "Literal": { "Value": "'Bookmark'" } } }
+                      }
+                    },
+                    {
+                      "properties": {
+                        "show": { "expr": { "Literal": { "Value": "true" } } },
+                        "type": { "expr": { "Literal": { "Value": "'PageNavigation'" } } },
+                        "destination": { "expr": { "Literal": { "Value": "'missing-page'" } } }
+                      }
+                    },
+                    {
+                      "properties": {
+                        "show": { "expr": { "Literal": { "Value": "true" } } },
+                        "type": { "expr": { "Literal": { "Value": "'Back'" } } }
+                      }
+                    },
+                    {
+                      "properties": {
+                        "show": { "expr": { "Literal": { "Value": "true" } } },
+                        "type": { "expr": { "Conditional": {} } }
+                      }
+                    },
+                    {
+                      "properties": {
+                        "show": { "expr": { "Literal": { "Value": "true" } } },
+                        "type": { "expr": { "Literal": { "Value": "'WebUrl'" } } },
+                        "bookmark": { "expr": { "Literal": { "Value": "'BookmarkAbsent'" } } },
+                        "webUrl": { "expr": { "Literal": { "Value": "'https://example.test/'" } } }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+            """);
+        WriteFile(
+            Path.Combine("Navigation.Report", "definition", "bookmarks", "bookmarks.json"),
+            """
+            {
+              "$schema": "https://example.test/bookmarks/1.0/schema.json",
+              "items": [
+                {
+                  "name": "BookmarkGroup",
+                  "displayName": "Grouped bookmarks",
+                  "children": ["BookmarkValid", "BookmarkBrokenVisual"]
+                },
+                { "name": "BookmarkMissingPage" },
+                { "name": "BookmarkMissingDefinition" }
+              ]
+            }
+            """);
+        WriteBookmark("BookmarkValid", "Valid", "page-1", "actions");
+        WriteBookmark("BookmarkBrokenVisual", "Broken visual", "page-1", "missing-visual");
+        WriteBookmark("BookmarkMissingPage", "Missing page", "missing-page", "actions");
+        WriteBookmark("BookmarkOrphan", "Orphan", "page-1", "actions");
+
+        var result = ProjectScanner.Scan(testRoot);
+
+        var report = Assert.Single(result.Reports);
+        Assert.Equal("https://example.test/bookmarks/1.0/schema.json", report.BookmarksSchemaUri);
+        Assert.Equal(4, report.BookmarkCount);
+        Assert.Equal(4, report.BookmarkOrder.Count);
+        Assert.Equal(8, report.ActionCount);
+        Assert.Equal(4, result.BookmarkCount);
+        Assert.Equal(8, result.ActionCount);
+        var actions = Assert.Single(report.Pages).Visuals.Single().Actions;
+        Assert.Equal("BookmarkValid", actions[0].BookmarkTarget);
+        Assert.True(actions[0].IsEnabled);
+        Assert.False(actions[2].IsEnabled);
+        Assert.Equal("missing-page", actions[4].PageTarget);
+        Assert.True(actions[6].HasDynamicConfiguration);
+        Assert.Equal("https://example.test/", actions[7].WebUrl);
+
+        var navigationFindings = result.Findings
+            .Where(finding => finding.Category == AssuranceCategories.Navigation)
+            .ToArray();
+        Assert.Equal(8, navigationFindings.Length);
+        Assert.All(
+            Enumerable.Range(1, 8),
+            number => Assert.Single(navigationFindings, finding => finding.RuleId == $"PBI-NAV-{number:000}"));
+        Assert.Single(navigationFindings, finding =>
+            finding.RuleId == "PBI-NAV-001" && finding.ObjectName == "BookmarkAbsent");
+        Assert.Contains(navigationFindings, finding =>
+            finding.RuleId == "PBI-NAV-004" && finding.Visual == "missing-visual");
+        Assert.DoesNotContain(navigationFindings, finding =>
+            finding.EvidencePaths.Contains("$.visual.visualContainerObjects.visualLink[2]"));
+        Assert.Equal(
+            AssessmentTypes.ReviewRequired,
+            navigationFindings.Single(finding => finding.RuleId == "PBI-NAV-008").AssessmentType);
+    }
+
     public void Dispose()
     {
         var allowedRoot = Path.GetFullPath(Path.Combine(Path.GetTempPath(), "PbiAssure.Tests"));
@@ -750,6 +893,28 @@ public sealed class ProjectScannerTests : IDisposable
               "displayOption": "FitToPage",
               "height": {{height}},
               "width": {{width}}{{visibilityProperty}}
+            }
+            """);
+    }
+
+    private void WriteBookmark(string name, string displayName, string activePageName, string targetVisualName)
+    {
+        WriteFile(
+            Path.Combine("Navigation.Report", "definition", "bookmarks", $"{name}.bookmark.json"),
+            $$"""
+            {
+              "$schema": "https://example.test/bookmark/1.0/schema.json",
+              "name": "{{name}}",
+              "displayName": "{{displayName}}",
+              "options": {
+                "applyOnlyToTargetVisuals": true,
+                "targetVisualNames": ["{{targetVisualName}}"],
+                "suppressActiveSection": false,
+                "suppressData": true
+              },
+              "explorationState": {
+                "activeSection": "{{activePageName}}"
+              }
             }
             """);
     }

@@ -22,6 +22,10 @@ public sealed record ProjectInventory(
 
     public int VisualCount => Reports.Sum(report => report.VisualCount);
 
+    public int ActionCount => Reports.Sum(report => report.ActionCount);
+
+    public int BookmarkCount => Reports.Sum(report => report.BookmarkCount);
+
     public int FieldReferenceCount => Reports.Sum(report => report.FieldReferenceCount);
 
     public int DistinctFieldCount => Reports
