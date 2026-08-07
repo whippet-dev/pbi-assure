@@ -26,12 +26,14 @@ public sealed record ProjectInventory(
 
     public int BookmarkCount => Reports.Sum(report => report.BookmarkCount);
 
+    public int FilterCount => Reports.Sum(report => report.FilterCount);
+
     public int FieldReferenceCount => Reports.Sum(report => report.FieldReferenceCount);
 
     public int DistinctFieldCount => Reports
-        .SelectMany(report => report.Pages)
-        .SelectMany(page => page.Visuals)
-        .SelectMany(visual => visual.FieldReferences)
+        .SelectMany(report => report.FieldReferences.Concat(
+            report.Pages.SelectMany(page => page.FieldReferences.Concat(
+                page.Visuals.SelectMany(visual => visual.FieldReferences)))))
         .Select(FieldIdentity.Create)
         .Distinct(StringComparer.OrdinalIgnoreCase)
         .Count();

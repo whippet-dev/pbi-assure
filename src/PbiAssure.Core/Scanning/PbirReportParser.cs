@@ -15,6 +15,18 @@ internal static class PbirReportParser
 
         var relativeReportPath = Path.GetRelativePath(projectRoot, reportDirectory);
         var bookmarkResult = PbirBookmarkParser.Parse(projectRoot, reportDirectory);
+        var reportDefinitionPath = Path.Combine(reportDirectory, "definition", "report.json");
+        string? reportSchemaUri = null;
+        VisualFieldReference[] reportFieldReferences = [];
+        ReportFilterInventory[] reportFilters = [];
+        if (File.Exists(reportDefinitionPath))
+        {
+            using var reportDefinition = OpenJsonDocument(reportDefinitionPath);
+            reportSchemaUri = GetString(reportDefinition.RootElement, "$schema");
+            reportFieldReferences = PbirFieldReferenceExtractor.Extract(reportDefinition.RootElement);
+            reportFilters = ParseFilters(reportDefinition.RootElement);
+        }
+
         var pagesDirectory = Path.Combine(reportDirectory, "definition", "pages");
         var pagesMetadataPath = Path.Combine(pagesDirectory, "pages.json");
 
@@ -23,9 +35,15 @@ internal static class PbirReportParser
             return new ReportInventory(
                 Name: reportName,
                 RelativePath: relativeReportPath,
+                DefinitionPath: File.Exists(reportDefinitionPath)
+                    ? Path.GetRelativePath(projectRoot, reportDefinitionPath)
+                    : null,
+                SchemaUri: reportSchemaUri,
                 PagesSchemaUri: null,
                 ActivePageName: null,
                 Pages: [],
+                Filters: reportFilters,
+                FieldReferences: reportFieldReferences,
                 BookmarksSchemaUri: bookmarkResult.SchemaUri,
                 BookmarkOrder: bookmarkResult.BookmarkOrder,
                 Bookmarks: bookmarkResult.Bookmarks);
@@ -49,9 +67,15 @@ internal static class PbirReportParser
         return new ReportInventory(
             Name: reportName,
             RelativePath: relativeReportPath,
+            DefinitionPath: File.Exists(reportDefinitionPath)
+                ? Path.GetRelativePath(projectRoot, reportDefinitionPath)
+                : null,
+            SchemaUri: reportSchemaUri,
             PagesSchemaUri: schemaUri,
             ActivePageName: activePageName,
             Pages: pages,
+            Filters: reportFilters,
+            FieldReferences: reportFieldReferences,
             BookmarksSchemaUri: bookmarkResult.SchemaUri,
             BookmarkOrder: bookmarkResult.BookmarkOrder,
             Bookmarks: bookmarkResult.Bookmarks);
@@ -80,14 +104,63 @@ internal static class PbirReportParser
             Name: name,
             DisplayName: displayName,
             RelativePath: Path.GetRelativePath(projectRoot, pageDirectory),
+            DefinitionPath: Path.GetRelativePath(projectRoot, pagePath),
             SchemaUri: GetString(pageRoot, "$schema"),
+            PageType: GetString(pageRoot, "type"),
+            PageBinding: ParsePageBinding(pageRoot),
             Order: pageOrder.TryGetValue(name, out var order) ? order : null,
             IsActive: string.Equals(name, activePageName, StringComparison.Ordinal),
             Visibility: GetString(pageRoot, "visibility"),
             DisplayOption: GetString(pageRoot, "displayOption"),
             Width: GetDouble(pageRoot, "width"),
             Height: GetDouble(pageRoot, "height"),
+            Filters: ParseFilters(pageRoot),
+            FieldReferences: PbirFieldReferenceExtractor.Extract(pageRoot),
             Visuals: visuals);
+    }
+
+    private static PageBindingInventory? ParsePageBinding(JsonElement pageRoot)
+    {
+        if (!TryGetObject(pageRoot, "pageBinding", out var pageBinding))
+        {
+            return null;
+        }
+
+        var parameters = new List<PageBindingParameterInventory>();
+        if (pageBinding.TryGetProperty("parameters", out var parameterArray) &&
+            parameterArray.ValueKind == JsonValueKind.Array)
+        {
+            foreach (var parameter in parameterArray.EnumerateArray())
+            {
+                parameters.Add(new PageBindingParameterInventory(
+                    Name: GetString(parameter, "name"),
+                    BoundFilter: GetString(parameter, "boundFilter")));
+            }
+        }
+
+        return new PageBindingInventory(
+            Name: GetString(pageBinding, "name"),
+            Type: GetString(pageBinding, "type"),
+            AcceptsFilterContext: GetString(pageBinding, "acceptsFilterContext"),
+            Parameters: parameters.ToArray());
+    }
+
+    private static ReportFilterInventory[] ParseFilters(JsonElement root)
+    {
+        if (!TryGetObject(root, "filterConfig", out var filterConfig) ||
+            !filterConfig.TryGetProperty("filters", out var filters) ||
+            filters.ValueKind != JsonValueKind.Array)
+        {
+            return [];
+        }
+
+        return filters.EnumerateArray()
+            .Where(filter => filter.ValueKind == JsonValueKind.Object)
+            .Select(filter => new ReportFilterInventory(
+                Name: GetString(filter, "name"),
+                Type: GetString(filter, "type"),
+                HowCreated: GetString(filter, "howCreated")))
+            .ToArray();
     }
 
     private static VisualInventory[] ParseVisuals(string projectRoot, string visualsDirectory)

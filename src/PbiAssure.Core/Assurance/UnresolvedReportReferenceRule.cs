@@ -9,10 +9,6 @@ internal sealed class UnresolvedReportReferenceRule : IAssuranceRule
 
     public IEnumerable<AssuranceFinding> Evaluate(ProjectInventory inventory)
     {
-        var visualPaths = VisualRuleContexts.Read(inventory).ToDictionary(
-            context => Key(context.Report.Name, context.Page.Name, context.Visual.Name),
-            context => context.Visual.RelativePath,
-            StringComparer.OrdinalIgnoreCase);
         var pageNames = inventory.Reports
             .SelectMany(report => report.Pages.Select(page => (
                 Report: report.Name,
@@ -27,8 +23,9 @@ internal sealed class UnresolvedReportReferenceRule : IAssuranceRule
             .GroupBy(reference => string.Join(
                 '\u001f',
                 reference.Report,
-                reference.Page,
-                reference.Visual,
+                reference.Page ?? string.Empty,
+                reference.Visual ?? string.Empty,
+                reference.ArtifactPath,
                 reference.ObjectType,
                 reference.Table,
                 reference.HierarchyName ?? string.Empty,
@@ -36,15 +33,24 @@ internal sealed class UnresolvedReportReferenceRule : IAssuranceRule
             .Select(group =>
             {
                 var reference = group.First();
-                visualPaths.TryGetValue(Key(reference.Report, reference.Page, reference.Visual), out var visualPath);
-                pageNames.TryGetValue(string.Join('\u001f', reference.Report, reference.Page), out var pageDisplayName);
+                string? pageDisplayName = null;
+                if (reference.Page is not null)
+                {
+                    pageNames.TryGetValue(string.Join('\u001f', reference.Report, reference.Page), out pageDisplayName);
+                }
+
+                var container = reference.Visual is not null
+                    ? "visual"
+                    : reference.Page is not null
+                        ? "page"
+                        : "report";
                 return new AssuranceFinding(
                     RuleId,
                     RuleVersion,
                     AssuranceCategories.ModelIntegrity,
                     FindingSeverities.Error,
-                    $"The visual references {reference.Table}[{reference.ObjectName}], but that {reference.ObjectType.ToLowerInvariant()} could not be resolved in the matching semantic model.",
-                    "Repair or remove the stale binding and confirm the visual still returns the intended result.",
+                    $"The {container} references {reference.Table}[{reference.ObjectName}], but that {reference.ObjectType.ToLowerInvariant()} could not be resolved in the matching semantic model.",
+                    $"Repair or remove the stale binding and confirm the {container} still behaves as intended.",
                     reference.Report,
                     reference.Page,
                     pageDisplayName,
@@ -52,15 +58,10 @@ internal sealed class UnresolvedReportReferenceRule : IAssuranceRule
                     SemanticModel: reference.Report,
                     reference.Table,
                     reference.ObjectName,
-                    visualPath ?? string.Empty,
+                    reference.ArtifactPath,
                     group.Select(item => item.EvidencePath).Distinct(StringComparer.Ordinal).ToArray(),
                     AssessmentTypes.Finding,
                     ReferenceUrl: null);
             });
-    }
-
-    private static string Key(string report, string page, string visual)
-    {
-        return string.Join('\u001f', report, page, visual);
     }
 }

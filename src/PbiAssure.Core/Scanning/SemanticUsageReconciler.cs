@@ -53,32 +53,27 @@ internal static class SemanticUsageReconciler
                 .Select(model => model.Name)
                 .ToArray();
 
-            foreach (var page in report.Pages)
+            foreach (var context in EnumerateReferences(report))
             {
-                foreach (var visual in page.Visuals)
+                var identity = FieldIdentity.Create(context.Reference);
+                if (matchingModelNames.Any(modelName =>
+                        resolvedEvidence.Contains(string.Join('\u001f', modelName, identity))))
                 {
-                    foreach (var reference in visual.FieldReferences)
-                    {
-                        var identity = FieldIdentity.Create(reference);
-                        if (matchingModelNames.Any(modelName =>
-                                resolvedEvidence.Contains(string.Join('\u001f', modelName, identity))))
-                        {
-                            continue;
-                        }
-
-                        unresolved.Add(new UnresolvedSemanticReference(
-                            Report: report.Name,
-                            Page: page.Name,
-                            Visual: visual.Name,
-                            Table: reference.Table,
-                            ObjectName: reference.ObjectName,
-                            ObjectType: reference.ObjectType,
-                            HierarchyName: reference.HierarchyName,
-                            UsageContext: reference.UsageContext,
-                            Role: reference.Role,
-                            EvidencePath: reference.EvidencePath));
-                    }
+                    continue;
                 }
+
+                unresolved.Add(new UnresolvedSemanticReference(
+                    Report: report.Name,
+                    Page: context.Page,
+                    Visual: context.Visual,
+                    ArtifactPath: context.ArtifactPath,
+                    Table: context.Reference.Table,
+                    ObjectName: context.Reference.ObjectName,
+                    ObjectType: context.Reference.ObjectType,
+                    HierarchyName: context.Reference.HierarchyName,
+                    UsageContext: context.Reference.UsageContext,
+                    Role: context.Reference.Role,
+                    EvidencePath: context.Reference.EvidencePath));
             }
         }
 
@@ -96,18 +91,17 @@ internal static class SemanticUsageReconciler
         IReadOnlyList<ReportInventory> reports)
     {
         return reports
-            .SelectMany(report => report.Pages.Select(page => (report, page)))
-            .SelectMany(item => item.page.Visuals.Select(visual => (item.report, item.page, visual)))
-            .SelectMany(item => item.visual.FieldReferences.Select(reference => new
+            .SelectMany(report => EnumerateReferences(report).Select(context => new
             {
-                Identity = FieldIdentity.Create(reference),
+                Identity = FieldIdentity.Create(context.Reference),
                 Evidence = new SemanticUsageEvidence(
-                    Report: item.report.Name,
-                    Page: item.page.Name,
-                    Visual: item.visual.Name,
-                    UsageContext: reference.UsageContext,
-                    Role: reference.Role,
-                    EvidencePath: reference.EvidencePath),
+                    Report: report.Name,
+                    Page: context.Page,
+                    Visual: context.Visual,
+                    ArtifactPath: context.ArtifactPath,
+                    UsageContext: context.Reference.UsageContext,
+                    Role: context.Reference.Role,
+                    EvidencePath: context.Reference.EvidencePath),
             }))
             .GroupBy(item => item.Identity, StringComparer.OrdinalIgnoreCase)
             .ToDictionary(
@@ -117,6 +111,42 @@ internal static class SemanticUsageReconciler
                     .Distinct()
                     .ToArray(),
                 StringComparer.OrdinalIgnoreCase);
+    }
+
+    private static IEnumerable<ReportReferenceContext> EnumerateReferences(ReportInventory report)
+    {
+        foreach (var reference in report.FieldReferences)
+        {
+            yield return new ReportReferenceContext(
+                Page: null,
+                Visual: null,
+                ArtifactPath: report.DefinitionPath ?? report.RelativePath,
+                reference);
+        }
+
+        foreach (var page in report.Pages)
+        {
+            foreach (var reference in page.FieldReferences)
+            {
+                yield return new ReportReferenceContext(
+                    Page: page.Name,
+                    Visual: null,
+                    ArtifactPath: page.DefinitionPath,
+                    reference);
+            }
+
+            foreach (var visual in page.Visuals)
+            {
+                foreach (var reference in visual.FieldReferences)
+                {
+                    yield return new ReportReferenceContext(
+                        Page: page.Name,
+                        Visual: visual.Name,
+                        ArtifactPath: visual.RelativePath,
+                        reference);
+                }
+            }
+        }
     }
 
     private static IEnumerable<SemanticObjectIdentity> EnumerateObjects(SemanticModelInventory model)
@@ -160,4 +190,10 @@ internal static class SemanticUsageReconciler
         string ObjectName,
         string ObjectType,
         string? HierarchyName);
+
+    private sealed record ReportReferenceContext(
+        string? Page,
+        string? Visual,
+        string ArtifactPath,
+        VisualFieldReference Reference);
 }

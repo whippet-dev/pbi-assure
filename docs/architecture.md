@@ -58,7 +58,9 @@ Initial usage states are:
 
 References that cannot be resolved are emitted separately with their evidence and reason. See [usage classification](usage-classification.md) for state precedence and current analysis boundaries.
 
-Bookmark and action reconciliation is kept alongside, rather than inside, the semantic dependency graph. It compares enabled typed actions with bookmark definitions and report pages, and compares bookmark state with page and visual inventories. Disabled action configuration remains visible in inventory but does not create a broken-target finding.
+Report filters, page filters, drillthrough parameters, and visual references all provide direct roots for the semantic dependency graph. Evidence locations use nullable page and visual identifiers plus an artifact path, allowing report-, page-, and visual-scoped references to share one explainable usage model without placeholder object names. Automatic date-hierarchy variations are normalized to their underlying model column because their generated levels are not standalone TMDL hierarchy objects.
+
+Bookmark and action reconciliation is kept alongside, rather than inside, the semantic dependency graph. It compares enabled typed actions with bookmark definitions and report pages, and compares bookmark state with page and visual inventories. Disabled action configuration remains visible in inventory but does not create a broken-target finding. Bookmark-captured semantic state is not yet treated as a dependency root.
 
 ## Format evolution
 

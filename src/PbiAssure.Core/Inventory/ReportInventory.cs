@@ -3,9 +3,13 @@ namespace PbiAssure.Core.Inventory;
 public sealed record ReportInventory(
     string Name,
     string RelativePath,
+    string? DefinitionPath,
+    string? SchemaUri,
     string? PagesSchemaUri,
     string? ActivePageName,
     IReadOnlyList<PageInventory> Pages,
+    IReadOnlyList<ReportFilterInventory> Filters,
+    IReadOnlyList<VisualFieldReference> FieldReferences,
     string? BookmarksSchemaUri,
     IReadOnlyList<string> BookmarkOrder,
     IReadOnlyList<BookmarkInventory> Bookmarks)
@@ -18,11 +22,13 @@ public sealed record ReportInventory(
 
     public int BookmarkCount => Bookmarks.Count;
 
-    public int FieldReferenceCount => Pages.Sum(page => page.FieldReferenceCount);
+    public int FilterCount => Filters.Count + Pages.Sum(page => page.FilterCount);
+
+    public int FieldReferenceCount => FieldReferences.Count + Pages.Sum(page => page.FieldReferenceCount);
 
     public int DistinctFieldCount => Pages
-        .SelectMany(page => page.Visuals)
-        .SelectMany(visual => visual.FieldReferences)
+        .SelectMany(page => page.FieldReferences.Concat(page.Visuals.SelectMany(visual => visual.FieldReferences)))
+        .Concat(FieldReferences)
         .Select(FieldIdentity.Create)
         .Distinct(StringComparer.OrdinalIgnoreCase)
         .Count();

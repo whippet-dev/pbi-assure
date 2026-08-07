@@ -102,6 +102,18 @@ internal static class PbirFieldReferenceExtractor
             return false;
         }
 
+        if (TryReadPropertyVariationSource(expression, sourceAliases, out var variationTable, out var variationColumn))
+        {
+            reference = CreateReference(
+                variationTable,
+                variationColumn,
+                SemanticObjectTypes.Column,
+                hierarchyName: null,
+                evidencePath,
+                ancestors);
+            return true;
+        }
+
         var hierarchyTable = FindTable(expression, sourceAliases);
         var levelName = GetString(expression, "Level");
         var hierarchyName = FindStringProperty(expression, "Hierarchy");
@@ -140,6 +152,11 @@ internal static class PbirFieldReferenceExtractor
 
     private static string DetermineUsageContext(IReadOnlyList<string> ancestors)
     {
+        if (IndexOf(ancestors, "pageBinding") >= 0)
+        {
+            return UsageContexts.Drillthrough;
+        }
+
         if (ancestors.Any(segment => segment.Contains("filter", StringComparison.OrdinalIgnoreCase)))
         {
             return UsageContexts.Filter;
@@ -226,6 +243,48 @@ internal static class PbirFieldReferenceExtractor
         }
 
         return null;
+    }
+
+    private static bool TryReadPropertyVariationSource(
+        JsonElement element,
+        IReadOnlyDictionary<string, HashSet<string>> sourceAliases,
+        out string table,
+        out string column)
+    {
+        if (element.ValueKind == JsonValueKind.Object)
+        {
+            if (element.TryGetProperty("PropertyVariationSource", out var variationSource) &&
+                variationSource.ValueKind == JsonValueKind.Object &&
+                FindTable(variationSource, sourceAliases) is { } variationTable &&
+                GetString(variationSource, "Property") is { } variationColumn)
+            {
+                table = variationTable;
+                column = variationColumn;
+                return true;
+            }
+
+            foreach (var property in element.EnumerateObject())
+            {
+                if (TryReadPropertyVariationSource(property.Value, sourceAliases, out table, out column))
+                {
+                    return true;
+                }
+            }
+        }
+        else if (element.ValueKind == JsonValueKind.Array)
+        {
+            foreach (var item in element.EnumerateArray())
+            {
+                if (TryReadPropertyVariationSource(item, sourceAliases, out table, out column))
+                {
+                    return true;
+                }
+            }
+        }
+
+        table = string.Empty;
+        column = string.Empty;
+        return false;
     }
 
     private static Dictionary<string, HashSet<string>> ReadSourceAliases(JsonElement root)

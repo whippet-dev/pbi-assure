@@ -24,7 +24,7 @@ public sealed class ProjectScannerTests : IDisposable
 
         var result = ProjectScanner.Scan(testRoot);
 
-        Assert.Equal("0.6", result.SchemaVersion);
+        Assert.Equal("0.7", result.SchemaVersion);
         Assert.Equal(1, result.ReportCount);
         Assert.Equal(1, result.SemanticModelCount);
         Assert.Contains(result.Artifacts, artifact =>
@@ -850,6 +850,270 @@ public sealed class ProjectScannerTests : IDisposable
         Assert.Equal(
             AssessmentTypes.ReviewRequired,
             navigationFindings.Single(finding => finding.RuleId == "PBI-NAV-008").AssessmentType);
+    }
+
+    [Fact]
+    public void ScanReconcilesReportPageAndDrillthroughDependencies()
+    {
+        WriteFile(
+            Path.Combine("Scoped.SemanticModel", "definition", "tables", "Data.tmdl"),
+            """
+            table Data
+                column Region
+                    dataType: string
+
+                column Product
+                    dataType: string
+
+                column Amount
+                    dataType: decimal
+
+                column Date
+                    dataType: dateTime
+
+                partition Data = m
+                    mode: import
+                    source = #table({}, {})
+            """);
+        WriteFile(
+            Path.Combine("Scoped.Report", "definition", "report.json"),
+            """
+            {
+              "$schema": "https://example.test/report/1.0/schema.json",
+              "filterConfig": {
+                "filters": [
+                  {
+                    "name": "RegionFilter",
+                    "type": "Categorical",
+                    "howCreated": "User",
+                    "field": {
+                      "Column": {
+                        "Expression": { "SourceRef": { "Entity": "Data" } },
+                        "Property": "Region"
+                      }
+                    }
+                  },
+                  {
+                    "name": "MissingReportFilter",
+                    "type": "Categorical",
+                    "field": {
+                      "Column": {
+                        "Expression": { "SourceRef": { "Entity": "Data" } },
+                        "Property": "Missing Report"
+                      }
+                    }
+                  },
+                  {
+                    "name": "DateVariationFilter",
+                    "type": "Categorical",
+                    "field": {
+                      "HierarchyLevel": {
+                        "Expression": {
+                          "Hierarchy": {
+                            "Expression": {
+                              "PropertyVariationSource": {
+                                "Expression": { "SourceRef": { "Entity": "Data" } },
+                                "Name": "Variation",
+                                "Property": "Date"
+                              }
+                            },
+                            "Hierarchy": "Date Hierarchy"
+                          }
+                        },
+                        "Level": "Month"
+                      }
+                    }
+                  }
+                ]
+              }
+            }
+            """);
+        WriteFile(
+            Path.Combine("Scoped.Report", "definition", "pages", "pages.json"),
+            """
+            {
+              "pageOrder": ["drillthrough", "empty-drillthrough", "tooltip"],
+              "activePageName": "drillthrough"
+            }
+            """);
+        WriteFile(
+            Path.Combine("Scoped.Report", "definition", "pages", "drillthrough", "page.json"),
+            """
+            {
+              "name": "drillthrough",
+              "displayName": "Product details",
+              "filterConfig": {
+                "filters": [
+                  {
+                    "name": "ProductFilter",
+                    "type": "Categorical",
+                    "howCreated": "Drillthrough",
+                    "field": {
+                      "Column": {
+                        "Expression": { "SourceRef": { "Entity": "Data" } },
+                        "Property": "Product"
+                      }
+                    }
+                  },
+                  {
+                    "name": "MissingPageFilter",
+                    "type": "Categorical",
+                    "field": {
+                      "Column": {
+                        "Expression": { "SourceRef": { "Entity": "Data" } },
+                        "Property": "Missing Page"
+                      }
+                    }
+                  }
+                ]
+              },
+              "pageBinding": {
+                "name": "ProductDetails",
+                "type": "Drillthrough",
+                "parameters": [
+                  {
+                    "name": "ProductParameter",
+                    "boundFilter": "ProductFilter",
+                    "fieldExpr": {
+                      "Column": {
+                        "Expression": { "SourceRef": { "Entity": "Data" } },
+                        "Property": "Product"
+                      }
+                    }
+                  },
+                  {
+                    "name": "AmountParameter",
+                    "fieldExpr": {
+                      "Column": {
+                        "Expression": { "SourceRef": { "Entity": "Data" } },
+                        "Property": "Amount"
+                      }
+                    }
+                  },
+                  {
+                    "name": "BrokenParameter",
+                    "boundFilter": "DeletedFilter",
+                    "fieldExpr": {
+                      "Column": {
+                        "Expression": { "SourceRef": { "Entity": "Data" } },
+                        "Property": "Product"
+                      }
+                    }
+                  }
+                ]
+              }
+            }
+            """);
+        WriteFile(
+            Path.Combine("Scoped.Report", "definition", "pages", "drillthrough", "visuals", "back", "visual.json"),
+            """
+            {
+              "name": "back",
+              "visual": {
+                "visualType": "image",
+                "visualContainerObjects": {
+                  "visualLink": [
+                    {
+                      "properties": {
+                        "show": { "expr": { "Literal": { "Value": "true" } } },
+                        "type": { "expr": { "Literal": { "Value": "'Back'" } } }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+            """);
+        WriteFile(
+            Path.Combine("Scoped.Report", "definition", "pages", "empty-drillthrough", "page.json"),
+            """
+            {
+              "name": "empty-drillthrough",
+              "displayName": "Empty drillthrough",
+              "pageBinding": {
+                "name": "EmptyDetails",
+                "type": "Drillthrough",
+                "parameters": []
+              }
+            }
+            """);
+        WriteFile(
+            Path.Combine("Scoped.Report", "definition", "pages", "tooltip", "page.json"),
+            """
+            {
+              "name": "tooltip",
+              "displayName": "Product tooltip",
+              "type": "Tooltip",
+              "visibility": "HiddenInViewMode"
+            }
+            """);
+
+        var result = ProjectScanner.Scan(testRoot);
+
+        var report = Assert.Single(result.Reports);
+        Assert.Equal("https://example.test/report/1.0/schema.json", report.SchemaUri);
+        Assert.EndsWith(Path.Combine("Scoped.Report", "definition", "report.json"), report.DefinitionPath);
+        Assert.Equal(5, report.FilterCount);
+        Assert.Equal(5, result.FilterCount);
+        Assert.Equal(3, report.Filters.Count);
+        Assert.Equal("User", report.Filters[0].HowCreated);
+        Assert.Contains(report.FieldReferences, reference =>
+            reference.Table == "Data" && reference.ObjectName == "Region");
+
+        var drillthrough = report.Pages.Single(page => page.Name == "drillthrough");
+        Assert.Equal(2, drillthrough.FilterCount);
+        Assert.Equal("Drillthrough", drillthrough.PageBinding?.Type);
+        Assert.Equal(3, drillthrough.PageBinding?.ParameterCount);
+        Assert.EndsWith(Path.Combine("drillthrough", "page.json"), drillthrough.DefinitionPath);
+        Assert.Contains(drillthrough.FieldReferences, reference =>
+            reference.ObjectName == "Amount" && reference.UsageContext == UsageContexts.Drillthrough);
+        Assert.Equal("Tooltip", report.Pages.Single(page => page.Name == "tooltip").PageType);
+
+        Assert.Equal(
+            SemanticUsageStates.DirectlyUsed,
+            result.SemanticObjectUsages.Single(usage => usage.ObjectName == "Region").UsageState);
+        Assert.Equal(
+            SemanticUsageStates.DirectlyUsed,
+            result.SemanticObjectUsages.Single(usage => usage.ObjectName == "Product").UsageState);
+        Assert.Equal(
+            SemanticUsageStates.DirectlyUsed,
+            result.SemanticObjectUsages.Single(usage => usage.ObjectName == "Amount").UsageState);
+        Assert.Equal(
+            SemanticUsageStates.DirectlyUsed,
+            result.SemanticObjectUsages.Single(usage => usage.ObjectName == "Date").UsageState);
+        var regionEvidence = result.SemanticObjectUsages
+            .Single(usage => usage.ObjectName == "Region")
+            .DirectReportReferences;
+        Assert.Contains(regionEvidence, evidence =>
+            evidence.Page is null &&
+            evidence.Visual is null &&
+            evidence.ArtifactPath.EndsWith(
+                Path.Combine("Scoped.Report", "definition", "report.json"),
+                StringComparison.Ordinal));
+
+        Assert.Contains(result.UnresolvedSemanticReferences, reference =>
+            reference.ObjectName == "Missing Report" &&
+            reference.Page is null &&
+            reference.Visual is null &&
+            reference.ArtifactPath.EndsWith(
+                Path.Combine("Scoped.Report", "definition", "report.json"),
+                StringComparison.Ordinal));
+        Assert.Contains(result.UnresolvedSemanticReferences, reference =>
+            reference.ObjectName == "Missing Page" &&
+            reference.Page == "drillthrough" &&
+            reference.Visual is null);
+        Assert.DoesNotContain(result.UnresolvedSemanticReferences, reference =>
+            reference.ObjectName == "Month");
+        Assert.Contains(result.Findings, finding =>
+            finding.RuleId == "PBI-MODEL-001" &&
+            finding.ObjectName == "Missing Report" &&
+            finding.Page is null);
+        Assert.Single(result.Findings, finding => finding.RuleId == "PBI-NAV-009");
+        Assert.Single(result.Findings, finding => finding.RuleId == "PBI-NAV-010");
+        Assert.Single(result.Findings, finding => finding.RuleId == "PBI-NAV-011");
+        var backFinding = Assert.Single(result.Findings, finding => finding.RuleId == "PBI-ACCESS-005");
+        Assert.Equal("empty-drillthrough", backFinding.Page);
+        Assert.Equal(AssessmentTypes.ReviewRequired, backFinding.AssessmentType);
     }
 
     public void Dispose()

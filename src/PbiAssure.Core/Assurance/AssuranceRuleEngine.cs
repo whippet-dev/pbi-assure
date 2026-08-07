@@ -13,6 +13,8 @@ internal static class AssuranceRuleEngine
         new VisualExcludedFromTabOrderRule(),
         new DisabledVisualTitleRule(),
         new NavigationAssuranceRule(),
+        new DrillthroughPageRule(),
+        new MissingDrillthroughBackActionRule(),
     ];
 
     public static AssuranceFinding[] Evaluate(ProjectInventory inventory)

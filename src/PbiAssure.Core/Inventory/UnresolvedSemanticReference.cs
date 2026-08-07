@@ -2,8 +2,9 @@ namespace PbiAssure.Core.Inventory;
 
 public sealed record UnresolvedSemanticReference(
     string Report,
-    string Page,
-    string Visual,
+    string? Page,
+    string? Visual,
+    string ArtifactPath,
     string Table,
     string ObjectName,
     string ObjectType,
