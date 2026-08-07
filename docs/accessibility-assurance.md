@@ -19,11 +19,13 @@ Severity and certainty are separate properties. A potentially severe screen-read
 
 ## Candidate automated rules
 
-- Meaningful visual, image, shape, or text object has no alternative text.
+The first implemented accessibility rules cover alternative text, duplicate tab positions, potentially meaningful visuals excluded from tab order, and explicitly disabled data-visual titles. Their stable identifiers and applicability boundaries are documented in the [rule catalog](rule-catalog.md).
+
+Further candidate rules include:
+
 - Decorative object is included in tab order.
-- Interactive or meaningful object is missing from tab order.
 - Tab order appears inconsistent with visual reading order.
-- Visual title is missing, hidden, duplicated, or uninformative.
+- Visual title is duplicated or uninformative.
 - Static foreground and background colours do not meet the configured contrast threshold.
 - A chart appears to use colour as its only series differentiator.
 - Important content appears to be available only through a tooltip.
@@ -49,7 +51,7 @@ The model itself is not assigned WCAG conformance. A related usability ruleset c
 
 ## Evidence requirements
 
-Every rule must eventually declare:
+Every implemented rule declares:
 
 - A stable rule ID.
 - The rule-pack version.
@@ -58,4 +60,4 @@ Every rule must eventually declare:
 - Why the finding matters.
 - Remediation guidance.
 - Authoritative reference material.
-- Whether manual confirmation remains necessary.
+- Whether the result is a detected finding or requires manual confirmation.

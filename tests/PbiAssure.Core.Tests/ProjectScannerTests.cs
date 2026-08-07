@@ -24,7 +24,7 @@ public sealed class ProjectScannerTests : IDisposable
 
         var result = ProjectScanner.Scan(testRoot);
 
-        Assert.Equal("0.4", result.SchemaVersion);
+        Assert.Equal("0.5", result.SchemaVersion);
         Assert.Equal(1, result.ReportCount);
         Assert.Equal(1, result.SemanticModelCount);
         Assert.Contains(result.Artifacts, artifact =>
@@ -524,6 +524,189 @@ public sealed class ProjectScannerTests : IDisposable
         Assert.Equal(SemanticDependencyKinds.Dax, unresolved.DependencyKind);
         Assert.Equal(tablePath, unresolved.EvidencePath);
         Assert.Contains("was found", unresolved.Reason, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public void ScanProducesVersionedAccessibilityCompatibilityAndIntegrityFindings()
+    {
+        WriteFile(
+            Path.Combine("Model.SemanticModel", "definition", "tables", "Data.tmdl"),
+            """
+            table Data
+                measure Value = 1
+
+                partition Data = m
+                    mode: import
+                    source = #table({}, {})
+            """);
+        WriteFile(
+            Path.Combine("Model.Report", "definition", "pages", "pages.json"),
+            """
+            {
+              "pageOrder": ["page-1"],
+              "activePageName": "page-1"
+            }
+            """);
+        WriteFile(
+            Path.Combine("Model.Report", "definition", "pages", "page-1", "page.json"),
+            """
+            {
+              "name": "page-1",
+              "displayName": "Overview",
+              "height": 720,
+              "width": 1280
+            }
+            """);
+        WriteFile(
+            Path.Combine("Model.Report", "definition", "pages", "page-1", "visuals", "qna", "visual.json"),
+            """
+            {
+              "name": "qna",
+              "position": { "tabOrder": 1000 },
+              "visual": {
+                "visualType": "qnaVisual",
+                "query": {
+                  "queryState": {
+                    "values": {
+                      "projections": [
+                        {
+                          "field": {
+                            "Measure": {
+                              "Expression": { "SourceRef": { "Entity": "Data" } },
+                              "Property": "Missing"
+                            }
+                          }
+                        }
+                      ]
+                    }
+                  }
+                },
+                "visualContainerObjects": {
+                  "general": [
+                    {
+                      "properties": {
+                        "altText": {
+                          "expr": { "Literal": { "Value": "'Ask questions about the data'" } }
+                        }
+                      }
+                    }
+                  ],
+                  "title": [
+                    {
+                      "properties": {
+                        "show": { "expr": { "Literal": { "Value": "false" } } },
+                        "text": {
+                          "expr": {
+                            "Measure": {
+                              "Expression": { "SourceRef": { "Entity": "Data" } },
+                              "Property": "Value"
+                            }
+                          }
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+            """);
+        WriteFile(
+            Path.Combine("Model.Report", "definition", "pages", "page-1", "visuals", "card", "visual.json"),
+            """
+            {
+              "name": "card",
+              "position": { "tabOrder": 1000 },
+              "visual": {
+                "visualType": "card",
+                "visualContainerObjects": {
+                  "title": [
+                    {
+                      "properties": {
+                        "show": { "expr": { "Literal": { "Value": "false" } } }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+            """);
+        WriteFile(
+            Path.Combine("Model.Report", "definition", "pages", "page-1", "visuals", "slicer", "visual.json"),
+            """
+            {
+              "name": "slicer",
+              "position": {},
+              "visual": { "visualType": "slicer" }
+            }
+            """);
+        WriteFile(
+            Path.Combine("Model.Report", "definition", "pages", "page-1", "visuals", "image", "visual.json"),
+            """
+            {
+              "name": "image",
+              "position": {},
+              "visual": {
+                "visualType": "image",
+                "visualContainerObjects": {
+                  "general": [
+                    {
+                      "properties": {
+                        "altText": {
+                          "expr": {
+                            "Measure": {
+                              "Expression": { "SourceRef": { "Entity": "Data" } },
+                              "Property": "Value"
+                            }
+                          }
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+            """);
+
+        var result = ProjectScanner.Scan(testRoot);
+
+        var qna = result.Reports[0].Pages[0].Visuals.Single(visual => visual.Name == "qna");
+        Assert.True(qna.Accessibility.HasAltText);
+        Assert.Equal("Ask questions about the data", qna.Accessibility.AltText);
+        Assert.False(qna.Accessibility.AltTextIsDynamic);
+        Assert.False(qna.Accessibility.TitleIsVisible);
+        Assert.True(qna.Accessibility.HasConfiguredTitleText);
+        Assert.True(qna.Accessibility.TitleTextIsDynamic);
+        var image = result.Reports[0].Pages[0].Visuals.Single(visual => visual.Name == "image");
+        Assert.True(image.Accessibility.HasAltText);
+        Assert.True(image.Accessibility.AltTextIsDynamic);
+
+        Assert.Equal(7, result.FindingCount);
+        Assert.Equal(1, result.ErrorFindingCount);
+        Assert.Equal(3, result.WarningFindingCount);
+        Assert.Equal(3, result.InformationFindingCount);
+        Assert.Equal(3, result.ReviewRequiredCount);
+        Assert.Contains(result.Findings, finding =>
+            finding.RuleId == "PBI-COMPAT-001" && finding.Visual == "qna");
+        Assert.Contains(result.Findings, finding =>
+            finding.RuleId == "PBI-MODEL-001" &&
+            finding.Visual == "qna" &&
+            finding.Table == "Data" &&
+            finding.ObjectName == "Missing");
+        Assert.Contains(result.Findings, finding =>
+            finding.RuleId == "PBI-ACCESS-001" && finding.Visual == "card");
+        Assert.DoesNotContain(result.Findings, finding =>
+            finding.RuleId == "PBI-ACCESS-001" && finding.Visual == "qna");
+        Assert.Contains(result.Findings, finding =>
+            finding.RuleId == "PBI-ACCESS-002" && finding.Page == "page-1");
+        Assert.Contains(result.Findings, finding =>
+            finding.RuleId == "PBI-ACCESS-003" && finding.Visual == "slicer");
+        Assert.DoesNotContain(result.Findings, finding =>
+            finding.RuleId == "PBI-ACCESS-003" && finding.Visual == "image");
+        Assert.Equal(2, result.Findings.Count(finding => finding.RuleId == "PBI-ACCESS-004"));
+        Assert.All(result.Findings, finding => Assert.Equal("1.0.0", finding.RuleVersion));
+        Assert.All(
+            result.Findings.Where(finding => finding.RuleId is "PBI-ACCESS-003" or "PBI-ACCESS-004"),
+            finding => Assert.Equal(AssessmentTypes.ReviewRequired, finding.AssessmentType));
     }
 
     public void Dispose()

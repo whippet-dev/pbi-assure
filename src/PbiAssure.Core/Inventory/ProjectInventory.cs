@@ -11,7 +11,8 @@ public sealed record ProjectInventory(
     IReadOnlyList<SemanticTableUsage> SemanticTableUsages,
     IReadOnlyList<SemanticDependencyEdge> SemanticDependencies,
     IReadOnlyList<UnresolvedSemanticReference> UnresolvedSemanticReferences,
-    IReadOnlyList<UnresolvedSemanticDependency> UnresolvedSemanticDependencies)
+    IReadOnlyList<UnresolvedSemanticDependency> UnresolvedSemanticDependencies,
+    IReadOnlyList<AssuranceFinding> Findings)
 {
     public int ReportCount => Artifacts.Count(artifact => artifact.Kind == ArtifactKinds.Report);
 
@@ -58,4 +59,14 @@ public sealed record ProjectInventory(
 
     public int ApparentlyUnusedTableCount => SemanticTableUsages
         .Count(usage => usage.UsageState == SemanticUsageStates.ApparentlyUnused);
+
+    public int FindingCount => Findings.Count;
+
+    public int ErrorFindingCount => Findings.Count(finding => finding.Severity == FindingSeverities.Error);
+
+    public int WarningFindingCount => Findings.Count(finding => finding.Severity == FindingSeverities.Warning);
+
+    public int InformationFindingCount => Findings.Count(finding => finding.Severity == FindingSeverities.Information);
+
+    public int ReviewRequiredCount => Findings.Count(finding => finding.AssessmentType == AssessmentTypes.ReviewRequired);
 }

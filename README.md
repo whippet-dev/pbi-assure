@@ -6,6 +6,8 @@ The repository is at foundation stage. The executable can discover the report an
 
 The graph classifies semantic objects as directly used, indirectly used, structurally required, used only by an unused branch, or apparently unused within the analysed scope. Power Query M dependencies and consumers outside the selected PBIP project are not yet analysed, so “apparently unused” does not mean “safe to delete.” See [usage classification](docs/usage-classification.md) for the exact contract.
 
+The scanner also emits versioned assurance findings with severities, evidence paths, remediation guidance, assessment type, and authoritative references. The initial rules cover unresolved report bindings, Power BI Q&A retirement, alternative text, duplicate or excluded tab-order entries, and explicitly disabled data-visual titles. See the [rule catalog](docs/rule-catalog.md).
+
 ## Why a command-line tool first?
 
 The analysis engine needs to work in several environments: on a developer workstation, in a build pipeline, and eventually behind a desktop interface. Starting with a command-line interface keeps the behaviour testable and prevents user-interface decisions from becoming coupled to the analysis logic.
@@ -48,7 +50,7 @@ tests/                    Automated tests using synthetic files
 docs/                     Architecture, assurance, and security decisions
 ```
 
-Start with [the architecture overview](docs/architecture.md) and [the contributor guide](CONTRIBUTING.md).
+Start with [the architecture overview](docs/architecture.md), [the rule catalog](docs/rule-catalog.md), and [the contributor guide](CONTRIBUTING.md).
 
 ## Current boundaries
 

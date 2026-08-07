@@ -124,6 +124,7 @@ internal static class PbirReportParser
                 Width: GetDouble(position, "width"),
                 Height: GetDouble(position, "height"),
                 TabOrder: GetInteger(position, "tabOrder")),
+            Accessibility: PbirVisualAccessibilityParser.Parse(visualElement),
             FieldReferences: PbirFieldReferenceExtractor.Extract(visualRoot));
     }
 

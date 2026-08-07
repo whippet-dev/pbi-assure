@@ -1,3 +1,4 @@
+using PbiAssure.Core.Assurance;
 using PbiAssure.Core.Inventory;
 
 namespace PbiAssure.Core.Scanning;
@@ -33,8 +34,8 @@ public static class ProjectScanner
             SemanticUsageReconciler.Reconcile(semanticModels, reports);
         var dependencyAnalysis = SemanticDependencyAnalyzer.Analyze(semanticModels, semanticObjectUsages);
 
-        return new ProjectInventory(
-            SchemaVersion: "0.4",
+        var inventory = new ProjectInventory(
+            SchemaVersion: "0.5",
             RootPath: fullRootPath,
             ScannedAtUtc: DateTimeOffset.UtcNow,
             Artifacts: artifacts
@@ -47,7 +48,10 @@ public static class ProjectScanner
             SemanticTableUsages: dependencyAnalysis.TableUsages,
             SemanticDependencies: dependencyAnalysis.Dependencies,
             UnresolvedSemanticReferences: unresolvedSemanticReferences,
-            UnresolvedSemanticDependencies: dependencyAnalysis.UnresolvedDependencies);
+            UnresolvedSemanticDependencies: dependencyAnalysis.UnresolvedDependencies,
+            Findings: []);
+
+        return inventory with { Findings = AssuranceRuleEngine.Evaluate(inventory) };
     }
 
     private static void AddProjectFiles(string rootPath, List<ArtifactInventory> artifacts)
