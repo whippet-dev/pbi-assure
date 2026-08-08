@@ -17,6 +17,7 @@ public static class HtmlReportRenderer
         AppendScope(html);
         AppendFindings(html, inventory);
         AppendReportInventory(html, inventory);
+        AppendPowerQueryLineage(html, inventory);
         AppendSemanticUsage(html, inventory);
         AppendDocumentEnd(html, inventory);
         return html.ToString();
@@ -55,6 +56,7 @@ public static class HtmlReportRenderer
         html.AppendLine("          <li><a href=\"#summary\">Summary</a></li>");
         html.AppendLine("          <li><a href=\"#findings\">Findings</a></li>");
         html.AppendLine("          <li><a href=\"#reports\">Report pages</a></li>");
+        html.AppendLine("          <li><a href=\"#power-query\">Power Query</a></li>");
         html.AppendLine("          <li><a href=\"#semantic-usage\">Semantic model</a></li>");
         html.AppendLine("        </ul>");
         html.AppendLine("      </nav>");
@@ -80,6 +82,10 @@ public static class HtmlReportRenderer
             AppendMetric(html, "Report measures", inventory.ReportMeasureCount);
         }
         AppendMetric(html, "Semantic objects", inventory.SemanticObjectUsages.Count);
+        if (inventory.PowerQueryCount > 0)
+        {
+            AppendMetric(html, "Power Query sources", inventory.PowerQueryCount);
+        }
         AppendMetric(html, "Directly used", inventory.DirectlyReferencedSemanticObjectCount);
         AppendMetric(html, "Apparently unused", inventory.ApparentlyUnusedSemanticObjectCount, "metric-unused");
         html.AppendLine("      </dl>");
@@ -93,12 +99,84 @@ public static class HtmlReportRenderer
         html.AppendLine("      <h2 id=\"scope-heading\">Important interpretation boundaries</h2>");
         html.AppendLine("      <ul>");
         html.AppendLine("        <li><strong>Apparently unused</strong> means no usage was found in the analysed scope; it is not permission to delete an object.</li>");
-        html.AppendLine("        <li>Bookmark-captured semantic state, Power Query M lineage, and external consumers are not yet complete dependency roots.</li>");
+        html.AppendLine("        <li>Power Query lineage follows static references between known table queries and named expressions. Dynamically constructed references, data-source internals, bookmark-captured semantic state, and external consumers remain analysis boundaries.</li>");
         html.AppendLine("        <li>Accessibility findings support manual WCAG and assistive-technology testing; they do not certify conformance.</li>");
         html.AppendLine("        <li>PBI Assure performs read-only analysis of the selected Power BI project.</li>");
         html.AppendLine("      </ul>");
         html.AppendLine("    </section>");
     }
+
+    private static void AppendPowerQueryLineage(StringBuilder html, ProjectInventory inventory)
+    {
+        html.AppendLine("    <section id=\"power-query\" aria-labelledby=\"power-query-heading\">");
+        html.AppendLine("      <h2 id=\"power-query-heading\">Power Query lineage</h2>");
+        html.AppendLine("      <p>Expand a query to see whether it loads a model table, supports another query, and which known queries it uses.</p>");
+        if (inventory.PowerQueryUsages.Count == 0)
+        {
+            html.AppendLine("      <p>No Power Query M partitions or named expressions were found.</p>");
+            html.AppendLine("    </section>");
+            return;
+        }
+
+        foreach (var modelGroup in inventory.PowerQueryUsages.GroupBy(usage => usage.SemanticModel))
+        {
+            html.Append("      <h3>").Append(Encode(modelGroup.Key)).AppendLine("</h3>");
+            html.AppendLine("      <div class=\"semantic-table-list\">");
+            foreach (var usage in modelGroup.OrderBy(item => PowerQueryUsageOrder(item.UsageState))
+                         .ThenBy(item => item.QueryName, StringComparer.OrdinalIgnoreCase))
+            {
+                var label = usage.UsageState switch
+                {
+                    PowerQueryUsageStates.LoadedToModel => "Loads into the model",
+                    PowerQueryUsageStates.SupportingQuery => "Supports a loaded query",
+                    _ => "No use found",
+                };
+                html.Append("        <details class=\"semantic-table\"><summary><span class=\"summary-copy\"><strong>")
+                    .Append(Encode(usage.QueryName)).Append("</strong><span>").Append(Encode(label));
+                if (usage.Table is not null)
+                {
+                    html.Append(" · table ").Append(Encode(usage.Table));
+                }
+                html.Append("</span></span><span class=\"badge ").Append(UsageClass(
+                        usage.UsageState == PowerQueryUsageStates.ApparentlyUnused
+                            ? SemanticUsageStates.ApparentlyUnused
+                            : usage.UsageState == PowerQueryUsageStates.LoadedToModel
+                                ? SemanticUsageStates.DirectlyUsed
+                                : SemanticUsageStates.IndirectlyUsed))
+                    .Append("\">").Append(Encode(label)).AppendLine("</span></summary>");
+                html.AppendLine("          <dl class=\"facts\">");
+                AppendFact(html, "Type", usage.SourceKind == PowerQuerySourceKinds.TablePartition
+                    ? "Table load" : "Reusable query");
+                var targets = inventory.PowerQueryDependencies.Where(edge =>
+                        edge.SemanticModel == usage.SemanticModel &&
+                        edge.FromQueryName == usage.QueryName &&
+                        edge.FromSourceKind == usage.SourceKind &&
+                        edge.FromPartition == usage.Partition)
+                    .Select(edge => edge.ToQueryName).Distinct(StringComparer.OrdinalIgnoreCase).ToArray();
+                AppendFact(html, "Uses", targets.Length == 0 ? "No known query dependencies" : string.Join(", ", targets));
+                AppendFact(html, "Used by", usage.ReferencedBy.Count == 0
+                    ? "No known queries" : string.Join(", ", usage.ReferencedBy.Select(item => item.FromQueryName).Distinct()));
+                if (usage.HasDynamicReferences)
+                {
+                    AppendFact(html, "Manual review", "This expression constructs references dynamically, so some dependencies may not be visible here.");
+                }
+                html.AppendLine("          </dl>");
+                html.AppendLine("          <details class=\"technical-details\"><summary>View M expression</summary><pre><code>");
+                html.Append(Encode(usage.Expression));
+                html.AppendLine("</code></pre></details>");
+                html.AppendLine("        </details>");
+            }
+            html.AppendLine("      </div>");
+        }
+        html.AppendLine("    </section>");
+    }
+
+    private static int PowerQueryUsageOrder(string state) => state switch
+    {
+        PowerQueryUsageStates.LoadedToModel => 0,
+        PowerQueryUsageStates.SupportingQuery => 1,
+        _ => 2,
+    };
 
     private static void AppendFindings(StringBuilder html, ProjectInventory inventory)
     {

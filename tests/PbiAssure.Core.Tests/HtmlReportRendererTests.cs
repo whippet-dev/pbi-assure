@@ -71,7 +71,7 @@ public sealed class HtmlReportRendererTests : IDisposable
 
         Assert.Contains("Assurance summary", html, StringComparison.Ordinal);
         Assert.Contains("Important interpretation boundaries", html, StringComparison.Ordinal);
-        Assert.Contains("Bookmark-captured semantic state", html, StringComparison.Ordinal);
+        Assert.Contains("bookmark-captured semantic state", html, StringComparison.Ordinal);
         Assert.Contains("Report pages", html, StringComparison.Ordinal);
         Assert.Contains("Uses semantic model Assurance; its definition is available in this project.", html, StringComparison.Ordinal);
         Assert.Contains("Report calculations", html, StringComparison.Ordinal);
@@ -79,6 +79,10 @@ public sealed class HtmlReportRendererTests : IDisposable
         Assert.Contains("not placed directly on the report", html, StringComparison.Ordinal);
         Assert.Contains("Sales[Total Sales] (model measure)", html, StringComparison.Ordinal);
         Assert.Contains("Semantic model", html, StringComparison.Ordinal);
+        Assert.Contains("Power Query lineage", html, StringComparison.Ordinal);
+        Assert.Contains("Loads into the model", html, StringComparison.Ordinal);
+        Assert.Contains("Supports a loaded query", html, StringComparison.Ordinal);
+        Assert.Contains("View M expression", html, StringComparison.Ordinal);
         Assert.Contains("Field parameter", html, StringComparison.Ordinal);
         Assert.Contains("Lets report readers switch between 1 field.", html, StringComparison.Ordinal);
         Assert.Contains("Sales[Unused Label]", html, StringComparison.Ordinal);
@@ -264,6 +268,11 @@ public sealed class HtmlReportRendererTests : IDisposable
             """);
         WriteFile(Path.Combine("Assurance.SemanticModel", "definition.pbism"), "{}");
         WriteFile(
+            Path.Combine("Assurance.SemanticModel", "definition", "expressions.tmdl"),
+            """
+            expression Staging = #table({}, {})
+            """);
+        WriteFile(
             Path.Combine("Assurance.SemanticModel", "definition", "tables", "Sales.tmdl"),
             """
             table Sales
@@ -277,6 +286,10 @@ public sealed class HtmlReportRendererTests : IDisposable
                     dataType: string
 
                 measure 'Total Sales' = SUM(Sales[Amount])
+
+                partition Sales = m
+                    mode: import
+                    source = Staging
             """);
         WriteFile(
             Path.Combine("Assurance.SemanticModel", "definition", "tables", "Label Selector.tmdl"),

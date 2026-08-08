@@ -24,7 +24,7 @@ public sealed class ProjectScannerTests : IDisposable
 
         var result = ProjectScanner.Scan(testRoot);
 
-        Assert.Equal("0.12", result.SchemaVersion);
+        Assert.Equal("0.13", result.SchemaVersion);
         Assert.Equal(1, result.ReportCount);
         Assert.Equal(1, result.SemanticModelCount);
         Assert.Contains(result.Artifacts, artifact =>
@@ -1645,6 +1645,65 @@ public sealed class ProjectScannerTests : IDisposable
             edge.DependencyKind == SemanticDependencyKinds.ReportMeasure));
         Assert.Equal(SemanticUsageStates.IndirectlyUsed, result.SemanticObjectUsages.Single(usage =>
             usage.ObjectType == SemanticObjectTypes.Measure && usage.ObjectName == "Base Sales").UsageState);
+    }
+
+    [Fact]
+    public void ScanBuildsPowerQueryLineageAcrossPartitionsAndNamedExpressions()
+    {
+        WriteFile(Path.Combine("Queries.SemanticModel", "definition.pbism"), "{}");
+        WriteFile(Path.Combine("Queries.SemanticModel", "definition", "expressions.tmdl"),
+            """
+            expression Staging =
+                let
+                    Source = #table({}, {})
+                in
+                    Source
+
+            expression 'Shared Transform' =
+                let
+                    Source = Staging
+                in
+                    Source
+
+            expression Unused = "Staging is text, not a query reference"
+
+            expression Dynamic = Expression.Evaluate("Staging", #shared)
+            """);
+        WriteFile(Path.Combine("Queries.SemanticModel", "definition", "tables", "Loaded.tmdl"),
+            """
+            table Loaded
+                column Value
+                    dataType: string
+                partition Loaded = m
+                    mode: import
+                    source =
+                        let
+                            Source = #"Shared Transform"
+                        in
+                            Source
+            """);
+
+        var result = ProjectScanner.Scan(testRoot);
+
+        var model = Assert.Single(result.SemanticModels);
+        Assert.Equal(4, model.NamedExpressionCount);
+        Assert.Equal(5, result.PowerQueryCount);
+        Assert.Equal(2, result.PowerQueryDependencies.Count);
+        Assert.Contains(result.PowerQueryDependencies, edge =>
+            edge.FromQueryName == "Loaded" && edge.ToQueryName == "Shared Transform");
+        Assert.Contains(result.PowerQueryDependencies, edge =>
+            edge.FromQueryName == "Shared Transform" && edge.ToQueryName == "Staging");
+        Assert.Equal(PowerQueryUsageStates.LoadedToModel,
+            result.PowerQueryUsages.Single(usage => usage.QueryName == "Loaded").UsageState);
+        Assert.Equal(PowerQueryUsageStates.SupportingQuery,
+            result.PowerQueryUsages.Single(usage => usage.QueryName == "Staging").UsageState);
+        Assert.Equal(PowerQueryUsageStates.ApparentlyUnused,
+            result.PowerQueryUsages.Single(usage => usage.QueryName == "Unused").UsageState);
+        Assert.True(result.PowerQueryUsages.Single(usage => usage.QueryName == "Dynamic").HasDynamicReferences);
+        Assert.Contains(result.Findings, finding =>
+            finding.RuleId == "PBI-QUERY-001" && finding.ObjectName == "Dynamic");
+        Assert.Contains(result.Findings, finding =>
+            finding.RuleId == "PBI-QUERY-002" && finding.ObjectName == "Unused");
     }
 
     public void Dispose()

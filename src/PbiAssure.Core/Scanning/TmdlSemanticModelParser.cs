@@ -27,12 +27,17 @@ internal static class TmdlSemanticModelParser
         var relationships = File.Exists(relationshipsPath)
             ? ParseRelationships(relationshipsPath)
             : [];
+        var expressionsPath = Path.Combine(definitionDirectory, "expressions.tmdl");
+        var namedExpressions = File.Exists(expressionsPath)
+            ? ParseNamedExpressions(rootPath, expressionsPath)
+            : [];
 
         return new SemanticModelInventory(
             Name: name,
             RelativePath: Path.GetRelativePath(rootPath, semanticModelDirectory),
             Tables: tables,
-            Relationships: relationships);
+            Relationships: relationships,
+            NamedExpressions: namedExpressions);
     }
 
     private static SemanticTableInventory ParseTable(string rootPath, string path)
@@ -97,7 +102,8 @@ internal static class TmdlSemanticModelParser
                     Name: partitionName,
                     SourceType: sourceType ?? string.Empty,
                     Mode: FindProperty(lines, index, endIndex, "mode"),
-                    Expression: string.Equals(sourceType, "calculated", StringComparison.OrdinalIgnoreCase)
+                    Expression: string.Equals(sourceType, "calculated", StringComparison.OrdinalIgnoreCase) ||
+                                string.Equals(sourceType, "m", StringComparison.OrdinalIgnoreCase)
                         ? ReadAssignmentExpression(lines, index, endIndex, "source")
                         : null));
             }
@@ -125,6 +131,29 @@ internal static class TmdlSemanticModelParser
             Partitions: partitions,
             CalculationGroup: calculationGroup,
             FieldParameter: fieldParameter);
+    }
+
+    private static SemanticNamedExpressionInventory[] ParseNamedExpressions(string rootPath, string path)
+    {
+        var lines = ReadLines(path);
+        var expressions = new List<SemanticNamedExpressionInventory>();
+        for (var index = 0; index < lines.Length; index++)
+        {
+            if (!TryParseDeclaration(lines[index].Trimmed, "expression", out var name, out var inlineExpression))
+            {
+                continue;
+            }
+
+            var endIndex = FindBlockEnd(lines, index);
+            expressions.Add(new SemanticNamedExpressionInventory(
+                Name: name,
+                Expression: ReadExpression(lines, index, endIndex, inlineExpression) ?? string.Empty,
+                Kind: FindProperty(lines, index, endIndex, "kind"),
+                RelativePath: Path.GetRelativePath(rootPath, path)));
+            index = endIndex - 1;
+        }
+
+        return expressions.OrderBy(expression => expression.Name, StringComparer.OrdinalIgnoreCase).ToArray();
     }
 
     private static SemanticCalculationGroupInventory ParseCalculationGroup(

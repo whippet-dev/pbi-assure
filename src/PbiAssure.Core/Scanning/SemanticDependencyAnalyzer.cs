@@ -277,7 +277,9 @@ internal static class SemanticDependencyAnalyzer
             AnalyzeCalculationGroup(model, table, table.CalculationGroup, lookup, dependencies, unresolved);
         }
 
-        foreach (var partition in table.Partitions.Where(partition => partition.Expression is not null))
+        foreach (var partition in table.Partitions.Where(partition =>
+                     partition.Expression is not null &&
+                     string.Equals(partition.SourceType, "calculated", StringComparison.OrdinalIgnoreCase)))
         {
             if (string.Equals(
                     partition.Expression,

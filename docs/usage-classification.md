@@ -15,6 +15,8 @@ PBI Assure classifies semantic-model objects by traversing an evidence-backed de
 
 Every edge records its source and target identities, dependency kind, source file, and the relevant expression or reference text.
 
+Power Query uses a separate lineage graph because query execution dependencies are not the same as report-facing semantic-object usage. Every M table partition is classified as `LoadedToModel`. A named expression reachable from a loaded partition through static query references is `SupportingQuery`; an unreachable named expression is `ApparentlyUnused`. Known query names inside text literals, comments, or local step declarations are excluded. Expressions using dynamic mechanisms such as `Expression.Evaluate`, `#shared`, or `Record.Field` are marked for manual review.
+
 ## State precedence
 
 An object receives the first applicable state in this order:
@@ -39,6 +41,6 @@ An unresolved report reference or semantic dependency is retained as a separate 
 
 ## Current limits
 
-The graph does not yet include bookmark-captured semantic state, Power Query M dependencies, external tools, thin reports outside the selected project, XMLA clients, Analyze in Excel, or other external consumers. Dynamic references assembled as text can also be impossible to prove statically.
+The graphs do not yet include bookmark-captured semantic state, full connector- and data-source-level lineage, external tools, thin reports outside the selected project, XMLA clients, Analyze in Excel, or other external consumers. Dynamic references assembled as text can also be impossible to prove statically; recognised dynamic M mechanisms are flagged but cannot be resolved automatically.
 
 For those reasons, `ApparentlyUnused` means “no usage found within the analysed scope.” It is a review candidate, never automatic permission to delete an object.

@@ -4,7 +4,8 @@ public sealed record SemanticModelInventory(
     string Name,
     string RelativePath,
     IReadOnlyList<SemanticTableInventory> Tables,
-    IReadOnlyList<SemanticRelationshipInventory> Relationships)
+    IReadOnlyList<SemanticRelationshipInventory> Relationships,
+    IReadOnlyList<SemanticNamedExpressionInventory> NamedExpressions)
 {
     public int TableCount => Tables.Count;
 
@@ -21,6 +22,8 @@ public sealed record SemanticModelInventory(
     public int PartitionCount => Tables.Sum(table => table.PartitionCount);
 
     public int RelationshipCount => Relationships.Count;
+
+    public int NamedExpressionCount => NamedExpressions.Count;
 
     public int CalculationGroupCount => Tables.Count(table => table.IsCalculationGroup);
 

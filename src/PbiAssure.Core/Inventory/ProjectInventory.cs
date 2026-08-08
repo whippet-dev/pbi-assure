@@ -10,6 +10,8 @@ public sealed record ProjectInventory(
     IReadOnlyList<SemanticObjectUsage> SemanticObjectUsages,
     IReadOnlyList<SemanticTableUsage> SemanticTableUsages,
     IReadOnlyList<SemanticDependencyEdge> SemanticDependencies,
+    IReadOnlyList<PowerQueryUsage> PowerQueryUsages,
+    IReadOnlyList<PowerQueryDependencyEdge> PowerQueryDependencies,
     IReadOnlyList<UnresolvedSemanticReference> UnresolvedSemanticReferences,
     IReadOnlyList<UnresolvedSemanticDependency> UnresolvedSemanticDependencies,
     IReadOnlyList<AssuranceFinding> Findings)
@@ -51,6 +53,11 @@ public sealed record ProjectInventory(
     public int ReportMeasureCount => Reports.Sum(report => report.ReportMeasureCount);
 
     public int SemanticRelationshipCount => SemanticModels.Sum(model => model.RelationshipCount);
+
+    public int PowerQueryCount => PowerQueryUsages.Count;
+
+    public int ApparentlyUnusedPowerQueryCount => PowerQueryUsages.Count(usage =>
+        usage.UsageState == PowerQueryUsageStates.ApparentlyUnused);
 
     public int DirectlyReferencedSemanticObjectCount => SemanticObjectUsages
         .Count(usage => usage.IsDirectlyReferencedByReport);
