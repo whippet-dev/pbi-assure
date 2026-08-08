@@ -13,9 +13,7 @@ internal static class SemanticUsageReconciler
 
         foreach (var model in semanticModels)
         {
-            var matchingReports = reports
-                .Where(report => string.Equals(report.Name, model.Name, StringComparison.OrdinalIgnoreCase))
-                .ToArray();
+            var matchingReports = ReportModelBinder.FindReports(model, reports, semanticModels);
             var evidenceByIdentity = ReadEvidence(matchingReports);
 
             foreach (var semanticObject in EnumerateObjects(model))
@@ -48,10 +46,11 @@ internal static class SemanticUsageReconciler
         var unresolved = new List<UnresolvedSemanticReference>();
         foreach (var report in reports)
         {
-            var matchingModelNames = semanticModels
-                .Where(model => string.Equals(model.Name, report.Name, StringComparison.OrdinalIgnoreCase))
-                .Select(model => model.Name)
-                .ToArray();
+            var matchingModel = ReportModelBinder.FindLocalModel(report, semanticModels);
+            if (matchingModel is null)
+            {
+                continue;
+            }
 
             foreach (var context in EnumerateReferences(report))
             {
@@ -61,14 +60,14 @@ internal static class SemanticUsageReconciler
                 }
 
                 var identity = FieldIdentity.Create(context.Reference);
-                if (matchingModelNames.Any(modelName =>
-                        resolvedEvidence.Contains(string.Join('\u001f', modelName, identity))))
+                if (resolvedEvidence.Contains(string.Join('\u001f', matchingModel.Name, identity)))
                 {
                     continue;
                 }
 
                 unresolved.Add(new UnresolvedSemanticReference(
                     Report: report.Name,
+                    SemanticModel: matchingModel.Name,
                     Page: context.Page,
                     Visual: context.Visual,
                     ArtifactPath: context.ArtifactPath,

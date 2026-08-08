@@ -56,8 +56,7 @@ internal static class SemanticDependencyAnalyzer
     {
         foreach (var report in reports)
         {
-            var model = semanticModels.FirstOrDefault(candidate =>
-                string.Equals(candidate.Name, report.Name, StringComparison.OrdinalIgnoreCase));
+            var model = ReportModelBinder.FindLocalModel(report, semanticModels);
             if (model is null || report.ReportMeasures.Count == 0)
             {
                 continue;

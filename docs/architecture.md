@@ -20,7 +20,7 @@ Each stage has one responsibility:
 
 1. **Discovery** locates supported files and records their format versions.
 2. **Parsing** extracts facts without judging them, including pages, visuals, actions, bookmarks, semantic objects, and expressions.
-3. **Normalisation** gives report and model objects stable internal identities.
+3. **Normalisation** gives report and model objects stable internal identities and binds reports to local models using their explicit PBIR dataset references.
 4. **Dependency analysis** connects model objects, expressions, filters, pages, and visuals.
 5. **Rules** create findings from facts and graph relationships.
 6. **Presentation** renders the same result for people or build pipelines.
@@ -48,6 +48,8 @@ Renders normalized inventories into accessible, human-readable outputs. It depen
 These should be introduced only when their boundaries are real; empty architectural layers add maintenance cost.
 
 ## Dependency graph
+
+Report-to-model binding happens before field reconciliation. An explicit `byPath` reference is matched by normalized project-relative model path rather than by folder-name similarity. A `byConnection` reference is recorded as remote and is not compared with local model objects. Name matching remains only as a compatibility fallback for incomplete or older fixtures with no explicit dataset reference. If an explicit local target is missing, PBI Assure emits one model-level finding and suppresses cascading field-resolution errors until the model is available.
 
 The graph uses directed edges. A report visual provides direct roots, while a measure has edges to the columns, measures, and tables referenced by its DAX expression. A field-parameter table links to every statically declared choice. A used calculation-group table links to all of its calculation items, whose expressions then link to their explicit semantic dependencies. Sort-by columns, hierarchy levels, relationship endpoints, and containing tables provide structural edges. Starting at report-facing and structural roots and traversing these edges makes usage classification explainable.
 

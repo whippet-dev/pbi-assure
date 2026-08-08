@@ -3,6 +3,7 @@ namespace PbiAssure.Core.Inventory;
 public sealed record ReportInventory(
     string Name,
     string RelativePath,
+    ReportModelConnectionInventory ModelConnection,
     string? DefinitionPath,
     string? SchemaUri,
     string? PagesSchemaUri,

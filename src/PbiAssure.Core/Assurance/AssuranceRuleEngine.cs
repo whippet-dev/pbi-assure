@@ -7,6 +7,7 @@ internal static class AssuranceRuleEngine
     private static readonly IAssuranceRule[] Rules =
     [
         new DeprecatedQnaVisualRule(),
+        new MissingSemanticModelRule(),
         new UnresolvedReportReferenceRule(),
         new MissingAltTextRule(),
         new DuplicateTabOrderRule(),

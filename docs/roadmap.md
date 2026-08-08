@@ -19,6 +19,7 @@ PBI Assure is being developed in vertical slices that produce reviewable value w
 
 - Calculation groups and field parameters: first-class inventory, conservative graph traversal, friendly HTML summaries, and explicit evidence for objects reached through these features.
 - Report extensions and report-level measures: first-class inventory, visual-reference resolution, structured measure dependency traversal, and developer-friendly HTML summaries.
+- Report-to-model binding: resolve explicit local `byPath` targets, support several reports sharing one model, and distinguish remote or missing model definitions without generating cascades of false field errors.
 
 ## Deferred: bookmark-captured semantic state
 

@@ -14,6 +14,7 @@ internal static class PbirReportParser
         }
 
         var relativeReportPath = Path.GetRelativePath(projectRoot, reportDirectory);
+        var modelConnection = ParseModelConnection(projectRoot, reportDirectory);
         var bookmarkResult = PbirBookmarkParser.Parse(projectRoot, reportDirectory);
         var reportExtensionsPath = Path.Combine(reportDirectory, "definition", "reportExtensions.json");
         var reportExtensions = ParseReportExtensions(projectRoot, reportExtensionsPath);
@@ -37,6 +38,7 @@ internal static class PbirReportParser
             return new ReportInventory(
                 Name: reportName,
                 RelativePath: relativeReportPath,
+                ModelConnection: modelConnection,
                 DefinitionPath: File.Exists(reportDefinitionPath)
                     ? Path.GetRelativePath(projectRoot, reportDefinitionPath)
                     : null,
@@ -72,6 +74,7 @@ internal static class PbirReportParser
         return new ReportInventory(
             Name: reportName,
             RelativePath: relativeReportPath,
+            ModelConnection: modelConnection,
             DefinitionPath: File.Exists(reportDefinitionPath)
                 ? Path.GetRelativePath(projectRoot, reportDefinitionPath)
                 : null,
@@ -87,6 +90,71 @@ internal static class PbirReportParser
             BookmarksSchemaUri: bookmarkResult.SchemaUri,
             BookmarkOrder: bookmarkResult.BookmarkOrder,
             Bookmarks: bookmarkResult.Bookmarks);
+    }
+
+    private static ReportModelConnectionInventory ParseModelConnection(string projectRoot, string reportDirectory)
+    {
+        var definitionPath = Path.Combine(reportDirectory, "definition.pbir");
+        var relativePath = Path.GetRelativePath(projectRoot, definitionPath);
+        if (!File.Exists(definitionPath))
+        {
+            return new ReportModelConnectionInventory(
+                relativePath, null, null, ReportModelConnectionKinds.Unspecified,
+                null, null, null, false);
+        }
+
+        using var document = OpenJsonDocument(definitionPath);
+        var root = document.RootElement;
+        var schemaUri = GetString(root, "$schema");
+        var version = GetString(root, "version");
+        if (!TryGetObject(root, "datasetReference", out var datasetReference))
+        {
+            return new ReportModelConnectionInventory(
+                relativePath, schemaUri, version, ReportModelConnectionKinds.Unspecified,
+                null, null, null, false);
+        }
+
+        if (TryGetObject(datasetReference, "byPath", out var byPath))
+        {
+            var configuredPath = GetString(byPath, "path");
+            if (string.IsNullOrWhiteSpace(configuredPath))
+            {
+                return new ReportModelConnectionInventory(
+                    relativePath, schemaUri, version, ReportModelConnectionKinds.ByPath,
+                    configuredPath, null, null, false);
+            }
+
+            var targetPath = Path.GetFullPath(Path.Combine(
+                reportDirectory, configuredPath.Replace('/', Path.DirectorySeparatorChar)));
+            var targetName = Path.GetFileName(targetPath);
+            if (targetName.EndsWith(".SemanticModel", StringComparison.OrdinalIgnoreCase))
+            {
+                targetName = targetName[..^".SemanticModel".Length];
+            }
+
+            return new ReportModelConnectionInventory(
+                relativePath, schemaUri, version, ReportModelConnectionKinds.ByPath,
+                configuredPath, Path.GetRelativePath(projectRoot, targetPath), targetName,
+                IsWithinProject(projectRoot, targetPath) && Directory.Exists(targetPath));
+        }
+
+        if (TryGetObject(datasetReference, "byConnection", out _))
+        {
+            return new ReportModelConnectionInventory(
+                relativePath, schemaUri, version, ReportModelConnectionKinds.ByConnection,
+                null, null, null, false);
+        }
+
+        return new ReportModelConnectionInventory(
+            relativePath, schemaUri, version, ReportModelConnectionKinds.Unspecified,
+            null, null, null, false);
+    }
+
+    private static bool IsWithinProject(string projectRoot, string targetPath)
+    {
+        var root = Path.TrimEndingDirectorySeparator(Path.GetFullPath(projectRoot));
+        var target = Path.GetFullPath(targetPath);
+        return target.StartsWith(root + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase);
     }
 
     private static ReportExtensionParseResult ParseReportExtensions(string projectRoot, string path)

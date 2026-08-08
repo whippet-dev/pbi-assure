@@ -73,6 +73,7 @@ public sealed class HtmlReportRendererTests : IDisposable
         Assert.Contains("Important interpretation boundaries", html, StringComparison.Ordinal);
         Assert.Contains("Bookmark-captured semantic state", html, StringComparison.Ordinal);
         Assert.Contains("Report pages", html, StringComparison.Ordinal);
+        Assert.Contains("Uses semantic model Assurance; its definition is available in this project.", html, StringComparison.Ordinal);
         Assert.Contains("Report calculations", html, StringComparison.Ordinal);
         Assert.Contains("Local forecast", html, StringComparison.Ordinal);
         Assert.Contains("not placed directly on the report", html, StringComparison.Ordinal);
@@ -109,7 +110,14 @@ public sealed class HtmlReportRendererTests : IDisposable
     private void CreateSampleProject()
     {
         WriteFile("Assurance.pbip", "{}");
-        WriteFile(Path.Combine("Assurance.Report", "definition.pbir"), "{}");
+        WriteFile(Path.Combine("Assurance.Report", "definition.pbir"),
+            """
+            {
+              "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definitionProperties/2.0.0/schema.json",
+              "version": "4.0",
+              "datasetReference": { "byPath": { "path": "../Assurance.SemanticModel" } }
+            }
+            """);
         WriteFile(
             Path.Combine("Assurance.Report", "definition", "reportExtensions.json"),
             """

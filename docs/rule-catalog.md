@@ -7,6 +7,7 @@ PBI Assure rules turn parsed facts into reviewable results. Rule identifiers and
 | Rule | Version | Category | Severity | Assessment | Condition |
 | --- | --- | --- | --- | --- | --- |
 | `PBI-MODEL-001` | 1.0.0 | Model integrity | Error | Finding | A report-, page-, or visual-scoped PBIR field reference does not resolve to an object in the matching semantic model. Repeated evidence for the same container and object is grouped. |
+| `PBI-MODEL-002` | 1.0.0 | Model integrity | Error | Finding | A report's explicit local semantic-model path does not resolve to a model folder in the scanned project. Field references are not separately reported as broken until the model is available. |
 | `PBI-COMPAT-001` | 1.0.0 | Compatibility | Warning | Finding | A visual has type `qnaVisual`. Microsoft has announced full Power BI Q&A retirement in December 2026. |
 | `PBI-ACCESS-001` | 1.0.0 | Accessibility | Warning | Finding | An object included in the tab order has no non-empty literal or dynamic alt-text expression. |
 | `PBI-ACCESS-002` | 1.0.0 | Accessibility | Warning | Finding | Two or more visuals on one page have the same tab-order position. |

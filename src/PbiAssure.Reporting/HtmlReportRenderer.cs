@@ -187,6 +187,7 @@ public static class HtmlReportRenderer
                 html.Append("        <h3>").Append(Encode(report.Name)).AppendLine("</h3>");
             }
 
+            AppendModelConnection(html, report);
             AppendReportMeasures(html, report);
 
             foreach (var page in report.Pages)
@@ -197,6 +198,24 @@ public static class HtmlReportRenderer
 
         html.AppendLine("      </div>");
         html.AppendLine("    </section>");
+    }
+
+    private static void AppendModelConnection(StringBuilder html, ReportInventory report)
+    {
+        var connection = report.ModelConnection;
+        var message = connection.ConnectionKind switch
+        {
+            ReportModelConnectionKinds.ByPath when connection.IsTargetAvailableLocally =>
+                $"Uses semantic model {connection.TargetSemanticModelName}; its definition is available in this project.",
+            ReportModelConnectionKinds.ByPath =>
+                $"Uses semantic model {connection.TargetSemanticModelName ?? "at the configured path"}, but its definition was not found in this project.",
+            ReportModelConnectionKinds.ByConnection =>
+                "Uses a live-connected semantic model. Its definition is not stored in this project, so model usage cannot be assessed locally.",
+            _ =>
+                "No explicit semantic-model connection was found. Local analysis uses the report name as a compatibility fallback.",
+        };
+        html.Append("        <p class=\"summary-note\"><strong>Data model:</strong> ")
+            .Append(Encode(message)).AppendLine("</p>");
     }
 
     private static void AppendReportMeasures(StringBuilder html, ReportInventory report)

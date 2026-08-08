@@ -55,7 +55,7 @@ internal sealed class UnresolvedReportReferenceRule : IAssuranceRule
                     reference.Page,
                     pageDisplayName,
                     reference.Visual,
-                    SemanticModel: reference.Report,
+                    SemanticModel: reference.SemanticModel,
                     reference.Table,
                     reference.ObjectName,
                     reference.ArtifactPath,

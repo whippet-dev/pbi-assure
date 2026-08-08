@@ -24,7 +24,7 @@ public sealed class ProjectScannerTests : IDisposable
 
         var result = ProjectScanner.Scan(testRoot);
 
-        Assert.Equal("0.11", result.SchemaVersion);
+        Assert.Equal("0.12", result.SchemaVersion);
         Assert.Equal(1, result.ReportCount);
         Assert.Equal(1, result.SemanticModelCount);
         Assert.Contains(result.Artifacts, artifact =>
@@ -1521,6 +1521,64 @@ public sealed class ProjectScannerTests : IDisposable
     }
 
     [Fact]
+    public void ScanBindsDifferentlyNamedReportsToOneModelByConfiguredPath()
+    {
+        WriteConnectedReport("Executive", "../Shared Model.SemanticModel", "card-a");
+        WriteConnectedReport("Operations", "../Shared Model.SemanticModel", "card-b");
+        WriteFile(Path.Combine("Shared Model.SemanticModel", "definition.pbism"), "{}");
+        WriteFile(Path.Combine("Shared Model.SemanticModel", "definition", "tables", "Metrics.tmdl"),
+            """
+            table Metrics
+                measure 'Total Sales' = SUM(Metrics[Amount])
+                column Amount
+                    dataType: decimal
+                partition Metrics = m
+                    mode: import
+                    source = let Source = #table({}, {}) in Source
+            """);
+
+        var result = ProjectScanner.Scan(testRoot);
+
+        Assert.Equal(2, result.ReportCount);
+        Assert.All(result.Reports, report =>
+        {
+            Assert.Equal(ReportModelConnectionKinds.ByPath, report.ModelConnection.ConnectionKind);
+            Assert.Equal("Shared Model", report.ModelConnection.TargetSemanticModelName);
+            Assert.True(report.ModelConnection.IsTargetAvailableLocally);
+        });
+        var usage = result.SemanticObjectUsages.Single(item =>
+            item.ObjectType == SemanticObjectTypes.Measure && item.ObjectName == "Total Sales");
+        Assert.Equal(SemanticUsageStates.DirectlyUsed, usage.UsageState);
+        Assert.Equal(2, usage.DirectReportReferences.Count);
+        Assert.Contains(usage.DirectReportReferences, evidence => evidence.Report == "Executive");
+        Assert.Contains(usage.DirectReportReferences, evidence => evidence.Report == "Operations");
+        Assert.Empty(result.UnresolvedSemanticReferences);
+    }
+
+    [Fact]
+    public void ScanDoesNotTreatRemoteOrMissingModelFieldsAsBrokenLocalReferences()
+    {
+        WriteConnectedReport("Remote", null, "remote-card", byConnection: true);
+        WriteConnectedReport("Missing", "../Not Here.SemanticModel", "missing-card");
+
+        var result = ProjectScanner.Scan(testRoot);
+
+        var remote = result.Reports.Single(report => report.Name == "Remote");
+        Assert.Equal(ReportModelConnectionKinds.ByConnection, remote.ModelConnection.ConnectionKind);
+        Assert.False(remote.ModelConnection.IsTargetAvailableLocally);
+        var missing = result.Reports.Single(report => report.Name == "Missing");
+        Assert.Equal(ReportModelConnectionKinds.ByPath, missing.ModelConnection.ConnectionKind);
+        Assert.Equal("Not Here", missing.ModelConnection.TargetSemanticModelName);
+        Assert.False(missing.ModelConnection.IsTargetAvailableLocally);
+        Assert.Empty(result.UnresolvedSemanticReferences);
+        Assert.Empty(result.SemanticObjectUsages);
+        var missingFinding = Assert.Single(result.Findings, finding => finding.RuleId == "PBI-MODEL-002");
+        Assert.Equal("Missing", missingFinding.Report);
+        Assert.DoesNotContain(result.Findings, finding =>
+            finding.RuleId == "PBI-MODEL-002" && finding.Report == "Remote");
+    }
+
+    [Fact]
     public void ScanParsesReportMeasuresAndPropagatesTheirModelDependencies()
     {
         WriteFile(Path.Combine("Model.Report", "definition.pbir"), "{}");
@@ -1610,6 +1668,37 @@ public sealed class ProjectScannerTests : IDisposable
         var fullPath = Path.Combine(testRoot, relativePath);
         Directory.CreateDirectory(Path.GetDirectoryName(fullPath)!);
         File.WriteAllText(fullPath, content);
+    }
+
+    private void WriteConnectedReport(string reportName, string? modelPath, string visualName, bool byConnection = false)
+    {
+        var datasetReference = byConnection
+            ? "\"byConnection\": { \"connectionString\": \"semanticmodelid=remote-model\" }"
+            : $"\"byPath\": {{ \"path\": \"{modelPath}\" }}";
+        WriteFile(Path.Combine($"{reportName}.Report", "definition.pbir"),
+            $$"""
+            {
+              "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definitionProperties/2.0.0/schema.json",
+              "version": "4.0",
+              "datasetReference": { {{datasetReference}} }
+            }
+            """);
+        WriteFile(Path.Combine($"{reportName}.Report", "definition", "pages", "pages.json"),
+            "{ \"pageOrder\": [\"page\"] }");
+        WriteFile(Path.Combine($"{reportName}.Report", "definition", "pages", "page", "page.json"),
+            "{ \"name\": \"page\", \"displayName\": \"Overview\" }");
+        WriteFile(Path.Combine($"{reportName}.Report", "definition", "pages", "page", "visuals", visualName, "visual.json"),
+            $$"""
+            {
+              "name": "{{visualName}}",
+              "visual": {
+                "visualType": "card",
+                "query": { "queryState": { "values": { "projections": [
+                  { "field": { "Measure": { "Expression": { "SourceRef": { "Entity": "Metrics" } }, "Property": "Total Sales" } } }
+                ] } } }
+              }
+            }
+            """);
     }
 
     private void WritePage(
