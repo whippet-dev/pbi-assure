@@ -8,7 +8,9 @@ public sealed record SemanticTableInventory(
     IReadOnlyList<SemanticColumnInventory> Columns,
     IReadOnlyList<SemanticMeasureInventory> Measures,
     IReadOnlyList<SemanticHierarchyInventory> Hierarchies,
-    IReadOnlyList<SemanticPartitionInventory> Partitions)
+    IReadOnlyList<SemanticPartitionInventory> Partitions,
+    SemanticCalculationGroupInventory? CalculationGroup,
+    SemanticFieldParameterInventory? FieldParameter)
 {
     public int ColumnCount => Columns.Count;
 
@@ -17,4 +19,8 @@ public sealed record SemanticTableInventory(
     public int HierarchyCount => Hierarchies.Count;
 
     public int PartitionCount => Partitions.Count;
+
+    public bool IsCalculationGroup => CalculationGroup is not null;
+
+    public bool IsFieldParameter => FieldParameter is not null;
 }

@@ -11,4 +11,8 @@ public static class SemanticDependencyKinds
     public const string RelationshipEndpoint = "RelationshipEndpoint";
 
     public const string ContainingTable = "ContainingTable";
+
+    public const string FieldParameter = "FieldParameter";
+
+    public const string CalculationGroupItem = "CalculationGroupItem";
 }

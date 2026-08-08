@@ -9,4 +9,5 @@ public static class SemanticObjectTypes
     public const string Column = "Column";
     public const string Measure = "Measure";
     public const string HierarchyLevel = "HierarchyLevel";
+    public const string CalculationItem = "CalculationItem";
 }

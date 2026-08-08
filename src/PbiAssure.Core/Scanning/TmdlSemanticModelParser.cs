@@ -4,7 +4,7 @@ namespace PbiAssure.Core.Scanning;
 
 internal static class TmdlSemanticModelParser
 {
-    private static readonly string[] ObjectKeywords = ["column", "measure", "hierarchy", "partition"];
+    private static readonly string[] NamedObjectKeywords = ["column", "measure", "hierarchy", "partition"];
 
     public static SemanticModelInventory Parse(string rootPath, string semanticModelDirectory)
     {
@@ -48,7 +48,7 @@ internal static class TmdlSemanticModelParser
         var tableIndent = lines[tableDeclarationIndex].Indent;
         var objectIndent = lines
             .Skip(tableDeclarationIndex + 1)
-            .Where(line => line.Indent > tableIndent && ObjectKeywords.Any(keyword => IsDeclaration(line.Trimmed, keyword)))
+            .Where(line => line.Indent > tableIndent && IsTableObjectDeclaration(line.Trimmed))
             .Select(line => line.Indent)
             .DefaultIfEmpty(tableIndent + 4)
             .Min();
@@ -59,6 +59,7 @@ internal static class TmdlSemanticModelParser
         var measures = new List<SemanticMeasureInventory>();
         var hierarchies = new List<SemanticHierarchyInventory>();
         var partitions = new List<SemanticPartitionInventory>();
+        SemanticCalculationGroupInventory? calculationGroup = null;
 
         for (var index = tableDeclarationIndex + 1; index < lines.Length; index++)
         {
@@ -100,9 +101,18 @@ internal static class TmdlSemanticModelParser
                         ? ReadAssignmentExpression(lines, index, endIndex, "source")
                         : null));
             }
+            else if (string.Equals(lines[index].Trimmed, "calculationGroup", StringComparison.OrdinalIgnoreCase))
+            {
+                calculationGroup = ParseCalculationGroup(lines, index, endIndex);
+            }
 
             index = endIndex - 1;
         }
+
+        var fieldParameter = partitions
+            .Where(partition => partition.Expression is not null)
+            .Select(partition => FieldParameterExpressionParser.TryParse(tableName, partition.Expression!))
+            .FirstOrDefault(parameter => parameter is not null);
 
         return new SemanticTableInventory(
             Name: tableName,
@@ -112,7 +122,56 @@ internal static class TmdlSemanticModelParser
             Columns: columns,
             Measures: measures,
             Hierarchies: hierarchies,
-            Partitions: partitions);
+            Partitions: partitions,
+            CalculationGroup: calculationGroup,
+            FieldParameter: fieldParameter);
+    }
+
+    private static SemanticCalculationGroupInventory ParseCalculationGroup(
+        IReadOnlyList<TmdlLine> lines,
+        int declarationIndex,
+        int endIndex)
+    {
+        var declarationIndent = lines[declarationIndex].Indent;
+        var itemIndent = lines
+            .Skip(declarationIndex + 1)
+            .Take(endIndex - declarationIndex - 1)
+            .Where(line => line.Indent > declarationIndent && IsDeclaration(line.Trimmed, "calculationItem"))
+            .Select(line => line.Indent)
+            .DefaultIfEmpty(declarationIndent + 4)
+            .Min();
+        var items = new List<SemanticCalculationItemInventory>();
+
+        for (var index = declarationIndex + 1; index < endIndex; index++)
+        {
+            if (lines[index].Indent != itemIndent ||
+                !TryParseDeclaration(lines[index].Trimmed, "calculationItem", out var itemName, out var itemExpression))
+            {
+                continue;
+            }
+
+            var itemEndIndex = FindBlockEnd(lines, index, endIndex);
+            items.Add(new SemanticCalculationItemInventory(
+                Name: itemName,
+                Expression: ReadExpression(lines, index, itemEndIndex, itemExpression) ?? string.Empty,
+                FormatStringExpression: ReadAssignmentExpression(
+                    lines,
+                    index,
+                    itemEndIndex,
+                    "formatStringDefinition"),
+                Ordinal: FindIntegerProperty(lines, index, itemEndIndex, "ordinal")));
+            index = itemEndIndex - 1;
+        }
+
+        return new SemanticCalculationGroupInventory(
+            Precedence: FindIntegerProperty(lines, declarationIndex, endIndex, "precedence"),
+            SelectionExpression: ReadAssignmentExpression(lines, declarationIndex, endIndex, "selectionExpression"),
+            MultipleOrEmptySelectionExpression: ReadAssignmentExpression(
+                lines,
+                declarationIndex,
+                endIndex,
+                "multipleOrEmptySelectionExpression"),
+            Items: items);
     }
 
     private static SemanticHierarchyInventory ParseHierarchy(
@@ -338,9 +397,22 @@ internal static class TmdlSemanticModelParser
         return false;
     }
 
+    private static int? FindIntegerProperty(
+        IReadOnlyList<TmdlLine> lines,
+        int declarationIndex,
+        int endIndex,
+        string propertyName)
+    {
+        var value = FindProperty(lines, declarationIndex, endIndex, propertyName);
+        return int.TryParse(value, System.Globalization.NumberStyles.Integer, System.Globalization.CultureInfo.InvariantCulture, out var result)
+            ? result
+            : null;
+    }
+
     private static bool IsObjectProperty(string value)
     {
         return value.StartsWith("annotation ", StringComparison.OrdinalIgnoreCase) ||
+               value.StartsWith("formatStringDefinition =", StringComparison.OrdinalIgnoreCase) ||
                value is "isHidden" or "isPrivate" or "isNameInferred" ||
                value.Contains(':');
     }
@@ -349,13 +421,19 @@ internal static class TmdlSemanticModelParser
     {
         for (var index = startIndex; index < lines.Count; index++)
         {
-            if (lines[index].Indent == indent && ObjectKeywords.Any(keyword => IsDeclaration(lines[index].Trimmed, keyword)))
+            if (lines[index].Indent == indent && IsTableObjectDeclaration(lines[index].Trimmed))
             {
                 return index;
             }
         }
 
         return -1;
+    }
+
+    private static bool IsTableObjectDeclaration(string value)
+    {
+        return string.Equals(value, "calculationGroup", StringComparison.OrdinalIgnoreCase) ||
+               NamedObjectKeywords.Any(keyword => IsDeclaration(value, keyword));
     }
 
     private static int FindDeclaration(

@@ -183,13 +183,123 @@ internal static class SemanticDependencyAnalyzer
             }
         }
 
+        if (table.FieldParameter is not null)
+        {
+            AnalyzeFieldParameter(model, table, table.FieldParameter, lookup, dependencies, unresolved);
+        }
+
+        if (table.CalculationGroup is not null)
+        {
+            AnalyzeCalculationGroup(model, table, table.CalculationGroup, lookup, dependencies, unresolved);
+        }
+
         foreach (var partition in table.Partitions.Where(partition => partition.Expression is not null))
         {
+            if (string.Equals(
+                    partition.Expression,
+                    table.FieldParameter?.Expression,
+                    StringComparison.Ordinal))
+            {
+                continue;
+            }
+
             AddDaxDependencies(
                 model,
                 table,
                 Target(table.Name, table.Name, SemanticObjectTypes.Table),
                 partition.Expression!,
+                lookup,
+                dependencies,
+                unresolved);
+        }
+    }
+
+    private static void AnalyzeFieldParameter(
+        SemanticModelInventory model,
+        SemanticTableInventory table,
+        SemanticFieldParameterInventory parameter,
+        ModelLookup lookup,
+        List<SemanticDependencyEdge> dependencies,
+        List<UnresolvedSemanticDependency> unresolved)
+    {
+        var source = Target(table.Name, table.Name, SemanticObjectTypes.Table);
+        foreach (var entry in parameter.Entries)
+        {
+            if (lookup.TryResolveQualified(entry.Table, entry.ObjectName, out var target, out var reason))
+            {
+                dependencies.Add(CreateEdge(
+                    model.Name,
+                    source,
+                    target,
+                    SemanticDependencyKinds.FieldParameter,
+                    table.RelativePath,
+                    entry.ReferenceText));
+            }
+            else
+            {
+                unresolved.Add(CreateUnresolved(
+                    model.Name,
+                    source,
+                    SemanticDependencyKinds.FieldParameter,
+                    entry.ReferenceText,
+                    $"Field parameter '{parameter.Name}': {reason}",
+                    table.RelativePath));
+            }
+        }
+    }
+
+    private static void AnalyzeCalculationGroup(
+        SemanticModelInventory model,
+        SemanticTableInventory table,
+        SemanticCalculationGroupInventory calculationGroup,
+        ModelLookup lookup,
+        List<SemanticDependencyEdge> dependencies,
+        List<UnresolvedSemanticDependency> unresolved)
+    {
+        var tableNode = Target(table.Name, table.Name, SemanticObjectTypes.Table);
+        foreach (var item in calculationGroup.Items)
+        {
+            var itemNode = Target(table.Name, item.Name, SemanticObjectTypes.CalculationItem);
+            dependencies.Add(CreateEdge(
+                model.Name,
+                tableNode,
+                itemNode,
+                SemanticDependencyKinds.CalculationGroupItem,
+                table.RelativePath,
+                item.Name));
+            AddDaxDependencies(model, table, itemNode, item.Expression, lookup, dependencies, unresolved);
+            if (item.FormatStringExpression is not null)
+            {
+                AddDaxDependencies(
+                    model,
+                    table,
+                    itemNode,
+                    item.FormatStringExpression,
+                    lookup,
+                    dependencies,
+                    unresolved);
+            }
+        }
+
+        if (calculationGroup.SelectionExpression is not null)
+        {
+            AddDaxDependencies(
+                model,
+                table,
+                tableNode,
+                calculationGroup.SelectionExpression,
+                lookup,
+                dependencies,
+                unresolved);
+        }
+
+        if (calculationGroup.MultipleOrEmptySelectionExpression is not null)
+        {
+            AddDaxDependencies(
+                model,
+                table,
+                tableNode,
+                calculationGroup.MultipleOrEmptySelectionExpression,
                 lookup,
                 dependencies,
                 unresolved);

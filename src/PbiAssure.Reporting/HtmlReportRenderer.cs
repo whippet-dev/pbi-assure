@@ -464,6 +464,17 @@ public static class HtmlReportRenderer
         AppendFact(html, "Columns", model.ColumnCount.ToString(CultureInfo.InvariantCulture));
         AppendFact(html, "Measures", model.MeasureCount.ToString(CultureInfo.InvariantCulture));
         AppendFact(html, "Relationships", model.RelationshipCount.ToString(CultureInfo.InvariantCulture));
+        if (model.FieldParameterCount > 0)
+        {
+            AppendFact(html, "Field parameters", model.FieldParameterCount.ToString(CultureInfo.InvariantCulture));
+        }
+
+        if (model.CalculationGroupCount > 0)
+        {
+            AppendFact(html, "Calculation groups", model.CalculationGroupCount.ToString(CultureInfo.InvariantCulture));
+            AppendFact(html, "Calculation items", model.CalculationItemCount.ToString(CultureInfo.InvariantCulture));
+        }
+
         html.AppendLine("          </dl>");
 
         foreach (var table in model.Tables.OrderBy(table => table.Name, StringComparer.OrdinalIgnoreCase))
@@ -485,6 +496,16 @@ public static class HtmlReportRenderer
                 html.Append(" · hidden table");
             }
 
+            if (table.IsFieldParameter)
+            {
+                html.Append(" · field parameter");
+            }
+
+            if (table.IsCalculationGroup)
+            {
+                html.Append(" · calculation group");
+            }
+
             html.Append("</span></span>");
             if (unusedCount > 0)
             {
@@ -493,6 +514,7 @@ public static class HtmlReportRenderer
             }
 
             html.AppendLine("</summary>");
+            AppendSemanticFeatures(html, table);
             html.AppendLine("            <ul class=\"semantic-object-list\">");
             foreach (var usage in usages)
             {
@@ -504,6 +526,10 @@ public static class HtmlReportRenderer
                     html.Append(" · used in ").Append(usage.DirectReportReferenceCount.ToString(CultureInfo.InvariantCulture))
                         .Append(usage.DirectReportReferenceCount == 1 ? " report location" : " report locations");
                 }
+                else if (DescribeSemanticUsageReason(inventory, usage) is { } usageReason)
+                {
+                    html.Append(" · ").Append(Encode(usageReason));
+                }
 
                 html.Append("</span></span><span class=\"badge ").Append(UsageClass(usage.UsageState)).Append("\">")
                     .Append(Encode(UsageLabel(usage.UsageState))).AppendLine("</span></li>");
@@ -514,6 +540,93 @@ public static class HtmlReportRenderer
         }
 
         html.AppendLine("        </section>");
+    }
+
+    private static void AppendSemanticFeatures(StringBuilder html, SemanticTableInventory table)
+    {
+        if (table.FieldParameter is not null)
+        {
+            html.AppendLine("            <section class=\"semantic-feature\">");
+            html.Append("              <h4>Field parameter</h4><p>Lets report readers switch between ")
+                .Append(table.FieldParameter.EntryCount.ToString(CultureInfo.InvariantCulture))
+                .AppendLine(table.FieldParameter.EntryCount == 1 ? " field.</p>" : " fields.</p>");
+            html.AppendLine("              <ul class=\"object-list compact\">");
+            foreach (var entry in table.FieldParameter.Entries)
+            {
+                html.Append("                <li><code>")
+                    .Append(Encode($"{entry.Table}[{entry.ObjectName}]"))
+                    .AppendLine("</code></li>");
+            }
+
+            html.AppendLine("              </ul>");
+            html.AppendLine("            </section>");
+        }
+
+        if (table.CalculationGroup is not null)
+        {
+            html.AppendLine("            <section class=\"semantic-feature\">");
+            html.Append("              <h4>Calculation group</h4><p>Contains ")
+                .Append(table.CalculationGroup.ItemCount.ToString(CultureInfo.InvariantCulture))
+                .Append(table.CalculationGroup.ItemCount == 1 ? " reusable calculation" : " reusable calculations");
+            if (table.CalculationGroup.Precedence is not null)
+            {
+                html.Append(" with precedence ")
+                    .Append(table.CalculationGroup.Precedence.Value.ToString(CultureInfo.InvariantCulture));
+            }
+
+            html.AppendLine(".</p>");
+            html.AppendLine("              <ul class=\"object-list compact\">");
+            foreach (var item in table.CalculationGroup.Items
+                         .OrderBy(item => item.Ordinal ?? int.MaxValue)
+                         .ThenBy(item => item.Name, StringComparer.OrdinalIgnoreCase))
+            {
+                html.Append("                <li><span class=\"object-name\"><strong>")
+                    .Append(Encode(item.Name)).Append("</strong><span>Calculation item");
+                if (item.Ordinal is not null)
+                {
+                    html.Append(" · order ").Append(item.Ordinal.Value.ToString(CultureInfo.InvariantCulture));
+                }
+
+                html.AppendLine("</span></span></li>");
+            }
+
+            html.AppendLine("              </ul>");
+            html.AppendLine("            </section>");
+        }
+    }
+
+    private static string? DescribeSemanticUsageReason(ProjectInventory inventory, SemanticObjectUsage usage)
+    {
+        if (usage.UsageState != SemanticUsageStates.IndirectlyUsed)
+        {
+            return null;
+        }
+
+        var incoming = inventory.SemanticDependencies.Where(dependency =>
+            string.Equals(dependency.SemanticModel, usage.SemanticModel, StringComparison.OrdinalIgnoreCase) &&
+            string.Equals(dependency.ToTable, usage.Table, StringComparison.OrdinalIgnoreCase) &&
+            string.Equals(dependency.ToObjectName, usage.ObjectName, StringComparison.OrdinalIgnoreCase) &&
+            string.Equals(dependency.ToObjectType, usage.ObjectType, StringComparison.OrdinalIgnoreCase));
+        var fieldParameter = incoming.FirstOrDefault(dependency =>
+            dependency.DependencyKind == SemanticDependencyKinds.FieldParameter);
+        if (fieldParameter is not null)
+        {
+            return $"used through field parameter {fieldParameter.FromTable}";
+        }
+
+        var calculationGroupItem = incoming.FirstOrDefault(dependency =>
+            dependency.DependencyKind == SemanticDependencyKinds.CalculationGroupItem);
+        if (calculationGroupItem is not null)
+        {
+            return $"available through calculation group {calculationGroupItem.FromTable}";
+        }
+
+        var calculationItem = incoming.FirstOrDefault(dependency =>
+            dependency.DependencyKind == SemanticDependencyKinds.Dax &&
+            dependency.FromObjectType == SemanticObjectTypes.CalculationItem);
+        return calculationItem is null
+            ? null
+            : $"used by calculation item {calculationItem.FromObjectName}";
     }
 
     private static void AppendFact(StringBuilder html, string label, string value, bool code = false)
@@ -1222,7 +1335,10 @@ public static class HtmlReportRenderer
     .fact-strip dt { color: var(--muted); font-size: .83rem; font-weight: 700; }
     .fact-strip dd { margin: .15rem 0 0; font-weight: 650; }
     .fact-strip.compact { grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr)); }
+    .semantic-feature { margin: .75rem 1rem; padding: .8rem 1rem; border-left: .3rem solid #6b879d; background: #f5f8fa; }
+    .semantic-feature h4, .semantic-feature p { margin: 0 0 .35rem; }
     .object-list, .semantic-object-list, .related-findings { display: grid; min-width: 0; grid-template-columns: repeat(auto-fit, minmax(min(100%, 16rem), 1fr)); gap: .5rem; margin: .6rem 0 1rem; padding: 0; list-style: none; }
+    .object-list.compact { margin-bottom: 0; }
     .object-list li, .semantic-object-list li { display: flex; justify-content: space-between; gap: .75rem; padding: .65rem .75rem; border: 1px solid #d7dee5; border-radius: .35rem; background: #fff; }
     .object-list li > span, .object-name > span { color: var(--muted); font-size: .86rem; }
     .object-name { display: flex; flex-direction: column; }

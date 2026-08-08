@@ -21,4 +21,12 @@ public sealed record SemanticModelInventory(
     public int PartitionCount => Tables.Sum(table => table.PartitionCount);
 
     public int RelationshipCount => Relationships.Count;
+
+    public int CalculationGroupCount => Tables.Count(table => table.IsCalculationGroup);
+
+    public int CalculationItemCount => Tables.Sum(table => table.CalculationGroup?.ItemCount ?? 0);
+
+    public int FieldParameterCount => Tables.Count(table => table.IsFieldParameter);
+
+    public int FieldParameterEntryCount => Tables.Sum(table => table.FieldParameter?.EntryCount ?? 0);
 }

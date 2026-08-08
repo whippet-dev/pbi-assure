@@ -179,7 +179,19 @@ internal static class SemanticUsageReconciler
                         table.Name,
                         level.Name,
                         SemanticObjectTypes.HierarchyLevel,
-                        hierarchy.Name);
+                    hierarchy.Name);
+                }
+            }
+
+            if (table.CalculationGroup is not null)
+            {
+                foreach (var item in table.CalculationGroup.Items)
+                {
+                    yield return new SemanticObjectIdentity(
+                        table.Name,
+                        item.Name,
+                        SemanticObjectTypes.CalculationItem,
+                        HierarchyName: null);
                 }
             }
         }

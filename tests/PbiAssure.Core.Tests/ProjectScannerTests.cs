@@ -24,7 +24,7 @@ public sealed class ProjectScannerTests : IDisposable
 
         var result = ProjectScanner.Scan(testRoot);
 
-        Assert.Equal("0.9", result.SchemaVersion);
+        Assert.Equal("0.10", result.SchemaVersion);
         Assert.Equal(1, result.ReportCount);
         Assert.Equal(1, result.SemanticModelCount);
         Assert.Contains(result.Artifacts, artifact =>
@@ -397,6 +397,259 @@ public sealed class ProjectScannerTests : IDisposable
             SemanticUsageStates.StructurallyRequired,
             result.SemanticTableUsages.Single(usage => usage.Table == "Store").UsageState);
         Assert.Empty(result.UnresolvedSemanticDependencies);
+    }
+
+    [Fact]
+    public void ScanClassifiesObjectsUsedThroughFieldParametersAndCalculationGroups()
+    {
+        WriteFile(
+            Path.Combine("Model.SemanticModel", "definition", "tables", "Data.tmdl"),
+            """
+            table Data
+                column Amount
+                    dataType: decimal
+
+                column Region
+                    dataType: string
+
+                column Date
+                    dataType: dateTime
+
+                measure Sales = SUM(Data[Amount])
+
+                measure Margin = DIVIDE([Sales], 2)
+
+                measure Unused = 1
+
+                partition Data = m
+                    mode: import
+                    source = #table({}, {})
+            """);
+        WriteFile(
+            Path.Combine("Model.SemanticModel", "definition", "tables", "Metric Selector.tmdl"),
+            """
+            table 'Metric Selector'
+                column 'Metric Selector'
+                    dataType: string
+                    sourceColumn: [Value1]
+
+                    extendedProperty ParameterMetadata =
+                            {
+                              "version": 3,
+                              "kind": 2
+                            }
+
+                column 'Metric Selector Fields'
+                    dataType: string
+                    isHidden
+                    sourceColumn: [Value2]
+
+                column 'Metric Selector Order'
+                    dataType: int64
+                    isHidden
+                    sourceColumn: [Value3]
+
+                partition 'Metric Selector' = calculated
+                    mode: import
+                    source =
+                            {
+                                ("Sales", NAMEOF(Data[Sales]), 0),
+                                ("Region", NAMEOF('Data'[Region]), 1)
+                            }
+            """);
+        WriteFile(
+            Path.Combine("Model.SemanticModel", "definition", "tables", "Time Intelligence.tmdl"),
+            """
+            table 'Time Intelligence'
+                calculationGroup
+                    precedence: 20
+
+                    calculationItem Current = SELECTEDMEASURE()
+
+                    calculationItem YTD =
+                            CALCULATE(
+                                SELECTEDMEASURE(),
+                                DATESYTD(Data[Date])
+                            )
+                        ordinal: 1
+                        formatStringDefinition = SELECTEDMEASUREFORMATSTRING()
+
+                    calculationItem 'Margin only' =
+                            IF(
+                                ISSELECTEDMEASURE([Margin]),
+                                SELECTEDMEASURE()
+                            )
+                        ordinal: 2
+
+                    selectionExpression = SELECTEDMEASURE()
+                    multipleOrEmptySelectionExpression = SELECTEDMEASURE()
+
+                column 'Time Calculation'
+                    dataType: string
+                    sourceColumn: Name
+            """);
+        WriteFile(
+            Path.Combine("Model.Report", "definition", "pages", "pages.json"),
+            """
+            {
+              "pageOrder": ["page-1"],
+              "activePageName": "page-1"
+            }
+            """);
+        WriteFile(
+            Path.Combine("Model.Report", "definition", "pages", "page-1", "page.json"),
+            """
+            {
+              "name": "page-1",
+              "displayName": "Overview",
+              "width": 1280,
+              "height": 720
+            }
+            """);
+        WriteFile(
+            Path.Combine("Model.Report", "definition", "pages", "page-1", "visuals", "visual-1", "visual.json"),
+            """
+            {
+              "name": "visual-1",
+              "visual": {
+                "visualType": "tableEx",
+                "query": {
+                  "queryState": {
+                    "values": {
+                      "projections": [
+                        {
+                          "field": {
+                            "Column": {
+                              "Expression": { "SourceRef": { "Entity": "Metric Selector" } },
+                              "Property": "Metric Selector"
+                            }
+                          }
+                        },
+                        {
+                          "field": {
+                            "Column": {
+                              "Expression": { "SourceRef": { "Entity": "Time Intelligence" } },
+                              "Property": "Time Calculation"
+                            }
+                          }
+                        }
+                      ]
+                    }
+                  }
+                }
+              }
+            }
+            """);
+
+        var result = ProjectScanner.Scan(testRoot);
+
+        var model = Assert.Single(result.SemanticModels);
+        Assert.Equal(1, model.FieldParameterCount);
+        Assert.Equal(2, model.FieldParameterEntryCount);
+        Assert.Equal(1, model.CalculationGroupCount);
+        Assert.Equal(3, model.CalculationItemCount);
+
+        var parameter = model.Tables.Single(table => table.Name == "Metric Selector").FieldParameter;
+        Assert.NotNull(parameter);
+        Assert.Collection(
+            parameter!.Entries,
+            entry =>
+            {
+                Assert.Equal("Data", entry.Table);
+                Assert.Equal("Sales", entry.ObjectName);
+            },
+            entry =>
+            {
+                Assert.Equal("Data", entry.Table);
+                Assert.Equal("Region", entry.ObjectName);
+            });
+
+        var calculationGroup = model.Tables.Single(table => table.Name == "Time Intelligence").CalculationGroup;
+        Assert.NotNull(calculationGroup);
+        Assert.Equal(20, calculationGroup!.Precedence);
+        Assert.Equal("SELECTEDMEASURE()", calculationGroup.SelectionExpression);
+        Assert.Equal("SELECTEDMEASURE()", calculationGroup.MultipleOrEmptySelectionExpression);
+        var ytd = calculationGroup.Items.Single(item => item.Name == "YTD");
+        Assert.Equal(1, ytd.Ordinal);
+        Assert.Equal("SELECTEDMEASUREFORMATSTRING()", ytd.FormatStringExpression);
+
+        Assert.Equal(
+            SemanticUsageStates.DirectlyUsed,
+            result.SemanticObjectUsages.Single(usage =>
+                usage.Table == "Metric Selector" && usage.ObjectName == "Metric Selector").UsageState);
+        Assert.Equal(
+            SemanticUsageStates.DirectlyUsed,
+            result.SemanticObjectUsages.Single(usage =>
+                usage.Table == "Time Intelligence" && usage.ObjectName == "Time Calculation").UsageState);
+
+        Assert.Equal(
+            SemanticUsageStates.IndirectlyUsed,
+            result.SemanticObjectUsages.Single(usage => usage.Table == "Data" && usage.ObjectName == "Sales").UsageState);
+        Assert.Equal(
+            SemanticUsageStates.IndirectlyUsed,
+            result.SemanticObjectUsages.Single(usage => usage.Table == "Data" && usage.ObjectName == "Region").UsageState);
+        Assert.Equal(
+            SemanticUsageStates.IndirectlyUsed,
+            result.SemanticObjectUsages.Single(usage => usage.Table == "Data" && usage.ObjectName == "Date").UsageState);
+        Assert.Equal(
+            SemanticUsageStates.IndirectlyUsed,
+            result.SemanticObjectUsages.Single(usage => usage.Table == "Data" && usage.ObjectName == "Margin").UsageState);
+        Assert.Equal(
+            SemanticUsageStates.ApparentlyUnused,
+            result.SemanticObjectUsages.Single(usage => usage.Table == "Data" && usage.ObjectName == "Unused").UsageState);
+        Assert.All(
+            result.SemanticObjectUsages.Where(usage => usage.ObjectType == SemanticObjectTypes.CalculationItem),
+            usage => Assert.Equal(SemanticUsageStates.IndirectlyUsed, usage.UsageState));
+
+        Assert.Contains(result.SemanticDependencies, dependency =>
+            dependency.DependencyKind == SemanticDependencyKinds.FieldParameter &&
+            dependency.FromTable == "Metric Selector" &&
+            dependency.ToTable == "Data" &&
+            dependency.ToObjectName == "Sales");
+        Assert.Contains(result.SemanticDependencies, dependency =>
+            dependency.DependencyKind == SemanticDependencyKinds.CalculationGroupItem &&
+            dependency.FromTable == "Time Intelligence" &&
+            dependency.ToObjectName == "YTD" &&
+            dependency.ToObjectType == SemanticObjectTypes.CalculationItem);
+        Assert.Contains(result.SemanticDependencies, dependency =>
+            dependency.DependencyKind == SemanticDependencyKinds.Dax &&
+            dependency.FromObjectName == "YTD" &&
+            dependency.ToObjectName == "Date");
+        Assert.Contains(result.SemanticDependencies, dependency =>
+            dependency.DependencyKind == SemanticDependencyKinds.Dax &&
+            dependency.FromObjectName == "Margin only" &&
+            dependency.ToObjectName == "Margin");
+        Assert.Empty(result.UnresolvedSemanticDependencies);
+    }
+
+    [Fact]
+    public void ScanDoesNotTreatNumericWhatIfParametersAsFieldParameters()
+    {
+        WriteFile(
+            Path.Combine("Parameters.SemanticModel", "definition", "tables", "Threshold.tmdl"),
+            """
+            table Threshold
+                column Threshold
+                    dataType: double
+                    sourceColumn: [Value]
+
+                    extendedProperty ParameterMetadata =
+                            {
+                              "version": 0
+                            }
+
+                partition Threshold = calculated
+                    mode: import
+                    source = GENERATESERIES(0, 100, 1)
+            """);
+
+        var result = ProjectScanner.Scan(testRoot);
+
+        var model = Assert.Single(result.SemanticModels);
+        var table = Assert.Single(model.Tables);
+        Assert.Null(table.FieldParameter);
+        Assert.Equal(0, model.FieldParameterCount);
+        Assert.Equal("GENERATESERIES(0, 100, 1)", Assert.Single(table.Partitions).Expression);
     }
 
     [Fact]

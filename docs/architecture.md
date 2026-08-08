@@ -49,7 +49,7 @@ These should be introduced only when their boundaries are real; empty architectu
 
 ## Dependency graph
 
-The graph uses directed edges. A report visual provides direct roots, while a measure has edges to the columns, measures, and tables referenced by its DAX expression. Sort-by columns, hierarchy levels, relationship endpoints, and containing tables provide structural edges. Starting at report-facing and structural roots and traversing these edges makes usage classification explainable.
+The graph uses directed edges. A report visual provides direct roots, while a measure has edges to the columns, measures, and tables referenced by its DAX expression. A field-parameter table links to every statically declared choice. A used calculation-group table links to all of its calculation items, whose expressions then link to their explicit semantic dependencies. Sort-by columns, hierarchy levels, relationship endpoints, and containing tables provide structural edges. Starting at report-facing and structural roots and traversing these edges makes usage classification explainable.
 
 Initial usage states are:
 

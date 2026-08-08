@@ -74,6 +74,12 @@ public sealed class HtmlReportRendererTests : IDisposable
         Assert.Contains("Bookmark-captured semantic state", html, StringComparison.Ordinal);
         Assert.Contains("Report pages", html, StringComparison.Ordinal);
         Assert.Contains("Semantic model", html, StringComparison.Ordinal);
+        Assert.Contains("Field parameter", html, StringComparison.Ordinal);
+        Assert.Contains("Lets report readers switch between 1 field.", html, StringComparison.Ordinal);
+        Assert.Contains("Sales[Unused Label]", html, StringComparison.Ordinal);
+        Assert.Contains("used through field parameter Label Selector", html, StringComparison.Ordinal);
+        Assert.Contains("Calculation group", html, StringComparison.Ordinal);
+        Assert.Contains("available through calculation group Time Intelligence", html, StringComparison.Ordinal);
         Assert.Contains("data-usage-state=\"DirectlyUsed\"", html, StringComparison.Ordinal);
         Assert.Contains("data-usage-state=\"ApparentlyUnused\"", html, StringComparison.Ordinal);
         Assert.Contains("Apparently unused", html, StringComparison.Ordinal);
@@ -147,6 +153,30 @@ public sealed class HtmlReportRendererTests : IDisposable
                               "Property": "Total Sales"
                             }
                           }
+                        },
+                        {
+                          "field": {
+                            "Column": {
+                              "Expression": {
+                                "SourceRef": {
+                                  "Entity": "Label Selector"
+                                }
+                              },
+                              "Property": "Label Selector"
+                            }
+                          }
+                        },
+                        {
+                          "field": {
+                            "Column": {
+                              "Expression": {
+                                "SourceRef": {
+                                  "Entity": "Time Intelligence"
+                                }
+                              },
+                              "Property": "Time Calculation"
+                            }
+                          }
                         }
                       ]
                     }
@@ -214,7 +244,35 @@ public sealed class HtmlReportRendererTests : IDisposable
                 column 'Unused Label'
                     dataType: string
 
+                column 'Never Used'
+                    dataType: string
+
                 measure 'Total Sales' = SUM(Sales[Amount])
+            """);
+        WriteFile(
+            Path.Combine("Assurance.SemanticModel", "definition", "tables", "Label Selector.tmdl"),
+            """
+            table 'Label Selector'
+                column 'Label Selector'
+                    dataType: string
+                    sourceColumn: [Value1]
+
+                partition 'Label Selector' = calculated
+                    mode: import
+                    source = { ("Label", NAMEOF(Sales[Unused Label]), 0) }
+            """);
+        WriteFile(
+            Path.Combine("Assurance.SemanticModel", "definition", "tables", "Time Intelligence.tmdl"),
+            """
+            table 'Time Intelligence'
+                calculationGroup
+                    precedence: 10
+
+                    calculationItem Current = SELECTEDMEASURE()
+
+                column 'Time Calculation'
+                    dataType: string
+                    sourceColumn: Name
             """);
     }
 

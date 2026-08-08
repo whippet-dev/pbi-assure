@@ -11,10 +11,13 @@ PBI Assure is being developed in vertical slices that produce reviewable value w
 
 ## Next core-analysis priorities
 
-1. Calculation groups and field parameters.
-2. Report-level measures and report extensions.
-3. Power Query M lineage and data-source inventory.
-4. Cross-artifact and external-consumer evidence where it can be obtained safely.
+1. Report-level measures and report extensions.
+2. Power Query M lineage and data-source inventory.
+3. Cross-artifact and external-consumer evidence where it can be obtained safely.
+
+## Completed core-analysis slices
+
+- Calculation groups and field parameters: first-class inventory, conservative graph traversal, friendly HTML summaries, and explicit evidence for objects reached through these features.
 
 ## Deferred: bookmark-captured semantic state
 
