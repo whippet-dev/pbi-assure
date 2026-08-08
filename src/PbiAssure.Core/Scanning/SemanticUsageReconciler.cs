@@ -55,6 +55,11 @@ internal static class SemanticUsageReconciler
 
             foreach (var context in EnumerateReferences(report))
             {
+                if (IsReportMeasureReference(report, context.Reference))
+                {
+                    continue;
+                }
+
                 var identity = FieldIdentity.Create(context.Reference);
                 if (matchingModelNames.Any(modelName =>
                         resolvedEvidence.Contains(string.Join('\u001f', modelName, identity))))
@@ -91,7 +96,9 @@ internal static class SemanticUsageReconciler
         IReadOnlyList<ReportInventory> reports)
     {
         return reports
-            .SelectMany(report => EnumerateReferences(report).Select(context => new
+            .SelectMany(report => EnumerateReferences(report)
+                .Where(context => !IsReportMeasureReference(report, context.Reference))
+                .Select(context => new
             {
                 Identity = FieldIdentity.Create(context.Reference),
                 Evidence = new SemanticUsageEvidence(
@@ -111,6 +118,13 @@ internal static class SemanticUsageReconciler
                     .Distinct()
                     .ToArray(),
                 StringComparer.OrdinalIgnoreCase);
+    }
+
+    private static bool IsReportMeasureReference(ReportInventory report, VisualFieldReference reference)
+    {
+        return reference.ObjectType == SemanticObjectTypes.Measure && report.ReportMeasures.Any(measure =>
+            string.Equals(measure.Entity, reference.Table, StringComparison.OrdinalIgnoreCase) &&
+            string.Equals(measure.Name, reference.ObjectName, StringComparison.OrdinalIgnoreCase));
     }
 
     private static IEnumerable<ReportReferenceContext> EnumerateReferences(ReportInventory report)

@@ -32,10 +32,10 @@ public static class ProjectScanner
             .ToArray();
         var (semanticObjectUsages, unresolvedSemanticReferences) =
             SemanticUsageReconciler.Reconcile(semanticModels, reports);
-        var dependencyAnalysis = SemanticDependencyAnalyzer.Analyze(semanticModels, semanticObjectUsages);
+        var dependencyAnalysis = SemanticDependencyAnalyzer.Analyze(semanticModels, semanticObjectUsages, reports);
 
         var inventory = new ProjectInventory(
-            SchemaVersion: "0.10",
+            SchemaVersion: "0.11",
             RootPath: fullRootPath,
             ScannedAtUtc: DateTimeOffset.UtcNow,
             Artifacts: artifacts

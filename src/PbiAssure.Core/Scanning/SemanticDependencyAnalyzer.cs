@@ -6,20 +6,30 @@ internal static class SemanticDependencyAnalyzer
 {
     public static SemanticDependencyAnalysis Analyze(
         IReadOnlyList<SemanticModelInventory> semanticModels,
-        IReadOnlyList<SemanticObjectUsage> initialUsages)
+        IReadOnlyList<SemanticObjectUsage> initialUsages,
+        IReadOnlyList<ReportInventory> reports)
     {
         var dependencies = new List<SemanticDependencyEdge>();
         var unresolved = new List<UnresolvedSemanticDependency>();
         var structuralRoots = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var reportMeasureNodes = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var reportMeasureRoots = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
         foreach (var model in semanticModels)
         {
             AnalyzeModel(model, initialUsages, dependencies, unresolved, structuralRoots);
         }
 
+        AnalyzeReportMeasures(
+            semanticModels, initialUsages, reports, dependencies, unresolved,
+            reportMeasureNodes, reportMeasureRoots);
+
         var distinctDependencies = dependencies.Distinct().ToArray();
-        var classifiedUsages = ClassifyObjects(initialUsages, distinctDependencies, structuralRoots);
-        var tableUsages = ClassifyTables(semanticModels, classifiedUsages, distinctDependencies, structuralRoots);
+        var classifiedUsages = ClassifyObjects(
+            initialUsages, distinctDependencies, structuralRoots, reportMeasureNodes, reportMeasureRoots);
+        var tableUsages = ClassifyTables(
+            semanticModels, classifiedUsages, distinctDependencies, structuralRoots,
+            reportMeasureNodes, reportMeasureRoots);
 
         return new SemanticDependencyAnalysis(
             ObjectUsages: classifiedUsages,
@@ -34,6 +44,81 @@ internal static class SemanticDependencyAnalyzer
                 .ToArray(),
             UnresolvedDependencies: unresolved.Distinct().ToArray());
     }
+
+    private static void AnalyzeReportMeasures(
+        IReadOnlyList<SemanticModelInventory> semanticModels,
+        IReadOnlyList<SemanticObjectUsage> usages,
+        IReadOnlyList<ReportInventory> reports,
+        List<SemanticDependencyEdge> dependencies,
+        List<UnresolvedSemanticDependency> unresolved,
+        HashSet<string> reportMeasureNodes,
+        HashSet<string> reportMeasureRoots)
+    {
+        foreach (var report in reports)
+        {
+            var model = semanticModels.FirstOrDefault(candidate =>
+                string.Equals(candidate.Name, report.Name, StringComparison.OrdinalIgnoreCase));
+            if (model is null || report.ReportMeasures.Count == 0)
+            {
+                continue;
+            }
+
+            var modelUsages = usages.Where(usage =>
+                string.Equals(usage.SemanticModel, model.Name, StringComparison.OrdinalIgnoreCase)).ToArray();
+            var modelMeasures = modelUsages
+                .Where(usage => usage.ObjectType == SemanticObjectTypes.Measure)
+                .ToDictionary(usage => QualifiedKey(usage.Table, usage.ObjectName), Source,
+                    StringComparer.OrdinalIgnoreCase);
+            var reportMeasures = report.ReportMeasures.ToDictionary(
+                measure => QualifiedKey(measure.Entity, measure.Name),
+                measure => Target(measure.Entity, measure.Name, SemanticObjectTypes.ReportMeasure),
+                StringComparer.OrdinalIgnoreCase);
+
+            foreach (var source in reportMeasures.Values)
+            {
+                reportMeasureNodes.Add(NodeKey(model.Name, source));
+            }
+
+            foreach (var reference in EnumerateReportFieldReferences(report))
+            {
+                if (reference.ObjectType == SemanticObjectTypes.Measure &&
+                    reportMeasures.TryGetValue(QualifiedKey(reference.Table, reference.ObjectName), out var root))
+                {
+                    reportMeasureRoots.Add(NodeKey(model.Name, root));
+                }
+            }
+
+            foreach (var measure in report.ReportMeasures)
+            {
+                var source = reportMeasures[QualifiedKey(measure.Entity, measure.Name)];
+                foreach (var reference in measure.References)
+                {
+                    var lookup = reference.IsReportMeasureReference ? reportMeasures : modelMeasures;
+                    if (lookup.TryGetValue(QualifiedKey(reference.Entity, reference.Name), out var target))
+                    {
+                        dependencies.Add(CreateEdge(
+                            model.Name, source, target, SemanticDependencyKinds.ReportMeasure,
+                            measure.RelativePath, $"{reference.Entity}[{reference.Name}]"));
+                    }
+                    else
+                    {
+                        unresolved.Add(CreateUnresolved(
+                            model.Name, source, SemanticDependencyKinds.ReportMeasure,
+                            $"{reference.Entity}[{reference.Name}]",
+                            reference.IsReportMeasureReference
+                                ? $"Report measure '{reference.Entity}[{reference.Name}]' was not found in extension '{reference.Schema}'."
+                                : $"Model measure '{reference.Entity}[{reference.Name}]' was not found.",
+                            measure.RelativePath));
+                    }
+                }
+            }
+        }
+    }
+
+    private static IEnumerable<VisualFieldReference> EnumerateReportFieldReferences(ReportInventory report) =>
+        report.FieldReferences
+            .Concat(report.Pages.SelectMany(page => page.FieldReferences))
+            .Concat(report.Pages.SelectMany(page => page.Visuals.SelectMany(visual => visual.FieldReferences)));
 
     private static void AnalyzeModel(
         SemanticModelInventory model,
@@ -378,7 +463,9 @@ internal static class SemanticDependencyAnalyzer
     private static SemanticObjectUsage[] ClassifyObjects(
         IReadOnlyList<SemanticObjectUsage> usages,
         IReadOnlyList<SemanticDependencyEdge> dependencies,
-        IReadOnlySet<string> structuralRoots)
+        IReadOnlySet<string> structuralRoots,
+        IReadOnlySet<string> reportMeasureNodes,
+        IReadOnlySet<string> reportMeasureRoots)
     {
         var knownNodes = usages
             .Select(usage => NodeKey(usage.SemanticModel, Source(usage)))
@@ -389,12 +476,14 @@ internal static class SemanticDependencyAnalyzer
                 usage.SemanticModel,
                 Target(usage.Table, usage.Table, SemanticObjectTypes.Table)));
         }
+        knownNodes.UnionWith(reportMeasureNodes);
 
         var adjacency = BuildAdjacency(dependencies, knownNodes);
         var directRoots = usages
             .Where(usage => usage.IsDirectlyReferencedByReport)
             .Select(usage => NodeKey(usage.SemanticModel, Source(usage)))
             .ToHashSet(StringComparer.OrdinalIgnoreCase);
+        directRoots.UnionWith(reportMeasureRoots);
         var directlyReachable = Traverse(directRoots, adjacency);
         var structurallyReachable = Traverse(structuralRoots, adjacency);
         var incomingTargets = dependencies
@@ -424,7 +513,9 @@ internal static class SemanticDependencyAnalyzer
         IReadOnlyList<SemanticModelInventory> semanticModels,
         IReadOnlyList<SemanticObjectUsage> usages,
         IReadOnlyList<SemanticDependencyEdge> dependencies,
-        IReadOnlySet<string> structuralRoots)
+        IReadOnlySet<string> structuralRoots,
+        IReadOnlySet<string> reportMeasureNodes,
+        IReadOnlySet<string> reportMeasureRoots)
     {
         var knownNodes = semanticModels
             .SelectMany(model => model.Tables.Select(table => NodeKey(
@@ -432,11 +523,13 @@ internal static class SemanticDependencyAnalyzer
                 Target(table.Name, table.Name, SemanticObjectTypes.Table))))
             .Concat(usages.Select(usage => NodeKey(usage.SemanticModel, Source(usage))))
             .ToHashSet(StringComparer.OrdinalIgnoreCase);
+        knownNodes.UnionWith(reportMeasureNodes);
         var adjacency = BuildAdjacency(dependencies, knownNodes);
         var directRoots = usages
             .Where(usage => usage.IsDirectlyReferencedByReport)
             .Select(usage => NodeKey(usage.SemanticModel, Source(usage)))
             .ToHashSet(StringComparer.OrdinalIgnoreCase);
+        directRoots.UnionWith(reportMeasureRoots);
         var directlyReachable = Traverse(directRoots, adjacency);
         var structurallyReachable = Traverse(structuralRoots, adjacency);
         var unusedBranchTableTargets = dependencies
@@ -595,6 +688,9 @@ internal static class SemanticDependencyAnalyzer
         return new SemanticNode(table, objectName, objectType, hierarchyName);
     }
 
+    private static string QualifiedKey(string table, string objectName) =>
+        string.Join('\u001f', table, objectName);
+
     private sealed class ModelLookup
     {
         private readonly Dictionary<string, SemanticNode> columns;
@@ -700,10 +796,6 @@ internal static class SemanticDependencyAnalyzer
             return false;
         }
 
-        private static string QualifiedKey(string table, string objectName)
-        {
-            return string.Join('\u001f', table, objectName);
-        }
     }
 
     private sealed record SemanticNode(

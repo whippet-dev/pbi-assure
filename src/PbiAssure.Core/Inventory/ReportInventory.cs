@@ -10,6 +10,9 @@ public sealed record ReportInventory(
     IReadOnlyList<PageInventory> Pages,
     IReadOnlyList<ReportFilterInventory> Filters,
     IReadOnlyList<VisualFieldReference> FieldReferences,
+    string? ReportExtensionsPath,
+    string? ReportExtensionsSchemaUri,
+    IReadOnlyList<ReportMeasureInventory> ReportMeasures,
     string? BookmarksSchemaUri,
     IReadOnlyList<string> BookmarkOrder,
     IReadOnlyList<BookmarkInventory> Bookmarks)
@@ -21,6 +24,8 @@ public sealed record ReportInventory(
     public int ActionCount => Pages.Sum(page => page.Visuals.Sum(visual => visual.ActionCount));
 
     public int BookmarkCount => Bookmarks.Count;
+
+    public int ReportMeasureCount => ReportMeasures.Count;
 
     public int FilterCount => Filters.Count + Pages.Sum(page => page.FilterCount);
 

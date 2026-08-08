@@ -15,4 +15,6 @@ public static class SemanticDependencyKinds
     public const string FieldParameter = "FieldParameter";
 
     public const string CalculationGroupItem = "CalculationGroupItem";
+
+    public const string ReportMeasure = "ReportMeasure";
 }

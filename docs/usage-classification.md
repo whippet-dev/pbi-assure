@@ -29,6 +29,8 @@ A table is directly used when it contains a directly used object. Otherwise, its
 
 When a report uses a field-parameter table, every statically declared `NAMEOF(...)` choice is treated as reachable because the saved PBIR metadata does not prove which choices a reader may select at runtime. Numeric what-if parameters based on expressions such as `GENERATESERIES(...)` are retained as ordinary calculated tables and are not labelled as field parameters.
 
+Report-level measures are kept separate from semantic-model measures. A visual that uses a report measure makes that report measure a dependency root; PBI Assure then follows the structured measure references stored in `reportExtensions.json`. Referenced model measures are classified as indirectly used, and references to other report measures are followed transitively. If Power BI marks a report measure as containing unrecognized references, the inventory preserves that warning for manual review.
+
 When a report uses a calculation-group table, every calculation item is treated as reachable. Explicit object references in calculation-item DAX and format-string expressions then participate in normal dependency traversal. Functions such as `SELECTEDMEASURE()` are contextual and do not create an invented dependency to every measure in the model; the report's explicit measure references remain the evidence for those base measures.
 
 ## Unresolved evidence

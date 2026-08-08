@@ -73,6 +73,10 @@ public sealed class HtmlReportRendererTests : IDisposable
         Assert.Contains("Important interpretation boundaries", html, StringComparison.Ordinal);
         Assert.Contains("Bookmark-captured semantic state", html, StringComparison.Ordinal);
         Assert.Contains("Report pages", html, StringComparison.Ordinal);
+        Assert.Contains("Report calculations", html, StringComparison.Ordinal);
+        Assert.Contains("Local forecast", html, StringComparison.Ordinal);
+        Assert.Contains("not placed directly on the report", html, StringComparison.Ordinal);
+        Assert.Contains("Sales[Total Sales] (model measure)", html, StringComparison.Ordinal);
         Assert.Contains("Semantic model", html, StringComparison.Ordinal);
         Assert.Contains("Field parameter", html, StringComparison.Ordinal);
         Assert.Contains("Lets report readers switch between 1 field.", html, StringComparison.Ordinal);
@@ -106,6 +110,23 @@ public sealed class HtmlReportRendererTests : IDisposable
     {
         WriteFile("Assurance.pbip", "{}");
         WriteFile(Path.Combine("Assurance.Report", "definition.pbir"), "{}");
+        WriteFile(
+            Path.Combine("Assurance.Report", "definition", "reportExtensions.json"),
+            """
+            {
+              "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/reportExtension/1.0.0/schema.json",
+              "name": "extension",
+              "entities": [ { "name": "Sales", "measures": [ {
+                "name": "Local forecast",
+                "dataType": "Decimal",
+                "expression": "[Total Sales] * 1.1",
+                "description": "A report-only forecast",
+                "references": { "unrecognizedReferences": false, "measures": [
+                  { "entity": "Sales", "name": "Total Sales" }
+                ] }
+              } ] } ]
+            }
+            """);
         WriteFile(
             Path.Combine("Assurance.Report", "definition", "pages", "pages.json"),
             """

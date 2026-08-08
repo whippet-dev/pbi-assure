@@ -75,6 +75,10 @@ public static class HtmlReportRenderer
         AppendMetric(html, "Reports", inventory.ReportCount);
         AppendMetric(html, "Pages", inventory.PageCount);
         AppendMetric(html, "Visuals", inventory.VisualCount);
+        if (inventory.ReportMeasureCount > 0)
+        {
+            AppendMetric(html, "Report measures", inventory.ReportMeasureCount);
+        }
         AppendMetric(html, "Semantic objects", inventory.SemanticObjectUsages.Count);
         AppendMetric(html, "Directly used", inventory.DirectlyReferencedSemanticObjectCount);
         AppendMetric(html, "Apparently unused", inventory.ApparentlyUnusedSemanticObjectCount, "metric-unused");
@@ -183,6 +187,8 @@ public static class HtmlReportRenderer
                 html.Append("        <h3>").Append(Encode(report.Name)).AppendLine("</h3>");
             }
 
+            AppendReportMeasures(html, report);
+
             foreach (var page in report.Pages)
             {
                 AppendPageCard(html, inventory, report, page);
@@ -191,6 +197,55 @@ public static class HtmlReportRenderer
 
         html.AppendLine("      </div>");
         html.AppendLine("    </section>");
+    }
+
+    private static void AppendReportMeasures(StringBuilder html, ReportInventory report)
+    {
+        if (report.ReportMeasures.Count == 0)
+        {
+            return;
+        }
+
+        html.Append("        <details class=\"page-card\"><summary><span class=\"summary-copy\"><span class=\"kicker\">Report calculations</span><strong>")
+            .Append(report.ReportMeasureCount.ToString(CultureInfo.InvariantCulture))
+            .AppendLine(" measures defined only in this report</strong><span>Expand to review their formulas and dependencies.</span></span></summary>");
+        html.AppendLine("          <div class=\"semantic-table-list\">");
+        foreach (var measure in report.ReportMeasures.OrderBy(item => item.Name, StringComparer.OrdinalIgnoreCase))
+        {
+            var isUsed = report.FieldReferences
+                .Concat(report.Pages.SelectMany(page => page.FieldReferences))
+                .Concat(report.Pages.SelectMany(page => page.Visuals.SelectMany(visual => visual.FieldReferences)))
+                .Any(reference => reference.ObjectType == SemanticObjectTypes.Measure &&
+                    string.Equals(reference.Table, measure.Entity, StringComparison.OrdinalIgnoreCase) &&
+                    string.Equals(reference.ObjectName, measure.Name, StringComparison.OrdinalIgnoreCase));
+            html.Append("            <details class=\"semantic-table\"><summary><span class=\"summary-copy\"><strong>")
+                .Append(Encode(measure.Name)).Append("</strong><span>")
+                .Append(Encode(measure.Entity)).Append(" · ")
+                .Append(isUsed ? "used on the report" : "not placed directly on the report")
+                .AppendLine("</span></span></summary>");
+            html.AppendLine("              <dl class=\"facts\">");
+            AppendFact(html, "Formula", measure.Expression, code: true);
+            AppendFact(html, "Data type", measure.DataType);
+            if (!string.IsNullOrWhiteSpace(measure.Description))
+            {
+                AppendFact(html, "Description", measure.Description);
+            }
+            if (!string.IsNullOrWhiteSpace(measure.FormatString))
+            {
+                AppendFact(html, "Display format", measure.FormatString, code: true);
+            }
+            var dependencies = measure.References.Select(reference =>
+                $"{reference.Entity}[{reference.Name}] ({(reference.IsReportMeasureReference ? "report measure" : "model measure")})").ToArray();
+            AppendFact(html, "Uses", dependencies.Length == 0 ? "No measure dependencies listed" : string.Join(", ", dependencies));
+            if (measure.HasUnrecognizedReferences)
+            {
+                AppendFact(html, "Dependency check", "Power BI could not identify every reference in this formula; review it manually.");
+            }
+            html.AppendLine("              </dl>");
+            html.AppendLine("            </details>");
+        }
+        html.AppendLine("          </div>");
+        html.AppendLine("        </details>");
     }
 
     private static void AppendSemanticUsage(StringBuilder html, ProjectInventory inventory)

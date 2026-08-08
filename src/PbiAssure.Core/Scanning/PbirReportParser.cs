@@ -15,6 +15,8 @@ internal static class PbirReportParser
 
         var relativeReportPath = Path.GetRelativePath(projectRoot, reportDirectory);
         var bookmarkResult = PbirBookmarkParser.Parse(projectRoot, reportDirectory);
+        var reportExtensionsPath = Path.Combine(reportDirectory, "definition", "reportExtensions.json");
+        var reportExtensions = ParseReportExtensions(projectRoot, reportExtensionsPath);
         var reportDefinitionPath = Path.Combine(reportDirectory, "definition", "report.json");
         string? reportSchemaUri = null;
         VisualFieldReference[] reportFieldReferences = [];
@@ -44,6 +46,9 @@ internal static class PbirReportParser
                 Pages: [],
                 Filters: reportFilters,
                 FieldReferences: reportFieldReferences,
+                ReportExtensionsPath: reportExtensions.Path,
+                ReportExtensionsSchemaUri: reportExtensions.SchemaUri,
+                ReportMeasures: reportExtensions.Measures,
                 BookmarksSchemaUri: bookmarkResult.SchemaUri,
                 BookmarkOrder: bookmarkResult.BookmarkOrder,
                 Bookmarks: bookmarkResult.Bookmarks);
@@ -76,9 +81,78 @@ internal static class PbirReportParser
             Pages: pages,
             Filters: reportFilters,
             FieldReferences: reportFieldReferences,
+            ReportExtensionsPath: reportExtensions.Path,
+            ReportExtensionsSchemaUri: reportExtensions.SchemaUri,
+            ReportMeasures: reportExtensions.Measures,
             BookmarksSchemaUri: bookmarkResult.SchemaUri,
             BookmarkOrder: bookmarkResult.BookmarkOrder,
             Bookmarks: bookmarkResult.Bookmarks);
+    }
+
+    private static ReportExtensionParseResult ParseReportExtensions(string projectRoot, string path)
+    {
+        if (!File.Exists(path))
+        {
+            return new ReportExtensionParseResult(null, null, []);
+        }
+
+        using var document = OpenJsonDocument(path);
+        var root = document.RootElement;
+        var extensionName = GetString(root, "name") ?? "extension";
+        var measures = new List<ReportMeasureInventory>();
+        if (root.TryGetProperty("entities", out var entities) && entities.ValueKind == JsonValueKind.Array)
+        {
+            foreach (var entity in entities.EnumerateArray())
+            {
+                var entityName = GetString(entity, "name");
+                if (entityName is null || !entity.TryGetProperty("measures", out var measureArray) ||
+                    measureArray.ValueKind != JsonValueKind.Array)
+                {
+                    continue;
+                }
+
+                foreach (var measure in measureArray.EnumerateArray())
+                {
+                    var name = GetString(measure, "name");
+                    var dataType = GetString(measure, "dataType");
+                    var expression = GetString(measure, "expression");
+                    if (name is null || dataType is null || expression is null)
+                    {
+                        continue;
+                    }
+
+                    measures.Add(new ReportMeasureInventory(
+                        extensionName, entityName, name, dataType, expression,
+                        GetString(measure, "formatString"), GetString(measure, "description"),
+                        GetString(measure, "displayFolder"), GetBoolean(measure, "hidden") ?? false,
+                        ReadUnrecognizedReferences(measure), ReadMeasureReferences(measure),
+                        Path.GetRelativePath(projectRoot, path)));
+                }
+            }
+        }
+
+        return new ReportExtensionParseResult(
+            Path.GetRelativePath(projectRoot, path), GetString(root, "$schema"), measures.ToArray());
+    }
+
+    private static bool ReadUnrecognizedReferences(JsonElement measure) =>
+        TryGetObject(measure, "references", out var references) &&
+        GetBoolean(references, "unrecognizedReferences") == true;
+
+    private static ReportMeasureReferenceInventory[] ReadMeasureReferences(JsonElement measure)
+    {
+        if (!TryGetObject(measure, "references", out var references) ||
+            !references.TryGetProperty("measures", out var items) || items.ValueKind != JsonValueKind.Array)
+        {
+            return [];
+        }
+
+        return items.EnumerateArray()
+            .Select(item => new ReportMeasureReferenceInventory(
+                GetString(item, "schema"), GetString(item, "entity") ?? string.Empty,
+                GetString(item, "name") ?? string.Empty))
+            .Where(item => item.Entity.Length > 0 && item.Name.Length > 0)
+            .ToArray();
     }
 
     private static PageInventory? ParsePage(
@@ -333,4 +407,9 @@ internal static class PbirReportParser
             _ => null,
         };
     }
+
+    private sealed record ReportExtensionParseResult(
+        string? Path,
+        string? SchemaUri,
+        ReportMeasureInventory[] Measures);
 }

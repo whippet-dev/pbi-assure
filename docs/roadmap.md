@@ -18,6 +18,7 @@ PBI Assure is being developed in vertical slices that produce reviewable value w
 ## Completed core-analysis slices
 
 - Calculation groups and field parameters: first-class inventory, conservative graph traversal, friendly HTML summaries, and explicit evidence for objects reached through these features.
+- Report extensions and report-level measures: first-class inventory, visual-reference resolution, structured measure dependency traversal, and developer-friendly HTML summaries.
 
 ## Deferred: bookmark-captured semantic state
 

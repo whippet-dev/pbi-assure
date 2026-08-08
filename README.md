@@ -2,7 +2,7 @@
 
 PBI Assure is the provisional name for an internally owned Power BI assurance tool. Its intended purpose is to inspect Power BI Project (PBIP) source without changing it, document the report and semantic model, trace dependencies, and produce evidence-led quality and accessibility findings.
 
-The repository is at foundation stage. The executable can discover the report and semantic-model parts of a PBIP project; parse PBIR pages, page roles, report and page filters, drillthrough bindings, visual interactions, report-tooltip page bindings, visual containers, bookmarks, and visual actions; extract evidence-rich field references from report, page, and visual scopes; inventory TMDL tables, columns, measures, hierarchies, partitions, relationships, field parameters, calculation groups, and calculation items; and build an evidence-backed dependency graph across DAX, parameter choices, calculation items, sort-by columns, hierarchy levels, relationship endpoints, and containing tables.
+The repository is at foundation stage. The executable can discover the report and semantic-model parts of a PBIP project; parse PBIR pages, page roles, report and page filters, drillthrough bindings, visual interactions, report-tooltip page bindings, visual containers, bookmarks, visual actions, report extensions, and report-level measures; extract evidence-rich field references from report, page, and visual scopes; inventory TMDL tables, columns, measures, hierarchies, partitions, relationships, field parameters, calculation groups, and calculation items; and build an evidence-backed dependency graph across DAX, report-measure references, parameter choices, calculation items, sort-by columns, hierarchy levels, relationship endpoints, and containing tables.
 
 The graph classifies semantic objects as directly used, indirectly used, structurally required, used only by an unused branch, or apparently unused within the analysed scope. Power Query M dependencies and consumers outside the selected PBIP project are not yet analysed, so “apparently unused” does not mean “safe to delete.” See [usage classification](docs/usage-classification.md) for the exact contract.
 
@@ -61,6 +61,6 @@ Start with [the architecture overview](docs/architecture.md), [the product roadm
 
 - PBIP/PBIR and TMDL are the initial supported input formats.
 - Analysis is metadata-only by default.
-- Current dependency analysis covers report, page, and visual PBIR references, DAX expressions, field-parameter choices, calculation groups and items, sort-by columns, hierarchy levels, and relationship endpoints; it does not yet parse Power Query M dependencies or bookmark-captured semantic state.
+- Current dependency analysis covers report, page, and visual PBIR references, report-level measure references, DAX expressions, field-parameter choices, calculation groups and items, sort-by columns, hierarchy levels, and relationship endpoints; it does not yet parse Power Query M dependencies or bookmark-captured semantic state.
 - A finding is evidence for review, not a declaration of legal or WCAG compliance.
 - “Unused” always means “not referenced within the analysed scope,” never automatically “safe to delete.”

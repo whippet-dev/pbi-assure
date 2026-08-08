@@ -48,6 +48,8 @@ public sealed record ProjectInventory(
 
     public int SemanticMeasureCount => SemanticModels.Sum(model => model.MeasureCount);
 
+    public int ReportMeasureCount => Reports.Sum(report => report.ReportMeasureCount);
+
     public int SemanticRelationshipCount => SemanticModels.Sum(model => model.RelationshipCount);
 
     public int DirectlyReferencedSemanticObjectCount => SemanticObjectUsages

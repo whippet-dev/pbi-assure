@@ -24,7 +24,7 @@ public sealed class ProjectScannerTests : IDisposable
 
         var result = ProjectScanner.Scan(testRoot);
 
-        Assert.Equal("0.10", result.SchemaVersion);
+        Assert.Equal("0.11", result.SchemaVersion);
         Assert.Equal(1, result.ReportCount);
         Assert.Equal(1, result.SemanticModelCount);
         Assert.Contains(result.Artifacts, artifact =>
@@ -1518,6 +1518,75 @@ public sealed class ProjectScannerTests : IDisposable
         Assert.Equal(AssessmentTypes.ReviewRequired, dynamicFinding.AssessmentType);
         Assert.DoesNotContain(interactionFindings, finding =>
             finding.EvidencePaths.Contains("$.visual.visualContainerObjects.visualTooltip[4]"));
+    }
+
+    [Fact]
+    public void ScanParsesReportMeasuresAndPropagatesTheirModelDependencies()
+    {
+        WriteFile(Path.Combine("Model.Report", "definition.pbir"), "{}");
+        WriteFile(Path.Combine("Model.Report", "definition", "pages", "pages.json"),
+            "{ \"pageOrder\": [\"page\"] }");
+        WriteFile(Path.Combine("Model.Report", "definition", "pages", "page", "page.json"),
+            "{ \"name\": \"page\", \"displayName\": \"Overview\" }");
+        WriteFile(Path.Combine("Model.Report", "definition", "pages", "page", "visuals", "card", "visual.json"),
+            """
+            {
+              "name": "card",
+              "visual": {
+                "visualType": "card",
+                "query": { "queryState": { "values": { "projections": [
+                  { "field": { "Measure": { "Expression": { "SourceRef": { "Entity": "Metrics" } }, "Property": "Local Margin" } } }
+                ] } } }
+              }
+            }
+            """);
+        WriteFile(Path.Combine("Model.Report", "definition", "reportExtensions.json"),
+            """
+            {
+              "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/reportExtension/1.0.0/schema.json",
+              "name": "extension",
+              "entities": [ { "name": "Metrics", "measures": [
+                {
+                  "name": "Local Sales", "dataType": "Decimal", "expression": "[Base Sales]",
+                  "description": "Sales scoped to this report", "displayFolder": "Local",
+                  "references": { "unrecognizedReferences": false, "measures": [
+                    { "entity": "Metrics", "name": "Base Sales" }
+                  ] }
+                },
+                {
+                  "name": "Local Margin", "dataType": "Decimal", "expression": "[Local Sales] * 0.2",
+                  "formatString": "0.0%", "references": { "unrecognizedReferences": false, "measures": [
+                    { "schema": "extension", "entity": "Metrics", "name": "Local Sales" }
+                  ] }
+                }
+              ] } ]
+            }
+            """);
+        WriteFile(Path.Combine("Model.SemanticModel", "definition.pbism"), "{}");
+        WriteFile(Path.Combine("Model.SemanticModel", "definition", "tables", "Metrics.tmdl"),
+            """
+            table Metrics
+                measure 'Base Sales' = SUM(Metrics[Amount])
+                column Amount
+                    dataType: decimal
+                partition Metrics = m
+                    mode: import
+                    source = let Source = #table({}, {}) in Source
+            """);
+
+        var result = ProjectScanner.Scan(testRoot);
+
+        var report = Assert.Single(result.Reports);
+        Assert.Equal(2, report.ReportMeasureCount);
+        Assert.Equal(2, result.ReportMeasureCount);
+        Assert.Equal("extension", report.ReportMeasures[0].ExtensionName);
+        Assert.Equal("Sales scoped to this report", report.ReportMeasures[0].Description);
+        Assert.Empty(result.UnresolvedSemanticReferences);
+        Assert.Empty(result.UnresolvedSemanticDependencies);
+        Assert.Equal(2, result.SemanticDependencies.Count(edge =>
+            edge.DependencyKind == SemanticDependencyKinds.ReportMeasure));
+        Assert.Equal(SemanticUsageStates.IndirectlyUsed, result.SemanticObjectUsages.Single(usage =>
+            usage.ObjectType == SemanticObjectTypes.Measure && usage.ObjectName == "Base Sales").UsageState);
     }
 
     public void Dispose()
