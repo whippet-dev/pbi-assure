@@ -24,7 +24,7 @@ public sealed class ProjectScannerTests : IDisposable
 
         var result = ProjectScanner.Scan(testRoot);
 
-        Assert.Equal("0.13", result.SchemaVersion);
+        Assert.Equal("0.14", result.SchemaVersion);
         Assert.Equal(1, result.ReportCount);
         Assert.Equal(1, result.SemanticModelCount);
         Assert.Contains(result.Artifacts, artifact =>
@@ -1651,6 +1651,21 @@ public sealed class ProjectScannerTests : IDisposable
     public void ScanBuildsPowerQueryLineageAcrossPartitionsAndNamedExpressions()
     {
         WriteFile(Path.Combine("Queries.SemanticModel", "definition.pbism"), "{}");
+        WriteFile(Path.Combine("Queries.SemanticModel", "definition", "tables", "Sources.tmdl"),
+            """
+            table Sources
+                column Value
+                    dataType: string
+                partition Sources = m
+                    mode: import
+                    source =
+                        let
+                            FileSource = Csv.Document(File.Contents("C:\\Users\\developer\\private-file.csv")),
+                            WebSource = Web.Contents("https://internal.example.test/data"),
+                            DatabaseSource = Sql.Database("private-server", "private-database")
+                        in
+                            FileSource
+            """);
         WriteFile(Path.Combine("Queries.SemanticModel", "definition", "expressions.tmdl"),
             """
             expression Staging =
@@ -1687,7 +1702,7 @@ public sealed class ProjectScannerTests : IDisposable
 
         var model = Assert.Single(result.SemanticModels);
         Assert.Equal(4, model.NamedExpressionCount);
-        Assert.Equal(5, result.PowerQueryCount);
+        Assert.Equal(6, result.PowerQueryCount);
         Assert.Equal(2, result.PowerQueryDependencies.Count);
         Assert.Contains(result.PowerQueryDependencies, edge =>
             edge.FromQueryName == "Loaded" && edge.ToQueryName == "Shared Transform");
@@ -1704,6 +1719,19 @@ public sealed class ProjectScannerTests : IDisposable
             finding.RuleId == "PBI-QUERY-001" && finding.ObjectName == "Dynamic");
         Assert.Contains(result.Findings, finding =>
             finding.RuleId == "PBI-QUERY-002" && finding.ObjectName == "Unused");
+        Assert.Equal(4, result.DataSourceCount);
+        Assert.Contains(result.DataSources, source =>
+            source.ConnectorFamily == "File" && source.LocationKind == DataSourceLocationKinds.LocalFile);
+        Assert.Contains(result.DataSources, source =>
+            source.ConnectorFamily == "SQL Server" && source.LocationKind == DataSourceLocationKinds.NamedServer);
+        Assert.Contains(result.DataSources, source =>
+            source.ConnectorFamily == "Web" && source.LocationKind == DataSourceLocationKinds.WebAddress);
+        Assert.Contains(result.Findings, finding =>
+            finding.RuleId == "PBI-SOURCE-001" && finding.ObjectName == "Sources");
+        var connectorJson = System.Text.Json.JsonSerializer.Serialize(result.DataSources);
+        Assert.DoesNotContain("private-file.csv", connectorJson, StringComparison.Ordinal);
+        Assert.DoesNotContain("private-server", connectorJson, StringComparison.Ordinal);
+        Assert.DoesNotContain("internal.example.test", connectorJson, StringComparison.Ordinal);
     }
 
     public void Dispose()

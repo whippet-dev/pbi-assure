@@ -11,8 +11,8 @@ PBI Assure is being developed in vertical slices that produce reviewable value w
 
 ## Next core-analysis priorities
 
-1. Data-source inventory and privacy-safe connector summaries.
-2. Cross-artifact and external-consumer evidence where it can be obtained safely.
+1. Cross-artifact and external-consumer evidence where it can be obtained safely.
+2. Broader connector coverage informed by real-report examples.
 
 ## Completed core-analysis slices
 
@@ -20,6 +20,7 @@ PBI Assure is being developed in vertical slices that produce reviewable value w
 - Report extensions and report-level measures: first-class inventory, visual-reference resolution, structured measure dependency traversal, and developer-friendly HTML summaries.
 - Report-to-model binding: resolve explicit local `byPath` targets, support several reports sharing one model, and distinguish remote or missing model definitions without generating cascades of false field errors.
 - Power Query M lineage: retain M partition expressions, inventory named expressions, follow static query dependencies transitively, flag unused supporting queries, and identify dynamic expressions requiring review.
+- Data-source inventory: recognise common M connector families, classify location types without retaining connector arguments, show query associations, and flag non-portable local or network file dependencies.
 
 ## Deferred: bookmark-captured semantic state
 

@@ -86,6 +86,10 @@ public static class HtmlReportRenderer
         {
             AppendMetric(html, "Power Query sources", inventory.PowerQueryCount);
         }
+        if (inventory.DataSourceCount > 0)
+        {
+            AppendMetric(html, "Connector types", inventory.DistinctConnectorFamilyCount);
+        }
         AppendMetric(html, "Directly used", inventory.DirectlyReferencedSemanticObjectCount);
         AppendMetric(html, "Apparently unused", inventory.ApparentlyUnusedSemanticObjectCount, "metric-unused");
         html.AppendLine("      </dl>");
@@ -117,6 +121,8 @@ public static class HtmlReportRenderer
             html.AppendLine("    </section>");
             return;
         }
+
+        AppendDataSourceSummary(html, inventory);
 
         foreach (var modelGroup in inventory.PowerQueryUsages.GroupBy(usage => usage.SemanticModel))
         {
@@ -170,6 +176,56 @@ public static class HtmlReportRenderer
         }
         html.AppendLine("    </section>");
     }
+
+    private static void AppendDataSourceSummary(StringBuilder html, ProjectInventory inventory)
+    {
+        html.AppendLine("      <h3>Data sources</h3>");
+        if (inventory.DataSources.Count == 0)
+        {
+            html.AppendLine("      <p>No recognised connector calls were found in the available M expressions.</p>");
+            return;
+        }
+
+        html.AppendLine("      <div class=\"semantic-table-list\">");
+        foreach (var connectorGroup in inventory.DataSources.GroupBy(source => source.ConnectorFamily)
+                     .OrderBy(group => group.Key, StringComparer.OrdinalIgnoreCase))
+        {
+            var queries = connectorGroup.Select(source => source.QueryName)
+                .Distinct(StringComparer.OrdinalIgnoreCase).OrderBy(name => name, StringComparer.OrdinalIgnoreCase).ToArray();
+            html.Append("        <details class=\"semantic-table\"><summary><span class=\"summary-copy\"><strong>")
+                .Append(Encode(connectorGroup.Key)).Append("</strong><span>Used by ")
+                .Append(queries.Length.ToString(CultureInfo.InvariantCulture))
+                .Append(queries.Length == 1 ? " query" : " queries")
+                .AppendLine(" · connection details withheld</span></span></summary>");
+            html.AppendLine("          <dl class=\"facts\">");
+            AppendFact(html, "Queries", string.Join(", ", queries));
+            var locationLabels = connectorGroup.Select(source => SourceLocationLabel(source.LocationKind))
+                .Distinct(StringComparer.Ordinal).ToArray();
+            AppendFact(html, "Location type", string.Join(", ", locationLabels));
+            html.AppendLine("          </dl>");
+            html.AppendLine("          <details class=\"technical-details\"><summary>Connector details</summary>");
+            html.AppendLine("            <ul class=\"plain-list\">");
+            foreach (var function in connectorGroup.Select(source => source.ConnectorFunction)
+                         .Distinct(StringComparer.OrdinalIgnoreCase).OrderBy(name => name, StringComparer.OrdinalIgnoreCase))
+            {
+                html.Append("              <li><code>").Append(Encode(function)).AppendLine("</code></li>");
+            }
+            html.AppendLine("            </ul>");
+            html.AppendLine("          </details>");
+            html.AppendLine("        </details>");
+        }
+        html.AppendLine("      </div>");
+    }
+
+    private static string SourceLocationLabel(string locationKind) => locationKind switch
+    {
+        DataSourceLocationKinds.LocalFile => "File on a developer computer",
+        DataSourceLocationKinds.NetworkFile => "Network file",
+        DataSourceLocationKinds.RelativeFile => "Relative file path",
+        DataSourceLocationKinds.WebAddress => "Web or cloud address",
+        DataSourceLocationKinds.NamedServer => "Named server or database",
+        _ => "Dynamic or not exposed",
+    };
 
     private static int PowerQueryUsageOrder(string state) => state switch
     {

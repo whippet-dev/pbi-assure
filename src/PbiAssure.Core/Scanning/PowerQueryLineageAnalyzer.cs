@@ -4,14 +4,15 @@ namespace PbiAssure.Core.Scanning;
 
 internal static class PowerQueryLineageAnalyzer
 {
-    public static (PowerQueryUsage[] Usages, PowerQueryDependencyEdge[] Dependencies) Analyze(
+    public static (PowerQueryUsage[] Usages, PowerQueryDependencyEdge[] Dependencies, DataSourceInventory[] DataSources) Analyze(
         IReadOnlyList<SemanticModelInventory> semanticModels)
     {
         var usages = new List<PowerQueryUsage>();
         var dependencies = new List<PowerQueryDependencyEdge>();
+        var dataSources = new List<DataSourceInventory>();
         foreach (var model in semanticModels)
         {
-            AnalyzeModel(model, usages, dependencies);
+            AnalyzeModel(model, usages, dependencies, dataSources);
         }
 
         return (
@@ -19,13 +20,17 @@ internal static class PowerQueryLineageAnalyzer
                 .ThenBy(usage => usage.QueryName, StringComparer.OrdinalIgnoreCase).ToArray(),
             dependencies.Distinct().OrderBy(edge => edge.SemanticModel, StringComparer.OrdinalIgnoreCase)
                 .ThenBy(edge => edge.FromQueryName, StringComparer.OrdinalIgnoreCase)
-                .ThenBy(edge => edge.ToQueryName, StringComparer.OrdinalIgnoreCase).ToArray());
+                .ThenBy(edge => edge.ToQueryName, StringComparer.OrdinalIgnoreCase).ToArray(),
+            dataSources.Distinct().OrderBy(source => source.SemanticModel, StringComparer.OrdinalIgnoreCase)
+                .ThenBy(source => source.QueryName, StringComparer.OrdinalIgnoreCase)
+                .ThenBy(source => source.ConnectorFamily, StringComparer.OrdinalIgnoreCase).ToArray());
     }
 
     private static void AnalyzeModel(
         SemanticModelInventory model,
         List<PowerQueryUsage> allUsages,
-        List<PowerQueryDependencyEdge> allDependencies)
+        List<PowerQueryDependencyEdge> allDependencies,
+        List<DataSourceInventory> allDataSources)
     {
         var sources = model.Tables.SelectMany(table => table.Partitions
                 .Where(partition => string.Equals(partition.SourceType, "m", StringComparison.OrdinalIgnoreCase) &&
@@ -44,6 +49,13 @@ internal static class PowerQueryLineageAnalyzer
 
         foreach (var source in sources)
         {
+            foreach (var connector in MConnectorExtractor.Extract(source.Expression))
+            {
+                allDataSources.Add(new DataSourceInventory(
+                    model.Name, source.QueryName, source.SourceKind, source.Table, source.Partition,
+                    connector.Family, connector.Function, connector.LocationKind, source.ArtifactPath));
+            }
+
             foreach (var targetName in MReferenceExtractor.Extract(source.Expression, knownNames)
                          .Where(name => !string.Equals(name, source.QueryName, StringComparison.OrdinalIgnoreCase)))
             {

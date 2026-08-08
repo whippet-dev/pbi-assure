@@ -11,6 +11,8 @@ The initial scanner runs locally and performs no network requests. It reads meta
 - Treat DAX, Power Query M, source names, object names, descriptions, and report text as potentially sensitive metadata.
 - Generated assurance reports inherit the sensitivity of their source and must be stored accordingly.
 - Diagnostic logs should identify a file or property without copying full expressions unless the operator explicitly requests evidence-rich output.
+- Connector inventory records retain the connector family, function name, and a coarse location category only. They do not retain file paths, URLs, server names, database names, or connector arguments.
+- Full M expressions remain available in the machine inventory and behind an explicit disclosure in HTML for developer investigation. Outputs therefore remain sensitive even when connector summaries are minimised.
 
 ## Network boundary
 

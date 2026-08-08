@@ -55,6 +55,8 @@ The semantic graph uses directed edges. A report visual provides direct roots, w
 
 Power Query lineage is a separate directed graph over M-backed table partitions and named expressions. Loaded partitions are roots. Static references to known query names are traversed transitively, while strings, comments, and local step names are excluded. This separation avoids treating query execution as evidence that every semantic column or measure in the loaded table is report-facing usage.
 
+Connector extraction runs over the same M expressions but emits a minimised inventory: connector family, connector function, coarse location category, query identity, and source artifact path. Literal connector arguments are used transiently only to distinguish local, network, relative, web, named-server, or dynamic locations and are not retained in connector records.
+
 Initial usage states are:
 
 - Directly used.

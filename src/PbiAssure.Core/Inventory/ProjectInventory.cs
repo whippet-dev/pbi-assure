@@ -12,6 +12,7 @@ public sealed record ProjectInventory(
     IReadOnlyList<SemanticDependencyEdge> SemanticDependencies,
     IReadOnlyList<PowerQueryUsage> PowerQueryUsages,
     IReadOnlyList<PowerQueryDependencyEdge> PowerQueryDependencies,
+    IReadOnlyList<DataSourceInventory> DataSources,
     IReadOnlyList<UnresolvedSemanticReference> UnresolvedSemanticReferences,
     IReadOnlyList<UnresolvedSemanticDependency> UnresolvedSemanticDependencies,
     IReadOnlyList<AssuranceFinding> Findings)
@@ -58,6 +59,11 @@ public sealed record ProjectInventory(
 
     public int ApparentlyUnusedPowerQueryCount => PowerQueryUsages.Count(usage =>
         usage.UsageState == PowerQueryUsageStates.ApparentlyUnused);
+
+    public int DataSourceCount => DataSources.Count;
+
+    public int DistinctConnectorFamilyCount => DataSources.Select(source => source.ConnectorFamily)
+        .Distinct(StringComparer.OrdinalIgnoreCase).Count();
 
     public int DirectlyReferencedSemanticObjectCount => SemanticObjectUsages
         .Count(usage => usage.IsDirectlyReferencedByReport);

@@ -45,7 +45,7 @@ internal static partial class MReferenceExtractor
             : value;
     }
 
-    private static string RemoveStringsAndComments(string expression)
+    internal static string RemoveStringsAndComments(string expression)
     {
         var result = new StringBuilder(expression.Length);
         for (var index = 0; index < expression.Length; index++)

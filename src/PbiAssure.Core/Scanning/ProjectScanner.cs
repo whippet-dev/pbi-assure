@@ -36,7 +36,7 @@ public static class ProjectScanner
         var powerQueryAnalysis = PowerQueryLineageAnalyzer.Analyze(semanticModels);
 
         var inventory = new ProjectInventory(
-            SchemaVersion: "0.13",
+            SchemaVersion: "0.14",
             RootPath: fullRootPath,
             ScannedAtUtc: DateTimeOffset.UtcNow,
             Artifacts: artifacts
@@ -50,6 +50,7 @@ public static class ProjectScanner
             SemanticDependencies: dependencyAnalysis.Dependencies,
             PowerQueryUsages: powerQueryAnalysis.Usages,
             PowerQueryDependencies: powerQueryAnalysis.Dependencies,
+            DataSources: powerQueryAnalysis.DataSources,
             UnresolvedSemanticReferences: unresolvedSemanticReferences,
             UnresolvedSemanticDependencies: dependencyAnalysis.UnresolvedDependencies,
             Findings: []);

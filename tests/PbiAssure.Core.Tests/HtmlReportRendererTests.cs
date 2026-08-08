@@ -80,6 +80,10 @@ public sealed class HtmlReportRendererTests : IDisposable
         Assert.Contains("Sales[Total Sales] (model measure)", html, StringComparison.Ordinal);
         Assert.Contains("Semantic model", html, StringComparison.Ordinal);
         Assert.Contains("Power Query lineage", html, StringComparison.Ordinal);
+        Assert.Contains("Data sources", html, StringComparison.Ordinal);
+        Assert.Contains("connection details withheld", html, StringComparison.Ordinal);
+        Assert.Contains("File on a developer computer", html, StringComparison.Ordinal);
+        Assert.Contains("Connector details", html, StringComparison.Ordinal);
         Assert.Contains("Loads into the model", html, StringComparison.Ordinal);
         Assert.Contains("Supports a loaded query", html, StringComparison.Ordinal);
         Assert.Contains("View M expression", html, StringComparison.Ordinal);
@@ -270,7 +274,7 @@ public sealed class HtmlReportRendererTests : IDisposable
         WriteFile(
             Path.Combine("Assurance.SemanticModel", "definition", "expressions.tmdl"),
             """
-            expression Staging = #table({}, {})
+            expression Staging = Excel.Workbook(File.Contents("C:\\Users\\developer\\source.xlsx"))
             """);
         WriteFile(
             Path.Combine("Assurance.SemanticModel", "definition", "tables", "Sales.tmdl"),

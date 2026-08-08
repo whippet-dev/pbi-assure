@@ -10,6 +10,7 @@ internal static class AssuranceRuleEngine
         new MissingSemanticModelRule(),
         new UnresolvedReportReferenceRule(),
         new PowerQueryLineageRule(),
+        new LocalFileDataSourceRule(),
         new MissingAltTextRule(),
         new DuplicateTabOrderRule(),
         new VisualExcludedFromTabOrderRule(),
