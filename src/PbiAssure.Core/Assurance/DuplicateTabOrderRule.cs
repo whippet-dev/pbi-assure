@@ -14,7 +14,7 @@ internal sealed class DuplicateTabOrderRule : IAssuranceRule
             foreach (var page in report.Pages)
             {
                 var duplicates = page.Visuals
-                    .Where(visual => visual.Position.TabOrder is not null)
+                    .Where(visual => visual.HasExplicitTabOrder)
                     .GroupBy(visual => visual.Position.TabOrder!.Value)
                     .Where(group => group.Count() > 1);
 
@@ -25,7 +25,7 @@ internal sealed class DuplicateTabOrderRule : IAssuranceRule
                         RuleVersion,
                         AssuranceCategories.Accessibility,
                         FindingSeverities.Warning,
-                        $"{duplicate.Count()} visuals share tab-order position {duplicate.Key} on this page.",
+                        $"{duplicate.Count()} visuals share explicit keyboard-order rank {duplicate.Key} on this page.",
                         "Assign a unique, intentional tab order that follows the page's logical reading sequence.",
                         report.Name,
                         page.Name,

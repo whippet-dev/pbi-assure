@@ -146,7 +146,7 @@ internal static class PbirFieldReferenceExtractor
             ObjectType: objectType,
             HierarchyName: hierarchyName,
             UsageContext: DetermineUsageContext(ancestors),
-            Role: FindProjectionRole(ancestors),
+            Role: DetermineRole(ancestors),
             EvidencePath: evidencePath);
     }
 
@@ -180,8 +180,28 @@ internal static class PbirFieldReferenceExtractor
         return UsageContexts.Other;
     }
 
-    private static string? FindProjectionRole(IReadOnlyList<string> ancestors)
+    private static string? DetermineRole(IReadOnlyList<string> ancestors)
     {
+        if (IndexOf(ancestors, "pageBinding") >= 0)
+        {
+            return "drillthrough";
+        }
+
+        if (ancestors.Any(segment => segment.Contains("conditional", StringComparison.OrdinalIgnoreCase)))
+        {
+            return "conditionalFormatting";
+        }
+
+        if (ancestors.Any(segment => segment.Contains("tooltip", StringComparison.OrdinalIgnoreCase)))
+        {
+            return "tooltips";
+        }
+
+        if (ancestors.Any(segment => segment.Contains("filter", StringComparison.OrdinalIgnoreCase)))
+        {
+            return "filter";
+        }
+
         var queryStateIndex = IndexOf(ancestors, "queryState");
         return queryStateIndex >= 0 && queryStateIndex + 1 < ancestors.Count
             ? ancestors[queryStateIndex + 1]

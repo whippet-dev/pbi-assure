@@ -729,10 +729,10 @@ public static class HtmlReportRenderer
                 html.Append("              <li class=\"semantic-object\" data-usage-state=\"").Append(Encode(usage.UsageState))
                     .Append("\"><span class=\"object-name\"><strong>").Append(Encode(usage.ObjectName))
                     .Append("</strong><span>").Append(Encode(HumanizeIdentifier(usage.ObjectType)));
-                if (usage.DirectReportReferenceCount > 0)
+                if (usage.DirectReportLocationCount > 0)
                 {
-                    html.Append(" · used in ").Append(usage.DirectReportReferenceCount.ToString(CultureInfo.InvariantCulture))
-                        .Append(usage.DirectReportReferenceCount == 1 ? " report location" : " report locations");
+                    html.Append(" · used in ").Append(usage.DirectReportLocationCount.ToString(CultureInfo.InvariantCulture))
+                        .Append(usage.DirectReportLocationCount == 1 ? " report location" : " report locations");
                 }
                 else if (DescribeSemanticUsageReason(inventory, usage) is { } usageReason)
                 {

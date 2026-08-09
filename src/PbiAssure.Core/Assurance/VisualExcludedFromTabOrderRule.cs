@@ -17,7 +17,7 @@ internal sealed class VisualExcludedFromTabOrderRule : IAssuranceRule
     {
         return VisualRuleContexts.Read(inventory)
             .Where(context =>
-                !context.Visual.IsInTabOrder &&
+                context.Visual.IsExplicitlyExcludedFromTabOrder &&
                 !context.Visual.IsHidden &&
                 !string.Equals(context.Page.Visibility, "HiddenInViewMode", StringComparison.OrdinalIgnoreCase) &&
                 (context.Visual.VisualType is null || !DecorativeCandidateTypes.Contains(context.Visual.VisualType)))
@@ -36,7 +36,7 @@ internal sealed class VisualExcludedFromTabOrderRule : IAssuranceRule
                 Table: null,
                 ObjectName: null,
                 context.Visual.RelativePath,
-                ["$.position.tabOrder (not found)"],
+                ["$.position.tabOrder (negative value)"],
                 AssessmentTypes.ReviewRequired,
                 "https://learn.microsoft.com/power-bi/create-reports/desktop-accessibility-creating-reports"));
     }

@@ -14,7 +14,11 @@ public sealed record VisualInventory(
     IReadOnlyList<VisualActionInventory> Actions,
     IReadOnlyList<VisualTooltipBindingInventory> TooltipBindings)
 {
-    public bool IsInTabOrder => Position.TabOrder is not null;
+    public bool IsExplicitlyExcludedFromTabOrder => Position.TabOrder is < 0;
+
+    public bool HasExplicitTabOrder => Position.TabOrder is >= 0;
+
+    public bool IsInTabOrder => !IsExplicitlyExcludedFromTabOrder;
 
     public int FieldReferenceCount => FieldReferences.Count;
 

@@ -228,7 +228,8 @@ public sealed class ProjectScannerTests : IDisposable
             reference.Table == "Calendar" &&
             reference.ObjectName == "Year" &&
             reference.HierarchyName == "Date Hierarchy" &&
-            reference.UsageContext == UsageContexts.Filter);
+            reference.UsageContext == UsageContexts.Filter &&
+            reference.Role == "filter");
     }
 
     [Fact]
@@ -577,6 +578,10 @@ public sealed class ProjectScannerTests : IDisposable
             SemanticUsageStates.DirectlyUsed,
             result.SemanticObjectUsages.Single(usage =>
                 usage.Table == "Metric Selector" && usage.ObjectName == "Metric Selector").UsageState);
+        Assert.Equal(
+            SemanticUsageStates.StructurallyRequired,
+            result.SemanticObjectUsages.Single(usage =>
+                usage.Table == "Metric Selector" && usage.ObjectName == "Metric Selector Fields").UsageState);
         Assert.Equal(
             SemanticUsageStates.DirectlyUsed,
             result.SemanticObjectUsages.Single(usage =>
@@ -935,9 +940,9 @@ public sealed class ProjectScannerTests : IDisposable
 
         Assert.Equal(7, result.FindingCount);
         Assert.Equal(1, result.ErrorFindingCount);
-        Assert.Equal(3, result.WarningFindingCount);
-        Assert.Equal(3, result.InformationFindingCount);
-        Assert.Equal(3, result.ReviewRequiredCount);
+        Assert.Equal(4, result.WarningFindingCount);
+        Assert.Equal(2, result.InformationFindingCount);
+        Assert.Equal(2, result.ReviewRequiredCount);
         Assert.Contains(result.Findings, finding =>
             finding.RuleId == "PBI-COMPAT-001" && finding.Visual == "qna");
         Assert.Contains(result.Findings, finding =>
@@ -947,11 +952,13 @@ public sealed class ProjectScannerTests : IDisposable
             finding.ObjectName == "Missing");
         Assert.Contains(result.Findings, finding =>
             finding.RuleId == "PBI-ACCESS-001" && finding.Visual == "card");
+        Assert.Contains(result.Findings, finding =>
+            finding.RuleId == "PBI-ACCESS-001" && finding.Visual == "slicer");
         Assert.DoesNotContain(result.Findings, finding =>
             finding.RuleId == "PBI-ACCESS-001" && finding.Visual == "qna");
         Assert.Contains(result.Findings, finding =>
             finding.RuleId == "PBI-ACCESS-002" && finding.Page == "page-1");
-        Assert.Contains(result.Findings, finding =>
+        Assert.DoesNotContain(result.Findings, finding =>
             finding.RuleId == "PBI-ACCESS-003" && finding.Visual == "slicer");
         Assert.DoesNotContain(result.Findings, finding =>
             finding.RuleId == "PBI-ACCESS-003" && finding.Visual == "image");

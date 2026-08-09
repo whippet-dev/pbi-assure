@@ -12,4 +12,11 @@ public sealed record SemanticObjectUsage(
     public bool IsDirectlyReferencedByReport => DirectReportReferences.Count > 0;
 
     public int DirectReportReferenceCount => DirectReportReferences.Count;
+
+    public IReadOnlyList<SemanticUsageLocation> DirectReportLocations => DirectReportReferences
+        .Select(SemanticUsageLocation.FromEvidence)
+        .Distinct()
+        .ToArray();
+
+    public int DirectReportLocationCount => DirectReportLocations.Count;
 }

@@ -145,6 +145,7 @@ internal static class SemanticDependencyAnalyzer
         foreach (var table in model.Tables)
         {
             AnalyzeTable(model, table, lookup, dependencies, unresolved);
+            AddFieldParameterMetadataRoots(model, table, structuralRoots);
         }
 
         var relationshipsPath = Path.Combine(model.RelativePath, "definition", "relationships.tmdl");
@@ -173,6 +174,25 @@ internal static class SemanticDependencyAnalyzer
                 dependencies,
                 unresolved,
                 structuralRoots);
+        }
+    }
+
+    private static void AddFieldParameterMetadataRoots(
+        SemanticModelInventory model,
+        SemanticTableInventory table,
+        ISet<string> structuralRoots)
+    {
+        if (table.FieldParameter is null)
+        {
+            return;
+        }
+
+        var generatedFieldsColumnName = $"{table.Name} Fields";
+        foreach (var column in table.Columns.Where(column =>
+                     column.IsHidden &&
+                     string.Equals(column.Name, generatedFieldsColumnName, StringComparison.OrdinalIgnoreCase)))
+        {
+            structuralRoots.Add(NodeKey(model.Name, Target(table.Name, column.Name, SemanticObjectTypes.Column)));
         }
     }
 
