@@ -49,6 +49,10 @@ public sealed class HtmlReportRendererTests : IDisposable
         Assert.Contains("Open this visual under its report page", html, StringComparison.Ordinal);
         Assert.DoesNotContain("<strong>sales-card</strong>", html, StringComparison.Ordinal);
         Assert.Contains("<summary>Technical details</summary>", html, StringComparison.Ordinal);
+        Assert.Contains("<dt>Tab order</dt>", html, StringComparison.Ordinal);
+        Assert.Contains("Included in tab order", html, StringComparison.Ordinal);
+        Assert.Contains("<dt>Tab order value</dt>", html, StringComparison.Ordinal);
+        Assert.DoesNotContain("Keyboard order", html, StringComparison.Ordinal);
         Assert.Contains("sales-card", html, StringComparison.Ordinal);
         Assert.DoesNotContain("<table", html, StringComparison.OrdinalIgnoreCase);
         Assert.Contains("@media print", html, StringComparison.Ordinal);
@@ -70,6 +74,12 @@ public sealed class HtmlReportRendererTests : IDisposable
         Assert.False(button.OnCanvasTextIsDynamic);
 
         Assert.Contains("Assurance summary", html, StringComparison.Ordinal);
+        Assert.Contains("Indirectly used", html, StringComparison.Ordinal);
+        Assert.Contains("Structurally required", html, StringComparison.Ordinal);
+        Assert.Contains("Used only by unused branch", html, StringComparison.Ordinal);
+        Assert.Contains("Review them before removing anything.", html, StringComparison.Ordinal);
+        Assert.Contains("How usage classification works", html, StringComparison.Ordinal);
+        Assert.Contains("This does not prove it is safe to remove.", html, StringComparison.Ordinal);
         Assert.Contains("Important interpretation boundaries", html, StringComparison.Ordinal);
         Assert.Contains("bookmark-captured semantic state", html, StringComparison.Ordinal);
         Assert.Contains("Report pages", html, StringComparison.Ordinal);
@@ -90,11 +100,23 @@ public sealed class HtmlReportRendererTests : IDisposable
         Assert.Contains("Field parameter", html, StringComparison.Ordinal);
         Assert.Contains("Lets report readers switch between 1 field.", html, StringComparison.Ordinal);
         Assert.Contains("Sales[Unused Label]", html, StringComparison.Ordinal);
-        Assert.Contains("used through field parameter Label Selector", html, StringComparison.Ordinal);
+        Assert.Contains("Why: Available through field parameter Label Selector", html, StringComparison.Ordinal);
         Assert.Contains("Calculation group", html, StringComparison.Ordinal);
-        Assert.Contains("available through calculation group Time Intelligence", html, StringComparison.Ordinal);
+        Assert.Contains("Why: Available through calculation group Time Intelligence", html, StringComparison.Ordinal);
         Assert.Contains("data-usage-state=\"DirectlyUsed\"", html, StringComparison.Ordinal);
         Assert.Contains("data-usage-state=\"ApparentlyUnused\"", html, StringComparison.Ordinal);
+        Assert.Contains("id=\"usage-type\"", html, StringComparison.Ordinal);
+        Assert.Contains("data-object-type=\"Column\"", html, StringComparison.Ordinal);
+        Assert.Contains("Where used", html, StringComparison.Ordinal);
+        Assert.Contains("class=\"semantic-object-header\"", html, StringComparison.Ordinal);
+        Assert.Contains("<p class=\"usage-reason\">Why:", html, StringComparison.Ordinal);
+        Assert.Contains("<ul class=\"usage-location-list\">", html, StringComparison.Ordinal);
+        Assert.Contains("<span class=\"usage-page\">", html, StringComparison.Ordinal);
+        Assert.Contains("<span class=\"usage-context\">", html, StringComparison.Ordinal);
+        Assert.Contains(".semantic-object-header { display: flex; min-width: 0; max-width: 100%; flex-wrap: wrap;", html, StringComparison.Ordinal);
+        Assert.Contains(".technical-details pre { max-width: 100%; overflow-x: auto; }", html, StringComparison.Ordinal);
+        Assert.DoesNotContain("Filter, Values", html, StringComparison.Ordinal);
+        Assert.DoesNotContain("Filter, Tooltips", html, StringComparison.Ordinal);
         Assert.Contains("Apparently unused", html, StringComparison.Ordinal);
         Assert.Contains("data-severity=\"Warning\"", html, StringComparison.Ordinal);
     }

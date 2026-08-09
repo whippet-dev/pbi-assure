@@ -33,20 +33,17 @@ static async Task<int> RunAsync(string[] arguments)
         var format = outputPath is null
             ? requestedFormat ?? OutputFormat.Html
             : ResolveFormat(requestedFormat, outputPath);
-        outputPath = DefaultScanOutputPath.Resolve(outputPath, projectPath!, DateTime.Now, format);
+        var outputPlan = DefaultScanOutputPath.ResolvePlan(outputPath, projectPath!, DateTime.Now, format);
         var content = format == OutputFormat.Html
             ? HtmlReportRenderer.Render(inventory)
             : JsonSerializer.Serialize(inventory, new JsonSerializerOptions { WriteIndented = true }) + Environment.NewLine;
 
-        var fullOutputPath = Path.GetFullPath(outputPath);
-        var outputDirectory = Path.GetDirectoryName(fullOutputPath);
-        if (!string.IsNullOrEmpty(outputDirectory))
+        await ScanOutputWriter.WriteAsync(outputPlan, content);
+        Console.Out.WriteLine($"{(format == OutputFormat.Html ? "HTML report" : "JSON inventory")} written to {Path.GetFullPath(outputPlan.HistoricalPath)}");
+        if (outputPlan.LatestPath is not null)
         {
-            Directory.CreateDirectory(outputDirectory);
+            Console.Out.WriteLine($"Latest HTML report updated at {Path.GetFullPath(outputPlan.LatestPath)}");
         }
-
-        await File.WriteAllTextAsync(fullOutputPath, content);
-        Console.Out.WriteLine($"{(format == OutputFormat.Html ? "HTML report" : "JSON inventory")} written to {fullOutputPath}");
 
         return 0;
     }

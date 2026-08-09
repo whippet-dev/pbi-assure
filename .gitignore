@@ -5,6 +5,7 @@
 TestResults/
 artifacts/
 samples-local/
+notes-local/
 *.user
 *.suo
 

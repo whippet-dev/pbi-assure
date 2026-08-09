@@ -26,6 +26,17 @@ public sealed class SemanticUsageLocationTests
         Assert.Equal(3, usage.DirectReportLocationCount);
     }
 
+    [Fact]
+    public void DirectReportLocationsCollapseSupportingFilterForDrillthroughField()
+    {
+        var usage = CreateUsage(
+            Evidence("drillthrough", null, UsageContexts.Filter),
+            Evidence("drillthrough", null, UsageContexts.Drillthrough));
+
+        var location = Assert.Single(usage.DirectReportLocations);
+        Assert.Equal(UsageContexts.Drillthrough, location.UsageContext);
+    }
+
     private static SemanticObjectUsage CreateUsage(params SemanticUsageEvidence[] evidence) => new(
         "Model", "Customer", "Region", SemanticObjectTypes.Column, null, evidence, SemanticUsageStates.DirectlyUsed);
 

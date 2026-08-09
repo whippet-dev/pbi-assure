@@ -2,9 +2,24 @@ namespace PbiAssure.Cli;
 
 public static class DefaultScanOutputPath
 {
+    public static ScanOutputPlan ResolvePlan(string? outputPath, string projectPath, DateTime localScanTime, OutputFormat format)
+    {
+        if (outputPath is not null)
+        {
+            return new ScanOutputPlan(outputPath, null);
+        }
+
+        var historicalPath = Create(projectPath, localScanTime, format);
+        var latestPath = format == OutputFormat.Html
+            ? Path.Combine(Path.GetDirectoryName(historicalPath)!, "latest.pbiassure.html")
+            : null;
+
+        return new ScanOutputPlan(historicalPath, latestPath);
+    }
+
     public static string Resolve(string? outputPath, string projectPath, DateTime localScanTime, OutputFormat format)
     {
-        return outputPath ?? Create(projectPath, localScanTime, format);
+        return ResolvePlan(outputPath, projectPath, localScanTime, format).HistoricalPath;
     }
 
     public static string Create(string projectPath, DateTime localScanTime, OutputFormat format)
@@ -12,14 +27,18 @@ public static class DefaultScanOutputPath
         ArgumentException.ThrowIfNullOrWhiteSpace(projectPath);
 
         var fullProjectPath = Path.GetFullPath(projectPath);
-        var timestamp = localScanTime.ToString("yyyy-MM-dd_HH-mm-ss-fff", System.Globalization.CultureInfo.InvariantCulture);
-        var fileName = format == OutputFormat.Html
-            ? "assurance.pbiassure.html"
-            : "inventory.pbiassure.json";
+        if (format == OutputFormat.Html)
+        {
+            var timestamp = localScanTime.ToString("yyyy-MM-dd_HH-mm-ss", System.Globalization.CultureInfo.InvariantCulture);
+            return Path.Combine(fullProjectPath, "outputs", $"assurance_{timestamp}.pbiassure.html");
+        }
 
-        return Path.Combine(fullProjectPath, "outputs", timestamp, fileName);
+        var jsonTimestamp = localScanTime.ToString("yyyy-MM-dd_HH-mm-ss-fff", System.Globalization.CultureInfo.InvariantCulture);
+        return Path.Combine(fullProjectPath, "outputs", jsonTimestamp, "inventory.pbiassure.json");
     }
 }
+
+public sealed record ScanOutputPlan(string HistoricalPath, string? LatestPath);
 
 public enum OutputFormat
 {
