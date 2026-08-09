@@ -29,7 +29,23 @@ dotnet test PbiAssure.slnx --no-build
 
 ## Generate assurance results
 
-Write the accessible, self-contained HTML report:
+For real-world local testing, place a PBIP/PBIR project under `samples-local/<report name>/`. This folder is intentionally ignored by Git so departmental reports and generated outputs stay local.
+
+Scan a project and save an accessible, self-contained HTML report automatically:
+
+```powershell
+dotnet run --project src/PbiAssure.Cli -- scan "samples-local\Columns Usage"
+```
+
+The output is saved beside the selected project, for example:
+
+```text
+samples-local/Columns Usage/outputs/2026-08-09_09-55-32-123/assurance.pbiassure.html
+```
+
+The folder name uses the machine's local time in sortable `yyyy-MM-dd_HH-mm-ss-fff` form. Each run creates a separate timestamped output folder. The HTML report itself records the source project path and its UTC scan timestamp. Keep deterministic synthetic fixtures in `tests/`; do not commit reports or generated outputs in `samples-local/`.
+
+Write to a specific location when needed:
 
 ```powershell
 dotnet run --project src/PbiAssure.Cli -- scan "C:\path\to\YourProject" --output assurance.pbiassure.html
@@ -41,7 +57,7 @@ Write the machine-readable JSON inventory:
 dotnet run --project src/PbiAssure.Cli -- scan "C:\path\to\YourProject" --output inventory.pbiassure.json
 ```
 
-The output format is inferred from a `.html` extension and otherwise defaults to JSON. Use `--format html` or `--format json` to override this, including when writing to standard output. The scanner is read-only with respect to the selected Power BI project; `--output` writes only to the location chosen by the operator.
+The output format is inferred from a `.html` extension and otherwise defaults to JSON when `--output` is supplied. Without `--output`, HTML is the default; use `--format json` to create a timestamped JSON inventory instead. The scanner is read-only with respect to the selected Power BI project; it writes only the selected output file.
 
 The HTML report is organised as expandable review cards rather than long data tables. Each report page contains collapsible visual summaries showing the visible title or on-canvas label, friendly visual type, approximate page position, referenced columns and measures, behaviour, accessibility metadata, and related findings. Findings and semantic-model tables are separately searchable and collapsible. Internal PBIR identifiers remain available only inside technical details.
 
@@ -53,6 +69,7 @@ src/PbiAssure.Reporting/  Accessible human-readable report rendering
 src/PbiAssure.Cli/        Thin command-line entry point
 tests/                    Automated tests using synthetic files
 docs/                     Architecture, assurance, and security decisions
+samples-local/            Ignored local PBIP/PBIR projects and timestamped scan outputs
 ```
 
 Start with [the architecture overview](docs/architecture.md), [the product roadmap](docs/roadmap.md), [the rule catalog](docs/rule-catalog.md), and [the contributor guide](CONTRIBUTING.md).

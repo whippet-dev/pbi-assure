@@ -1,4 +1,5 @@
 using System.Text.Json;
+using PbiAssure.Cli;
 using PbiAssure.Core.Scanning;
 using PbiAssure.Reporting;
 
@@ -29,27 +30,23 @@ static async Task<int> RunAsync(string[] arguments)
     try
     {
         var inventory = ProjectScanner.Scan(projectPath!);
-        var format = ResolveFormat(requestedFormat, outputPath);
+        var format = outputPath is null
+            ? requestedFormat ?? OutputFormat.Html
+            : ResolveFormat(requestedFormat, outputPath);
+        outputPath = DefaultScanOutputPath.Resolve(outputPath, projectPath!, DateTime.Now, format);
         var content = format == OutputFormat.Html
             ? HtmlReportRenderer.Render(inventory)
             : JsonSerializer.Serialize(inventory, new JsonSerializerOptions { WriteIndented = true }) + Environment.NewLine;
 
-        if (outputPath is null)
+        var fullOutputPath = Path.GetFullPath(outputPath);
+        var outputDirectory = Path.GetDirectoryName(fullOutputPath);
+        if (!string.IsNullOrEmpty(outputDirectory))
         {
-            Console.Out.Write(content);
+            Directory.CreateDirectory(outputDirectory);
         }
-        else
-        {
-            var fullOutputPath = Path.GetFullPath(outputPath);
-            var outputDirectory = Path.GetDirectoryName(fullOutputPath);
-            if (!string.IsNullOrEmpty(outputDirectory))
-            {
-                Directory.CreateDirectory(outputDirectory);
-            }
 
-            await File.WriteAllTextAsync(fullOutputPath, content);
-            Console.Out.WriteLine($"{(format == OutputFormat.Html ? "HTML report" : "JSON inventory")} written to {fullOutputPath}");
-        }
+        await File.WriteAllTextAsync(fullOutputPath, content);
+        Console.Out.WriteLine($"{(format == OutputFormat.Html ? "HTML report" : "JSON inventory")} written to {fullOutputPath}");
 
         return 0;
     }
@@ -154,11 +151,6 @@ static void WriteUsage(TextWriter writer)
     writer.WriteLine("Usage:");
     writer.WriteLine("  pbiassure scan <project-directory> [--output <file>] [--format json|html]");
     writer.WriteLine();
+    writer.WriteLine("Without --output, an HTML report is saved under outputs/<local timestamp>/ beside the project.");
     writer.WriteLine("The output format defaults to HTML for .html files and JSON otherwise.");
-}
-
-enum OutputFormat
-{
-    Json,
-    Html
 }
