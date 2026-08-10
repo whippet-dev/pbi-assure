@@ -5,42 +5,42 @@ namespace PbiAssure.Core.Scanning;
 
 internal static class PbirReportParser
 {
-    public static ReportInventory Parse(string projectRoot, string reportDirectory)
+    public static ReportInventory Parse(IProjectFileSource source, string reportDirectory)
     {
-        var reportName = Path.GetFileName(reportDirectory);
+        var reportName = ProjectFilePaths.GetFileName(reportDirectory);
         if (reportName.EndsWith(".Report", StringComparison.OrdinalIgnoreCase))
         {
             reportName = reportName[..^".Report".Length];
         }
 
-        var relativeReportPath = Path.GetRelativePath(projectRoot, reportDirectory);
-        var modelConnection = ParseModelConnection(projectRoot, reportDirectory);
-        var bookmarkResult = PbirBookmarkParser.Parse(projectRoot, reportDirectory);
-        var reportExtensionsPath = Path.Combine(reportDirectory, "definition", "reportExtensions.json");
-        var reportExtensions = ParseReportExtensions(projectRoot, reportExtensionsPath);
-        var reportDefinitionPath = Path.Combine(reportDirectory, "definition", "report.json");
+        var relativeReportPath = ProjectFilePaths.Normalize(reportDirectory);
+        var modelConnection = ParseModelConnection(source, reportDirectory);
+        var bookmarkResult = PbirBookmarkParser.Parse(source, reportDirectory);
+        var reportExtensionsPath = ProjectFilePaths.Combine(reportDirectory, "definition", "reportExtensions.json");
+        var reportExtensions = ParseReportExtensions(source, reportExtensionsPath);
+        var reportDefinitionPath = ProjectFilePaths.Combine(reportDirectory, "definition", "report.json");
         string? reportSchemaUri = null;
         VisualFieldReference[] reportFieldReferences = [];
         ReportFilterInventory[] reportFilters = [];
-        if (File.Exists(reportDefinitionPath))
+        if (source.FileExists(reportDefinitionPath))
         {
-            using var reportDefinition = OpenJsonDocument(reportDefinitionPath);
+            using var reportDefinition = OpenJsonDocument(source, reportDefinitionPath);
             reportSchemaUri = GetString(reportDefinition.RootElement, "$schema");
             reportFieldReferences = PbirFieldReferenceExtractor.Extract(reportDefinition.RootElement);
             reportFilters = ParseFilters(reportDefinition.RootElement);
         }
 
-        var pagesDirectory = Path.Combine(reportDirectory, "definition", "pages");
-        var pagesMetadataPath = Path.Combine(pagesDirectory, "pages.json");
+        var pagesDirectory = ProjectFilePaths.Combine(reportDirectory, "definition", "pages");
+        var pagesMetadataPath = ProjectFilePaths.Combine(pagesDirectory, "pages.json");
 
-        if (!File.Exists(pagesMetadataPath))
+        if (!source.FileExists(pagesMetadataPath))
         {
             return new ReportInventory(
                 Name: reportName,
                 RelativePath: relativeReportPath,
                 ModelConnection: modelConnection,
-                DefinitionPath: File.Exists(reportDefinitionPath)
-                    ? Path.GetRelativePath(projectRoot, reportDefinitionPath)
+                DefinitionPath: source.FileExists(reportDefinitionPath)
+                    ? reportDefinitionPath
                     : null,
                 SchemaUri: reportSchemaUri,
                 PagesSchemaUri: null,
@@ -56,15 +56,15 @@ internal static class PbirReportParser
                 Bookmarks: bookmarkResult.Bookmarks);
         }
 
-        using var pagesMetadata = OpenJsonDocument(pagesMetadataPath);
+        using var pagesMetadata = OpenJsonDocument(source, pagesMetadataPath);
         var metadataRoot = pagesMetadata.RootElement;
         var schemaUri = GetString(metadataRoot, "$schema");
         var activePageName = GetString(metadataRoot, "activePageName");
         var pageOrder = ReadPageOrder(metadataRoot);
 
-        var pages = Directory
-            .EnumerateDirectories(pagesDirectory, "*", SearchOption.TopDirectoryOnly)
-            .Select(directory => ParsePage(projectRoot, directory, pageOrder, activePageName))
+        var pages = source
+            .EnumerateDirectories(pagesDirectory)
+            .Select(directory => ParsePage(source, ProjectFilePaths.Combine(pagesDirectory, directory), pageOrder, activePageName))
             .Where(page => page is not null)
             .Cast<PageInventory>()
             .OrderBy(page => page.Order ?? int.MaxValue)
@@ -75,8 +75,8 @@ internal static class PbirReportParser
             Name: reportName,
             RelativePath: relativeReportPath,
             ModelConnection: modelConnection,
-            DefinitionPath: File.Exists(reportDefinitionPath)
-                ? Path.GetRelativePath(projectRoot, reportDefinitionPath)
+            DefinitionPath: source.FileExists(reportDefinitionPath)
+                ? reportDefinitionPath
                 : null,
             SchemaUri: reportSchemaUri,
             PagesSchemaUri: schemaUri,
@@ -92,18 +92,18 @@ internal static class PbirReportParser
             Bookmarks: bookmarkResult.Bookmarks);
     }
 
-    private static ReportModelConnectionInventory ParseModelConnection(string projectRoot, string reportDirectory)
+    private static ReportModelConnectionInventory ParseModelConnection(IProjectFileSource source, string reportDirectory)
     {
-        var definitionPath = Path.Combine(reportDirectory, "definition.pbir");
-        var relativePath = Path.GetRelativePath(projectRoot, definitionPath);
-        if (!File.Exists(definitionPath))
+        var definitionPath = ProjectFilePaths.Combine(reportDirectory, "definition.pbir");
+        var relativePath = definitionPath;
+        if (!source.FileExists(definitionPath))
         {
             return new ReportModelConnectionInventory(
                 relativePath, null, null, ReportModelConnectionKinds.Unspecified,
                 null, null, null, false);
         }
 
-        using var document = OpenJsonDocument(definitionPath);
+        using var document = OpenJsonDocument(source, definitionPath);
         var root = document.RootElement;
         var schemaUri = GetString(root, "$schema");
         var version = GetString(root, "version");
@@ -124,9 +124,19 @@ internal static class PbirReportParser
                     configuredPath, null, null, false);
             }
 
-            var targetPath = Path.GetFullPath(Path.Combine(
-                reportDirectory, configuredPath.Replace('/', Path.DirectorySeparatorChar)));
-            var targetName = Path.GetFileName(targetPath);
+            string targetPath;
+            try
+            {
+                targetPath = ProjectFilePaths.ResolveRelative(reportDirectory, configuredPath);
+            }
+            catch (ArgumentException)
+            {
+                return new ReportModelConnectionInventory(
+                    relativePath, schemaUri, version, ReportModelConnectionKinds.ByPath,
+                    configuredPath, null, null, false);
+            }
+
+            var targetName = ProjectFilePaths.GetFileName(targetPath);
             if (targetName.EndsWith(".SemanticModel", StringComparison.OrdinalIgnoreCase))
             {
                 targetName = targetName[..^".SemanticModel".Length];
@@ -134,8 +144,9 @@ internal static class PbirReportParser
 
             return new ReportModelConnectionInventory(
                 relativePath, schemaUri, version, ReportModelConnectionKinds.ByPath,
-                configuredPath, Path.GetRelativePath(projectRoot, targetPath), targetName,
-                IsWithinProject(projectRoot, targetPath) && Directory.Exists(targetPath));
+                configuredPath, targetPath, targetName,
+                source.EnumerateDirectories(string.Empty).Any(directory =>
+                    string.Equals(directory, targetPath, StringComparison.OrdinalIgnoreCase)));
         }
 
         if (TryGetObject(datasetReference, "byConnection", out _))
@@ -150,21 +161,14 @@ internal static class PbirReportParser
             null, null, null, false);
     }
 
-    private static bool IsWithinProject(string projectRoot, string targetPath)
+    private static ReportExtensionParseResult ParseReportExtensions(IProjectFileSource source, string path)
     {
-        var root = Path.TrimEndingDirectorySeparator(Path.GetFullPath(projectRoot));
-        var target = Path.GetFullPath(targetPath);
-        return target.StartsWith(root + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase);
-    }
-
-    private static ReportExtensionParseResult ParseReportExtensions(string projectRoot, string path)
-    {
-        if (!File.Exists(path))
+        if (!source.FileExists(path))
         {
             return new ReportExtensionParseResult(null, null, []);
         }
 
-        using var document = OpenJsonDocument(path);
+        using var document = OpenJsonDocument(source, path);
         var root = document.RootElement;
         var extensionName = GetString(root, "name") ?? "extension";
         var measures = new List<ReportMeasureInventory>();
@@ -194,13 +198,13 @@ internal static class PbirReportParser
                         GetString(measure, "formatString"), GetString(measure, "description"),
                         GetString(measure, "displayFolder"), GetBoolean(measure, "hidden") ?? false,
                         ReadUnrecognizedReferences(measure), ReadMeasureReferences(measure),
-                        Path.GetRelativePath(projectRoot, path)));
+                        path));
                 }
             }
         }
 
         return new ReportExtensionParseResult(
-            Path.GetRelativePath(projectRoot, path), GetString(root, "$schema"), measures.ToArray());
+            path, GetString(root, "$schema"), measures.ToArray());
     }
 
     private static bool ReadUnrecognizedReferences(JsonElement measure) =>
@@ -224,29 +228,29 @@ internal static class PbirReportParser
     }
 
     private static PageInventory? ParsePage(
-        string projectRoot,
+        IProjectFileSource source,
         string pageDirectory,
         Dictionary<string, int> pageOrder,
         string? activePageName)
     {
-        var pagePath = Path.Combine(pageDirectory, "page.json");
-        if (!File.Exists(pagePath))
+        var pagePath = ProjectFilePaths.Combine(pageDirectory, "page.json");
+        if (!source.FileExists(pagePath))
         {
             return null;
         }
 
-        using var pageDocument = OpenJsonDocument(pagePath);
+        using var pageDocument = OpenJsonDocument(source, pagePath);
         var pageRoot = pageDocument.RootElement;
-        var name = GetString(pageRoot, "name") ?? Path.GetFileName(pageDirectory);
+        var name = GetString(pageRoot, "name") ?? ProjectFilePaths.GetFileName(pageDirectory);
         var displayName = GetString(pageRoot, "displayName") ?? name;
-        var visualsDirectory = Path.Combine(pageDirectory, "visuals");
-        var visuals = ParseVisuals(projectRoot, visualsDirectory);
+        var visualsDirectory = ProjectFilePaths.Combine(pageDirectory, "visuals");
+        var visuals = ParseVisuals(source, visualsDirectory);
 
         return new PageInventory(
             Name: name,
             DisplayName: displayName,
-            RelativePath: Path.GetRelativePath(projectRoot, pageDirectory),
-            DefinitionPath: Path.GetRelativePath(projectRoot, pagePath),
+            RelativePath: pageDirectory,
+            DefinitionPath: pagePath,
             SchemaUri: GetString(pageRoot, "$schema"),
             PageType: GetString(pageRoot, "type"),
             PageBinding: ParsePageBinding(pageRoot),
@@ -306,27 +310,23 @@ internal static class PbirReportParser
             .ToArray();
     }
 
-    private static VisualInventory[] ParseVisuals(string projectRoot, string visualsDirectory)
+    private static VisualInventory[] ParseVisuals(IProjectFileSource source, string visualsDirectory)
     {
-        if (!Directory.Exists(visualsDirectory))
-        {
-            return [];
-        }
-
-        return Directory
-            .EnumerateFiles(visualsDirectory, "visual.json", SearchOption.AllDirectories)
-            .Select(path => ParseVisual(projectRoot, path))
+        return source
+            .EnumerateFiles(visualsDirectory)
+            .Where(file => string.Equals(ProjectFilePaths.GetFileName(file.RelativePath), "visual.json", StringComparison.OrdinalIgnoreCase))
+            .Select(file => ParseVisual(source, file.RelativePath))
             .OrderBy(visual => visual.Name, StringComparer.OrdinalIgnoreCase)
             .ToArray();
     }
 
-    private static VisualInventory ParseVisual(string projectRoot, string visualPath)
+    private static VisualInventory ParseVisual(IProjectFileSource source, string visualPath)
     {
-        using var visualDocument = OpenJsonDocument(visualPath);
+        using var visualDocument = OpenJsonDocument(source, visualPath);
         var visualRoot = visualDocument.RootElement;
         var name = GetString(visualRoot, "name") ??
-                   Path.GetFileName(Path.GetDirectoryName(visualPath)) ??
-                   Path.GetFileNameWithoutExtension(visualPath) ??
+                   ProjectFilePaths.GetFileName(ProjectFilePaths.GetDirectoryName(visualPath)) ??
+                   ProjectFilePaths.GetFileNameWithoutExtension(visualPath) ??
                    "unknown";
         var visualType = TryGetObject(visualRoot, "visual", out var visualElement)
             ? GetString(visualElement, "visualType")
@@ -338,7 +338,7 @@ internal static class PbirReportParser
         return new VisualInventory(
             Name: name,
             VisualType: visualType,
-            RelativePath: Path.GetRelativePath(projectRoot, visualPath),
+            RelativePath: visualPath,
             SchemaUri: GetString(visualRoot, "$schema"),
             IsHidden: GetBoolean(visualRoot, "isHidden") ?? false,
             Position: new VisualPosition(
@@ -406,11 +406,11 @@ internal static class PbirReportParser
         return result;
     }
 
-    private static JsonDocument OpenJsonDocument(string path)
+    private static JsonDocument OpenJsonDocument(IProjectFileSource source, string path)
     {
         try
         {
-            using var stream = File.OpenRead(path);
+            using var stream = source.OpenRead(path);
             return JsonDocument.Parse(stream);
         }
         catch (JsonException exception)

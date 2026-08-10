@@ -1,0 +1,295 @@
+@page "/"
+@using System.Diagnostics
+@using System.Text.Json
+@using Microsoft.JSInterop
+@using PbiAssure.Core.Inventory
+@using PbiAssure.Core.Scanning
+@using PbiAssure.Reporting
+@inject IJSRuntime JS
+
+<PageTitle>PBI Assure</PageTitle>
+
+<section class="shell" aria-labelledby="page-title">
+    <header>
+        <p class="eyebrow">Browser assurance</p>
+        <h1 id="page-title">PBI Assure</h1>
+        <p>Choose a Power BI project, then run the existing assurance scanner in this browser.</p>
+    </header>
+
+    <div class="picker">
+        <div class="picker-actions">
+            <button @onclick="() => ChooseProjectAsync(false)" disabled="@isBusy">Choose Power BI project</button>
+            <button class="secondary-button" @onclick="() => ChooseProjectAsync(true)" disabled="@isBusy">Use alternate folder picker</button>
+        </div>
+        <p class="privacy">Your Power BI project is processed locally in your browser. Project files and analysis results are not uploaded.</p>
+    </div>
+
+    @if (selection is not null)
+    {
+        <section class="selection" aria-live="polite">
+            <p><strong>Selected project:</strong> @selection.DisplayName</p>
+            <p><strong>Files accepted:</strong> @selection.Files.Count</p>
+            <p><strong>Metadata size:</strong> @FormatBytes(selection.TotalBytes)</p>
+            <p class="diagnostic">Directory selection: @selectionElapsed.TotalMilliseconds.ToString("N0") ms</p>
+            <button @onclick="RunAssuranceAsync" disabled="@isBusy">Run assurance</button>
+        </section>
+    }
+
+    @if (!string.IsNullOrWhiteSpace(message))
+    {
+        <p class="message" role="alert">@message</p>
+    }
+
+    @if (inventory is not null)
+    {
+        <section aria-labelledby="results-title">
+            <h2 id="results-title">Assurance summary</h2>
+            <h3>Findings</h3>
+            <div class="metrics">
+                <Metric Label="Errors" Value="@inventory.ErrorFindingCount" />
+                <Metric Label="Warnings" Value="@inventory.WarningFindingCount" />
+                <Metric Label="Review required" Value="@inventory.ReviewRequiredCount" />
+                <Metric Label="Total findings" Value="@inventory.FindingCount" />
+            </div>
+            <h3>Project</h3>
+            <div class="metrics">
+                <Metric Label="Reports" Value="@inventory.ReportCount" />
+                <Metric Label="Pages" Value="@inventory.PageCount" />
+                <Metric Label="Visuals" Value="@inventory.VisualCount" />
+                <Metric Label="Developer objects" Value="@inventory.DeveloperSemanticObjectCount" />
+                <Metric Label="System-generated objects" Value="@inventory.SystemGeneratedSemanticObjectCount" />
+                <Metric Label="Power Query queries" Value="@inventory.PowerQueryCount" />
+                <Metric Label="Power Query sources" Value="@inventory.DataSourceCount" />
+            </div>
+            <h3>Semantic usage</h3>
+            <div class="metrics">
+                <Metric Label="Directly used" Value="@UsageCount(SemanticUsageStates.DirectlyUsed)" />
+                <Metric Label="Indirectly used" Value="@UsageCount(SemanticUsageStates.IndirectlyUsed)" />
+                <Metric Label="Structurally required" Value="@UsageCount(SemanticUsageStates.StructurallyRequired)" />
+                <Metric Label="Unused branch" Value="@UsageCount(SemanticUsageStates.UsedOnlyByUnusedBranch)" />
+                <Metric Label="Apparently unused" Value="@inventory.DeveloperApparentlyUnusedSemanticObjectCount" />
+            </div>
+            <div class="downloads">
+                <button @onclick="DownloadHtmlAsync" disabled="@isBusy">Download HTML report</button>
+                <button @onclick="DownloadCsvAsync" disabled="@isBusy">Download semantic CSV</button>
+            </div>
+            <p class="sensitivity"><strong>Before sharing the HTML report:</strong> it contains detailed project metadata and full Power Query M expressions. Review it for sensitive information first; it is not a redacted export.</p>
+            @if (!string.IsNullOrWhiteSpace(outputMessage))
+            {
+                <p class="message" role="status">@outputMessage</p>
+            }
+            <p class="diagnostic">@TimingSummary</p>
+        </section>
+    }
+</section>
+
+@code {
+    private BrowserProjectSelection? selection;
+    private ProjectInventory? inventory;
+    private string? message;
+    private string? outputMessage;
+    private bool isBusy;
+    private TimeSpan selectionElapsed;
+    private TimeSpan fileReadElapsed;
+    private TimeSpan scanElapsed;
+    private TimeSpan? htmlRenderElapsed;
+    private TimeSpan? csvRenderElapsed;
+    private long htmlLength;
+    private long csvLength;
+
+    private int UsageCount(string state) => inventory?.DeveloperSemanticObjectCountForState(state) ?? 0;
+
+    private string TimingSummary
+    {
+        get
+        {
+            var timings = new List<string>
+            {
+                $"File read: {fileReadElapsed.TotalMilliseconds:N0} ms",
+                $"Scan: {scanElapsed.TotalMilliseconds:N0} ms",
+            };
+            if (htmlRenderElapsed is { } htmlElapsed)
+            {
+                timings.Add($"HTML: {htmlElapsed.TotalMilliseconds:N0} ms ({FormatBytes(htmlLength)})");
+            }
+
+            if (csvRenderElapsed is { } csvElapsed)
+            {
+                timings.Add($"CSV: {csvElapsed.TotalMilliseconds:N0} ms ({FormatBytes(csvLength)})");
+            }
+
+            return string.Join(" · ", timings);
+        }
+    }
+
+    private async Task ChooseProjectAsync(bool useFallback)
+    {
+        isBusy = true;
+        message = null;
+        outputMessage = null;
+        inventory = null;
+        selection = null;
+        try
+        {
+            var stopwatch = Stopwatch.StartNew();
+            var picked = await JS.InvokeAsync<BrowserProjectSelection>(
+                "pbiAssureProjectPicker.choose",
+                useFallback,
+                BrowserProjectSelectionLimits.Default);
+            selection = BrowserProjectSelectionValidator.Validate(picked);
+            selectionElapsed = stopwatch.Elapsed;
+        }
+        catch (BrowserProjectSelectionException exception)
+        {
+            message = exception.Message;
+            selection = null;
+        }
+        catch (JSException exception) when (exception.Message.Contains("CANCELLED", StringComparison.OrdinalIgnoreCase))
+        {
+            message = "Project selection was cancelled.";
+        }
+        catch (JSException exception) when (exception.Message.Contains("BLOCKED", StringComparison.OrdinalIgnoreCase))
+        {
+            message = "Folder access was blocked. Try the alternate folder picker.";
+        }
+        catch (JSException exception)
+        {
+            message = PickerErrorMessage(exception.Message);
+            selection = null;
+        }
+        catch (Exception)
+        {
+            message = "The project folder could not be validated. Choose the folder again and retry.";
+            selection = null;
+        }
+        finally
+        {
+            isBusy = false;
+        }
+    }
+
+    private async Task RunAssuranceAsync()
+    {
+        if (selection is null)
+        {
+            return;
+        }
+
+        isBusy = true;
+        message = null;
+        outputMessage = null;
+        try
+        {
+            var readStopwatch = Stopwatch.StartNew();
+            var files = new List<ProjectFileContent>(selection.Files.Count);
+            foreach (var file in selection.Files)
+            {
+                var contents = await JS.InvokeAsync<byte[]>("pbiAssureProjectPicker.read", file.RelativePath);
+                files.Add(new ProjectFileContent(file.RelativePath, contents));
+            }
+
+            fileReadElapsed = readStopwatch.Elapsed;
+            var scanStopwatch = Stopwatch.StartNew();
+            inventory = ProjectScanner.Scan(new InMemoryProjectFileSource(selection.DisplayName, files));
+            scanElapsed = scanStopwatch.Elapsed;
+            htmlRenderElapsed = null;
+            csvRenderElapsed = null;
+            htmlLength = 0;
+            csvLength = 0;
+        }
+        catch (Exception exception) when (exception is InvalidDataException or JsonException or ArgumentException or IOException)
+        {
+            message = "The selected project could not be analysed. Check that its PBIP, PBIR and semantic-model files are complete and valid.";
+            inventory = null;
+        }
+        catch (JSException)
+        {
+            message = "A selected project file could not be read. Please choose the folder again and retry.";
+            inventory = null;
+        }
+        catch (Exception)
+        {
+            message = "PBI Assure could not complete the analysis. Choose the project again and retry.";
+            inventory = null;
+        }
+        finally
+        {
+            isBusy = false;
+        }
+    }
+
+    private async Task DownloadHtmlAsync()
+    {
+        if (inventory is null || selection is null)
+        {
+            return;
+        }
+
+        outputMessage = null;
+        try
+        {
+            var stopwatch = Stopwatch.StartNew();
+            var html = HtmlReportRenderer.Render(inventory);
+            htmlRenderElapsed = stopwatch.Elapsed;
+            htmlLength = System.Text.Encoding.UTF8.GetByteCount(html);
+            await JS.InvokeVoidAsync("pbiAssureDownload.save", BrowserDownloadFileNames.Html(selection.DisplayName), "text/html;charset=utf-8", html);
+            outputMessage = "HTML report generated and downloaded locally.";
+        }
+        catch (Exception)
+        {
+            outputMessage = "Analysis completed, but the HTML report could not be generated or downloaded.";
+        }
+    }
+
+    private async Task DownloadCsvAsync()
+    {
+        if (inventory is null || selection is null)
+        {
+            return;
+        }
+
+        outputMessage = null;
+        try
+        {
+            var stopwatch = Stopwatch.StartNew();
+            var csv = SemanticUsageCsvRenderer.Render(inventory);
+            csvRenderElapsed = stopwatch.Elapsed;
+            var csvWithBom = "\uFEFF" + csv;
+            csvLength = System.Text.Encoding.UTF8.GetByteCount(csvWithBom);
+            await JS.InvokeVoidAsync("pbiAssureDownload.save", BrowserDownloadFileNames.SemanticUsageCsv(selection.DisplayName), "text/csv;charset=utf-8", csvWithBom);
+            outputMessage = "Semantic usage CSV generated and downloaded locally.";
+        }
+        catch (Exception)
+        {
+            outputMessage = "Analysis completed, but the CSV could not be generated or downloaded.";
+        }
+    }
+
+    private static string FormatBytes(long value) => value switch
+    {
+        < 1024 => $"{value:N0} bytes",
+        < 1024 * 1024 => $"{value / 1024d:N1} KB",
+        _ => $"{value / (1024d * 1024d):N1} MB",
+    };
+
+    private static string PickerErrorMessage(string error) => error switch
+    {
+        var value when value.Contains("NO_PROJECT", StringComparison.OrdinalIgnoreCase) =>
+            "No Power BI project was found. Choose the folder that directly contains the .pbip file.",
+        var value when value.Contains("MULTIPLE_PROJECTS", StringComparison.OrdinalIgnoreCase) =>
+            "More than one Power BI project was found. Choose one project folder at a time.",
+        var value when value.Contains("DUPLICATE_PATH", StringComparison.OrdinalIgnoreCase) =>
+            "The project contains duplicate file paths that differ only by letter case.",
+        var value when value.Contains("VISITED_LIMIT", StringComparison.OrdinalIgnoreCase) =>
+            "That folder contains too many items. Choose the Power BI project folder itself.",
+        var value when value.Contains("FILE_COUNT_LIMIT", StringComparison.OrdinalIgnoreCase) =>
+            "That project contains too many metadata files for this browser version.",
+        var value when value.Contains("FILE_SIZE_LIMIT", StringComparison.OrdinalIgnoreCase) =>
+            "A project metadata file is too large for this browser version.",
+        var value when value.Contains("TOTAL_SIZE_LIMIT", StringComparison.OrdinalIgnoreCase) =>
+            "That project contains too much metadata for this browser version.",
+        var value when value.Contains("DEPTH_LIMIT", StringComparison.OrdinalIgnoreCase) =>
+            "That project contains a folder structure that is too deeply nested.",
+        _ => "The project folder could not be opened. Try the alternate folder picker.",
+    };
+}

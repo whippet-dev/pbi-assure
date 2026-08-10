@@ -66,7 +66,7 @@ internal static partial class MConnectorExtractor
                 return DataSourceLocationKinds.NetworkFile;
             }
 
-            return Path.IsPathFullyQualified(argument)
+            return IsWindowsFullyQualifiedPath(argument)
                 ? DataSourceLocationKinds.LocalFile
                 : DataSourceLocationKinds.RelativeFile;
         }
@@ -81,6 +81,13 @@ internal static partial class MConnectorExtractor
             ? DataSourceLocationKinds.NamedServer
             : DataSourceLocationKinds.DynamicOrUnspecified;
     }
+
+    private static bool IsWindowsFullyQualifiedPath(string path) =>
+        path.StartsWith("\\\\", StringComparison.Ordinal) ||
+        path.Length >= 3 &&
+        char.IsAsciiLetter(path[0]) &&
+        path[1] == ':' &&
+        (path[2] == '\\' || path[2] == '/');
 
     private static string? ReadFirstLiteralArgument(string expression, string function)
     {

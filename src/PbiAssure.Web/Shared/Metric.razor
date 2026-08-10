@@ -1,0 +1,9 @@
+<article class="metric">
+    <span>@Label</span>
+    <strong>@Value</strong>
+</article>
+
+@code {
+    [Parameter, EditorRequired] public string Label { get; set; } = string.Empty;
+    [Parameter, EditorRequired] public int Value { get; set; }
+}

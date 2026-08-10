@@ -85,7 +85,7 @@ public static class SemanticUsageCsvRenderer
                 csv.Append(',');
             }
 
-            var text = value ?? string.Empty;
+            var text = NeutralizeSpreadsheetFormula(value ?? string.Empty);
             if (text.IndexOfAny([',', '"', '\r', '\n']) >= 0)
             {
                 csv.Append('"').Append(text.Replace("\"", "\"\"", StringComparison.Ordinal)).Append('"');
@@ -99,6 +99,18 @@ public static class SemanticUsageCsvRenderer
         }
 
         csv.Append("\r\n");
+    }
+
+    private static string NeutralizeSpreadsheetFormula(string value)
+    {
+        if (value.Length == 0)
+        {
+            return value;
+        }
+
+        return value[0] is '=' or '+' or '-' or '@' or '\t' or '\r' or '\n'
+            ? "'" + value
+            : value;
     }
 
     private static string DescribeReport(ProjectInventory inventory, string semanticModel)

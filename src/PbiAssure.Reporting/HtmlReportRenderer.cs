@@ -262,7 +262,7 @@ public static class HtmlReportRenderer
             html.Append("              <p class=\"query-link-row\">");
             AppendDataSourceQueryLinks(html, inventory, queries);
             html.AppendLine("</p>");
-            html.AppendLine("              <p class=\"secondary\">Connection values are withheld from this report.</p>");
+            html.AppendLine("              <p class=\"secondary\">Raw connection arguments are not repeated in this source summary. Full M expressions remain available in the query details and can contain sensitive values.</p>");
             html.AppendLine("            </section>");
             html.AppendLine("            <details class=\"technical-details\"><summary>Connector details</summary>");
             html.AppendLine("            <ul class=\"plain-list\">");

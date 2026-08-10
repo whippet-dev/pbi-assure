@@ -18,6 +18,11 @@ The initial scanner runs locally and performs no network requests. It reads meta
 
 The core library should not make outbound network calls. Future Fabric or XMLA connectors must be separate adapters with explicit authentication and permission documentation. Telemetry must remain disabled unless project maintainers make a deliberate, documented decision to introduce it.
 
+The standalone browser application follows the same boundary. It loads its own static runtime assets
+from the host, then processes selected project files and renders outputs locally. Production hosting must
+apply the CSP and other response headers in [Browser static hosting](browser-hosting.md). See
+[Browser privacy](browser-privacy.md) for the complete user-facing model and caveats.
+
 ## Filesystem boundary
 
 Analysis is read-only against source projects. Generated output is written only to an operator-selected path. Future remediation features must be separate from analysis, show an exact change preview, and require explicit confirmation.

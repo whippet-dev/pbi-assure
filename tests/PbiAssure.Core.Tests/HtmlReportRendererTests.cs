@@ -182,7 +182,8 @@ public sealed class HtmlReportRendererTests : IDisposable
         Assert.Contains("Semantic model", html, StringComparison.Ordinal);
         Assert.Contains("Power Query lineage", html, StringComparison.Ordinal);
         Assert.Contains("Data sources", html, StringComparison.Ordinal);
-        Assert.Contains("Connection values are withheld from this report.", html, StringComparison.Ordinal);
+        Assert.Contains("Raw connection arguments are not repeated in this source summary.", html, StringComparison.Ordinal);
+        Assert.Contains("Full M expressions remain available in the query details and can contain sensitive values.", html, StringComparison.Ordinal);
         Assert.Contains("File on a developer computer", html, StringComparison.Ordinal);
         Assert.Contains("Connector details", html, StringComparison.Ordinal);
         Assert.Contains("Loads into the model", html, StringComparison.Ordinal);
@@ -275,6 +276,8 @@ public sealed class HtmlReportRendererTests : IDisposable
         Assert.Contains("Power Query evidence", html, StringComparison.Ordinal);
         Assert.Contains("Semantic usage and Power Query dependency are separate", html, StringComparison.Ordinal);
         Assert.Contains("Power Query column usage is based on explicit static M references", html, StringComparison.Ordinal);
+        Assert.DoesNotContain("</code><script>alert('m-unsafe')</script>", html, StringComparison.Ordinal);
+        Assert.Contains("&lt;/code&gt;&lt;script&gt;alert(&#x27;m-unsafe&#x27;)&lt;/script&gt;", html, StringComparison.Ordinal);
     }
 
     public void Dispose()
@@ -343,7 +346,12 @@ public sealed class HtmlReportRendererTests : IDisposable
                     dataType: string
                 partition Age = m
                     mode: import
-                    source = #table({}, {})
+                    source =
+                        let
+                            HostileMetadata = "</code><script>alert('m-unsafe')</script>",
+                            Source = #table({}, {})
+                        in
+                            Source
             """);
         WriteFile(Path.Combine("CrossLayer.SemanticModel", "definition", "tables", "Customer.tmdl"),
             """

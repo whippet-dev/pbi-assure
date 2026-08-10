@@ -107,6 +107,43 @@ public sealed class SemanticUsageCsvRendererTests : IDisposable
         Assert.Contains("\"Name, \"\"quoted\"\"", SemanticUsageCsvRenderer.Render(inventory with { SemanticObjectUsages = semanticUsages }), StringComparison.Ordinal);
     }
 
+    [Theory]
+    [InlineData("=HYPERLINK(\"https://example.invalid\")")]
+    [InlineData("+SUM(1,1)")]
+    [InlineData("-1+1")]
+    [InlineData("@SUM(1,1)")]
+    [InlineData("\t=1+1")]
+    [InlineData("\r=1+1")]
+    [InlineData("\n=1+1")]
+    public void RenderNeutralizesSpreadsheetFormulaTextWithoutChangingNumericCounts(string hostileName)
+    {
+        WriteTable("Sales", ["Safe"], "#table({}, {})");
+        var inventory = ProjectScanner.Scan(testRoot);
+        var model = inventory.SemanticModels.Single().Name;
+        SemanticObjectUsage[] semanticUsages =
+        [
+            new SemanticObjectUsage(
+                model,
+                "Sales",
+                hostileName,
+                SemanticObjectTypes.Column,
+                null,
+                [],
+                SemanticUsageStates.ApparentlyUnused),
+        ];
+
+        var rows = ReadCsv(SemanticUsageCsvRenderer.Render(inventory with
+        {
+            SemanticObjectUsages = semanticUsages,
+        }));
+        var header = rows[0];
+        var row = Assert.Single(rows.Skip(1));
+
+        Assert.Equal("'" + hostileName, Value(row, header, "Object"));
+        Assert.Equal("0", Value(row, header, "ReportLocationCount"));
+        Assert.Equal("Yes", Value(row, header, "ReviewCandidate"));
+    }
+
     public void Dispose()
     {
         if (Directory.Exists(testRoot))

@@ -43,6 +43,13 @@ Renders normalized inventories into accessible HTML and focused semantic-usage C
 
 Provides the lightweight Windows workflow over the shared scanner and output writers. It selects a local PBIP/PBIR project, runs assurance, and opens the latest HTML report, semantic CSV, or output folder without embedding a report viewer.
 
+### `PbiAssure.Web`
+
+Provides a standalone Blazor WebAssembly frontend over Core and Reporting. Browser directory APIs create
+a bounded, canonical, in-memory project-file source; analysis and report rendering then run locally in
+the browser. Web contains no independent semantic analysis, backend, upload or telemetry path. See
+[Browser application](browser-app.md) and [Browser privacy](browser-privacy.md).
+
 ### Future projects
 
 - `PbiAssure.Pbir`: detailed PBIR parsing if it becomes large enough to isolate.

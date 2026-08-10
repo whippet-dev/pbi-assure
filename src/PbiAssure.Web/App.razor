@@ -1,0 +1,23 @@
+<ErrorBoundary>
+    <ChildContent>
+        <Router AppAssembly="typeof(App).Assembly">
+            <Found Context="routeData">
+                <RouteView RouteData="routeData" DefaultLayout="typeof(MainLayout)" />
+            </Found>
+            <NotFound>
+                <LayoutView Layout="typeof(MainLayout)">
+                    <p role="alert">That page was not found.</p>
+                </LayoutView>
+            </NotFound>
+        </Router>
+    </ChildContent>
+    <ErrorContent>
+        <LayoutView Layout="typeof(MainLayout)">
+            <section class="fatal-message" role="alert">
+                <h1>PBI Assure could not continue</h1>
+                <p>No project data was uploaded. Reload the page and choose the project again.</p>
+                <a class="button-link" href="">Reload PBI Assure</a>
+            </section>
+        </LayoutView>
+    </ErrorContent>
+</ErrorBoundary>

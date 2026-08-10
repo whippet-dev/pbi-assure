@@ -1,0 +1,15 @@
+@inherits LayoutComponentBase
+
+<main>
+    @Body
+</main>
+<footer class="app-footer">
+    <p>
+        <text>PBI Assure @BrowserBuildInfo.Version</text>
+        @if (BrowserBuildInfo.Commit is { } commit)
+        {
+            <text> · build @commit</text>
+        }
+        <text> · </text><a href="https://github.com/whippet-dev/pbi-assure">Source code on GitHub</a>
+    </p>
+</footer>

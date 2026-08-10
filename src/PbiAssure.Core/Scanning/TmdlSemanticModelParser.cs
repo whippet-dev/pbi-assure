@@ -6,43 +6,44 @@ internal static class TmdlSemanticModelParser
 {
     private static readonly string[] NamedObjectKeywords = ["column", "measure", "hierarchy", "partition"];
 
-    public static SemanticModelInventory Parse(string rootPath, string semanticModelDirectory)
+    public static SemanticModelInventory Parse(IProjectFileSource source, string semanticModelDirectory)
     {
-        var directoryName = Path.GetFileName(semanticModelDirectory);
+        var directoryName = ProjectFilePaths.GetFileName(semanticModelDirectory);
         var name = directoryName.EndsWith(".SemanticModel", StringComparison.OrdinalIgnoreCase)
             ? directoryName[..^".SemanticModel".Length]
             : directoryName;
-        var definitionDirectory = Path.Combine(semanticModelDirectory, "definition");
-        var tablesDirectory = Path.Combine(definitionDirectory, "tables");
+        var definitionDirectory = ProjectFilePaths.Combine(semanticModelDirectory, "definition");
+        var tablesDirectory = ProjectFilePaths.Combine(definitionDirectory, "tables");
 
-        var tables = Directory.Exists(tablesDirectory)
-            ? Directory
-                .EnumerateFiles(tablesDirectory, "*.tmdl", SearchOption.TopDirectoryOnly)
-                .Select(path => ParseTable(rootPath, path))
+        var tables = source.EnumerateFiles(tablesDirectory, recursive: false).Any()
+            ? source
+                .EnumerateFiles(tablesDirectory, recursive: false)
+                .Where(file => file.RelativePath.EndsWith(".tmdl", StringComparison.OrdinalIgnoreCase))
+                .Select(file => ParseTable(source, file.RelativePath))
                 .OrderBy(table => table.Name, StringComparer.OrdinalIgnoreCase)
                 .ToArray()
             : [];
 
-        var relationshipsPath = Path.Combine(definitionDirectory, "relationships.tmdl");
-        var relationships = File.Exists(relationshipsPath)
-            ? ParseRelationships(relationshipsPath)
+        var relationshipsPath = ProjectFilePaths.Combine(definitionDirectory, "relationships.tmdl");
+        var relationships = source.FileExists(relationshipsPath)
+            ? ParseRelationships(source, relationshipsPath)
             : [];
-        var expressionsPath = Path.Combine(definitionDirectory, "expressions.tmdl");
-        var namedExpressions = File.Exists(expressionsPath)
-            ? ParseNamedExpressions(rootPath, expressionsPath)
+        var expressionsPath = ProjectFilePaths.Combine(definitionDirectory, "expressions.tmdl");
+        var namedExpressions = source.FileExists(expressionsPath)
+            ? ParseNamedExpressions(source, expressionsPath)
             : [];
 
         return new SemanticModelInventory(
             Name: name,
-            RelativePath: Path.GetRelativePath(rootPath, semanticModelDirectory),
+            RelativePath: semanticModelDirectory,
             Tables: tables,
             Relationships: relationships,
             NamedExpressions: namedExpressions);
     }
 
-    private static SemanticTableInventory ParseTable(string rootPath, string path)
+    private static SemanticTableInventory ParseTable(IProjectFileSource source, string path)
     {
-        var lines = ReadLines(path);
+        var lines = ReadLines(source, path);
         var tableDeclarationIndex = FindDeclaration(lines, "table", startIndex: 0, requiredIndent: null);
         if (tableDeclarationIndex < 0 ||
             !TryParseDeclaration(lines[tableDeclarationIndex].Trimmed, "table", out var tableName, out _))
@@ -123,7 +124,7 @@ internal static class TmdlSemanticModelParser
 
         return new SemanticTableInventory(
             Name: tableName,
-            RelativePath: Path.GetRelativePath(rootPath, path),
+            RelativePath: path,
             IsHidden: HasFlag(lines, tableDeclarationIndex, tablePropertyEnd, "isHidden"),
             IsPrivate: HasFlag(lines, tableDeclarationIndex, tablePropertyEnd, "isPrivate"),
             IsSystemGenerated: systemGeneratedKind is not null,
@@ -156,9 +157,9 @@ internal static class TmdlSemanticModelParser
             line.Trimmed[prefix.Length..].TrimStart().Equals("= true", StringComparison.OrdinalIgnoreCase));
     }
 
-    private static SemanticNamedExpressionInventory[] ParseNamedExpressions(string rootPath, string path)
+    private static SemanticNamedExpressionInventory[] ParseNamedExpressions(IProjectFileSource source, string path)
     {
-        var lines = ReadLines(path);
+        var lines = ReadLines(source, path);
         var expressions = new List<SemanticNamedExpressionInventory>();
         for (var index = 0; index < lines.Length; index++)
         {
@@ -172,7 +173,7 @@ internal static class TmdlSemanticModelParser
                 Name: name,
                 Expression: ReadExpression(lines, index, endIndex, inlineExpression) ?? string.Empty,
                 Kind: FindProperty(lines, index, endIndex, "kind"),
-                RelativePath: Path.GetRelativePath(rootPath, path)));
+                RelativePath: path));
             index = endIndex - 1;
         }
 
@@ -263,9 +264,9 @@ internal static class TmdlSemanticModelParser
             Levels: levels);
     }
 
-    private static SemanticRelationshipInventory[] ParseRelationships(string path)
+    private static SemanticRelationshipInventory[] ParseRelationships(IProjectFileSource source, string path)
     {
-        var lines = ReadLines(path);
+        var lines = ReadLines(source, path);
         var relationships = new List<SemanticRelationshipInventory>();
 
         for (var index = 0; index < lines.Length; index++)
@@ -653,9 +654,16 @@ internal static class TmdlSemanticModelParser
         return end;
     }
 
-    private static TmdlLine[] ReadLines(string path)
+    private static TmdlLine[] ReadLines(IProjectFileSource source, string path)
     {
-        return File.ReadAllLines(path)
+        using var reader = new StreamReader(source.OpenRead(path));
+        var lines = new List<string>();
+        while (reader.ReadLine() is { } line)
+        {
+            lines.Add(line);
+        }
+
+        return lines
             .Select(line => new TmdlLine(line, line.Trim(), GetIndent(line)))
             .ToArray();
     }

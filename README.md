@@ -86,6 +86,20 @@ dotnet publish src/PbiAssure.Desktop -c Release -o artifacts/desktop
 
 The HTML report is organised as expandable review cards rather than long data tables. Each report page contains collapsible visual summaries showing the visible title or on-canvas label, friendly visual type, approximate page position, referenced columns and measures, behaviour, accessibility metadata, and related findings. Findings and semantic-model tables are separately searchable and collapsible. Internal PBIR identifiers remain available only inside technical details.
 
+## Browser application
+
+`PbiAssure.Web` is a standalone Blazor WebAssembly frontend. It lets a user select one PBIP project folder, runs the shared scanner locally in the browser, shows a concise assurance summary, and creates local downloads of the existing self-contained HTML report and semantic-usage CSV. It has no backend and does not upload selected files or results.
+
+```powershell
+dotnet publish src/PbiAssure.Web -c Release -o artifacts/web
+```
+
+Serve `artifacts/web/wwwroot` with a normal static web server. Current desktop Edge and Chrome are the supported first-beta browsers; Firefox and Safari are best effort only after fallback testing, and mobile or older enterprise browsers are not initially supported.
+
+Choose the folder that directly contains one `.pbip` file. Browser ingestion is bounded to 10,000 visited entries, 5,000 accepted metadata files, 25 MiB per file, 100 MiB total and 64 directory levels. The HTML export contains detailed project metadata and full M expressions and should be reviewed before sharing.
+
+See [the browser application guide](docs/browser-app.md), [browser privacy model](docs/browser-privacy.md), and [static-hosting requirements](docs/browser-hosting.md). The original [browser/WebAssembly feasibility assessment](docs/browser-wasm-feasibility.md) is retained as a superseded planning record.
+
 ## Repository structure
 
 ```text
@@ -93,6 +107,7 @@ src/PbiAssure.Core/       Domain types and analysis logic
 src/PbiAssure.Reporting/  Accessible human-readable report rendering
 src/PbiAssure.Cli/        Thin command-line entry point
 src/PbiAssure.Desktop/     Lightweight Windows desktop workflow
+src/PbiAssure.Web/         Local standalone browser frontend
 tests/                    Automated tests using synthetic files
 docs/                     Architecture, assurance, and security decisions
 samples-local/            Ignored local PBIP/PBIR projects and scan outputs

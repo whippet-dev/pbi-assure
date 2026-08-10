@@ -5,27 +5,28 @@ namespace PbiAssure.Core.Scanning;
 
 internal static class PbirBookmarkParser
 {
-    public static PbirBookmarkParseResult Parse(string projectRoot, string reportDirectory)
+    public static PbirBookmarkParseResult Parse(IProjectFileSource source, string reportDirectory)
     {
-        var bookmarksDirectory = Path.Combine(reportDirectory, "definition", "bookmarks");
-        if (!Directory.Exists(bookmarksDirectory))
+        var bookmarksDirectory = ProjectFilePaths.Combine(reportDirectory, "definition", "bookmarks");
+        if (!source.EnumerateFiles(bookmarksDirectory).Any())
         {
             return new PbirBookmarkParseResult(null, [], []);
         }
 
-        var metadataPath = Path.Combine(bookmarksDirectory, "bookmarks.json");
+        var metadataPath = ProjectFilePaths.Combine(bookmarksDirectory, "bookmarks.json");
         string? schemaUri = null;
         string[] bookmarkOrder = [];
-        if (File.Exists(metadataPath))
+        if (source.FileExists(metadataPath))
         {
-            using var metadata = OpenJsonDocument(metadataPath);
+            using var metadata = OpenJsonDocument(source, metadataPath);
             schemaUri = GetString(metadata.RootElement, "$schema");
             bookmarkOrder = ReadBookmarkOrder(metadata.RootElement).ToArray();
         }
 
-        var bookmarks = Directory
-            .EnumerateFiles(bookmarksDirectory, "*.bookmark.json", SearchOption.TopDirectoryOnly)
-            .Select(path => ParseBookmark(projectRoot, path))
+        var bookmarks = source
+            .EnumerateFiles(bookmarksDirectory, recursive: false)
+            .Where(file => file.RelativePath.EndsWith(".bookmark.json", StringComparison.OrdinalIgnoreCase))
+            .Select(file => ParseBookmark(source, file.RelativePath))
             .OrderBy(bookmark => BookmarkOrder(bookmark.Name, bookmarkOrder))
             .ThenBy(bookmark => bookmark.DisplayName, StringComparer.OrdinalIgnoreCase)
             .ToArray();
@@ -33,18 +34,18 @@ internal static class PbirBookmarkParser
         return new PbirBookmarkParseResult(schemaUri, bookmarkOrder, bookmarks);
     }
 
-    private static BookmarkInventory ParseBookmark(string projectRoot, string path)
+    private static BookmarkInventory ParseBookmark(IProjectFileSource source, string path)
     {
-        using var document = OpenJsonDocument(path);
+        using var document = OpenJsonDocument(source, path);
         var root = document.RootElement;
         TryGetObject(root, "options", out var options);
         TryGetObject(root, "explorationState", out var explorationState);
-        var name = GetString(root, "name") ?? Path.GetFileNameWithoutExtension(Path.GetFileNameWithoutExtension(path));
+        var name = GetString(root, "name") ?? Path.GetFileNameWithoutExtension(ProjectFilePaths.GetFileNameWithoutExtension(path));
 
         return new BookmarkInventory(
             Name: name,
             DisplayName: GetString(root, "displayName") ?? name,
-            RelativePath: Path.GetRelativePath(projectRoot, path),
+            RelativePath: path,
             SchemaUri: GetString(root, "$schema"),
             ActivePageName: GetString(explorationState, "activeSection"),
             ApplyOnlyToTargetVisuals: GetBoolean(options, "applyOnlyToTargetVisuals"),
@@ -118,11 +119,11 @@ internal static class PbirBookmarkParser
         return int.MaxValue;
     }
 
-    private static JsonDocument OpenJsonDocument(string path)
+    private static JsonDocument OpenJsonDocument(IProjectFileSource source, string path)
     {
         try
         {
-            using var stream = File.OpenRead(path);
+            using var stream = source.OpenRead(path);
             return JsonDocument.Parse(stream);
         }
         catch (JsonException exception)

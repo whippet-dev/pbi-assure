@@ -4,6 +4,7 @@
     <Project Path="src/PbiAssure.Core/PbiAssure.Core.csproj" />
     <Project Path="src/PbiAssure.Desktop/PbiAssure.Desktop.csproj" />
     <Project Path="src/PbiAssure.Reporting/PbiAssure.Reporting.csproj" />
+    <Project Path="src/PbiAssure.Web/PbiAssure.Web.csproj" />
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/PbiAssure.Core.Tests/PbiAssure.Core.Tests.csproj" />

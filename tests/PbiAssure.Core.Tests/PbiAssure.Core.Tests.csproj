@@ -14,6 +14,7 @@
     <ProjectReference Include="../../src/PbiAssure.Cli/PbiAssure.Cli.csproj" />
     <ProjectReference Include="../../src/PbiAssure.Core/PbiAssure.Core.csproj" />
     <ProjectReference Include="../../src/PbiAssure.Reporting/PbiAssure.Reporting.csproj" />
+    <ProjectReference Include="../../src/PbiAssure.Web/PbiAssure.Web.csproj" />
     <Using Include="Xunit" />
   </ItemGroup>
 </Project>

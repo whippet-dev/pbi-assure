@@ -240,7 +240,7 @@ public sealed class ProjectScannerTests : IDisposable
 
         var exception = Assert.Throws<InvalidDataException>(() => ProjectScanner.Scan(testRoot));
 
-        Assert.Contains(pagesPath, exception.Message, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("Sales.Report/definition/pages/pages.json", exception.Message, StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]
@@ -780,7 +780,7 @@ public sealed class ProjectScannerTests : IDisposable
         Assert.Equal("Broken", unresolved.FromObjectName);
         Assert.Equal("[Missing Measure]", unresolved.ReferenceText);
         Assert.Equal(SemanticDependencyKinds.Dax, unresolved.DependencyKind);
-        Assert.Equal(tablePath, unresolved.EvidencePath);
+        Assert.Equal("Model.SemanticModel/definition/tables/Measures.tmdl", unresolved.EvidencePath);
         Assert.Contains("was found", unresolved.Reason, StringComparison.OrdinalIgnoreCase);
     }
 
@@ -1443,7 +1443,7 @@ public sealed class ProjectScannerTests : IDisposable
 
         var report = Assert.Single(result.Reports);
         Assert.Equal("https://example.test/report/1.0/schema.json", report.SchemaUri);
-        Assert.EndsWith(Path.Combine("Scoped.Report", "definition", "report.json"), report.DefinitionPath);
+        Assert.Equal("Scoped.Report/definition/report.json", report.DefinitionPath);
         Assert.Equal(5, report.FilterCount);
         Assert.Equal(5, result.FilterCount);
         Assert.Equal(3, report.Filters.Count);
@@ -1455,7 +1455,7 @@ public sealed class ProjectScannerTests : IDisposable
         Assert.Equal(2, drillthrough.FilterCount);
         Assert.Equal("Drillthrough", drillthrough.PageBinding?.Type);
         Assert.Equal(3, drillthrough.PageBinding?.ParameterCount);
-        Assert.EndsWith(Path.Combine("drillthrough", "page.json"), drillthrough.DefinitionPath);
+        Assert.EndsWith("drillthrough/page.json", drillthrough.DefinitionPath, StringComparison.Ordinal);
         Assert.Contains(drillthrough.FieldReferences, reference =>
             reference.ObjectName == "Amount" && reference.UsageContext == UsageContexts.Drillthrough);
         Assert.Equal("Tooltip", report.Pages.Single(page => page.Name == "tooltip").PageType);
@@ -1479,7 +1479,7 @@ public sealed class ProjectScannerTests : IDisposable
             evidence.Page is null &&
             evidence.Visual is null &&
             evidence.ArtifactPath.EndsWith(
-                Path.Combine("Scoped.Report", "definition", "report.json"),
+                "Scoped.Report/definition/report.json",
                 StringComparison.Ordinal));
 
         Assert.Contains(result.UnresolvedSemanticReferences, reference =>
@@ -1487,7 +1487,7 @@ public sealed class ProjectScannerTests : IDisposable
             reference.Page is null &&
             reference.Visual is null &&
             reference.ArtifactPath.EndsWith(
-                Path.Combine("Scoped.Report", "definition", "report.json"),
+                "Scoped.Report/definition/report.json",
                 StringComparison.Ordinal));
         Assert.Contains(result.UnresolvedSemanticReferences, reference =>
             reference.ObjectName == "Missing Page" &&

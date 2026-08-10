@@ -39,10 +39,8 @@ internal static class ReportModelBinder
 
     private static bool PathsEqual(string left, string right)
     {
-        var normalizedLeft = left.Replace(Path.AltDirectorySeparatorChar, Path.DirectorySeparatorChar)
-            .TrimEnd(Path.DirectorySeparatorChar);
-        var normalizedRight = right.Replace(Path.AltDirectorySeparatorChar, Path.DirectorySeparatorChar)
-            .TrimEnd(Path.DirectorySeparatorChar);
+        var normalizedLeft = left.Replace('\\', '/').TrimEnd('/');
+        var normalizedRight = right.Replace('\\', '/').TrimEnd('/');
         return string.Equals(normalizedLeft, normalizedRight, StringComparison.OrdinalIgnoreCase);
     }
 }
