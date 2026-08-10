@@ -31,6 +31,9 @@ internal sealed class NavigationAssuranceRule : IAssuranceRule
         var pageNames = report.Pages
             .Select(page => page.Name)
             .ToHashSet(StringComparer.Ordinal);
+        var bookmarkControlledVisuals = report.Bookmarks
+            .SelectMany(bookmark => bookmark.CapturedVisualNames)
+            .ToHashSet(StringComparer.Ordinal);
 
         foreach (var page in report.Pages)
         {
@@ -66,15 +69,25 @@ internal sealed class NavigationAssuranceRule : IAssuranceRule
                         !string.IsNullOrWhiteSpace(action.BookmarkTarget) &&
                         !bookmarkNames.Contains(action.BookmarkTarget))
                     {
+                        var isBookmarkControlled = bookmarkControlledVisuals.Contains(visual.Name);
                         yield return VisualFinding(
                             ruleId: "PBI-NAV-001",
-                            severity: FindingSeverities.Error,
-                            message: $"The enabled bookmark action targets '{action.BookmarkTarget}', but that bookmark does not exist in the report.",
-                            recommendation: "Choose an existing bookmark or recreate the missing bookmark, then test the action in reading view.",
+                            severity: isBookmarkControlled
+                                ? FindingSeverities.Information
+                                : FindingSeverities.Error,
+                            message: isBookmarkControlled
+                                ? $"This visual is controlled by stored bookmark state, and its saved action targets '{action.BookmarkTarget}', which is not in the report's bookmark list. Static analysis cannot establish whether that target is effective in every bookmark state."
+                                : $"The enabled bookmark action targets '{action.BookmarkTarget}', but that bookmark does not exist in the report.",
+                            recommendation: isBookmarkControlled
+                                ? "Test this visual in each bookmark-driven state. Repair the target only if the action is enabled and the missing bookmark is selected in an effective state."
+                                : "Choose an existing bookmark or recreate the missing bookmark, then test the action in reading view.",
                             report,
                             page,
                             visual,
-                            action);
+                            action,
+                            assessmentType: isBookmarkControlled
+                                ? AssessmentTypes.ReviewRequired
+                                : AssessmentTypes.Finding);
                     }
 
                     if (IsPageNavigation(action) &&
@@ -188,8 +201,8 @@ internal sealed class NavigationAssuranceRule : IAssuranceRule
                     yield return BookmarkFinding(
                         ruleId: "PBI-NAV-004",
                         severity: FindingSeverities.Warning,
-                        message: $"Bookmark '{bookmark.DisplayName}' targets visual '{visualName}', but that visual does not exist on page '{activePage.DisplayName}'.",
-                        recommendation: "Update the bookmark's target visuals or recreate it after confirming the intended visual state.",
+                        message: "A bookmark contains a reference to a visual that is no longer on this page.",
+                        recommendation: "Review and test the bookmark. If the missing visual is no longer required, update the bookmark to remove the stale reference.",
                         report,
                         bookmark,
                         page: activePage,

@@ -13,7 +13,7 @@ PBIP project
   -> normalised artifact inventory
   -> dependency graph
   -> versioned assurance rules
-  -> JSON / HTML / CSV / CI results
+  -> JSON inventory / HTML report / semantic-usage CSV / CI results
 ```
 
 Each stage has one responsibility:
@@ -33,17 +33,20 @@ Contains the domain model, parsers, dependency engine, and rules. It must not de
 
 ### `PbiAssure.Cli`
 
-Provides automation and an early user interface. It translates command-line input into calls to the core and serialises results.
+Provides automation, default output naming, and file writing. A default scan creates a paired HTML report and semantic-usage CSV beside the source project; explicit output paths create only the requested output.
 
 ### `PbiAssure.Reporting`
 
-Renders normalized inventories into accessible, human-readable outputs. It depends on the core domain model but contains no scanning or Power BI parsing logic.
+Renders normalized inventories into accessible HTML and focused semantic-usage CSV outputs. It depends on the core domain model but contains no scanning or Power BI parsing logic.
+
+### `PbiAssure.Desktop`
+
+Provides the lightweight Windows workflow over the shared scanner and output writers. It selects a local PBIP/PBIR project, runs assurance, and opens the latest HTML report, semantic CSV, or output folder without embedding a report viewer.
 
 ### Future projects
 
 - `PbiAssure.Pbir`: detailed PBIR parsing if it becomes large enough to isolate.
 - `PbiAssure.Tabular`: TMDL/TOM and XMLA integration.
-- `PbiAssure.Desktop`: an accessible graphical interface.
 
 These should be introduced only when their boundaries are real; empty architectural layers add maintenance cost.
 
@@ -53,7 +56,7 @@ Report-to-model binding happens before field reconciliation. An explicit `byPath
 
 The semantic graph uses directed edges. A report visual provides direct roots, while a measure has edges to the columns, measures, and tables referenced by its DAX expression. A field-parameter table links to every statically declared choice. A used calculation-group table links to all of its calculation items, whose expressions then link to their explicit semantic dependencies. Sort-by columns, hierarchy levels, relationship endpoints, and containing tables provide structural edges. Starting at report-facing and structural roots and traversing these edges makes usage classification explainable.
 
-Power Query lineage is a separate directed graph over M-backed table partitions and named expressions. Loaded partitions are roots. Static references to known query names are traversed transitively, while strings, comments, and local step names are excluded. This separation avoids treating query execution as evidence that every semantic column or measure in the loaded table is report-facing usage.
+Power Query lineage is a separate directed graph over M-backed table partitions and named expressions. Loaded partitions are roots. Static references to known query names are traversed transitively, while strings, comments, and local step names are excluded. A focused column-level pass records explicit static operations such as merge keys, expanded columns, selections, renames, removals, and type transformations. This separation avoids treating query execution as evidence that every semantic column or measure in the loaded table is report-facing usage.
 
 Connector extraction runs over the same M expressions but emits a minimised inventory: connector family, connector function, coarse location category, query identity, and source artifact path. Literal connector arguments are used transiently only to distinguish local, network, relative, web, named-server, or dynamic locations and are not retained in connector records.
 

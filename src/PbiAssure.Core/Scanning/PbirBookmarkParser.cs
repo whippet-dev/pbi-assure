@@ -49,8 +49,24 @@ internal static class PbirBookmarkParser
             ActivePageName: GetString(explorationState, "activeSection"),
             ApplyOnlyToTargetVisuals: GetBoolean(options, "applyOnlyToTargetVisuals"),
             TargetVisualNames: GetStringArray(options, "targetVisualNames"),
+            CapturedVisualNames: ReadCapturedVisualNames(explorationState),
             SuppressActivePage: GetBoolean(options, "suppressActiveSection"),
             SuppressData: GetBoolean(options, "suppressData"));
+    }
+
+    private static string[] ReadCapturedVisualNames(JsonElement explorationState)
+    {
+        if (!TryGetObject(explorationState, "sections", out var sections))
+        {
+            return [];
+        }
+
+        return sections.EnumerateObject()
+            .SelectMany(section => TryGetObject(section.Value, "visualContainers", out var containers)
+                ? containers.EnumerateObject().Select(visual => visual.Name)
+                : [])
+            .Distinct(StringComparer.Ordinal)
+            .ToArray();
     }
 
     private static IEnumerable<string> ReadBookmarkOrder(JsonElement parent)

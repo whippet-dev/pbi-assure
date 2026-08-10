@@ -8,6 +8,7 @@ public sealed record BookmarkInventory(
     string? ActivePageName,
     bool? ApplyOnlyToTargetVisuals,
     IReadOnlyList<string> TargetVisualNames,
+    IReadOnlyList<string> CapturedVisualNames,
     bool? SuppressActivePage,
     bool? SuppressData)
 {

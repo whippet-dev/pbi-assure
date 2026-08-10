@@ -16,3 +16,4 @@ notes-local/
 # Generated assurance reports
 *.pbiassure.json
 *.pbiassure.html
+*.semantic-usage.csv

@@ -182,11 +182,12 @@ public sealed class HtmlReportRendererTests : IDisposable
         Assert.Contains("Semantic model", html, StringComparison.Ordinal);
         Assert.Contains("Power Query lineage", html, StringComparison.Ordinal);
         Assert.Contains("Data sources", html, StringComparison.Ordinal);
-        Assert.Contains("connection details withheld", html, StringComparison.Ordinal);
+        Assert.Contains("Connection values are withheld from this report.", html, StringComparison.Ordinal);
         Assert.Contains("File on a developer computer", html, StringComparison.Ordinal);
         Assert.Contains("Connector details", html, StringComparison.Ordinal);
         Assert.Contains("Loads into the model", html, StringComparison.Ordinal);
-        Assert.Contains("Supports a loaded query", html, StringComparison.Ordinal);
+        Assert.Contains("Helper / staging", html, StringComparison.Ordinal);
+        Assert.Contains("class=\"semantic-table power-query-card data-source-card\"", html, StringComparison.Ordinal);
         Assert.Contains("View M expression", html, StringComparison.Ordinal);
         Assert.Contains("<span class=\"kicker\">Model table</span>", html, StringComparison.Ordinal);
         Assert.Contains("Field parameter", html, StringComparison.Ordinal);
@@ -239,6 +240,43 @@ public sealed class HtmlReportRendererTests : IDisposable
         Assert.Contains("data-severity=\"Warning\"", html, StringComparison.Ordinal);
     }
 
+    [Fact]
+    public void RenderSeparatesUnusedSemanticObjectsFromRequiredUpstreamPowerQuery()
+    {
+        CreateCrossLayerProject();
+
+        var inventory = ProjectScanner.Scan(testRoot);
+        var html = HtmlReportRenderer.Render(inventory);
+
+        Assert.All(inventory.SemanticObjectUsages.Where(usage => usage.Table == "Age"), usage =>
+            Assert.Equal(SemanticUsageStates.ApparentlyUnused, usage.UsageState));
+        Assert.Contains("Power Query dependency", html, StringComparison.Ordinal);
+        Assert.Contains("This table&#x27;s model objects appear unused in the semantic and report layers", html, StringComparison.Ordinal);
+        Assert.Contains("The backing Power Query is still required during data preparation.", html, StringComparison.Ordinal);
+        Assert.Contains("Review whether loading this table into the semantic model is still required.", html, StringComparison.Ordinal);
+        Assert.Contains("href=\"#power-query-crosslayer-age-tablepartition-age\"", html, StringComparison.Ordinal);
+        Assert.Contains("href=\"#power-query-crosslayer-customer-tablepartition-customer\"", html, StringComparison.Ordinal);
+        Assert.Contains("Loaded into model and used by other queries", html, StringComparison.Ordinal);
+        Assert.Contains("Loaded into model only", html, StringComparison.Ordinal);
+        Assert.Contains(">Loaded &#x2B; upstream</span>", html, StringComparison.Ordinal);
+        Assert.Contains(">Loaded</span>", html, StringComparison.Ordinal);
+        Assert.Contains("class=\"query-dependency-grid\"", html, StringComparison.Ordinal);
+        Assert.Contains("<dt>Uses</dt><dd>", html, StringComparison.Ordinal);
+        Assert.Contains("<dt>Used by</dt><dd>", html, StringComparison.Ordinal);
+        Assert.Contains("None detected", html, StringComparison.Ordinal);
+        Assert.Contains("A deliberately long reusable customer age enrichment query name", html, StringComparison.Ordinal);
+        Assert.Contains(".query-dependency-grid { grid-template-columns: 1fr; }", html, StringComparison.Ordinal);
+        Assert.DoesNotContain("<dt>Role</dt>", html, StringComparison.Ordinal);
+        Assert.DoesNotContain("<dt>Model support</dt>", html, StringComparison.Ordinal);
+        Assert.Equal(1, CountOccurrences(html, "class=\"power-query-context\""));
+        Assert.Contains("Power Query usage was found even though no semantic or report usage was detected.", html, StringComparison.Ordinal);
+        Assert.Contains("Used as a merge key by Power Query Customer.", html, StringComparison.Ordinal);
+        Assert.Contains("Expanded into Power Query Customer.", html, StringComparison.Ordinal);
+        Assert.Contains("Power Query evidence", html, StringComparison.Ordinal);
+        Assert.Contains("Semantic usage and Power Query dependency are separate", html, StringComparison.Ordinal);
+        Assert.Contains("Power Query column usage is based on explicit static M references", html, StringComparison.Ordinal);
+    }
+
     public void Dispose()
     {
         var allowedRoot = Path.GetFullPath(Path.Combine(Path.GetTempPath(), "PbiAssure.Reporting.Tests"));
@@ -271,6 +309,72 @@ public sealed class HtmlReportRendererTests : IDisposable
             $"<dt>{label}</dt><dd>{value:N0}</dd>",
             groupHtml,
             StringComparison.Ordinal);
+    }
+
+    private void CreateCrossLayerProject()
+    {
+        WriteFile(Path.Combine("CrossLayer.Report", "definition", "pages", "pages.json"),
+            "{ \"pageOrder\": [\"page\"] }");
+        WriteFile(Path.Combine("CrossLayer.Report", "definition", "pages", "page", "page.json"),
+            "{ \"name\": \"page\", \"displayName\": \"Overview\" }");
+        WriteFile(Path.Combine("CrossLayer.Report", "definition", "pages", "page", "visuals", "sales", "visual.json"),
+            """
+            {
+              "name": "sales",
+              "visual": {
+                "visualType": "card",
+                "query": { "queryState": { "values": { "projections": [
+                  { "field": { "Column": { "Expression": { "SourceRef": { "Entity": "Sales" } }, "Property": "Value" } } }
+                ] } } }
+              }
+            }
+            """);
+        WriteFile(Path.Combine("CrossLayer.SemanticModel", "definition.pbism"), "{}");
+        WriteFile(Path.Combine("CrossLayer.SemanticModel", "definition", "expressions.tmdl"),
+            """
+            expression 'A deliberately long reusable customer age enrichment query name' = Age
+            """);
+        WriteFile(Path.Combine("CrossLayer.SemanticModel", "definition", "tables", "Age.tmdl"),
+            """
+            table Age
+                column Age
+                    dataType: int64
+                column 'Age Bucket'
+                    dataType: string
+                partition Age = m
+                    mode: import
+                    source = #table({}, {})
+            """);
+        WriteFile(Path.Combine("CrossLayer.SemanticModel", "definition", "tables", "Customer.tmdl"),
+            """
+            table Customer
+                column Name
+                    dataType: string
+                partition Customer = m
+                    mode: import
+                    source =
+                        let
+                            Base = #table({}, {}),
+                            LongQuery = #"A deliberately long reusable customer age enrichment query name",
+                            Joined = Table.NestedJoin(Base, {"Age"}, Age, {"Age"}, "Age data", JoinKind.LeftOuter),
+                            Expanded = Table.ExpandTableColumn(Joined, "Age data", {"Age Bucket"}, {"Age Bucket"})
+                        in
+                            Expanded
+            """);
+        WriteFile(Path.Combine("CrossLayer.SemanticModel", "definition", "tables", "Sales.tmdl"),
+            """
+            table Sales
+                column Value
+                    dataType: decimal
+                partition Sales = m
+                    mode: import
+                    source = #table({}, {})
+            """);
+    }
+
+    private static int CountOccurrences(string value, string expected)
+    {
+        return value.Split(expected, StringSplitOptions.None).Length - 1;
     }
 
     private void CreateSampleProject()

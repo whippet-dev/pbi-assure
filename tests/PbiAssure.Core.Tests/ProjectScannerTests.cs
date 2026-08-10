@@ -24,7 +24,7 @@ public sealed class ProjectScannerTests : IDisposable
 
         var result = ProjectScanner.Scan(testRoot);
 
-        Assert.Equal("0.15", result.SchemaVersion);
+        Assert.Equal("0.17", result.SchemaVersion);
         Assert.Equal(1, result.ReportCount);
         Assert.Equal(1, result.SemanticModelCount);
         Assert.Contains(result.Artifacts, artifact =>
@@ -938,14 +938,14 @@ public sealed class ProjectScannerTests : IDisposable
         Assert.True(image.Accessibility.HasAltText);
         Assert.True(image.Accessibility.AltTextIsDynamic);
 
-        Assert.Equal(7, result.FindingCount);
-        Assert.Equal(1, result.ErrorFindingCount);
+        Assert.Equal(6, result.FindingCount);
+        Assert.Equal(0, result.ErrorFindingCount);
         Assert.Equal(4, result.WarningFindingCount);
         Assert.Equal(2, result.InformationFindingCount);
         Assert.Equal(2, result.ReviewRequiredCount);
         Assert.Contains(result.Findings, finding =>
             finding.RuleId == "PBI-COMPAT-001" && finding.Visual == "qna");
-        Assert.Contains(result.Findings, finding =>
+        Assert.DoesNotContain(result.Findings, finding =>
             finding.RuleId == "PBI-MODEL-001" &&
             finding.Visual == "qna" &&
             finding.Table == "Data" &&
@@ -1110,6 +1110,137 @@ public sealed class ProjectScannerTests : IDisposable
         Assert.Equal(
             AssessmentTypes.ReviewRequired,
             navigationFindings.Single(finding => finding.RuleId == "PBI-NAV-008").AssessmentType);
+    }
+
+    [Fact]
+    public void ScanKeepsQnaGeneratedReferencesStrictWithoutTreatingUnresolvedLanguageAsBrokenBindings()
+    {
+        WriteFile(
+            Path.Combine("Qna.SemanticModel", "definition", "tables", "Sales.tmdl"),
+            """
+            table Sales
+                column Date
+                    dataType: dateTime
+
+                partition Sales = m
+                    mode: import
+                    source = #table({}, {})
+            """);
+        WriteFile(
+            Path.Combine("Qna.Report", "definition", "pages", "pages.json"),
+            "{ \"pageOrder\": [\"page\"] }");
+        WriteFile(
+            Path.Combine("Qna.Report", "definition", "pages", "page", "page.json"),
+            "{ \"name\": \"page\", \"displayName\": \"Q&A\" }");
+        WriteFile(
+            Path.Combine("Qna.Report", "definition", "pages", "page", "visuals", "qna", "visual.json"),
+            """
+            {
+              "name": "qna",
+              "visual": {
+                "visualType": "qnaVisual",
+                "query": {
+                  "queryState": {
+                    "values": { "projections": [
+                      { "field": { "Column": { "Expression": { "SourceRef": { "Entity": "Sales" } }, "Property": "Date" } } },
+                      { "field": { "Column": { "Expression": { "SourceRef": { "Entity": "Sales" } }, "Property": "Dates" } } }
+                    ] }
+                  },
+                  "sortDefinition": {
+                    "sort": [
+                      { "field": { "Column": { "Expression": { "SourceRef": { "Entity": "Sales" } }, "Property": "Dates" } } }
+                    ]
+                  }
+                }
+              }
+            }
+            """);
+        WriteFile(
+            Path.Combine("Qna.Report", "definition", "pages", "page", "visuals", "card", "visual.json"),
+            """
+            {
+              "name": "card",
+              "visual": {
+                "visualType": "card",
+                "query": { "queryState": { "values": { "projections": [
+                  { "field": { "Column": { "Expression": { "SourceRef": { "Entity": "Sales" } }, "Property": "Missing" } } }
+                ] } } }
+              }
+            }
+            """);
+
+        var result = ProjectScanner.Scan(testRoot);
+
+        Assert.Contains(result.SemanticObjectUsages, usage =>
+            usage.Table == "Sales" &&
+            usage.ObjectName == "Date" &&
+            usage.UsageState == SemanticUsageStates.DirectlyUsed);
+        Assert.Contains(result.UnresolvedSemanticReferences, reference =>
+            reference.Visual == "card" && reference.ObjectName == "Missing");
+        Assert.DoesNotContain(result.UnresolvedSemanticReferences, reference =>
+            reference.Visual == "qna" && reference.ObjectName == "Dates");
+        Assert.Contains(result.Findings, finding =>
+            finding.RuleId == "PBI-MODEL-001" && finding.Visual == "card");
+        Assert.DoesNotContain(result.Findings, finding =>
+            finding.RuleId == "PBI-MODEL-001" && finding.Visual == "qna");
+    }
+
+    [Fact]
+    public void ScanMarksMissingBookmarkTargetsAsReviewWhenBookmarkStateCapturesTheVisual()
+    {
+        WriteFile(
+            Path.Combine("State.Report", "definition", "pages", "pages.json"),
+            "{ \"pageOrder\": [\"page\"] }");
+        WriteFile(
+            Path.Combine("State.Report", "definition", "pages", "page", "page.json"),
+            "{ \"name\": \"page\", \"displayName\": \"Navigation\" }");
+        WriteBookmarkAction("plain", "MissingPlain", enabled: true, includeTarget: true);
+        WriteBookmarkAction("stateful", "MissingStateful", enabled: true, includeTarget: true);
+        WriteBookmarkAction("stateful-none", "Unused", enabled: true, includeTarget: false);
+        WriteBookmarkAction("stateful-disabled", "MissingDisabled", enabled: false, includeTarget: true);
+        WriteFile(
+            Path.Combine("State.Report", "definition", "bookmarks", "bookmarks.json"),
+            "{ \"items\": [{ \"name\": \"Known\" }] }");
+        WriteFile(
+            Path.Combine("State.Report", "definition", "bookmarks", "Known.bookmark.json"),
+            """
+            {
+              "name": "Known",
+              "displayName": "Known state",
+              "explorationState": {
+                "activeSection": "page",
+                "sections": {
+                  "page": {
+                    "visualContainers": {
+                      "stateful": {},
+                      "stateful-none": {},
+                      "stateful-disabled": {}
+                    }
+                  }
+                }
+              }
+            }
+            """);
+
+        var result = ProjectScanner.Scan(testRoot);
+        var report = Assert.Single(result.Reports);
+        var bookmark = Assert.Single(report.Bookmarks);
+        Assert.Contains("stateful", bookmark.CapturedVisualNames);
+
+        var definite = Assert.Single(result.Findings, finding =>
+            finding.RuleId == "PBI-NAV-001" && finding.Visual == "plain");
+        Assert.Equal(FindingSeverities.Error, definite.Severity);
+        Assert.Equal(AssessmentTypes.Finding, definite.AssessmentType);
+
+        var uncertain = Assert.Single(result.Findings, finding =>
+            finding.RuleId == "PBI-NAV-001" && finding.Visual == "stateful");
+        Assert.Equal(FindingSeverities.Information, uncertain.Severity);
+        Assert.Equal(AssessmentTypes.ReviewRequired, uncertain.AssessmentType);
+        Assert.Contains("Static analysis cannot establish", uncertain.Message, StringComparison.Ordinal);
+        Assert.DoesNotContain(result.Findings, finding =>
+            finding.RuleId == "PBI-NAV-001" && finding.Visual == "stateful-disabled");
+        Assert.Contains(result.Findings, finding =>
+            finding.RuleId == "PBI-NAV-002" && finding.Visual == "stateful-none");
     }
 
     [Fact]
@@ -1721,11 +1852,21 @@ public sealed class ProjectScannerTests : IDisposable
             result.PowerQueryUsages.Single(usage => usage.QueryName == "Staging").UsageState);
         Assert.Equal(PowerQueryUsageStates.ApparentlyUnused,
             result.PowerQueryUsages.Single(usage => usage.QueryName == "Unused").UsageState);
-        Assert.True(result.PowerQueryUsages.Single(usage => usage.QueryName == "Dynamic").HasDynamicReferences);
+        Assert.Equal(PowerQueryRoles.LoadedOnly,
+            result.PowerQueryUsages.Single(usage => usage.QueryName == "Loaded").QueryRole);
+        Assert.Equal(PowerQueryRoles.HelperOrStaging,
+            result.PowerQueryUsages.Single(usage => usage.QueryName == "Staging").QueryRole);
+        Assert.Equal(PowerQueryRoles.ApparentlyOrphaned,
+            result.PowerQueryUsages.Single(usage => usage.QueryName == "Unused").QueryRole);
+        var dynamicQuery = result.PowerQueryUsages.Single(usage => usage.QueryName == "Dynamic");
+        Assert.True(dynamicQuery.HasDynamicReferences);
+        Assert.Null(dynamicQuery.QueryRole);
         Assert.Contains(result.Findings, finding =>
             finding.RuleId == "PBI-QUERY-001" && finding.ObjectName == "Dynamic");
         Assert.Contains(result.Findings, finding =>
             finding.RuleId == "PBI-QUERY-002" && finding.ObjectName == "Unused");
+        Assert.DoesNotContain(result.Findings, finding =>
+            finding.RuleId == "PBI-QUERY-002" && finding.ObjectName == "Dynamic");
         Assert.Equal(4, result.DataSourceCount);
         Assert.Contains(result.DataSources, source =>
             source.ConnectorFamily == "File" && source.LocationKind == DataSourceLocationKinds.LocalFile);
@@ -1739,6 +1880,48 @@ public sealed class ProjectScannerTests : IDisposable
         Assert.DoesNotContain("private-file.csv", connectorJson, StringComparison.Ordinal);
         Assert.DoesNotContain("private-server", connectorJson, StringComparison.Ordinal);
         Assert.DoesNotContain("internal.example.test", connectorJson, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void ScanEnrichesUnusedSemanticTableWithoutChangingItsUsageClassification()
+    {
+        WriteFile(Path.Combine("CrossLayer.SemanticModel", "definition.pbism"), "{}");
+        WriteFile(Path.Combine("CrossLayer.SemanticModel", "definition", "tables", "Age.tmdl"),
+            """
+            table Age
+                column Age
+                    dataType: int64
+                column 'Age Bucket'
+                    dataType: string
+                partition Age = m
+                    mode: import
+                    source = #table({}, {})
+            """);
+        WriteFile(Path.Combine("CrossLayer.SemanticModel", "definition", "tables", "Customer.tmdl"),
+            """
+            table Customer
+                column Name
+                    dataType: string
+                partition Customer = m
+                    mode: import
+                    source =
+                        let
+                            Source = Age
+                        in
+                            Source
+            """);
+
+        var result = ProjectScanner.Scan(testRoot);
+
+        Assert.All(result.SemanticObjectUsages.Where(usage => usage.Table == "Age"), usage =>
+            Assert.Equal(SemanticUsageStates.ApparentlyUnused, usage.UsageState));
+        var ageQuery = result.PowerQueryUsages.Single(usage => usage.QueryName == "Age");
+        Assert.Equal(PowerQueryRoles.LoadedAndSupporting, ageQuery.QueryRole);
+        Assert.Contains(ageQuery.ReferencedBy, reference => reference.FromQueryName == "Customer");
+        var context = Assert.Single(result.SemanticTablePowerQueryContexts, item => item.Table == "Age");
+        Assert.True(context.IsRequiredUpstream);
+        Assert.Contains("Customer", context.UsedByQueries);
+        Assert.Equal(PowerQueryRoles.LoadedAndSupporting, context.QueryRole);
     }
 
     [Fact]
@@ -1953,6 +2136,31 @@ public sealed class ProjectScannerTests : IDisposable
               },
               "explorationState": {
                 "activeSection": "{{activePageName}}"
+              }
+            }
+            """);
+    }
+
+    private void WriteBookmarkAction(string visualName, string target, bool enabled, bool includeTarget)
+    {
+        var targetProperty = includeTarget
+            ? $",\n            \"bookmark\": {{ \"expr\": {{ \"Literal\": {{ \"Value\": \"'{target}'\" }} }} }}"
+            : string.Empty;
+        WriteFile(
+            Path.Combine("State.Report", "definition", "pages", "page", "visuals", visualName, "visual.json"),
+            $$"""
+            {
+              "name": "{{visualName}}",
+              "visual": {
+                "visualType": "actionButton",
+                "visualContainerObjects": {
+                  "visualLink": [{
+                    "properties": {
+                      "show": { "expr": { "Literal": { "Value": "{{enabled.ToString().ToLowerInvariant()}}" } } },
+                      "type": { "expr": { "Literal": { "Value": "'Bookmark'" } } }{{targetProperty}}
+                    }
+                  }]
+                }
               }
             }
             """);

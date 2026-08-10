@@ -139,6 +139,8 @@ public static class HtmlReportRenderer
         html.AppendLine("      <p class=\"section-intro\">Keep these limits in mind when using the report to make development decisions.</p>");
         html.AppendLine("      <ul>");
         html.AppendLine("        <li><strong>Apparently unused</strong> means no usage was found in the analysed scope; it is not permission to delete an object.</li>");
+        html.AppendLine("        <li>Semantic usage and Power Query dependency are separate: a model table can appear unused while its Power Query is still required by another query.</li>");
+        html.AppendLine("        <li>Power Query column usage is based on explicit static M references; dynamically constructed column lists and custom transformations may remain unresolved.</li>");
         html.AppendLine("        <li>Power Query lineage follows static references between known table queries and named expressions. Dynamically constructed references, data-source internals, bookmark-captured semantic state, and external consumers remain analysis boundaries.</li>");
         html.AppendLine("        <li>Accessibility findings support manual WCAG and assistive-technology testing; they do not certify conformance.</li>");
         html.AppendLine("        <li>PBI Assure performs read-only analysis of the selected Power BI project.</li>");
@@ -167,45 +169,59 @@ public static class HtmlReportRenderer
             foreach (var usage in modelGroup.OrderBy(item => PowerQueryUsageOrder(item.UsageState))
                          .ThenBy(item => item.QueryName, StringComparer.OrdinalIgnoreCase))
             {
-                var label = usage.UsageState switch
-                {
-                    PowerQueryUsageStates.LoadedToModel => "Loads into the model",
-                    PowerQueryUsageStates.SupportingQuery => "Supports a loaded query",
-                    _ => "No use found",
-                };
-                html.Append("        <details class=\"semantic-table\"><summary><span class=\"summary-copy\"><strong>")
-                    .Append(Encode(usage.QueryName)).Append("</strong><span>").Append(Encode(label));
-                if (usage.Table is not null)
-                {
-                    html.Append(" · table ").Append(Encode(usage.Table));
-                }
-                html.Append("</span></span><span class=\"badge ").Append(UsageClass(
-                        usage.UsageState == PowerQueryUsageStates.ApparentlyUnused
-                            ? SemanticUsageStates.ApparentlyUnused
-                            : usage.UsageState == PowerQueryUsageStates.LoadedToModel
-                                ? SemanticUsageStates.DirectlyUsed
-                                : SemanticUsageStates.IndirectlyUsed))
-                    .Append("\">").Append(Encode(label)).AppendLine("</span></summary>");
-                html.AppendLine("          <dl class=\"facts\">");
-                AppendFact(html, "Type", usage.SourceKind == PowerQuerySourceKinds.TablePartition
-                    ? "Table load" : "Reusable query");
+                var roleLabel = PowerQueryRoleLabel(usage);
                 var targets = inventory.PowerQueryDependencies.Where(edge =>
                         edge.SemanticModel == usage.SemanticModel &&
                         edge.FromQueryName == usage.QueryName &&
                         edge.FromSourceKind == usage.SourceKind &&
                         edge.FromPartition == usage.Partition)
-                    .Select(edge => edge.ToQueryName).Distinct(StringComparer.OrdinalIgnoreCase).ToArray();
-                AppendFact(html, "Uses", targets.Length == 0 ? "No known query dependencies" : string.Join(", ", targets));
-                AppendFact(html, "Used by", usage.ReferencedBy.Count == 0
-                    ? "No known queries" : string.Join(", ", usage.ReferencedBy.Select(item => item.FromQueryName).Distinct()));
+                    .Select(edge => edge.ToQueryName)
+                    .Distinct(StringComparer.OrdinalIgnoreCase)
+                    .OrderBy(name => name, StringComparer.OrdinalIgnoreCase)
+                    .ToArray();
+                var usedBy = usage.ReferencedBy.Select(item => item.FromQueryName)
+                    .Distinct(StringComparer.OrdinalIgnoreCase)
+                    .OrderBy(name => name, StringComparer.OrdinalIgnoreCase)
+                    .ToArray();
+
+                html.Append("        <details id=\"").Append(Encode(PowerQueryAnchor(usage)))
+                    .Append("\" class=\"semantic-table power-query-card\"><summary><span class=\"summary-copy\"><strong>")
+                    .Append(Encode(usage.QueryName)).Append("</strong><span>")
+                    .Append(Encode(PowerQuerySubtitle(usage, targets.Length, usedBy.Length)))
+                    .Append("</span></span><span class=\"badge ").Append(UsageClass(
+                        usage.UsageState == PowerQueryUsageStates.ApparentlyUnused
+                            ? SemanticUsageStates.ApparentlyUnused
+                            : usage.UsageState == PowerQueryUsageStates.LoadedToModel
+                                ? SemanticUsageStates.DirectlyUsed
+                                : SemanticUsageStates.IndirectlyUsed))
+                    .Append("\" title=\"").Append(Encode(roleLabel)).Append("\" aria-label=\"")
+                    .Append(Encode(roleLabel)).Append("\">")
+                    .Append(Encode(PowerQueryRoleBadgeLabel(usage))).AppendLine("</span></summary>");
+                html.AppendLine("          <div class=\"query-card-body\">");
+                if (usage.Table is not null)
+                {
+                    html.Append("            <p class=\"query-model-association\">Loads into model table <strong>")
+                        .Append(Encode(usage.Table)).AppendLine("</strong>.</p>");
+                }
+                html.AppendLine("            <section class=\"query-dependencies\" aria-label=\"Query dependencies\">");
+                html.AppendLine("              <h4>Dependencies</h4>");
+                html.AppendLine("              <dl class=\"query-dependency-grid\">");
+                html.AppendLine("                <div><dt>Uses</dt><dd>");
+                AppendQueryLinksOrNone(html, inventory, usage.SemanticModel, targets);
+                html.AppendLine("</dd></div>");
+                html.AppendLine("                <div><dt>Used by</dt><dd>");
+                AppendQueryLinksOrNone(html, inventory, usage.SemanticModel, usedBy);
+                html.AppendLine("</dd></div>");
+                html.AppendLine("              </dl>");
+                html.AppendLine("            </section>");
                 if (usage.HasDynamicReferences)
                 {
-                    AppendFact(html, "Manual review", "This expression constructs references dynamically, so some dependencies may not be visible here.");
+                    html.AppendLine("            <p class=\"query-review\"><strong>Review:</strong> This expression constructs references dynamically, so some dependencies may not be visible here.</p>");
                 }
-                html.AppendLine("          </dl>");
-                html.AppendLine("          <details class=\"technical-details\"><summary>View M expression</summary><pre><code>");
+                html.AppendLine("            <details class=\"technical-details\"><summary>View M expression</summary><pre><code>");
                 html.Append(Encode(usage.Expression));
                 html.AppendLine("</code></pre></details>");
+                html.AppendLine("          </div>");
                 html.AppendLine("        </details>");
             }
             html.AppendLine("      </div>");
@@ -226,20 +242,29 @@ public static class HtmlReportRenderer
         foreach (var connectorGroup in inventory.DataSources.GroupBy(source => source.ConnectorFamily)
                      .OrderBy(group => group.Key, StringComparer.OrdinalIgnoreCase))
         {
-            var queries = connectorGroup.Select(source => source.QueryName)
-                .Distinct(StringComparer.OrdinalIgnoreCase).OrderBy(name => name, StringComparer.OrdinalIgnoreCase).ToArray();
-            html.Append("        <details class=\"semantic-table\"><summary><span class=\"summary-copy\"><strong>")
-                .Append(Encode(connectorGroup.Key)).Append("</strong><span>Used by ")
-                .Append(queries.Length.ToString(CultureInfo.InvariantCulture))
-                .Append(queries.Length == 1 ? " query" : " queries")
-                .AppendLine(" · connection details withheld</span></span></summary>");
-            html.AppendLine("          <dl class=\"facts\">");
-            AppendFact(html, "Queries", string.Join(", ", queries));
+            var queries = connectorGroup.Select(source => (source.SemanticModel, source.QueryName))
+                .Distinct()
+                .OrderBy(item => item.SemanticModel, StringComparer.OrdinalIgnoreCase)
+                .ThenBy(item => item.QueryName, StringComparer.OrdinalIgnoreCase)
+                .ToArray();
             var locationLabels = connectorGroup.Select(source => SourceLocationLabel(source.LocationKind))
                 .Distinct(StringComparer.Ordinal).ToArray();
-            AppendFact(html, "Location type", string.Join(", ", locationLabels));
-            html.AppendLine("          </dl>");
-            html.AppendLine("          <details class=\"technical-details\"><summary>Connector details</summary>");
+            html.Append("        <details class=\"semantic-table power-query-card data-source-card\"><summary><span class=\"summary-copy\"><strong>")
+                .Append(Encode(connectorGroup.Key)).Append("</strong><span>")
+                .Append(Encode(string.Join(", ", locationLabels)))
+                .Append("</span></span><span class=\"count-pill\">")
+                .Append(queries.Length.ToString(CultureInfo.InvariantCulture))
+                .Append(queries.Length == 1 ? " query" : " queries")
+                .AppendLine("</span></summary>");
+            html.AppendLine("          <div class=\"query-card-body\">");
+            html.AppendLine("            <section class=\"query-dependencies\" aria-label=\"Queries using this data source\">");
+            html.AppendLine("              <h4>Used by</h4>");
+            html.Append("              <p class=\"query-link-row\">");
+            AppendDataSourceQueryLinks(html, inventory, queries);
+            html.AppendLine("</p>");
+            html.AppendLine("              <p class=\"secondary\">Connection values are withheld from this report.</p>");
+            html.AppendLine("            </section>");
+            html.AppendLine("            <details class=\"technical-details\"><summary>Connector details</summary>");
             html.AppendLine("            <ul class=\"plain-list\">");
             foreach (var function in connectorGroup.Select(source => source.ConnectorFunction)
                          .Distinct(StringComparer.OrdinalIgnoreCase).OrderBy(name => name, StringComparer.OrdinalIgnoreCase))
@@ -248,6 +273,7 @@ public static class HtmlReportRenderer
             }
             html.AppendLine("            </ul>");
             html.AppendLine("          </details>");
+            html.AppendLine("          </div>");
             html.AppendLine("        </details>");
         }
         html.AppendLine("      </div>");
@@ -262,6 +288,41 @@ public static class HtmlReportRenderer
         DataSourceLocationKinds.NamedServer => "Named server or database",
         _ => "Dynamic or not exposed",
     };
+
+    private static string PowerQueryRoleLabel(PowerQueryUsage usage) => usage.QueryRole switch
+    {
+        PowerQueryRoles.LoadedAndSupporting => "Loaded into model and used by other queries",
+        PowerQueryRoles.LoadedOnly => "Loaded into model only",
+        PowerQueryRoles.HelperOrStaging => "Helper / staging query",
+        PowerQueryRoles.ApparentlyOrphaned => "Apparently orphaned query",
+        _ => "Dependency role needs review",
+    };
+
+    private static string PowerQueryRoleBadgeLabel(PowerQueryUsage usage) => usage.QueryRole switch
+    {
+        PowerQueryRoles.LoadedAndSupporting => "Loaded + upstream",
+        PowerQueryRoles.LoadedOnly => "Loaded",
+        PowerQueryRoles.HelperOrStaging => "Helper / staging",
+        PowerQueryRoles.ApparentlyOrphaned => "No known consumers",
+        _ => "Review",
+    };
+
+    private static string PowerQuerySubtitle(PowerQueryUsage usage, int usesCount, int usedByCount)
+    {
+        var usedByText = usedByCount == 1 ? "supports 1 query" : $"supports {usedByCount} queries";
+        var usesText = usesCount == 1 ? "uses 1 query" : $"uses {usesCount} queries";
+        return usage.QueryRole switch
+        {
+            PowerQueryRoles.LoadedAndSupporting => $"Loads into the model · {usedByText}",
+            PowerQueryRoles.LoadedOnly when usesCount > 0 => $"Loads into the model · {usesText}",
+            PowerQueryRoles.LoadedOnly => "Loads into the model",
+            PowerQueryRoles.HelperOrStaging when usedByCount > 0 => $"Reusable query · {usedByText}",
+            PowerQueryRoles.HelperOrStaging => "Reusable query",
+            PowerQueryRoles.ApparentlyOrphaned => "Reusable query · no consumers found",
+            _ when usage.UsageState == PowerQueryUsageStates.LoadedToModel => "Loads into the model · dependency review needed",
+            _ => "Reusable query · dependency review needed",
+        };
+    }
 
     private static int PowerQueryUsageOrder(string state) => state switch
     {
@@ -919,6 +980,7 @@ public static class HtmlReportRenderer
             }
 
             html.AppendLine("</summary>");
+            AppendSemanticTablePowerQueryContext(html, inventory, model, table, usages, unusedCount);
             AppendSemanticFeatures(html, table);
             html.AppendLine("            <ul class=\"semantic-object-list\">");
             foreach (var usage in usages)
@@ -944,6 +1006,7 @@ public static class HtmlReportRenderer
                 {
                     html.Append("                <p class=\"usage-reason\">").Append(Encode(usageReason)).AppendLine("</p>");
                 }
+                AppendPowerQueryColumnUsage(html, inventory, usage);
                 AppendUsageDetails(html, inventory, usage);
                 html.AppendLine("              </li>");
             }
@@ -1101,6 +1164,198 @@ public static class HtmlReportRenderer
                 : HumanizeIdentifier(role!)));
     }
 
+    private static void AppendSemanticTablePowerQueryContext(
+        StringBuilder html,
+        ProjectInventory inventory,
+        SemanticModelInventory model,
+        SemanticTableInventory table,
+        SemanticObjectUsage[] usages,
+        int unusedCount)
+    {
+        if (unusedCount == 0)
+        {
+            return;
+        }
+
+        var contexts = inventory.SemanticTablePowerQueryContexts
+            .Where(context =>
+                string.Equals(context.SemanticModel, model.Name, StringComparison.OrdinalIgnoreCase) &&
+                string.Equals(context.Table, table.Name, StringComparison.OrdinalIgnoreCase) &&
+                context.IsRequiredUpstream)
+            .ToArray();
+        if (contexts.Length == 0)
+        {
+            return;
+        }
+
+        var downstreamQueries = contexts.SelectMany(context => context.UsedByQueries)
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .OrderBy(name => name, StringComparer.OrdinalIgnoreCase)
+            .ToArray();
+        var allObjectsAppearUnused = usages.Length > 0 && unusedCount == usages.Length;
+
+        html.AppendLine("            <aside class=\"power-query-context\" aria-label=\"Power Query dependency\">");
+        html.AppendLine("              <h4>Power Query dependency</h4>");
+        html.Append("              <p>");
+        if (allObjectsAppearUnused)
+        {
+            html.Append("This table&#x27;s model objects appear unused in the semantic and report layers, but ");
+        }
+        else
+        {
+            html.Append("Some model objects appear unused, but ");
+        }
+
+        var backingQueries = contexts.Select(context => context.QueryName)
+            .Distinct(StringComparer.OrdinalIgnoreCase).ToArray();
+        AppendQueryLinks(html, inventory, model.Name, backingQueries);
+        html.Append(backingQueries.Length == 1 ? " is used by " : " are used by ");
+        AppendQueryLinks(html, inventory, model.Name, downstreamQueries);
+        html.AppendLine(". The backing Power Query is still required during data preparation.</p>");
+        html.AppendLine("              <p class=\"secondary\">Review whether loading this table into the semantic model is still required. Keep the query while known downstream queries depend on it.</p>");
+        html.AppendLine("            </aside>");
+    }
+
+    private static void AppendPowerQueryColumnUsage(
+        StringBuilder html,
+        ProjectInventory inventory,
+        SemanticObjectUsage semanticUsage)
+    {
+        if (semanticUsage.ObjectType != SemanticObjectTypes.Column)
+        {
+            return;
+        }
+
+        var usages = inventory.PowerQueryColumnUsages.Where(usage =>
+                string.Equals(usage.SemanticModel, semanticUsage.SemanticModel, StringComparison.OrdinalIgnoreCase) &&
+                string.Equals(usage.SourceTable, semanticUsage.Table, StringComparison.OrdinalIgnoreCase) &&
+                string.Equals(usage.SourceColumn, semanticUsage.ObjectName, StringComparison.OrdinalIgnoreCase))
+            .DistinctBy(usage => string.Join('\u001f', usage.ConsumerQuery, usage.UsageKind), StringComparer.OrdinalIgnoreCase)
+            .OrderBy(usage => usage.ConsumerQuery, StringComparer.OrdinalIgnoreCase)
+            .ThenBy(usage => usage.UsageKind, StringComparer.Ordinal)
+            .ToArray();
+        if (usages.Length == 0)
+        {
+            return;
+        }
+
+        var isApparentlyUnused = semanticUsage.UsageState == SemanticUsageStates.ApparentlyUnused;
+        if (isApparentlyUnused)
+        {
+            html.AppendLine("                <aside class=\"power-query-column-context\" aria-label=\"Power Query column usage\">");
+            html.AppendLine("                  <strong>Power Query usage</strong>");
+            html.AppendLine("                  <p>Power Query usage was found even though no semantic or report usage was detected.</p>");
+        }
+        else
+        {
+            html.AppendLine("                <details class=\"power-query-column-context compact\"><summary>Power Query usage</summary>");
+        }
+        html.AppendLine("                  <ul class=\"plain-list\">");
+        foreach (var usage in usages)
+        {
+            html.Append("                    <li>").Append(Encode(PowerQueryColumnUsageLabel(usage))).Append(" <a href=\"#")
+                .Append(Encode(PowerQueryAnchorForName(inventory, usage.SemanticModel, usage.ConsumerQuery)))
+                .Append("\">Open ").Append(Encode(usage.ConsumerQuery)).AppendLine("</a></li>");
+        }
+        html.AppendLine("                  </ul>");
+        html.AppendLine("                  <details class=\"technical-details\"><summary>Power Query evidence</summary><ul class=\"plain-list\">");
+        foreach (var usage in usages)
+        {
+            html.Append("                    <li><code>").Append(Encode(usage.MFunction)).Append("</code>");
+            if (!string.IsNullOrWhiteSpace(usage.StepName))
+            {
+                html.Append(" · step <code>").Append(Encode(usage.StepName)).Append("</code>");
+            }
+            html.Append(" · <code>").Append(Encode(usage.ArtifactPath)).AppendLine("</code></li>");
+        }
+        html.AppendLine("                  </ul></details>");
+        html.AppendLine(isApparentlyUnused ? "                </aside>" : "                </details>");
+    }
+
+    private static string PowerQueryColumnUsageLabel(PowerQueryColumnUsage usage) => usage.UsageKind switch
+    {
+        PowerQueryColumnUsageKinds.MergeKey => $"Used as a merge key by Power Query {usage.ConsumerQuery}.",
+        PowerQueryColumnUsageKinds.ExpandedColumn => $"Expanded into Power Query {usage.ConsumerQuery}.",
+        PowerQueryColumnUsageKinds.SelectedColumn => $"Selected by Power Query {usage.ConsumerQuery} during data preparation.",
+        PowerQueryColumnUsageKinds.RenamedColumn => $"Renamed by Power Query {usage.ConsumerQuery} during data preparation.",
+        PowerQueryColumnUsageKinds.RemovedColumn => $"Referenced in a remove-columns step by Power Query {usage.ConsumerQuery}.",
+        PowerQueryColumnUsageKinds.TransformedColumn => $"Its type is transformed by Power Query {usage.ConsumerQuery}.",
+        _ => $"Used by Power Query {usage.ConsumerQuery} during data preparation.",
+    };
+
+    private static void AppendQueryLinks(
+        StringBuilder html,
+        ProjectInventory inventory,
+        string semanticModel,
+        IEnumerable<string> queryNames)
+    {
+        var names = queryNames.Distinct(StringComparer.OrdinalIgnoreCase).ToArray();
+        for (var index = 0; index < names.Length; index++)
+        {
+            if (index > 0)
+            {
+                html.Append(index == names.Length - 1 ? " and " : ", ");
+            }
+
+            var name = names[index];
+            var usage = inventory.PowerQueryUsages.FirstOrDefault(item =>
+                string.Equals(item.SemanticModel, semanticModel, StringComparison.OrdinalIgnoreCase) &&
+                string.Equals(item.QueryName, name, StringComparison.OrdinalIgnoreCase));
+            if (usage is null)
+            {
+                html.Append("<strong>").Append(Encode(name)).Append("</strong>");
+            }
+            else
+            {
+                html.Append("<a href=\"#").Append(Encode(PowerQueryAnchor(usage))).Append("\">")
+                    .Append(Encode(name)).Append("</a>");
+            }
+        }
+    }
+
+    private static void AppendQueryLinksOrNone(
+        StringBuilder html,
+        ProjectInventory inventory,
+        string semanticModel,
+        string[] queryNames)
+    {
+        if (queryNames.Length == 0)
+        {
+            html.Append("None detected");
+            return;
+        }
+
+        AppendQueryLinks(html, inventory, semanticModel, queryNames);
+    }
+
+    private static void AppendDataSourceQueryLinks(
+        StringBuilder html,
+        ProjectInventory inventory,
+        (string SemanticModel, string QueryName)[] queries)
+    {
+        for (var index = 0; index < queries.Length; index++)
+        {
+            if (index > 0)
+            {
+                html.Append(index == queries.Length - 1 ? " and " : ", ");
+            }
+
+            var query = queries[index];
+            var usage = inventory.PowerQueryUsages.FirstOrDefault(item =>
+                string.Equals(item.SemanticModel, query.SemanticModel, StringComparison.OrdinalIgnoreCase) &&
+                string.Equals(item.QueryName, query.QueryName, StringComparison.OrdinalIgnoreCase));
+            if (usage is null)
+            {
+                html.Append("<strong>").Append(Encode(query.QueryName)).Append("</strong>");
+            }
+            else
+            {
+                html.Append("<a href=\"#").Append(Encode(PowerQueryAnchor(usage))).Append("\">")
+                    .Append(Encode(query.QueryName)).Append("</a>");
+            }
+        }
+    }
+
     private static void AppendSemanticFeatures(StringBuilder html, SemanticTableInventory table)
     {
         if (table.FieldParameter is not null)
@@ -1156,63 +1411,8 @@ public static class HtmlReportRenderer
 
     private static string? DescribeSemanticUsageReason(ProjectInventory inventory, SemanticObjectUsage usage)
     {
-        if (usage.UsageState is SemanticUsageStates.DirectlyUsed or SemanticUsageStates.ApparentlyUnused)
-        {
-            return null;
-        }
-
-        var incoming = inventory.SemanticDependencies.Where(dependency =>
-            string.Equals(dependency.SemanticModel, usage.SemanticModel, StringComparison.OrdinalIgnoreCase) &&
-            string.Equals(dependency.ToTable, usage.Table, StringComparison.OrdinalIgnoreCase) &&
-            string.Equals(dependency.ToObjectName, usage.ObjectName, StringComparison.OrdinalIgnoreCase) &&
-            string.Equals(dependency.ToObjectType, usage.ObjectType, StringComparison.OrdinalIgnoreCase))
-            .ToArray();
-        var relationship = incoming.FirstOrDefault(dependency =>
-            dependency.DependencyKind == SemanticDependencyKinds.RelationshipEndpoint);
-        if (relationship is not null)
-        {
-            var otherEndpoint = inventory.SemanticDependencies.FirstOrDefault(dependency =>
-                dependency.DependencyKind == SemanticDependencyKinds.RelationshipEndpoint &&
-                string.Equals(dependency.SemanticModel, relationship.SemanticModel, StringComparison.OrdinalIgnoreCase) &&
-                string.Equals(dependency.FromObjectName, relationship.FromObjectName, StringComparison.OrdinalIgnoreCase) &&
-                (!string.Equals(dependency.ToTable, usage.Table, StringComparison.OrdinalIgnoreCase) ||
-                 !string.Equals(dependency.ToObjectName, usage.ObjectName, StringComparison.OrdinalIgnoreCase)));
-            return otherEndpoint is null
-                ? "Why: Used as a relationship key"
-                : $"Why: Relationship key between {usage.Table}[{usage.ObjectName}] and {otherEndpoint.ToTable}[{otherEndpoint.ToObjectName}]";
-        }
-
-        var sortBy = incoming.FirstOrDefault(dependency => dependency.DependencyKind == SemanticDependencyKinds.SortBy);
-        if (sortBy is not null)
-        {
-            return $"Why: Sorts {sortBy.FromTable}[{sortBy.FromObjectName}]";
-        }
-
-        var fieldParameter = incoming.FirstOrDefault(dependency =>
-            dependency.DependencyKind == SemanticDependencyKinds.FieldParameter);
-        if (fieldParameter is not null)
-        {
-            return $"Why: Available through field parameter {fieldParameter.FromTable}";
-        }
-
-        var calculationGroupItem = incoming.FirstOrDefault(dependency =>
-            dependency.DependencyKind == SemanticDependencyKinds.CalculationGroupItem);
-        if (calculationGroupItem is not null)
-        {
-            return $"Why: Available through calculation group {calculationGroupItem.FromTable}";
-        }
-
-        var dax = incoming.FirstOrDefault(dependency => dependency.DependencyKind is
-            SemanticDependencyKinds.Dax or SemanticDependencyKinds.ReportMeasure);
-        if (dax is not null)
-        {
-            var prefix = usage.UsageState == SemanticUsageStates.UsedOnlyByUnusedBranch
-                ? "Referenced only by unused object"
-                : "Referenced by";
-            return $"Why: {prefix} {dax.FromTable}[{dax.FromObjectName}]";
-        }
-
-        return null;
+        var reason = SemanticUsagePresentation.DescribeReason(inventory, usage);
+        return reason is null ? null : $"Why: {reason}";
     }
 
     private static void AppendFact(StringBuilder html, string label, string value, bool code = false)
@@ -1241,8 +1441,8 @@ public static class HtmlReportRenderer
     {
         var conciseMessage = finding.RuleId switch
         {
-            "PBI-NAV-001" => "This visual links to a bookmark that no longer exists.",
-            "PBI-NAV-004" => "A bookmark refers to a visual that is no longer on this page.",
+            "PBI-NAV-001" when finding.AssessmentType != AssessmentTypes.ReviewRequired => "This visual links to a bookmark that no longer exists.",
+            "PBI-NAV-004" => "A bookmark contains a reference to a visual that is no longer on this page.",
             "PBI-NAV-013" => "This visual's header tooltip links to a report page that no longer exists.",
             _ => finding.Message,
         };
@@ -1772,6 +1972,22 @@ public static class HtmlReportRenderer
         return $"visual-{DomToken(report.Name)}-{DomToken(page.Name)}-{DomToken(visual.Name)}";
     }
 
+    private static string PowerQueryAnchor(PowerQueryUsage usage)
+    {
+        return $"power-query-{DomToken(usage.SemanticModel)}-{DomToken(usage.QueryName)}-{DomToken(usage.SourceKind)}-{DomToken(usage.Partition ?? "expression")}";
+    }
+
+    private static string PowerQueryAnchorForName(
+        ProjectInventory inventory,
+        string semanticModel,
+        string queryName)
+    {
+        var usage = inventory.PowerQueryUsages.First(item =>
+            string.Equals(item.SemanticModel, semanticModel, StringComparison.OrdinalIgnoreCase) &&
+            string.Equals(item.QueryName, queryName, StringComparison.OrdinalIgnoreCase));
+        return PowerQueryAnchor(usage);
+    }
+
     private static string DomToken(string value)
     {
         var result = new StringBuilder(value.Length);
@@ -1985,6 +2201,28 @@ public static class HtmlReportRenderer
     .object-list li > span, .object-name > span { color: var(--muted); font-size: .86rem; }
     .object-name { display: flex; min-width: 0; flex: 1 1 12rem; flex-direction: column; overflow-wrap: anywhere; }
     .usage-reason { min-width: 0; max-width: 100%; margin: .5rem 0 0; color: var(--muted); font-size: .86rem; overflow-wrap: anywhere; }
+    .power-query-context { min-width: 0; max-width: 100%; margin: .8rem 1rem 1rem; padding: .8rem .9rem; border-left: .25rem solid var(--link); border-radius: .3rem; background: #eef6fc; overflow-wrap: anywhere; }
+    .power-query-context h4 { margin: 0 0 .35rem; color: var(--text); }
+    .power-query-context p { margin: .25rem 0; }
+    .power-query-card > summary { align-items: center; padding: .75rem .9rem; }
+    .power-query-card > summary .badge, .power-query-card > summary .count-pill { align-self: center; }
+    .query-card-body { min-width: 0; max-width: 100%; padding: .75rem .9rem .85rem; }
+    .query-model-association { margin: 0 0 .65rem; color: var(--muted); overflow-wrap: anywhere; }
+    .query-dependencies { min-width: 0; max-width: 100%; padding: .65rem .75rem; border-radius: .3rem; background: #f4f7fa; }
+    .query-dependencies h4 { margin: 0 0 .45rem; color: var(--text); font-size: .9rem; }
+    .query-dependency-grid { display: grid; min-width: 0; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .55rem 1rem; margin: 0; }
+    .query-dependency-grid div { min-width: 0; }
+    .query-dependency-grid dt { color: var(--muted); font-size: .8rem; font-weight: 750; }
+    .query-dependency-grid dd { min-width: 0; margin: .12rem 0 0; overflow-wrap: anywhere; }
+    .query-link-row { min-width: 0; margin: .15rem 0 0; overflow-wrap: anywhere; }
+    .query-dependencies .secondary { margin: .45rem 0 0; font-size: .86rem; }
+    .query-review { margin: .65rem 0 0; padding: .6rem .7rem; border-left: .3rem solid var(--info); background: var(--info-bg); overflow-wrap: anywhere; }
+    .power-query-card .technical-details { margin-top: .65rem; }
+    .power-query-column-context { min-width: 0; max-width: 100%; margin: .55rem 0 0; padding: .65rem .75rem; border-radius: .3rem; background: #eef6fc; overflow-wrap: anywhere; }
+    .power-query-column-context p { margin: .3rem 0; color: var(--muted); font-size: .86rem; }
+    .power-query-column-context .plain-list { margin: .4rem 0 0; }
+    .power-query-column-context.compact { background: #f7f9fb; }
+    .power-query-column-context.compact > summary { color: var(--link); font-weight: 700; }
     .usage-guide { min-width: 0; max-width: 100%; margin: 1rem 0; border: 1px solid #91a2b3; border-radius: .4rem; background: #f7fafc; overflow: clip; }
     .usage-guide > summary { display: flex; min-width: 0; align-items: center; justify-content: space-between; gap: .75rem; padding: .75rem .9rem; color: var(--link); }
     .usage-guide > summary::after { flex: 0 0 auto; content: "+"; font-size: 1.25rem; font-weight: 800; line-height: 1; }
@@ -2048,6 +2286,9 @@ public static class HtmlReportRenderer
       .filters div + div { margin-top: .8rem; }
       .finding-card > summary, .page-card > summary, .relationship-card > summary, .visual-card > summary, .semantic-table > summary { gap: .6rem; padding: .75rem; }
       .card-body, .page-body, .visual-body { padding: .75rem; }
+      .power-query-card > summary { flex-wrap: wrap; }
+      .query-card-body { padding: .7rem .75rem .75rem; }
+      .query-dependency-grid { grid-template-columns: 1fr; }
       .object-list, .semantic-object-list { grid-template-columns: 1fr; }
       .usage-classification-row { grid-template-columns: 1fr; gap: .35rem; align-items: start; }
       .count-pill { white-space: normal; }

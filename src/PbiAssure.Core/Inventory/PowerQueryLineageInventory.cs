@@ -9,6 +9,7 @@ public sealed record PowerQueryUsage(
     string Expression,
     string ArtifactPath,
     string UsageState,
+    string? QueryRole,
     bool HasDynamicReferences,
     IReadOnlyList<PowerQueryReferenceEvidence> ReferencedBy);
 
@@ -43,4 +44,15 @@ public static class PowerQueryUsageStates
     public const string SupportingQuery = "SupportingQuery";
 
     public const string ApparentlyUnused = "ApparentlyUnused";
+}
+
+public static class PowerQueryRoles
+{
+    public const string LoadedAndSupporting = "LoadedAndSupporting";
+
+    public const string LoadedOnly = "LoadedOnly";
+
+    public const string HelperOrStaging = "HelperOrStaging";
+
+    public const string ApparentlyOrphaned = "ApparentlyOrphaned";
 }

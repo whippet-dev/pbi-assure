@@ -23,6 +23,8 @@ Developer-facing cleanup counts exclude objects owned by these generated tables 
 
 Power Query uses a separate lineage graph because query execution dependencies are not the same as report-facing semantic-object usage. Every M table partition is classified as `LoadedToModel`. A named expression reachable from a loaded partition through static query references is `SupportingQuery`; an unreachable named expression is `ApparentlyUnused`. Known query names inside text literals, comments, or local step declarations are excluded. Expressions using dynamic mechanisms such as `Expression.Evaluate`, `#shared`, or `Record.Field` are marked for manual review.
 
+Power Query column-level lineage is additional diagnostic evidence, not a semantic-usage root. The scanner records explicit static merge keys, expanded columns, selections, renames, removals, and type transformations. This evidence can explain why an apparently unused semantic column still matters during data preparation, but it does not change that column's semantic usage classification.
+
 ## State precedence
 
 An object receives the first applicable state in this order:

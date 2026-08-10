@@ -48,6 +48,28 @@ public sealed class ScanOutputWriterTests : IDisposable
         Assert.Single(Directory.GetFiles(Path.GetDirectoryName(explicitPath)!));
     }
 
+    [Fact]
+    public async Task AutomaticSemanticUsageCsvWritesPreserveHistoryAndUpdateLatest()
+    {
+        var firstPlan = DefaultScanOutputPath.ResolvePlan(
+            null,
+            tempDirectory,
+            new DateTime(2026, 8, 10, 15, 30, 0),
+            OutputFormat.SemanticUsageCsv);
+        var secondPlan = DefaultScanOutputPath.ResolvePlan(
+            null,
+            tempDirectory,
+            new DateTime(2026, 8, 10, 15, 31, 0),
+            OutputFormat.SemanticUsageCsv);
+
+        await ScanOutputWriter.WriteAsync(firstPlan, "first csv");
+        await ScanOutputWriter.WriteAsync(secondPlan, "second csv");
+
+        Assert.Equal("first csv", await File.ReadAllTextAsync(firstPlan.HistoricalPath));
+        Assert.Equal("second csv", await File.ReadAllTextAsync(secondPlan.HistoricalPath));
+        Assert.Equal("second csv", await File.ReadAllTextAsync(secondPlan.LatestPath!));
+    }
+
     public void Dispose()
     {
         if (Directory.Exists(tempDirectory))

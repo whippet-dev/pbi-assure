@@ -62,6 +62,25 @@ public sealed class DefaultScanOutputPathTests
     }
 
     [Fact]
+    public void ResolvePlanAddsTimestampedAndLatestPathsForAutomaticSemanticUsageCsv()
+    {
+        var outputPlan = DefaultScanOutputPath.ResolvePlan(
+            null,
+            "Test Project",
+            new DateTime(2026, 8, 10, 15, 30, 0),
+            OutputFormat.SemanticUsageCsv);
+
+        Assert.EndsWith(
+            Path.Combine("Test Project", "outputs", "assurance_2026-08-10_15-30-00.semantic-usage.csv"),
+            outputPlan.HistoricalPath,
+            StringComparison.Ordinal);
+        Assert.EndsWith(
+            Path.Combine("Test Project", "outputs", "latest.semantic-usage.csv"),
+            outputPlan.LatestPath,
+            StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void ResolvePlanDoesNotAddLatestPathForExplicitOutput()
     {
         var outputPlan = DefaultScanOutputPath.ResolvePlan(

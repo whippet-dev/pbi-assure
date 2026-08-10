@@ -78,14 +78,38 @@ internal static class PowerQueryLineageAnalyzer
                 .Select(edge => new PowerQueryReferenceEvidence(
                     edge.FromQueryName, edge.FromSourceKind, edge.FromTable, edge.FromPartition, edge.ArtifactPath))
                 .Distinct().ToArray();
+            var hasDynamicReferences = MReferenceExtractor.HasDynamicReferences(source.Expression);
             allUsages.Add(new PowerQueryUsage(
                 model.Name, source.QueryName, source.SourceKind, source.Table, source.Partition,
                 source.Expression, source.ArtifactPath,
                 source.IsLoaded ? PowerQueryUsageStates.LoadedToModel
                     : reachable.Contains(source.QueryName) ? PowerQueryUsageStates.SupportingQuery
                     : PowerQueryUsageStates.ApparentlyUnused,
-                MReferenceExtractor.HasDynamicReferences(source.Expression), referencedBy));
+                QueryRole(source, referencedBy, hasDynamicReferences),
+                hasDynamicReferences, referencedBy));
         }
+    }
+
+    private static string? QueryRole(
+        QuerySource source,
+        PowerQueryReferenceEvidence[] referencedBy,
+        bool hasDynamicReferences)
+    {
+        if (source.IsLoaded)
+        {
+            return referencedBy.Length > 0
+                ? PowerQueryRoles.LoadedAndSupporting
+                : PowerQueryRoles.LoadedOnly;
+        }
+
+        if (referencedBy.Length > 0)
+        {
+            return PowerQueryRoles.HelperOrStaging;
+        }
+
+        return hasDynamicReferences
+            ? null
+            : PowerQueryRoles.ApparentlyOrphaned;
     }
 
     private static HashSet<string> Traverse(

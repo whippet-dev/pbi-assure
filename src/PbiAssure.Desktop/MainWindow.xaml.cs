@@ -14,6 +14,8 @@ public partial class MainWindow : Window
 {
     private string? projectPath;
     private string? latestReportPath;
+    private string? latestSemanticUsageCsvPath;
+    private string? outputFolderPath;
 
     public MainWindow()
     {
@@ -34,9 +36,15 @@ public partial class MainWindow : Window
 
         projectPath = dialog.FolderName;
         latestReportPath = null;
+        latestSemanticUsageCsvPath = null;
+        outputFolderPath = null;
         ProjectPathTextBox.Text = projectPath;
         OutputPathTextBox.Text = string.Empty;
+        CsvPathTextBox.Text = string.Empty;
+        OutputFolderTextBox.Text = string.Empty;
         OpenReportButton.IsEnabled = false;
+        OpenSemanticCsvButton.IsEnabled = false;
+        OpenOutputFolderButton.IsEnabled = false;
         RunAssuranceButton.IsEnabled = true;
         StatusTextBlock.Text = "Ready to run assurance.";
     }
@@ -62,20 +70,44 @@ public partial class MainWindow : Window
             var result = await Task.Run(async () =>
             {
                 var inventory = ProjectScanner.Scan(projectPath);
-                var outputPlan = DefaultScanOutputPath.ResolvePlan(null, projectPath, DateTime.Now, OutputFormat.Html);
-                await ScanOutputWriter.WriteAsync(outputPlan, HtmlReportRenderer.Render(inventory));
-                return outputPlan;
+                var outputResult = await AssuranceOutputWriter.WriteDefaultOutputsAsync(inventory, projectPath, DateTime.Now);
+                return (inventory, outputResult);
             });
 
-            latestReportPath = result.LatestPath ?? result.HistoricalPath;
+            latestReportPath = result.outputResult.HtmlOutput.LatestPath ?? result.outputResult.HtmlOutput.HistoricalPath;
             OutputPathTextBox.Text = Path.GetFullPath(latestReportPath);
-            StatusTextBlock.Text = "Assurance report created successfully.";
+            outputFolderPath = Path.GetDirectoryName(latestReportPath);
             OpenReportButton.IsEnabled = true;
+            OpenOutputFolderButton.IsEnabled = !string.IsNullOrWhiteSpace(outputFolderPath);
+            if (result.outputResult.SemanticUsageCsvOutput is not null)
+            {
+                latestSemanticUsageCsvPath = result.outputResult.SemanticUsageCsvOutput.LatestPath
+                    ?? result.outputResult.SemanticUsageCsvOutput.HistoricalPath;
+                CsvPathTextBox.Text = Path.GetFullPath(latestSemanticUsageCsvPath);
+                OutputFolderTextBox.Text = Path.GetFullPath(outputFolderPath!);
+                OpenSemanticCsvButton.IsEnabled = true;
+                StatusTextBlock.Text = $"Assurance completed: {result.inventory.ErrorFindingCount} errors · {result.inventory.WarningFindingCount} warnings · {result.inventory.ReviewRequiredCount} reviews. HTML and semantic CSV created.";
+            }
+            else
+            {
+                latestSemanticUsageCsvPath = null;
+                CsvPathTextBox.Text = string.Empty;
+                OutputFolderTextBox.Text = outputFolderPath is null ? string.Empty : Path.GetFullPath(outputFolderPath);
+                OpenSemanticCsvButton.IsEnabled = false;
+                StatusTextBlock.Text = $"HTML report created, but the semantic CSV could not be created: {result.outputResult.SemanticUsageCsvError}";
+            }
         }
         catch (Exception exception)
         {
             latestReportPath = null;
+            latestSemanticUsageCsvPath = null;
+            outputFolderPath = null;
             OutputPathTextBox.Text = string.Empty;
+            CsvPathTextBox.Text = string.Empty;
+            OutputFolderTextBox.Text = string.Empty;
+            OpenReportButton.IsEnabled = false;
+            OpenSemanticCsvButton.IsEnabled = false;
+            OpenOutputFolderButton.IsEnabled = false;
             StatusTextBlock.Text = $"Could not run assurance: {exception.Message}";
         }
         finally
@@ -86,15 +118,36 @@ public partial class MainWindow : Window
 
     private void OpenReport_Click(object sender, RoutedEventArgs e)
     {
-        var reportPath = latestReportPath;
-        if (string.IsNullOrWhiteSpace(reportPath) || !File.Exists(reportPath))
+        OpenFile(latestReportPath, "report", OpenReportButton);
+    }
+
+    private void OpenSemanticCsv_Click(object sender, RoutedEventArgs e)
+    {
+        OpenFile(latestSemanticUsageCsvPath, "semantic CSV", OpenSemanticCsvButton);
+    }
+
+    private void OpenOutputFolder_Click(object sender, RoutedEventArgs e)
+    {
+        if (string.IsNullOrWhiteSpace(outputFolderPath) || !Directory.Exists(outputFolderPath))
         {
-            StatusTextBlock.Text = "The latest report could not be found. Run assurance again.";
-            OpenReportButton.IsEnabled = false;
+            StatusTextBlock.Text = "The output folder could not be found. Run assurance again.";
+            OpenOutputFolderButton.IsEnabled = false;
             return;
         }
 
-        Process.Start(new ProcessStartInfo(reportPath) { UseShellExecute = true });
+        Process.Start(new ProcessStartInfo(outputFolderPath) { UseShellExecute = true });
+    }
+
+    private void OpenFile(string? filePath, string description, System.Windows.Controls.Button button)
+    {
+        if (string.IsNullOrWhiteSpace(filePath) || !File.Exists(filePath))
+        {
+            StatusTextBlock.Text = $"The latest {description} could not be found. Run assurance again.";
+            button.IsEnabled = false;
+            return;
+        }
+
+        Process.Start(new ProcessStartInfo(filePath) { UseShellExecute = true });
     }
 
     private void SetRunningState(bool isRunning)

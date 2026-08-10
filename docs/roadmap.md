@@ -2,13 +2,6 @@
 
 PBI Assure is being developed in vertical slices that produce reviewable value while protecting the accuracy of unused-object classifications. Priorities may change after each real-report review.
 
-## Current priority: usable assurance results
-
-1. Self-contained, accessible HTML report generated from the normalized inventory.
-2. Search and filtering for findings and semantic usage states.
-3. CSV exports for analysts who need to sort, annotate, or combine results.
-4. A stable operator workflow for selecting a PBIP project and an output location.
-
 ## Next core-analysis priorities
 
 1. Cross-artifact and external-consumer evidence where it can be obtained safely.
@@ -20,8 +13,10 @@ PBI Assure is being developed in vertical slices that produce reviewable value w
 - Report extensions and report-level measures: first-class inventory, visual-reference resolution, structured measure dependency traversal, and developer-friendly HTML summaries.
 - Report-to-model binding: resolve explicit local `byPath` targets, support several reports sharing one model, and distinguish remote or missing model definitions without generating cascades of false field errors.
 - Power Query M lineage: retain M partition expressions, inventory named expressions, follow static query dependencies transitively, flag unused supporting queries, and identify dynamic expressions requiring review.
+- Power Query column lineage: record explicit merge, expand, selection, rename, removal, and type-transform operations as diagnostic evidence without changing semantic usage states.
 - Data-source inventory: recognise common M connector families, classify location types without retaining connector arguments, show query associations, and flag non-portable local or network file dependencies.
 - Generated-object and relationship review: distinguish annotated Auto Date/Time tables without removing them from analysis; inventory relationship endpoints, cardinality, status and filter direction; and flag bidirectional or many-to-many configurations for review.
+- Review outputs and local workflow: accessible searchable HTML, focused semantic-usage CSV exports, timestamped output history, and a lightweight Windows app that opens the latest HTML, CSV, or output folder.
 
 ## Deferred: bookmark-captured semantic state
 
@@ -32,7 +27,7 @@ This is a known accuracy boundary, not a deletion recommendation. It is deferred
 Revisit this work when either:
 
 - real-report review shows bookmark-only fields materially affecting unused-object results;
-- the primary HTML/CSV review workflow is usable; or
+- the primary HTML/CSV review workflow reveals a material bookmark-only usage gap; or
 - a supported PBIR schema change makes bookmark-state interpretation more reliable.
 
 ## Standing boundaries

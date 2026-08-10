@@ -4,8 +4,8 @@
         Title="PBI Assure"
         Width="760"
         MinWidth="580"
-        Height="430"
-        MinHeight="360"
+        Height="500"
+        MinHeight="430"
         WindowStartupLocation="CenterScreen">
   <Grid Margin="28">
     <Grid.RowDefinitions>
@@ -30,15 +30,23 @@
     <StackPanel Grid.Row="1" Margin="0,20,0,0" Orientation="Horizontal">
       <Button x:Name="RunAssuranceButton" Click="RunAssurance_Click" Content="Run assurance" IsEnabled="False" />
       <Button x:Name="OpenReportButton" Click="OpenReport_Click" Content="Open latest report" IsEnabled="False" />
+      <Button x:Name="OpenSemanticCsvButton" Click="OpenSemanticCsv_Click" Content="Open semantic CSV" IsEnabled="False" />
+      <Button x:Name="OpenOutputFolderButton" Click="OpenOutputFolder_Click" Content="Open output folder" IsEnabled="False" />
     </StackPanel>
 
     <Border Grid.Row="2" Margin="0,18,0,0" Padding="14" Background="#F4F7FA" BorderBrush="#B8C2CC" BorderThickness="1" CornerRadius="4">
       <StackPanel>
         <TextBlock FontWeight="SemiBold" Text="Status" />
         <TextBlock x:Name="StatusTextBlock" Margin="0,5,0,12" TextWrapping="Wrap" Text="Select a Power BI project folder to begin." />
-        <TextBlock FontWeight="SemiBold" Text="Latest report" />
+        <TextBlock FontWeight="SemiBold" Text="Latest HTML report" />
         <TextBox x:Name="OutputPathTextBox" Margin="0,5,0,0" IsReadOnly="True" BorderThickness="0" Background="Transparent"
                  Padding="0" TextWrapping="Wrap" ToolTip="The latest generated HTML report path." />
+        <TextBlock Margin="0,12,0,0" FontWeight="SemiBold" Text="Latest semantic CSV" />
+        <TextBox x:Name="CsvPathTextBox" Margin="0,5,0,0" IsReadOnly="True" BorderThickness="0" Background="Transparent"
+                 Padding="0" TextWrapping="Wrap" ToolTip="The latest generated semantic usage CSV path." />
+        <TextBlock Margin="0,12,0,0" FontWeight="SemiBold" Text="Output folder" />
+        <TextBox x:Name="OutputFolderTextBox" Margin="0,5,0,0" IsReadOnly="True" BorderThickness="0" Background="Transparent"
+                 Padding="0" TextWrapping="Wrap" ToolTip="The folder containing the generated outputs." />
       </StackPanel>
     </Border>
 

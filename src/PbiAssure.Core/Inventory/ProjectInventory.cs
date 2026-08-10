@@ -12,6 +12,8 @@ public sealed record ProjectInventory(
     IReadOnlyList<SemanticDependencyEdge> SemanticDependencies,
     IReadOnlyList<PowerQueryUsage> PowerQueryUsages,
     IReadOnlyList<PowerQueryDependencyEdge> PowerQueryDependencies,
+    IReadOnlyList<PowerQueryColumnUsage> PowerQueryColumnUsages,
+    IReadOnlyList<SemanticTablePowerQueryContext> SemanticTablePowerQueryContexts,
     IReadOnlyList<DataSourceInventory> DataSources,
     IReadOnlyList<UnresolvedSemanticReference> UnresolvedSemanticReferences,
     IReadOnlyList<UnresolvedSemanticDependency> UnresolvedSemanticDependencies,

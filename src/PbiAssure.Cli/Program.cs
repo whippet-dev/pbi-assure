@@ -33,16 +33,38 @@ static async Task<int> RunAsync(string[] arguments)
         var format = outputPath is null
             ? requestedFormat ?? OutputFormat.Html
             : ResolveFormat(requestedFormat, outputPath);
-        var outputPlan = DefaultScanOutputPath.ResolvePlan(outputPath, projectPath!, DateTime.Now, format);
-        var content = format == OutputFormat.Html
-            ? HtmlReportRenderer.Render(inventory)
-            : JsonSerializer.Serialize(inventory, new JsonSerializerOptions { WriteIndented = true }) + Environment.NewLine;
+        var localScanTime = DateTime.Now;
+        if (outputPath is null && format == OutputFormat.Html)
+        {
+            var outputResult = await AssuranceOutputWriter.WriteDefaultOutputsAsync(inventory, projectPath!, localScanTime);
+            Console.Out.WriteLine($"HTML report written to {Path.GetFullPath(outputResult.HtmlOutput.HistoricalPath)}");
+            Console.Out.WriteLine($"Latest HTML report updated at {Path.GetFullPath(outputResult.HtmlOutput.LatestPath!)}");
+            if (outputResult.SemanticUsageCsvOutput is not null)
+            {
+                Console.Out.WriteLine($"Semantic usage CSV written to {Path.GetFullPath(outputResult.SemanticUsageCsvOutput.HistoricalPath)}");
+                Console.Out.WriteLine($"Latest semantic usage CSV updated at {Path.GetFullPath(outputResult.SemanticUsageCsvOutput.LatestPath!)}");
+                return 0;
+            }
 
-        await ScanOutputWriter.WriteAsync(outputPlan, content);
-        Console.Out.WriteLine($"{(format == OutputFormat.Html ? "HTML report" : "JSON inventory")} written to {Path.GetFullPath(outputPlan.HistoricalPath)}");
+            Console.Error.WriteLine($"HTML report was created, but the semantic usage CSV could not be created: {outputResult.SemanticUsageCsvError}");
+            return 1;
+        }
+
+        var outputPlan = DefaultScanOutputPath.ResolvePlan(outputPath, projectPath!, localScanTime, format);
+        var content = format switch
+        {
+            OutputFormat.Html => HtmlReportRenderer.Render(inventory),
+            OutputFormat.SemanticUsageCsv => SemanticUsageCsvRenderer.Render(inventory),
+            _ => JsonSerializer.Serialize(inventory, new JsonSerializerOptions { WriteIndented = true }) + Environment.NewLine,
+        };
+        await ScanOutputWriter.WriteAsync(
+            outputPlan,
+            content,
+            format == OutputFormat.SemanticUsageCsv ? new System.Text.UTF8Encoding(encoderShouldEmitUTF8Identifier: true) : null);
+        Console.Out.WriteLine($"{OutputDescription(format)} written to {Path.GetFullPath(outputPlan.HistoricalPath)}");
         if (outputPlan.LatestPath is not null)
         {
-            Console.Out.WriteLine($"Latest HTML report updated at {Path.GetFullPath(outputPlan.LatestPath)}");
+            Console.Out.WriteLine($"Latest {OutputDescription(format).ToLowerInvariant()} updated at {Path.GetFullPath(outputPlan.LatestPath)}");
         }
 
         return 0;
@@ -85,7 +107,7 @@ static bool TryParseScanArguments(
         {
             if (++index >= arguments.Length)
             {
-                error = "The --format option requires json or html.";
+                error = "The --format option requires json, html or csv.";
                 return false;
             }
 
@@ -93,12 +115,13 @@ static bool TryParseScanArguments(
             {
                 "json" => OutputFormat.Json,
                 "html" => OutputFormat.Html,
+                "csv" => OutputFormat.SemanticUsageCsv,
                 _ => null
             };
 
             if (requestedFormat is null)
             {
-                error = $"Unsupported output format: {arguments[index]}. Use json or html.";
+                error = $"Unsupported output format: {arguments[index]}. Use json, html or csv.";
                 return false;
             }
 
@@ -136,18 +159,29 @@ static OutputFormat ResolveFormat(OutputFormat? requestedFormat, string? outputP
         return requestedFormat.Value;
     }
 
-    return string.Equals(Path.GetExtension(outputPath), ".html", StringComparison.OrdinalIgnoreCase)
-        ? OutputFormat.Html
-        : OutputFormat.Json;
+    ArgumentNullException.ThrowIfNull(outputPath);
+    return Path.GetExtension(outputPath).ToLowerInvariant() switch
+    {
+        ".html" => OutputFormat.Html,
+        ".csv" => OutputFormat.SemanticUsageCsv,
+        _ => OutputFormat.Json,
+    };
 }
+
+static string OutputDescription(OutputFormat format) => format switch
+{
+    OutputFormat.Html => "HTML report",
+    OutputFormat.SemanticUsageCsv => "Semantic usage CSV",
+    _ => "JSON inventory",
+};
 
 static void WriteUsage(TextWriter writer)
 {
     writer.WriteLine("PBI Assure - read-only Power BI project assurance");
     writer.WriteLine();
     writer.WriteLine("Usage:");
-    writer.WriteLine("  pbiassure scan <project-directory> [--output <file>] [--format json|html]");
+    writer.WriteLine("  pbiassure scan <project-directory> [--output <file>] [--format json|html|csv]");
     writer.WriteLine();
-    writer.WriteLine("Without --output, an HTML report is saved under outputs/<local timestamp>/ beside the project.");
-    writer.WriteLine("The output format defaults to HTML for .html files and JSON otherwise.");
+    writer.WriteLine("Without --output, an HTML report and semantic-usage CSV are saved in outputs/ beside the project.");
+    writer.WriteLine("The output format defaults to HTML for .html files, CSV for .csv files, and JSON otherwise.");
 }

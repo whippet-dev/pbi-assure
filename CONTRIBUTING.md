@@ -9,6 +9,7 @@ This repository should remain understandable to Power BI specialists who may be 
 3. Run `dotnet format --verify-no-changes`, `dotnet build`, and `dotnet test`.
 4. Keep generated reports, real PBIP projects, secrets, and report data out of Git.
 5. Record significant architectural decisions under `docs/decisions/`.
+6. After user-facing desktop feature changes, refresh the Windows publish output with `dotnet publish src/PbiAssure.Desktop -c Release -o artifacts/desktop`.
 
 ## Design rules
 

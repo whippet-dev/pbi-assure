@@ -59,6 +59,11 @@ internal static class SemanticUsageReconciler
                     continue;
                 }
 
+                if (IsGeneratedQnaReference(context))
+                {
+                    continue;
+                }
+
                 var identity = FieldIdentity.Create(context.Reference);
                 if (resolvedEvidence.Contains(string.Join('\u001f', matchingModel.Name, identity)))
                 {
@@ -98,17 +103,17 @@ internal static class SemanticUsageReconciler
             .SelectMany(report => EnumerateReferences(report)
                 .Where(context => !IsReportMeasureReference(report, context.Reference))
                 .Select(context => new
-            {
-                Identity = FieldIdentity.Create(context.Reference),
-                Evidence = new SemanticUsageEvidence(
-                    Report: report.Name,
-                    Page: context.Page,
-                    Visual: context.Visual,
-                    ArtifactPath: context.ArtifactPath,
-                    UsageContext: context.Reference.UsageContext,
-                    Role: context.Reference.Role,
-                    EvidencePath: context.Reference.EvidencePath),
-            }))
+                {
+                    Identity = FieldIdentity.Create(context.Reference),
+                    Evidence = new SemanticUsageEvidence(
+                        Report: report.Name,
+                        Page: context.Page,
+                        Visual: context.Visual,
+                        ArtifactPath: context.ArtifactPath,
+                        UsageContext: context.Reference.UsageContext,
+                        Role: context.Reference.Role,
+                        EvidencePath: context.Reference.EvidencePath),
+                }))
             .GroupBy(item => item.Identity, StringComparer.OrdinalIgnoreCase)
             .ToDictionary(
                 group => group.Key,
@@ -134,6 +139,7 @@ internal static class SemanticUsageReconciler
                 Page: null,
                 Visual: null,
                 ArtifactPath: report.DefinitionPath ?? report.RelativePath,
+                VisualType: null,
                 reference);
         }
 
@@ -145,6 +151,7 @@ internal static class SemanticUsageReconciler
                     Page: page.Name,
                     Visual: null,
                     ArtifactPath: page.DefinitionPath,
+                    VisualType: null,
                     reference);
             }
 
@@ -156,10 +163,18 @@ internal static class SemanticUsageReconciler
                         Page: page.Name,
                         Visual: visual.Name,
                         ArtifactPath: visual.RelativePath,
+                        VisualType: visual.VisualType,
                         reference);
                 }
             }
         }
+    }
+
+    private static bool IsGeneratedQnaReference(ReportReferenceContext context)
+    {
+        return string.Equals(context.VisualType, "qnaVisual", StringComparison.OrdinalIgnoreCase) &&
+               (context.Reference.EvidencePath.Contains(".queryState.", StringComparison.Ordinal) ||
+                context.Reference.EvidencePath.Contains(".sortDefinition.", StringComparison.Ordinal));
     }
 
     private static IEnumerable<SemanticObjectIdentity> EnumerateObjects(SemanticModelInventory model)
@@ -220,5 +235,6 @@ internal static class SemanticUsageReconciler
         string? Page,
         string? Visual,
         string ArtifactPath,
+        string? VisualType,
         VisualFieldReference Reference);
 }

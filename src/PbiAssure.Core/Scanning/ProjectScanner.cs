@@ -34,9 +34,12 @@ public static class ProjectScanner
             SemanticUsageReconciler.Reconcile(semanticModels, reports);
         var dependencyAnalysis = SemanticDependencyAnalyzer.Analyze(semanticModels, semanticObjectUsages, reports);
         var powerQueryAnalysis = PowerQueryLineageAnalyzer.Analyze(semanticModels);
+        var powerQueryColumnUsages = PowerQueryColumnLineageAnalyzer.Analyze(
+            semanticModels, powerQueryAnalysis.Usages);
+        var semanticTablePowerQueryContexts = SemanticTablePowerQueryEnricher.Build(powerQueryAnalysis.Usages);
 
         var inventory = new ProjectInventory(
-            SchemaVersion: "0.15",
+            SchemaVersion: "0.17",
             RootPath: fullRootPath,
             ScannedAtUtc: DateTimeOffset.UtcNow,
             Artifacts: artifacts
@@ -50,6 +53,8 @@ public static class ProjectScanner
             SemanticDependencies: dependencyAnalysis.Dependencies,
             PowerQueryUsages: powerQueryAnalysis.Usages,
             PowerQueryDependencies: powerQueryAnalysis.Dependencies,
+            PowerQueryColumnUsages: powerQueryColumnUsages,
+            SemanticTablePowerQueryContexts: semanticTablePowerQueryContexts,
             DataSources: powerQueryAnalysis.DataSources,
             UnresolvedSemanticReferences: unresolvedSemanticReferences,
             UnresolvedSemanticDependencies: dependencyAnalysis.UnresolvedDependencies,
