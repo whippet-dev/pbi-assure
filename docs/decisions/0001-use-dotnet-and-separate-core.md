@@ -5,7 +5,7 @@
 
 ## Context
 
-The tool must inspect Power BI project metadata locally, later integrate with the Tabular Object Model and XMLA endpoints, run in CI, and potentially support a Windows desktop interface. It should also be maintainable after an organisational ownership transfer.
+The tool must inspect Power BI project metadata locally, later integrate with the Tabular Object Model and XMLA endpoints, run in CI, and potentially support a Windows desktop interface. It should also remain maintainable as contributors and maintainers change over time.
 
 ## Decision
 

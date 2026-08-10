@@ -55,6 +55,13 @@ public sealed record ProjectInventory(
 
     public int SemanticRelationshipCount => SemanticModels.Sum(model => model.RelationshipCount);
 
+    public int SystemGeneratedSemanticTableCount => SemanticModels.Sum(model =>
+        model.Tables.Count(table => table.IsSystemGenerated));
+
+    public int SystemGeneratedSemanticObjectCount => SemanticObjectUsages.Count(IsSystemGeneratedSemanticObject);
+
+    public int DeveloperSemanticObjectCount => SemanticObjectUsages.Count - SystemGeneratedSemanticObjectCount;
+
     public int PowerQueryCount => PowerQueryUsages.Count;
 
     public int ApparentlyUnusedPowerQueryCount => PowerQueryUsages.Count(usage =>
@@ -82,6 +89,10 @@ public sealed record ProjectInventory(
     public int ApparentlyUnusedSemanticObjectCount => SemanticObjectUsages
         .Count(usage => usage.UsageState == SemanticUsageStates.ApparentlyUnused);
 
+    public int DeveloperApparentlyUnusedSemanticObjectCount => SemanticObjectUsages
+        .Count(usage => usage.UsageState == SemanticUsageStates.ApparentlyUnused &&
+            !IsSystemGeneratedSemanticObject(usage));
+
     public int ApparentlyUnusedTableCount => SemanticTableUsages
         .Count(usage => usage.UsageState == SemanticUsageStates.ApparentlyUnused);
 
@@ -94,4 +105,19 @@ public sealed record ProjectInventory(
     public int InformationFindingCount => Findings.Count(finding => finding.Severity == FindingSeverities.Information);
 
     public int ReviewRequiredCount => Findings.Count(finding => finding.AssessmentType == AssessmentTypes.ReviewRequired);
+
+    public bool IsSystemGeneratedSemanticObject(SemanticObjectUsage usage)
+    {
+        return SemanticModels.Any(model =>
+            string.Equals(model.Name, usage.SemanticModel, StringComparison.OrdinalIgnoreCase) &&
+            model.Tables.Any(table => table.IsSystemGenerated &&
+                string.Equals(table.Name, usage.Table, StringComparison.OrdinalIgnoreCase)));
+    }
+
+    public int DeveloperSemanticObjectCountForState(string usageState)
+    {
+        return SemanticObjectUsages.Count(usage =>
+            string.Equals(usage.UsageState, usageState, StringComparison.Ordinal) &&
+            !IsSystemGeneratedSemanticObject(usage));
+    }
 }

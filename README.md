@@ -1,12 +1,12 @@
 # PBI Assure
 
-PBI Assure is the provisional name for an internally owned Power BI assurance tool. Its intended purpose is to inspect Power BI Project (PBIP) source without changing it, document the report and semantic model, trace dependencies, and produce evidence-led quality and accessibility findings.
+PBI Assure is the provisional name for a general-purpose Power BI assurance tool. Its intended purpose is to inspect Power BI Project (PBIP) source without changing it, document the report and semantic model, trace dependencies, and produce evidence-led quality and accessibility findings.
 
 The repository is at foundation stage. The executable can discover the report and semantic-model parts of a PBIP project; resolve each report's local semantic-model connection from `definition.pbir`; distinguish local, remote, and missing model targets; parse PBIR pages, page roles, report and page filters, drillthrough bindings, visual interactions, report-tooltip page bindings, visual containers, bookmarks, visual actions, report extensions, and report-level measures; extract evidence-rich field references from report, page, and visual scopes; inventory TMDL tables, columns, measures, hierarchies, partitions, relationships, field parameters, calculation groups, and calculation items; and build an evidence-backed dependency graph across DAX, report-measure references, parameter choices, calculation items, sort-by columns, hierarchy levels, relationship endpoints, and containing tables.
 
-The semantic graph classifies model objects as directly used, indirectly used, structurally required, used only by an unused branch, or apparently unused within the analysed scope. A separate Power Query graph classifies loaded table queries, supporting named expressions, and named expressions with no static consumer. Recognised connector calls are summarised by family and location category without copying their arguments into connector records. Dynamic M and consumers outside the selected PBIP project remain analysis boundaries, so “apparently unused” does not mean “safe to delete.” See [usage classification](docs/usage-classification.md) for the exact contract.
+The semantic graph classifies model objects as directly used, indirectly used, structurally required, used only by an unused branch, or apparently unused within the analysed scope. Power BI-generated Auto Date/Time tables remain in that analysis but are identified separately from developer-authored objects. A relationship inventory shows endpoints, cardinality, active state and cross-filter direction, with review findings for bidirectional and many-to-many configurations. A separate Power Query graph classifies loaded table queries, supporting named expressions, and named expressions with no static consumer. Recognised connector calls are summarised by family and location category without copying their arguments into connector records. Dynamic M and consumers outside the selected PBIP project remain analysis boundaries, so “apparently unused” does not mean “safe to delete.” See [usage classification](docs/usage-classification.md) for the exact contract.
 
-The scanner also emits versioned assurance findings with severities, evidence paths, remediation guidance, assessment type, and authoritative references. The initial rules cover unresolved report bindings, Power BI Q&A retirement, alternative text, duplicate or excluded tab-order entries, explicitly disabled data-visual titles, broken or incomplete bookmark and page navigation, drillthrough configuration, visual-interaction endpoints, and report-tooltip targets. See the [rule catalog](docs/rule-catalog.md).
+The scanner also emits versioned assurance findings with severities, evidence paths, remediation guidance, assessment type, and authoritative references. The initial rules cover unresolved report bindings, relationship configurations worth reviewing, Power BI Q&A retirement, alternative text, duplicate or excluded tab-order entries, explicitly disabled data-visual titles, broken or incomplete bookmark and page navigation, drillthrough configuration, visual-interaction endpoints, and report-tooltip targets. See the [rule catalog](docs/rule-catalog.md).
 
 ## Why a command-line tool first?
 
@@ -17,7 +17,7 @@ The analysis engine needs to work in several environments: on a developer workst
 - Windows, macOS, or Linux for the current source-only scanner. Power BI Desktop integration will later require Windows.
 - .NET 10 SDK. The repository pins the supported feature band in `global.json`.
 - Git.
-- A PBIP project for real-world testing. Do not commit departmental reports or data to this repository.
+- A PBIP project for real-world testing. Do not commit real reports or data to this repository.
 
 ## Build and test
 
@@ -29,7 +29,7 @@ dotnet test PbiAssure.slnx --no-build
 
 ## Generate assurance results
 
-For real-world local testing, place a PBIP/PBIR project under `samples-local/<report name>/`. This folder is intentionally ignored by Git so departmental reports and generated outputs stay local.
+For real-world local testing, place a PBIP/PBIR project under `samples-local/<report name>/`. This folder is intentionally ignored by Git so real reports and generated outputs stay local.
 
 Scan a project and save an accessible, self-contained HTML report automatically:
 

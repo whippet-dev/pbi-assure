@@ -119,18 +119,41 @@ internal static class TmdlSemanticModelParser
             .Where(partition => partition.Expression is not null)
             .Select(partition => FieldParameterExpressionParser.TryParse(tableName, partition.Expression!))
             .FirstOrDefault(parameter => parameter is not null);
+        var systemGeneratedKind = SystemGeneratedKind(lines);
 
         return new SemanticTableInventory(
             Name: tableName,
             RelativePath: Path.GetRelativePath(rootPath, path),
             IsHidden: HasFlag(lines, tableDeclarationIndex, tablePropertyEnd, "isHidden"),
             IsPrivate: HasFlag(lines, tableDeclarationIndex, tablePropertyEnd, "isPrivate"),
+            IsSystemGenerated: systemGeneratedKind is not null,
+            SystemGeneratedKind: systemGeneratedKind,
             Columns: columns,
             Measures: measures,
             Hierarchies: hierarchies,
             Partitions: partitions,
             CalculationGroup: calculationGroup,
             FieldParameter: fieldParameter);
+    }
+
+    private static string? SystemGeneratedKind(IReadOnlyList<TmdlLine> lines)
+    {
+        if (HasTrueAnnotation(lines, "__PBI_LocalDateTable"))
+        {
+            return SystemGeneratedSemanticTableKinds.AutoDateTimeLocalTable;
+        }
+
+        return HasTrueAnnotation(lines, "__PBI_TemplateDateTable")
+            ? SystemGeneratedSemanticTableKinds.AutoDateTimeTemplateTable
+            : null;
+    }
+
+    private static bool HasTrueAnnotation(IReadOnlyList<TmdlLine> lines, string name)
+    {
+        var prefix = $"annotation {name}";
+        return lines.Any(line =>
+            line.Trimmed.StartsWith(prefix, StringComparison.OrdinalIgnoreCase) &&
+            line.Trimmed[prefix.Length..].TrimStart().Equals("= true", StringComparison.OrdinalIgnoreCase));
     }
 
     private static SemanticNamedExpressionInventory[] ParseNamedExpressions(string rootPath, string path)

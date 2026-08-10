@@ -17,7 +17,7 @@ This repository should remain understandable to Power BI specialists who may be 
 - Findings must contain evidence and a stable rule identifier.
 - Do not modify an analysed report or model unless a future feature explicitly requests and confirms that operation.
 - Avoid network access in the core analysis path.
-- Use synthetic fixtures in tests. Never copy operational DWP content into the test suite.
+- Use synthetic fixtures in tests. Never copy operational or organisation-specific report content into the test suite.
 
 ## Terminology
 

@@ -18,6 +18,7 @@ public static class HtmlReportRenderer
         AppendFindings(html, inventory);
         AppendReportInventory(html, inventory);
         AppendPowerQueryLineage(html, inventory);
+        AppendRelationships(html, inventory);
         AppendSemanticUsage(html, inventory);
         AppendDocumentEnd(html, inventory);
         return html.ToString();
@@ -57,6 +58,7 @@ public static class HtmlReportRenderer
         html.AppendLine("          <li><a href=\"#findings\">Findings</a></li>");
         html.AppendLine("          <li><a href=\"#reports\">Report pages</a></li>");
         html.AppendLine("          <li><a href=\"#power-query\">Power Query</a></li>");
+        html.AppendLine("          <li><a href=\"#relationships\">Model relationships</a></li>");
         html.AppendLine("          <li><a href=\"#semantic-usage\">Semantic model</a></li>");
         html.AppendLine("        </ul>");
         html.AppendLine("      </nav>");
@@ -81,7 +83,11 @@ public static class HtmlReportRenderer
         {
             AppendMetric(html, "Report measures", inventory.ReportMeasureCount);
         }
-        AppendMetric(html, "Semantic objects", inventory.SemanticObjectUsages.Count);
+        AppendMetric(html, "Developer objects", inventory.DeveloperSemanticObjectCount);
+        if (inventory.SystemGeneratedSemanticObjectCount > 0)
+        {
+            AppendMetric(html, "System-generated", inventory.SystemGeneratedSemanticObjectCount);
+        }
         if (inventory.PowerQueryCount > 0)
         {
             AppendMetric(html, "Power Query sources", inventory.PowerQueryCount);
@@ -90,14 +96,19 @@ public static class HtmlReportRenderer
         {
             AppendMetric(html, "Connector types", inventory.DistinctConnectorFamilyCount);
         }
-        AppendMetric(html, "Directly used", inventory.SemanticObjectUsages.Count(usage => usage.UsageState == SemanticUsageStates.DirectlyUsed));
-        AppendMetric(html, "Indirectly used", inventory.SemanticObjectUsages.Count(usage => usage.UsageState == SemanticUsageStates.IndirectlyUsed));
-        AppendMetric(html, "Structurally required", inventory.SemanticObjectUsages.Count(usage => usage.UsageState == SemanticUsageStates.StructurallyRequired));
-        AppendMetric(html, "Unused branch", inventory.SemanticObjectUsages.Count(usage => usage.UsageState == SemanticUsageStates.UsedOnlyByUnusedBranch));
-        AppendMetric(html, "Apparently unused", inventory.ApparentlyUnusedSemanticObjectCount, "metric-unused");
+        AppendMetric(html, "Directly used", inventory.DeveloperSemanticObjectCountForState(SemanticUsageStates.DirectlyUsed));
+        AppendMetric(html, "Indirectly used", inventory.DeveloperSemanticObjectCountForState(SemanticUsageStates.IndirectlyUsed));
+        AppendMetric(html, "Structurally required", inventory.DeveloperSemanticObjectCountForState(SemanticUsageStates.StructurallyRequired));
+        AppendMetric(html, "Unused branch", inventory.DeveloperSemanticObjectCountForState(SemanticUsageStates.UsedOnlyByUnusedBranch));
+        AppendMetric(html, "Apparently unused", inventory.DeveloperApparentlyUnusedSemanticObjectCount, "metric-unused");
         html.AppendLine("      </dl>");
-        html.Append("      <p class=\"summary-note\"><strong>").Append(inventory.ApparentlyUnusedSemanticObjectCount.ToString(CultureInfo.InvariantCulture))
-            .AppendLine(" semantic objects have no usage detected in this project. Review them before removing anything.</strong></p>");
+        html.Append("      <p class=\"summary-note\"><strong>").Append(inventory.DeveloperApparentlyUnusedSemanticObjectCount.ToString(CultureInfo.InvariantCulture))
+            .Append(" developer-authored semantic objects have no usage detected in this project. Review them before removing anything.</strong>");
+        if (inventory.SystemGeneratedSemanticObjectCount > 0)
+        {
+            html.Append(" Power BI-generated objects remain analysed and are available in the semantic-model filter.");
+        }
+        html.AppendLine("</p>");
         html.AppendLine("      <p><a href=\"#semantic-usage\">Review semantic-model candidates</a></p>");
         html.AppendLine("    </section>");
     }
@@ -406,6 +417,87 @@ public static class HtmlReportRenderer
         html.AppendLine("        </details>");
     }
 
+    private static void AppendRelationships(StringBuilder html, ProjectInventory inventory)
+    {
+        html.AppendLine("    <section id=\"relationships\" aria-labelledby=\"relationships-heading\">");
+        html.AppendLine("      <h2 id=\"relationships-heading\">Model relationships</h2>");
+        html.AppendLine("      <p>Review table connections, relationship columns, cardinality, status and filter direction.</p>");
+        if (inventory.SemanticRelationshipCount == 0)
+        {
+            html.AppendLine("      <p>No model relationships were found.</p>");
+            html.AppendLine("    </section>");
+            return;
+        }
+
+        foreach (var model in inventory.SemanticModels.Where(model => model.RelationshipCount > 0))
+        {
+            if (inventory.SemanticModelCount > 1)
+            {
+                html.Append("      <h3>").Append(Encode(model.Name)).AppendLine("</h3>");
+            }
+
+            html.AppendLine("      <div class=\"relationship-list\">");
+            foreach (var relationship in model.Relationships
+                         .OrderBy(item => item.FromTable, StringComparer.OrdinalIgnoreCase)
+                         .ThenBy(item => item.ToTable, StringComparer.OrdinalIgnoreCase))
+            {
+                var cardinality = RelationshipCardinalityLabel(relationship);
+                var direction = RelationshipDirectionLabel(relationship.CrossFilteringBehavior);
+                html.AppendLine("        <details class=\"relationship-card\">");
+                html.Append("          <summary><span class=\"summary-copy\"><strong>")
+                    .Append(Encode($"{relationship.FromTable}[{relationship.FromColumn}]"))
+                    .Append("</strong><span>").Append(Encode(cardinality)).Append(" · ")
+                    .Append(relationship.IsActive ? "Active" : "Inactive").Append(" · ")
+                    .Append(Encode(direction)).Append("</span><strong>")
+                    .Append(Encode($"{relationship.ToTable}[{relationship.ToColumn}]"))
+                    .AppendLine("</strong></span></summary>");
+                html.AppendLine("          <div class=\"relationship-body\">");
+                html.AppendLine("            <dl class=\"facts relationship-facts\">");
+                AppendFact(html, "From", $"{relationship.FromTable}[{relationship.FromColumn}] ({RelationshipEndLabel(relationship.FromCardinality)})");
+                AppendFact(html, "To", $"{relationship.ToTable}[{relationship.ToColumn}] ({RelationshipEndLabel(relationship.ToCardinality)})");
+                AppendFact(html, "Cardinality", cardinality);
+                AppendFact(html, "Status", relationship.IsActive ? "Active" : "Inactive");
+                AppendFact(html, "Cross-filter direction", direction);
+                html.AppendLine("            </dl>");
+                if (string.Equals(relationship.CrossFilteringBehavior, "bothDirections", StringComparison.OrdinalIgnoreCase))
+                {
+                    html.AppendLine("            <p class=\"relationship-review\"><strong>Review:</strong> This relationship filters in both directions. Confirm that bidirectional filtering is required.</p>");
+                }
+                if (string.Equals(relationship.FromCardinality, "many", StringComparison.OrdinalIgnoreCase) &&
+                    string.Equals(relationship.ToCardinality, "many", StringComparison.OrdinalIgnoreCase))
+                {
+                    html.AppendLine("            <p class=\"relationship-review\"><strong>Review:</strong> This is a many-to-many relationship. Confirm that its filter behaviour is intentional.</p>");
+                }
+                html.AppendLine("            <details class=\"technical-details\"><summary>Technical details</summary><dl class=\"technical-list\">");
+                AppendFact(html, "Relationship ID", relationship.Name, code: true);
+                AppendFact(html, "Source file", Path.Combine(model.RelativePath, "definition", "relationships.tmdl"), code: true);
+                html.AppendLine("            </dl></details>");
+                html.AppendLine("          </div>");
+                html.AppendLine("        </details>");
+            }
+            html.AppendLine("      </div>");
+        }
+
+        html.AppendLine("    </section>");
+    }
+
+    private static string RelationshipCardinalityLabel(SemanticRelationshipInventory relationship) =>
+        $"{RelationshipEndLabel(relationship.FromCardinality)}-to-{RelationshipEndLabel(relationship.ToCardinality).ToLowerInvariant()}";
+
+    private static string RelationshipEndLabel(string cardinality) => cardinality.ToLowerInvariant() switch
+    {
+        "one" => "One",
+        "many" => "Many",
+        _ => HumanizeIdentifier(cardinality),
+    };
+
+    private static string RelationshipDirectionLabel(string direction) => direction.ToLowerInvariant() switch
+    {
+        "onedirection" => "Single direction",
+        "bothdirections" => "Both directions",
+        _ => HumanizeIdentifier(direction),
+    };
+
     private static void AppendSemanticUsage(StringBuilder html, ProjectInventory inventory)
     {
         html.AppendLine("    <section id=\"semantic-usage\" aria-labelledby=\"semantic-usage-heading\">");
@@ -438,9 +530,10 @@ public static class HtmlReportRenderer
             html.Append("          <option value=\"").Append(Encode(type)).Append("\">").Append(Encode(HumanizeIdentifier(type))).AppendLine("</option>");
         }
         html.AppendLine("        </select></div>");
+        html.AppendLine("        <div><label for=\"usage-origin\">Object origin</label><select id=\"usage-origin\"><option value=\"developer\" selected>Developer objects</option><option value=\"\">All objects</option><option value=\"system\">Power BI-generated objects</option></select></div>");
         html.AppendLine("      </div>");
         html.Append("      <p id=\"usage-filter-status\" class=\"filter-status\" role=\"status\">")
-            .Append(inventory.SemanticObjectUsages.Count.ToString(CultureInfo.InvariantCulture)).AppendLine(" semantic objects shown.</p>");
+            .Append(inventory.DeveloperSemanticObjectCount.ToString(CultureInfo.InvariantCulture)).AppendLine(" developer semantic objects shown.</p>");
         AppendDetailsControls(html, "semantic-table-list", "tables");
         html.AppendLine("      <div id=\"semantic-table-list\" class=\"semantic-table-list\">");
         foreach (var model in inventory.SemanticModels)
@@ -726,9 +819,22 @@ public static class HtmlReportRenderer
         html.AppendLine("        <section class=\"model-block\">");
         html.Append("          <h3>").Append(Encode(model.Name)).AppendLine("</h3>");
         html.AppendLine("          <dl class=\"fact-strip\">");
-        AppendFact(html, "Tables", model.TableCount.ToString(CultureInfo.InvariantCulture));
+        var generatedTables = model.Tables.Count(table => table.IsSystemGenerated);
+        var modelUsages = inventory.SemanticObjectUsages.Where(usage =>
+            string.Equals(usage.SemanticModel, model.Name, StringComparison.OrdinalIgnoreCase)).ToArray();
+        var generatedObjects = modelUsages.Count(inventory.IsSystemGeneratedSemanticObject);
+        AppendFact(html, "Developer tables", (model.TableCount - generatedTables).ToString(CultureInfo.InvariantCulture));
+        if (generatedTables > 0)
+        {
+            AppendFact(html, "System-generated tables", generatedTables.ToString(CultureInfo.InvariantCulture));
+        }
         AppendFact(html, "Columns", model.ColumnCount.ToString(CultureInfo.InvariantCulture));
         AppendFact(html, "Measures", model.MeasureCount.ToString(CultureInfo.InvariantCulture));
+        AppendFact(html, "Developer objects", (modelUsages.Length - generatedObjects).ToString(CultureInfo.InvariantCulture));
+        if (generatedObjects > 0)
+        {
+            AppendFact(html, "System-generated objects", generatedObjects.ToString(CultureInfo.InvariantCulture));
+        }
         AppendFact(html, "Relationships", model.RelationshipCount.ToString(CultureInfo.InvariantCulture));
         if (model.FieldParameterCount > 0)
         {
@@ -755,7 +861,13 @@ public static class HtmlReportRenderer
                 .ToArray();
             var unusedCount = usages.Count(usage => usage.UsageState == SemanticUsageStates.ApparentlyUnused);
 
-            html.Append("          <details class=\"semantic-table\"><summary><span class=\"summary-copy\"><strong>")
+            html.Append("          <details class=\"semantic-table");
+            if (table.IsSystemGenerated)
+            {
+                html.Append(" system-generated-table");
+            }
+            html.Append("\" data-object-origin=\"").Append(table.IsSystemGenerated ? "system" : "developer")
+                .Append("\"><summary><span class=\"summary-copy\"><strong>")
                 .Append(Encode(table.Name)).Append("</strong><span>")
                 .Append(usages.Length.ToString(CultureInfo.InvariantCulture)).Append(" objects");
             if (table.IsHidden)
@@ -771,6 +883,11 @@ public static class HtmlReportRenderer
             if (table.IsCalculationGroup)
             {
                 html.Append(" · calculation group");
+            }
+
+            if (table.IsSystemGenerated)
+            {
+                html.Append(" · Power BI-generated Auto Date/Time table");
             }
 
             html.Append("</span></span>");
@@ -789,7 +906,9 @@ public static class HtmlReportRenderer
                     ? DescribeSemanticUsageReason(inventory, usage)
                     : null;
                 html.Append("              <li class=\"semantic-object\" data-usage-state=\"").Append(Encode(usage.UsageState))
-                    .Append("\" data-object-type=\"").Append(Encode(usage.ObjectType)).Append("\"><div class=\"semantic-object-header\"><span class=\"object-name\"><strong>").Append(Encode(usage.ObjectName))
+                    .Append("\" data-object-type=\"").Append(Encode(usage.ObjectType))
+                    .Append("\" data-object-origin=\"").Append(table.IsSystemGenerated ? "system" : "developer")
+                    .Append("\"><div class=\"semantic-object-header\"><span class=\"object-name\"><strong>").Append(Encode(usage.ObjectName))
                     .Append("</strong><span>").Append(Encode(HumanizeIdentifier(usage.ObjectType)));
                 if (usage.DirectReportLocationCount > 0)
                 {
@@ -1052,6 +1171,11 @@ public static class HtmlReportRenderer
         if (!string.IsNullOrWhiteSpace(finding.Table) || !string.IsNullOrWhiteSpace(finding.ObjectName))
         {
             return string.Join(" · ", new[] { finding.Table, finding.ObjectName }.Where(value => !string.IsNullOrWhiteSpace(value)));
+        }
+
+        if (!string.IsNullOrWhiteSpace(finding.SemanticModel))
+        {
+            return $"Semantic model {finding.SemanticModel}";
         }
 
         return "Project-wide";
@@ -1668,20 +1792,20 @@ public static class HtmlReportRenderer
     button { min-height: 2.5rem; padding: .45rem .8rem; border: 2px solid var(--link); border-radius: .25rem; background: #fff; color: var(--link); font: inherit; font-weight: 700; cursor: pointer; }
     button:hover { background: var(--info-bg); }
     .details-controls { display: flex; flex-wrap: wrap; gap: .5rem; margin: .75rem 0; }
-    .card-list, .page-list, .semantic-table-list, .visual-list { display: grid; min-width: 0; grid-template-columns: minmax(0, 1fr); gap: .75rem; }
-    .finding-card, .page-card, .visual-card, .semantic-table { min-width: 0; max-width: 100%; margin: 0; border: 1px solid var(--border); border-radius: .45rem; background: #fff; overflow: clip; }
+    .card-list, .page-list, .relationship-list, .semantic-table-list, .visual-list { display: grid; min-width: 0; grid-template-columns: minmax(0, 1fr); gap: .75rem; }
+    .finding-card, .page-card, .relationship-card, .visual-card, .semantic-table { min-width: 0; max-width: 100%; margin: 0; border: 1px solid var(--border); border-radius: .45rem; background: #fff; overflow: clip; }
     .page-card { border-color: #91a2b3; box-shadow: 0 1px 3px rgb(24 34 48 / 10%); }
     .visual-card { background: #f9fbfc; }
     .finding-card[data-severity="Error"] { border-left: .45rem solid var(--error); }
     .finding-card[data-severity="Warning"] { border-left: .45rem solid #a66b00; }
     .finding-card[data-severity="Information"] { border-left: .45rem solid var(--info); }
-    .finding-card > summary, .page-card > summary, .visual-card > summary, .semantic-table > summary { display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem; padding: .9rem 1rem; color: var(--text); }
-    .finding-card > summary::after, .page-card > summary::after, .visual-card > summary::after, .semantic-table > summary::after { align-self: center; content: "+"; color: var(--link); font-size: 1.35rem; font-weight: 800; line-height: 1; }
-    .finding-card[open] > summary::after, .page-card[open] > summary::after, .visual-card[open] > summary::after, .semantic-table[open] > summary::after { content: "−"; }
+    .finding-card > summary, .page-card > summary, .relationship-card > summary, .visual-card > summary, .semantic-table > summary { display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem; padding: .9rem 1rem; color: var(--text); }
+    .finding-card > summary::after, .page-card > summary::after, .relationship-card > summary::after, .visual-card > summary::after, .semantic-table > summary::after { align-self: center; content: "+"; color: var(--link); font-size: 1.35rem; font-weight: 800; line-height: 1; }
+    .finding-card[open] > summary::after, .page-card[open] > summary::after, .relationship-card[open] > summary::after, .visual-card[open] > summary::after, .semantic-table[open] > summary::after { content: "−"; }
     .finding-card > summary { justify-content: flex-start; }
     .page-card > summary { padding: 1rem 1.1rem; background: #f4f7fa; }
     .visual-card > summary { padding: .8rem .9rem; }
-    .finding-card[open] > summary, .page-card[open] > summary, .visual-card[open] > summary, .semantic-table[open] > summary { border-bottom: 1px solid var(--border); }
+    .finding-card[open] > summary, .page-card[open] > summary, .relationship-card[open] > summary, .visual-card[open] > summary, .semantic-table[open] > summary { border-bottom: 1px solid var(--border); }
     .summary-copy { display: flex; min-width: 0; flex: 1; flex-direction: column; gap: .15rem; overflow-wrap: anywhere; }
     .summary-copy > strong, .visual-name > strong { font-size: 1.05rem; color: var(--text); }
     .summary-copy > span:not(.kicker), .visual-name .secondary { color: var(--muted); font-weight: 450; }
@@ -1697,6 +1821,11 @@ public static class HtmlReportRenderer
     .fact-strip.compact { grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr)); }
     .semantic-feature { min-width: 0; max-width: 100%; margin: .75rem 1rem; padding: .8rem 1rem; border-left: .3rem solid #6b879d; background: #f5f8fa; overflow-wrap: anywhere; }
     .semantic-feature h4, .semantic-feature p { margin: 0 0 .35rem; }
+    .relationship-body { min-width: 0; max-width: 100%; padding: .85rem 1rem; }
+    .relationship-facts { display: grid; min-width: 0; grid-template-columns: repeat(auto-fit, minmax(min(100%, 12rem), 1fr)); gap: .65rem; margin: 0; }
+    .relationship-facts div { min-width: 0; padding: .55rem .65rem; border-radius: .3rem; background: #f4f7fa; }
+    .relationship-facts dt { color: var(--muted); font-size: .83rem; font-weight: 700; }
+    .relationship-review { margin: .75rem 0 0; padding: .65rem .75rem; border-left: .3rem solid var(--info); background: var(--info-bg); overflow-wrap: anywhere; }
     .object-list, .semantic-object-list, .related-findings { display: grid; min-width: 0; grid-template-columns: repeat(auto-fit, minmax(min(100%, 16rem), 1fr)); gap: .5rem; margin: .6rem 0 1rem; padding: 0; list-style: none; }
     .object-list.compact { margin-bottom: 0; }
     .object-list li { display: flex; min-width: 0; justify-content: space-between; gap: .75rem; padding: .65rem .75rem; border: 1px solid #d7dee5; border-radius: .35rem; background: #fff; overflow-wrap: anywhere; }
@@ -1715,6 +1844,7 @@ public static class HtmlReportRenderer
     .related-findings li { display: flex; align-items: flex-start; gap: .45rem; }
     .model-block + .model-block { margin-top: 2rem; }
     .model-block h3 { margin-bottom: .65rem; }
+    .system-generated-table { border-style: dashed; background: #fafbfc; }
     .semantic-table[hidden], .semantic-object[hidden], .finding-card[hidden], .page-card[hidden], .visual-card[hidden] { display: none; }
     .badge { display: inline-block; max-width: 100%; flex: 0 0 auto; padding: .2rem .45rem; border: 1px solid currentColor; border-radius: .2rem; font-weight: 700; white-space: nowrap; }
     .badge-error { color: var(--error); background: var(--error-bg); }
@@ -1747,7 +1877,7 @@ public static class HtmlReportRenderer
       main > section { padding: 1rem .65rem; }
       .filters { display: block; }
       .filters div + div { margin-top: .8rem; }
-      .finding-card > summary, .page-card > summary, .visual-card > summary, .semantic-table > summary { gap: .6rem; padding: .75rem; }
+      .finding-card > summary, .page-card > summary, .relationship-card > summary, .visual-card > summary, .semantic-table > summary { gap: .6rem; padding: .75rem; }
       .card-body, .page-body, .visual-body { padding: .75rem; }
       .object-list, .semantic-object-list { grid-template-columns: 1fr; }
       .count-pill { white-space: normal; }
@@ -1826,6 +1956,7 @@ public static class HtmlReportRenderer
       const usageSearch = document.getElementById('usage-search');
       const usageState = document.getElementById('usage-state');
       const usageType = document.getElementById('usage-type');
+      const usageOrigin = document.getElementById('usage-origin');
       const semanticTableList = document.getElementById('semantic-table-list');
       const usageStatus = document.getElementById('usage-filter-status');
 
@@ -1834,13 +1965,15 @@ public static class HtmlReportRenderer
         const query = normalise(usageSearch.value.trim());
         const state = usageState.value;
         const type = usageType.value;
+        const origin = usageOrigin.value;
         let visible = 0;
         semanticTableList.querySelectorAll('.semantic-table').forEach(table => {
           let tableVisible = 0;
           table.querySelectorAll('.semantic-object').forEach(item => {
             const show = (!query || normalise(item.textContent).includes(query)) &&
               (!state || item.dataset.usageState === state) &&
-              (!type || item.dataset.objectType === type);
+              (!type || item.dataset.objectType === type) &&
+              (!origin || item.dataset.objectOrigin === origin);
             item.hidden = !show;
             if (show) {
               tableVisible += 1;
@@ -1848,14 +1981,16 @@ public static class HtmlReportRenderer
             }
           });
           table.hidden = tableVisible === 0;
-          if (tableVisible > 0 && (query || state || type)) table.open = true;
+          if (tableVisible > 0 && (query || state || type || origin === 'system')) table.open = true;
         });
-        usageStatus.textContent = `${visible} semantic ${visible === 1 ? 'object' : 'objects'} shown.`;
+        const originLabel = origin === 'developer' ? ' developer' : origin === 'system' ? ' Power BI-generated' : ' semantic';
+        usageStatus.textContent = `${visible}${originLabel} ${visible === 1 ? 'object' : 'objects'} shown.`;
       };
 
-      [usageSearch, usageState, usageType].forEach(control => {
+      [usageSearch, usageState, usageType, usageOrigin].forEach(control => {
         if (control) control.addEventListener('input', filterUsage);
       });
+      filterUsage();
 
       document.querySelectorAll('[data-details-action]').forEach(button => {
         button.addEventListener('click', () => {

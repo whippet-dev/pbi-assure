@@ -15,6 +15,12 @@ PBI Assure classifies semantic-model objects by traversing an evidence-backed de
 
 Every edge records its source and target identities, dependency kind, source file, and the relevant expression or reference text.
 
+## Power BI-generated objects
+
+Power BI-generated Auto Date/Time tables remain full participants in dependency and structural analysis. PBI Assure identifies them only when TMDL contains the explicit `__PBI_LocalDateTable = true` or `__PBI_TemplateDateTable = true` annotation. A hidden table, a matching-looking name, or an unused object is not sufficient evidence.
+
+Developer-facing cleanup counts exclude objects owned by these generated tables and report their total separately. The HTML semantic-model view defaults to developer-authored objects, with a filter for all or Power BI-generated objects. This changes presentation and review emphasis only; it does not change any object's usage state.
+
 Power Query uses a separate lineage graph because query execution dependencies are not the same as report-facing semantic-object usage. Every M table partition is classified as `LoadedToModel`. A named expression reachable from a loaded partition through static query references is `SupportingQuery`; an unreachable named expression is `ApparentlyUnused`. Known query names inside text literals, comments, or local step declarations are excluded. Expressions using dynamic mechanisms such as `Expression.Evaluate`, `#shared`, or `Record.Field` are marked for manual review.
 
 ## State precedence

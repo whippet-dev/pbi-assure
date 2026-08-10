@@ -16,7 +16,7 @@ The initial scanner runs locally and performs no network requests. It reads meta
 
 ## Network boundary
 
-The core library should not make outbound network calls. Future Fabric or XMLA connectors must be separate adapters with explicit authentication and permission documentation. Telemetry must remain disabled unless organisational owners make a deliberate, documented decision to introduce it.
+The core library should not make outbound network calls. Future Fabric or XMLA connectors must be separate adapters with explicit authentication and permission documentation. Telemetry must remain disabled unless project maintainers make a deliberate, documented decision to introduce it.
 
 ## Filesystem boundary
 
@@ -24,7 +24,7 @@ Analysis is read-only against source projects. Generated output is written only 
 
 ## Test data
 
-Tests use small synthetic PBIP-like directory structures. Real departmental reports, exported model definitions, tenant identifiers, workspace names, and production metadata must not enter source control.
+Tests use small synthetic PBIP-like directory structures. Real reports, exported model definitions, tenant identifiers, workspace names, and production metadata must not enter source control.
 
 ## Supply chain
 

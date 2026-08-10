@@ -5,6 +5,8 @@ public sealed record SemanticTableInventory(
     string RelativePath,
     bool IsHidden,
     bool IsPrivate,
+    bool IsSystemGenerated,
+    string? SystemGeneratedKind,
     IReadOnlyList<SemanticColumnInventory> Columns,
     IReadOnlyList<SemanticMeasureInventory> Measures,
     IReadOnlyList<SemanticHierarchyInventory> Hierarchies,
@@ -23,4 +25,11 @@ public sealed record SemanticTableInventory(
     public bool IsCalculationGroup => CalculationGroup is not null;
 
     public bool IsFieldParameter => FieldParameter is not null;
+}
+
+public static class SystemGeneratedSemanticTableKinds
+{
+    public const string AutoDateTimeLocalTable = "AutoDateTimeLocalTable";
+
+    public const string AutoDateTimeTemplateTable = "AutoDateTimeTemplateTable";
 }

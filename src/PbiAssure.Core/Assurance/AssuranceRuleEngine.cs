@@ -9,6 +9,7 @@ internal static class AssuranceRuleEngine
         new DeprecatedQnaVisualRule(),
         new MissingSemanticModelRule(),
         new UnresolvedReportReferenceRule(),
+        new RelationshipReviewRule(),
         new PowerQueryLineageRule(),
         new LocalFileDataSourceRule(),
         new MissingAltTextRule(),

@@ -79,4 +79,4 @@ PBIR files declare JSON schemas and format versions. Parsers must record the enc
 
 ## Decision records
 
-Important choices and their trade-offs live in `docs/decisions`. This supports future ownership transfer and prevents decisions from surviving only as institutional memory.
+Important choices and their trade-offs live in `docs/decisions`. This supports long-term maintenance and keeps project knowledge available to future contributors.

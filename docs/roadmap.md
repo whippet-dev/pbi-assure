@@ -21,6 +21,7 @@ PBI Assure is being developed in vertical slices that produce reviewable value w
 - Report-to-model binding: resolve explicit local `byPath` targets, support several reports sharing one model, and distinguish remote or missing model definitions without generating cascades of false field errors.
 - Power Query M lineage: retain M partition expressions, inventory named expressions, follow static query dependencies transitively, flag unused supporting queries, and identify dynamic expressions requiring review.
 - Data-source inventory: recognise common M connector families, classify location types without retaining connector arguments, show query associations, and flag non-portable local or network file dependencies.
+- Generated-object and relationship review: distinguish annotated Auto Date/Time tables without removing them from analysis; inventory relationship endpoints, cardinality, status and filter direction; and flag bidirectional or many-to-many configurations for review.
 
 ## Deferred: bookmark-captured semantic state
 
@@ -39,4 +40,4 @@ Revisit this work when either:
 - Apparently unused always means no usage found in the analysed scope.
 - PBI Assure never removes model or report objects automatically.
 - Automated accessibility findings support, but do not replace, manual testing.
-- Departmental data and report content must not be committed to this repository.
+- Real or sensitive data and report content must not be committed to this repository.

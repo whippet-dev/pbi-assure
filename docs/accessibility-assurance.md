@@ -4,9 +4,8 @@ PBI Assure supports accessibility review; it does not certify that a report is a
 
 Primary reference material:
 
-- [DWP Accessibility Manual: QA tester](https://accessibility-manual.dwp.gov.uk/guidance-for-your-job-role/qa-tester)
-- [GOV.UK accessibility requirements](https://www.gov.uk/guidance/accessibility-requirements-for-public-sector-websites-and-apps)
 - [Microsoft: Design Power BI reports for accessibility](https://learn.microsoft.com/power-bi/create-reports/desktop-accessibility-creating-reports)
+- [W3C: Web Content Accessibility Guidelines (WCAG) 2.2](https://www.w3.org/TR/WCAG22/)
 
 ## Result types
 

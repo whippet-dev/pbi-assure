@@ -24,7 +24,7 @@ public sealed class ProjectScannerTests : IDisposable
 
         var result = ProjectScanner.Scan(testRoot);
 
-        Assert.Equal("0.14", result.SchemaVersion);
+        Assert.Equal("0.15", result.SchemaVersion);
         Assert.Equal(1, result.ReportCount);
         Assert.Equal(1, result.SemanticModelCount);
         Assert.Contains(result.Artifacts, artifact =>
@@ -1739,6 +1739,125 @@ public sealed class ProjectScannerTests : IDisposable
         Assert.DoesNotContain("private-file.csv", connectorJson, StringComparison.Ordinal);
         Assert.DoesNotContain("private-server", connectorJson, StringComparison.Ordinal);
         Assert.DoesNotContain("internal.example.test", connectorJson, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void ScanClassifiesAutoDateTablesAndInventoriesRelationshipReviewConditions()
+    {
+        WriteFile("Relationships.pbip", "{}");
+        WriteFile(Path.Combine("Relationships.SemanticModel", "definition.pbism"), "{}");
+        WriteFile(Path.Combine("Relationships.SemanticModel", "definition", "tables", "Fact.tmdl"),
+            """
+            table Fact
+                column Date
+                    dataType: dateTime
+                column CustomerID
+                    dataType: int64
+                column BridgeKey
+                    dataType: int64
+                column InactiveKey
+                    dataType: int64
+            """);
+        WriteFile(Path.Combine("Relationships.SemanticModel", "definition", "tables", "DimCustomer.tmdl"),
+            """
+            table DimCustomer
+                column CustomerID
+                    dataType: int64
+                column InactiveKey
+                    dataType: int64
+            """);
+        WriteFile(Path.Combine("Relationships.SemanticModel", "definition", "tables", "Bridge.tmdl"),
+            """
+            table Bridge
+                column BridgeKey
+                    dataType: int64
+            """);
+        WriteFile(Path.Combine("Relationships.SemanticModel", "definition", "tables", "LocalDateTable_Custom.tmdl"),
+            """
+            table LocalDateTable_Custom
+                isHidden
+                column Date
+                    dataType: dateTime
+            """);
+        WriteFile(Path.Combine("Relationships.SemanticModel", "definition", "tables", "LocalDateTable_generated.tmdl"),
+            """
+            table LocalDateTable_generated
+                isHidden
+                showAsVariationsOnly
+                column Date
+                    dataType: dateTime
+                column Year = YEAR([Date])
+                    dataType: int64
+                annotation __PBI_LocalDateTable = true
+            """);
+        WriteFile(Path.Combine("Relationships.SemanticModel", "definition", "tables", "DateTableTemplate_generated.tmdl"),
+            """
+            table DateTableTemplate_generated
+                isHidden
+                isPrivate
+                column Date
+                    dataType: dateTime
+                annotation __PBI_TemplateDateTable = true
+            """);
+        WriteFile(Path.Combine("Relationships.SemanticModel", "definition", "relationships.tmdl"),
+            """
+            relationship ordinary
+                fromColumn: Fact.Date
+                toColumn: LocalDateTable_generated.Date
+
+            relationship bidirectional
+                crossFilteringBehavior: bothDirections
+                fromColumn: Fact.CustomerID
+                toColumn: DimCustomer.CustomerID
+
+            relationship many-to-many
+                fromCardinality: many
+                fromColumn: Fact.BridgeKey
+                toCardinality: many
+                toColumn: Bridge.BridgeKey
+
+            relationship inactive
+                isActive: false
+                fromColumn: Fact.InactiveKey
+                toColumn: DimCustomer.InactiveKey
+            """);
+
+        var result = ProjectScanner.Scan(testRoot);
+
+        var model = Assert.Single(result.SemanticModels);
+        Assert.True(model.Tables.Single(table => table.Name == "LocalDateTable_generated").IsSystemGenerated);
+        Assert.Equal(SystemGeneratedSemanticTableKinds.AutoDateTimeLocalTable,
+            model.Tables.Single(table => table.Name == "LocalDateTable_generated").SystemGeneratedKind);
+        Assert.Equal(SystemGeneratedSemanticTableKinds.AutoDateTimeTemplateTable,
+            model.Tables.Single(table => table.Name == "DateTableTemplate_generated").SystemGeneratedKind);
+        Assert.False(model.Tables.Single(table => table.Name == "LocalDateTable_Custom").IsSystemGenerated);
+        Assert.Equal(2, result.SystemGeneratedSemanticTableCount);
+        Assert.Equal(3, result.SystemGeneratedSemanticObjectCount);
+
+        var ordinary = model.Relationships.Single(relationship => relationship.Name == "ordinary");
+        Assert.True(ordinary.IsActive);
+        Assert.Equal("many", ordinary.FromCardinality);
+        Assert.Equal("one", ordinary.ToCardinality);
+        Assert.Equal("oneDirection", ordinary.CrossFilteringBehavior);
+        Assert.Equal("Fact", ordinary.FromTable);
+        Assert.Equal("Date", ordinary.FromColumn);
+        Assert.Equal("LocalDateTable_generated", ordinary.ToTable);
+        Assert.Equal("Date", ordinary.ToColumn);
+        Assert.Equal(SemanticUsageStates.StructurallyRequired, result.SemanticObjectUsages.Single(usage =>
+            usage.Table == "LocalDateTable_generated" && usage.ObjectName == "Date").UsageState);
+
+        Assert.Equal("bothDirections", model.Relationships.Single(relationship => relationship.Name == "bidirectional").CrossFilteringBehavior);
+        Assert.Equal("many", model.Relationships.Single(relationship => relationship.Name == "many-to-many").ToCardinality);
+        Assert.False(model.Relationships.Single(relationship => relationship.Name == "inactive").IsActive);
+        Assert.Single(result.Findings, finding => finding.RuleId == "PBI-MODEL-003");
+        Assert.Single(result.Findings, finding => finding.RuleId == "PBI-MODEL-004");
+        Assert.DoesNotContain(result.Findings.SelectMany(finding => finding.EvidencePaths), path =>
+            path.Contains("ordinary", StringComparison.OrdinalIgnoreCase));
+        Assert.All(result.Findings.Where(finding => finding.RuleId is "PBI-MODEL-003" or "PBI-MODEL-004"), finding =>
+        {
+            Assert.Equal(FindingSeverities.Information, finding.Severity);
+            Assert.Equal(AssessmentTypes.ReviewRequired, finding.AssessmentType);
+        });
     }
 
     public void Dispose()

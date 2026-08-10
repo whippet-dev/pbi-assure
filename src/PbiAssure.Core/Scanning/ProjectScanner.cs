@@ -36,7 +36,7 @@ public static class ProjectScanner
         var powerQueryAnalysis = PowerQueryLineageAnalyzer.Analyze(semanticModels);
 
         var inventory = new ProjectInventory(
-            SchemaVersion: "0.14",
+            SchemaVersion: "0.15",
             RootPath: fullRootPath,
             ScannedAtUtc: DateTimeOffset.UtcNow,
             Artifacts: artifacts

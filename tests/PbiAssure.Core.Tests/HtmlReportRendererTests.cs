@@ -59,6 +59,8 @@ public sealed class HtmlReportRendererTests : IDisposable
         Assert.DoesNotContain("<script>alert('unsafe')</script>", html, StringComparison.Ordinal);
         Assert.Contains("&lt;script&gt;alert(&#x27;unsafe&#x27;)&lt;/script&gt;", html, StringComparison.Ordinal);
         Assert.DoesNotContain("https://cdn", html, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("DWP", html, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("GOV.UK", html, StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]
@@ -103,6 +105,22 @@ public sealed class HtmlReportRendererTests : IDisposable
         Assert.Contains("Why: Available through field parameter Label Selector", html, StringComparison.Ordinal);
         Assert.Contains("Calculation group", html, StringComparison.Ordinal);
         Assert.Contains("Why: Available through calculation group Time Intelligence", html, StringComparison.Ordinal);
+        Assert.Contains("Model relationships", html, StringComparison.Ordinal);
+        Assert.Contains("Sales[CustomerID]", html, StringComparison.Ordinal);
+        Assert.Contains("DimCustomer[CustomerID]", html, StringComparison.Ordinal);
+        Assert.Contains("Many-to-one", html, StringComparison.Ordinal);
+        Assert.Contains("Single direction", html, StringComparison.Ordinal);
+        Assert.Contains("Both directions", html, StringComparison.Ordinal);
+        Assert.Contains("Many-to-many", html, StringComparison.Ordinal);
+        Assert.Contains("Inactive", html, StringComparison.Ordinal);
+        Assert.Contains("Relationship ID", html, StringComparison.Ordinal);
+        Assert.Contains("Power BI-generated Auto Date/Time table", html, StringComparison.Ordinal);
+        Assert.Contains("id=\"usage-origin\"", html, StringComparison.Ordinal);
+        Assert.Contains("data-object-origin=\"system\"", html, StringComparison.Ordinal);
+        Assert.Contains("item.dataset.objectOrigin === origin", html, StringComparison.Ordinal);
+        Assert.Contains("filterUsage();", html, StringComparison.Ordinal);
+        Assert.Contains("Developer objects", html, StringComparison.Ordinal);
+        Assert.Contains("System-generated", html, StringComparison.Ordinal);
         Assert.Contains("data-usage-state=\"DirectlyUsed\"", html, StringComparison.Ordinal);
         Assert.Contains("data-usage-state=\"ApparentlyUnused\"", html, StringComparison.Ordinal);
         Assert.Contains("id=\"usage-type\"", html, StringComparison.Ordinal);
@@ -305,6 +323,18 @@ public sealed class HtmlReportRendererTests : IDisposable
                 column Amount
                     dataType: decimal
 
+                column CustomerID
+                    dataType: int64
+
+                column BridgeKey
+                    dataType: int64
+
+                column InactiveKey
+                    dataType: int64
+
+                column Date
+                    dataType: dateTime
+
                 column 'Unused Label'
                     dataType: string
 
@@ -316,6 +346,54 @@ public sealed class HtmlReportRendererTests : IDisposable
                 partition Sales = m
                     mode: import
                     source = Staging
+            """);
+        WriteFile(
+            Path.Combine("Assurance.SemanticModel", "definition", "tables", "DimCustomer.tmdl"),
+            """
+            table DimCustomer
+                column CustomerID
+                    dataType: int64
+                column InactiveKey
+                    dataType: int64
+            """);
+        WriteFile(
+            Path.Combine("Assurance.SemanticModel", "definition", "tables", "Bridge.tmdl"),
+            """
+            table Bridge
+                column BridgeKey
+                    dataType: int64
+            """);
+        WriteFile(
+            Path.Combine("Assurance.SemanticModel", "definition", "tables", "LocalDateTable_generated.tmdl"),
+            """
+            table LocalDateTable_generated
+                isHidden
+                showAsVariationsOnly
+                column Date
+                    dataType: dateTime
+                annotation __PBI_LocalDateTable = true
+            """);
+        WriteFile(
+            Path.Combine("Assurance.SemanticModel", "definition", "relationships.tmdl"),
+            """
+            relationship ordinary
+                fromColumn: Sales.Date
+                toColumn: LocalDateTable_generated.Date
+
+            relationship bidirectional
+                crossFilteringBehavior: bothDirections
+                fromColumn: Sales.CustomerID
+                toColumn: DimCustomer.CustomerID
+
+            relationship many-to-many
+                fromColumn: Sales.BridgeKey
+                toCardinality: many
+                toColumn: Bridge.BridgeKey
+
+            relationship inactive
+                isActive: false
+                fromColumn: Sales.InactiveKey
+                toColumn: DimCustomer.InactiveKey
             """);
         WriteFile(
             Path.Combine("Assurance.SemanticModel", "definition", "tables", "Label Selector.tmdl"),
