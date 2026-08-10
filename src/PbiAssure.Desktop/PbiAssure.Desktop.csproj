@@ -1,0 +1,13 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <RootNamespace>PbiAssure.Desktop</RootNamespace>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="../PbiAssure.Cli/PbiAssure.Cli.csproj" />
+    <ProjectReference Include="../PbiAssure.Core/PbiAssure.Core.csproj" />
+    <ProjectReference Include="../PbiAssure.Reporting/PbiAssure.Reporting.csproj" />
+  </ItemGroup>
+</Project>

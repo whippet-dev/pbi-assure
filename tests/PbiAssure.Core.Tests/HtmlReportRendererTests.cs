@@ -1,3 +1,4 @@
+using PbiAssure.Core.Inventory;
 using PbiAssure.Core.Scanning;
 using PbiAssure.Reporting;
 
@@ -82,6 +83,68 @@ public sealed class HtmlReportRendererTests : IDisposable
     }
 
     [Fact]
+    public void RenderGroupsSummaryMetricsByDeveloperQuestionWithoutChangingValues()
+    {
+        CreateSampleProject();
+
+        var inventory = ProjectScanner.Scan(testRoot);
+        var html = HtmlReportRenderer.Render(inventory);
+        var assurance = ExtractSummaryGroup(html, "summary-group-assurance");
+        var project = ExtractSummaryGroup(html, "summary-group-project");
+        var semantic = ExtractSummaryGroup(html, "summary-group-semantic");
+
+        Assert.Contains("<h3 id=\"summary-assurance-heading\">Assurance</h3>", assurance, StringComparison.Ordinal);
+        Assert.Contains("aria-describedby=\"summary-assurance-help\"", assurance, StringComparison.Ordinal);
+        Assert.Contains("Start with errors, then warnings", assurance, StringComparison.Ordinal);
+        AssertMetric(assurance, "Errors", inventory.ErrorFindingCount);
+        AssertMetric(assurance, "Warnings", inventory.WarningFindingCount);
+        AssertMetric(assurance, "Review required", inventory.ReviewRequiredCount);
+        AssertMetric(assurance, "Total findings", inventory.FindingCount);
+
+        Assert.Contains("<h3 id=\"summary-project-heading\">Project</h3>", project, StringComparison.Ordinal);
+        Assert.Contains("aria-describedby=\"summary-project-help\"", project, StringComparison.Ordinal);
+        Assert.Contains("report, model and data-preparation content", project, StringComparison.Ordinal);
+        AssertMetric(project, "Reports", inventory.ReportCount);
+        AssertMetric(project, "Pages", inventory.PageCount);
+        AssertMetric(project, "Visuals", inventory.VisualCount);
+        AssertMetric(project, "Developer objects", inventory.DeveloperSemanticObjectCount);
+        if (inventory.ReportMeasureCount > 0) AssertMetric(project, "Report measures", inventory.ReportMeasureCount);
+        if (inventory.SystemGeneratedSemanticObjectCount > 0) AssertMetric(project, "System-generated", inventory.SystemGeneratedSemanticObjectCount);
+        if (inventory.PowerQueryCount > 0) AssertMetric(project, "Power Query sources", inventory.PowerQueryCount);
+        if (inventory.DataSourceCount > 0) AssertMetric(project, "Connector types", inventory.DistinctConnectorFamilyCount);
+
+        Assert.Contains("<h3 id=\"summary-semantic-heading\">Semantic usage</h3>", semantic, StringComparison.Ordinal);
+        Assert.Contains("aria-describedby=\"summary-semantic-help\"", semantic, StringComparison.Ordinal);
+        Assert.Contains("review the object rather than deleting it automatically", semantic, StringComparison.Ordinal);
+        AssertMetric(semantic, "Directly used", inventory.DeveloperSemanticObjectCountForState(SemanticUsageStates.DirectlyUsed));
+        AssertMetric(semantic, "Indirectly used", inventory.DeveloperSemanticObjectCountForState(SemanticUsageStates.IndirectlyUsed));
+        AssertMetric(semantic, "Structurally required", inventory.DeveloperSemanticObjectCountForState(SemanticUsageStates.StructurallyRequired));
+        AssertMetric(semantic, "Unused branch", inventory.DeveloperSemanticObjectCountForState(SemanticUsageStates.UsedOnlyByUnusedBranch));
+        AssertMetric(semantic, "Apparently unused", inventory.DeveloperApparentlyUnusedSemanticObjectCount);
+
+        Assert.DoesNotContain("<dt>Reports</dt>", assurance, StringComparison.Ordinal);
+        Assert.DoesNotContain("<dt>Directly used</dt>", project, StringComparison.Ordinal);
+        Assert.DoesNotContain("<dt>Warnings</dt>", semantic, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void RenderProvidesConsistentPlainLanguageSectionIntroductions()
+    {
+        CreateSampleProject();
+
+        var html = HtmlReportRenderer.Render(ProjectScanner.Scan(testRoot));
+
+        Assert.Equal(7, html.Split("<p class=\"section-intro\">", StringSplitOptions.None).Length - 1);
+        Assert.Contains("Start here for the overall assurance result", html, StringComparison.Ordinal);
+        Assert.Contains("Keep these limits in mind", html, StringComparison.Ordinal);
+        Assert.Contains("See how data-preparation queries feed the model", html, StringComparison.Ordinal);
+        Assert.Contains("Issues and review points found by automated checks", html, StringComparison.Ordinal);
+        Assert.Contains("Browse the report page by page and visual by visual", html, StringComparison.Ordinal);
+        Assert.Contains("See how tables are connected", html, StringComparison.Ordinal);
+        Assert.Contains("Review columns, measures and other model objects by table", html, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void RenderIncludesFindingsInventoryAndSemanticUsageStates()
     {
         CreateSampleProject();
@@ -99,6 +162,14 @@ public sealed class HtmlReportRendererTests : IDisposable
         Assert.Contains("Used only by unused branch", html, StringComparison.Ordinal);
         Assert.Contains("Review them before removing anything.", html, StringComparison.Ordinal);
         Assert.Contains("How usage classification works", html, StringComparison.Ordinal);
+        Assert.Contains("<span class=\"usage-guide-hint\">5 statuses explained</span>", html, StringComparison.Ordinal);
+        Assert.Contains("<dl class=\"usage-classification-list\">", html, StringComparison.Ordinal);
+        Assert.Contains("class=\"usage-classification-row\"", html, StringComparison.Ordinal);
+        Assert.Contains("class=\"badge badge-used\">Directly used</span>", html, StringComparison.Ordinal);
+        Assert.Contains("class=\"badge badge-indirect\">Indirectly used</span>", html, StringComparison.Ordinal);
+        Assert.Contains("class=\"badge badge-structural\">Structurally required</span>", html, StringComparison.Ordinal);
+        Assert.Contains("class=\"badge badge-unused-branch\">Used only by unused branch</span>", html, StringComparison.Ordinal);
+        Assert.Contains("class=\"badge badge-unused\">Apparently unused</span>", html, StringComparison.Ordinal);
         Assert.Contains("This does not prove it is safe to remove.", html, StringComparison.Ordinal);
         Assert.Contains("Important interpretation boundaries", html, StringComparison.Ordinal);
         Assert.Contains("bookmark-captured semantic state", html, StringComparison.Ordinal);
@@ -117,11 +188,14 @@ public sealed class HtmlReportRendererTests : IDisposable
         Assert.Contains("Loads into the model", html, StringComparison.Ordinal);
         Assert.Contains("Supports a loaded query", html, StringComparison.Ordinal);
         Assert.Contains("View M expression", html, StringComparison.Ordinal);
+        Assert.Contains("<span class=\"kicker\">Model table</span>", html, StringComparison.Ordinal);
         Assert.Contains("Field parameter", html, StringComparison.Ordinal);
+        Assert.Contains("<span class=\"kicker\">Field parameter table</span>", html, StringComparison.Ordinal);
         Assert.Contains("Lets report readers switch between 1 field.", html, StringComparison.Ordinal);
         Assert.Contains("Sales[Unused Label]", html, StringComparison.Ordinal);
         Assert.Contains("Why: Available through field parameter Label Selector", html, StringComparison.Ordinal);
         Assert.Contains("Calculation group", html, StringComparison.Ordinal);
+        Assert.Contains("<span class=\"kicker\">Calculation group table</span>", html, StringComparison.Ordinal);
         Assert.Contains("Why: Available through calculation group Time Intelligence", html, StringComparison.Ordinal);
         Assert.Contains("Model relationships", html, StringComparison.Ordinal);
         Assert.Contains("Sales[CustomerID]", html, StringComparison.Ordinal);
@@ -133,6 +207,7 @@ public sealed class HtmlReportRendererTests : IDisposable
         Assert.Contains("Inactive", html, StringComparison.Ordinal);
         Assert.Contains("Relationship ID", html, StringComparison.Ordinal);
         Assert.Contains("Power BI-generated Auto Date/Time table", html, StringComparison.Ordinal);
+        Assert.Contains("<span class=\"kicker\">Power BI-generated table</span>", html, StringComparison.Ordinal);
         Assert.Contains("id=\"usage-origin\"", html, StringComparison.Ordinal);
         Assert.Contains("data-object-origin=\"system\"", html, StringComparison.Ordinal);
         Assert.Contains("item.dataset.objectOrigin === origin", html, StringComparison.Ordinal);
@@ -143,12 +218,19 @@ public sealed class HtmlReportRendererTests : IDisposable
         Assert.Contains("data-usage-state=\"ApparentlyUnused\"", html, StringComparison.Ordinal);
         Assert.Contains("id=\"usage-type\"", html, StringComparison.Ordinal);
         Assert.Contains("data-object-type=\"Column\"", html, StringComparison.Ordinal);
+        Assert.Contains("<label for=\"usage-search\">Search tables and objects</label>", html, StringComparison.Ordinal);
+        Assert.Contains("data-search-text=\"Sales ", html, StringComparison.Ordinal);
+        Assert.Contains("normalise(item.dataset.searchText).includes(query)", html, StringComparison.Ordinal);
+        Assert.DoesNotContain("normalise(item.textContent).includes(query)", html, StringComparison.Ordinal);
         Assert.Contains("Where used", html, StringComparison.Ordinal);
         Assert.Contains("class=\"semantic-object-header\"", html, StringComparison.Ordinal);
         Assert.Contains("<p class=\"usage-reason\">Why:", html, StringComparison.Ordinal);
+        Assert.Contains("<div class=\"usage-location-groups\">", html, StringComparison.Ordinal);
+        Assert.Contains("<section class=\"usage-page-group\">", html, StringComparison.Ordinal);
         Assert.Contains("<ul class=\"usage-location-list\">", html, StringComparison.Ordinal);
-        Assert.Contains("<span class=\"usage-page\">", html, StringComparison.Ordinal);
-        Assert.Contains("<span class=\"usage-context\">", html, StringComparison.Ordinal);
+        Assert.Contains("<span class=\"usage-label\">Page:</span>", html, StringComparison.Ordinal);
+        Assert.Contains("<span class=\"usage-label\">Visual:</span> <a href=\"#visual-", html, StringComparison.Ordinal);
+        Assert.Contains("<span class=\"usage-label\">Used as:</span>", html, StringComparison.Ordinal);
         Assert.Contains(".semantic-object-header { display: flex; min-width: 0; max-width: 100%; flex-wrap: wrap;", html, StringComparison.Ordinal);
         Assert.Contains(".technical-details pre { max-width: 100%; overflow-x: auto; }", html, StringComparison.Ordinal);
         Assert.DoesNotContain("Filter, Values", html, StringComparison.Ordinal);
@@ -171,6 +253,24 @@ public sealed class HtmlReportRendererTests : IDisposable
         {
             Directory.Delete(resolvedTestRoot, recursive: true);
         }
+    }
+
+    private static string ExtractSummaryGroup(string html, string cssClass)
+    {
+        var startMarker = $"<section class=\"summary-group {cssClass}\"";
+        var start = html.IndexOf(startMarker, StringComparison.Ordinal);
+        Assert.True(start >= 0, $"Summary group {cssClass} was not rendered.");
+        var end = html.IndexOf("</section>", start, StringComparison.Ordinal);
+        Assert.True(end > start, $"Summary group {cssClass} was not closed.");
+        return html[start..(end + "</section>".Length)];
+    }
+
+    private static void AssertMetric(string groupHtml, string label, int value)
+    {
+        Assert.Contains(
+            $"<dt>{label}</dt><dd>{value:N0}</dd>",
+            groupHtml,
+            StringComparison.Ordinal);
     }
 
     private void CreateSampleProject()

@@ -71,11 +71,22 @@ public static class HtmlReportRenderer
     {
         html.AppendLine("    <section id=\"summary\" class=\"report-section\" data-report-section=\"summary\" aria-labelledby=\"summary-heading\">");
         html.AppendLine("      <h2 id=\"summary-heading\" tabindex=\"-1\">Assurance summary</h2>");
+        html.AppendLine("      <p class=\"section-intro\">Start here for the overall assurance result, the size of the project and how its model objects are being used.</p>");
+        html.AppendLine("      <div class=\"summary-groups\">");
+        html.AppendLine("        <section class=\"summary-group summary-group-assurance\" aria-labelledby=\"summary-assurance-heading\" aria-describedby=\"summary-assurance-help\">");
+        html.AppendLine("          <h3 id=\"summary-assurance-heading\">Assurance</h3>");
+        html.AppendLine("          <p id=\"summary-assurance-help\" class=\"group-explanation\">Automated checks that may need attention. Start with errors, then warnings and items that need a person to review them.</p>");
         html.AppendLine("      <dl class=\"metrics\">");
         AppendMetric(html, "Errors", inventory.ErrorFindingCount, "metric-error");
         AppendMetric(html, "Warnings", inventory.WarningFindingCount, "metric-warning");
         AppendMetric(html, "Review required", inventory.ReviewRequiredCount, "metric-review");
         AppendMetric(html, "Total findings", inventory.FindingCount);
+        html.AppendLine("      </dl>");
+        html.AppendLine("        </section>");
+        html.AppendLine("        <section class=\"summary-group summary-group-project\" aria-labelledby=\"summary-project-heading\" aria-describedby=\"summary-project-help\">");
+        html.AppendLine("          <h3 id=\"summary-project-heading\">Project</h3>");
+        html.AppendLine("          <p id=\"summary-project-help\" class=\"group-explanation\">The amount of report, model and data-preparation content included in this scan.</p>");
+        html.AppendLine("      <dl class=\"metrics\">");
         AppendMetric(html, "Reports", inventory.ReportCount);
         AppendMetric(html, "Pages", inventory.PageCount);
         AppendMetric(html, "Visuals", inventory.VisualCount);
@@ -96,12 +107,20 @@ public static class HtmlReportRenderer
         {
             AppendMetric(html, "Connector types", inventory.DistinctConnectorFamilyCount);
         }
+        html.AppendLine("      </dl>");
+        html.AppendLine("        </section>");
+        html.AppendLine("        <section class=\"summary-group summary-group-semantic\" aria-labelledby=\"summary-semantic-heading\" aria-describedby=\"summary-semantic-help\">");
+        html.AppendLine("          <h3 id=\"summary-semantic-heading\">Semantic usage</h3>");
+        html.AppendLine("          <p id=\"summary-semantic-help\" class=\"group-explanation\">How the report uses model objects such as columns and measures. If no use was found, review the object rather than deleting it automatically.</p>");
+        html.AppendLine("      <dl class=\"metrics\">");
         AppendMetric(html, "Directly used", inventory.DeveloperSemanticObjectCountForState(SemanticUsageStates.DirectlyUsed));
         AppendMetric(html, "Indirectly used", inventory.DeveloperSemanticObjectCountForState(SemanticUsageStates.IndirectlyUsed));
         AppendMetric(html, "Structurally required", inventory.DeveloperSemanticObjectCountForState(SemanticUsageStates.StructurallyRequired));
         AppendMetric(html, "Unused branch", inventory.DeveloperSemanticObjectCountForState(SemanticUsageStates.UsedOnlyByUnusedBranch));
         AppendMetric(html, "Apparently unused", inventory.DeveloperApparentlyUnusedSemanticObjectCount, "metric-unused");
         html.AppendLine("      </dl>");
+        html.AppendLine("        </section>");
+        html.AppendLine("      </div>");
         html.Append("      <p class=\"summary-note\"><strong>").Append(inventory.DeveloperApparentlyUnusedSemanticObjectCount.ToString(CultureInfo.InvariantCulture))
             .Append(" developer-authored semantic objects have no usage detected in this project. Review them before removing anything.</strong>");
         if (inventory.SystemGeneratedSemanticObjectCount > 0)
@@ -117,6 +136,7 @@ public static class HtmlReportRenderer
     {
         html.AppendLine("    <section class=\"scope report-section\" data-report-section=\"summary\" aria-labelledby=\"scope-heading\">");
         html.AppendLine("      <h2 id=\"scope-heading\">Important interpretation boundaries</h2>");
+        html.AppendLine("      <p class=\"section-intro\">Keep these limits in mind when using the report to make development decisions.</p>");
         html.AppendLine("      <ul>");
         html.AppendLine("        <li><strong>Apparently unused</strong> means no usage was found in the analysed scope; it is not permission to delete an object.</li>");
         html.AppendLine("        <li>Power Query lineage follows static references between known table queries and named expressions. Dynamically constructed references, data-source internals, bookmark-captured semantic state, and external consumers remain analysis boundaries.</li>");
@@ -130,7 +150,7 @@ public static class HtmlReportRenderer
     {
         html.AppendLine("    <section id=\"power-query\" class=\"report-section\" data-report-section=\"power-query\" aria-labelledby=\"power-query-heading\">");
         html.AppendLine("      <h2 id=\"power-query-heading\" tabindex=\"-1\">Power Query lineage</h2>");
-        html.AppendLine("      <p>Expand a query to see whether it loads a model table, supports another query, and which known queries it uses.</p>");
+        html.AppendLine("      <p class=\"section-intro\">See how data-preparation queries feed the model and support one another. Expand a query for the known steps it depends on.</p>");
         if (inventory.PowerQueryUsages.Count == 0)
         {
             html.AppendLine("      <p>No Power Query M partitions or named expressions were found.</p>");
@@ -254,7 +274,7 @@ public static class HtmlReportRenderer
     {
         html.AppendLine("    <section id=\"findings\" class=\"report-section\" data-report-section=\"findings\" aria-labelledby=\"findings-heading\">");
         html.AppendLine("      <h2 id=\"findings-heading\" tabindex=\"-1\">Findings</h2>");
-        html.AppendLine("      <p>Expand an issue to see where it occurs and the suggested action.</p>");
+        html.AppendLine("      <p class=\"section-intro\">Issues and review points found by automated checks. Expand one to see where it occurs and what to do next.</p>");
         if (inventory.Findings.Count == 0)
         {
             html.AppendLine("      <p>No automated findings were produced. Manual review is still required.</p>");
@@ -314,7 +334,7 @@ public static class HtmlReportRenderer
     {
         html.AppendLine("    <section id=\"reports\" class=\"report-section\" data-report-section=\"reports\" aria-labelledby=\"reports-heading\">");
         html.AppendLine("      <h2 id=\"reports-heading\" tabindex=\"-1\">Report pages</h2>");
-        html.AppendLine("      <p>Expand a page for its visuals, then expand a visual to see the columns and measures it uses.</p>");
+        html.AppendLine("      <p class=\"section-intro\">Browse the report page by page and visual by visual. Expand a visual to see the columns and measures it uses.</p>");
         if (inventory.Reports.Count == 0)
         {
             html.AppendLine("      <p>No PBIR report definitions were found.</p>");
@@ -421,7 +441,7 @@ public static class HtmlReportRenderer
     {
         html.AppendLine("    <section id=\"relationships\" class=\"report-section\" data-report-section=\"relationships\" aria-labelledby=\"relationships-heading\">");
         html.AppendLine("      <h2 id=\"relationships-heading\" tabindex=\"-1\">Model relationships</h2>");
-        html.AppendLine("      <p>Review table connections, relationship columns, cardinality, status and filter direction.</p>");
+        html.AppendLine("      <p class=\"section-intro\">See how tables are connected, whether each connection is active and which way filtering can flow.</p>");
         if (inventory.SemanticRelationshipCount == 0)
         {
             html.AppendLine("      <p>No model relationships were found.</p>");
@@ -502,7 +522,7 @@ public static class HtmlReportRenderer
     {
         html.AppendLine("    <section id=\"semantic-usage\" class=\"report-section\" data-report-section=\"semantic-usage\" aria-labelledby=\"semantic-usage-heading\">");
         html.AppendLine("      <h2 id=\"semantic-usage-heading\" tabindex=\"-1\">Semantic model</h2>");
-        html.AppendLine("      <p>Browse model objects by table. Start with review candidates, then expand an object to see why it has its classification and where it is used.</p>");
+        html.AppendLine("      <p class=\"section-intro\">Review columns, measures and other model objects by table. Expand an object to see why it has its status and exactly where it is used.</p>");
         AppendUsageGuide(html);
         if (inventory.SemanticModels.Count == 0)
         {
@@ -512,7 +532,7 @@ public static class HtmlReportRenderer
         }
 
         html.AppendLine("      <div class=\"filters\" aria-label=\"Filter semantic objects\">");
-        html.AppendLine("        <div><label for=\"usage-search\">Search semantic objects</label><input id=\"usage-search\" type=\"search\" autocomplete=\"off\"></div>");
+        html.AppendLine("        <div><label for=\"usage-search\">Search tables and objects</label><input id=\"usage-search\" type=\"search\" autocomplete=\"off\"></div>");
         html.AppendLine("        <div><label for=\"usage-state\">Usage state</label><select id=\"usage-state\"><option value=\"\">All usage states</option>");
         foreach (var state in inventory.SemanticObjectUsages
                      .Select(usage => usage.UsageState)
@@ -867,7 +887,8 @@ public static class HtmlReportRenderer
                 html.Append(" system-generated-table");
             }
             html.Append("\" data-object-origin=\"").Append(table.IsSystemGenerated ? "system" : "developer")
-                .Append("\"><summary><span class=\"summary-copy\"><strong>")
+                .Append("\"><summary><span class=\"summary-copy\"><span class=\"kicker\">")
+                .Append(Encode(SemanticTableKicker(table))).Append("</span><strong>")
                 .Append(Encode(table.Name)).Append("</strong><span>")
                 .Append(usages.Length.ToString(CultureInfo.InvariantCulture)).Append(" objects");
             if (table.IsHidden)
@@ -908,6 +929,7 @@ public static class HtmlReportRenderer
                 html.Append("              <li class=\"semantic-object\" data-usage-state=\"").Append(Encode(usage.UsageState))
                     .Append("\" data-object-type=\"").Append(Encode(usage.ObjectType))
                     .Append("\" data-object-origin=\"").Append(table.IsSystemGenerated ? "system" : "developer")
+                    .Append("\" data-search-text=\"").Append(Encode($"{table.Name} {usage.ObjectName} {HumanizeIdentifier(usage.ObjectType)}"))
                     .Append("\"><div class=\"semantic-object-header\"><span class=\"object-name\"><strong>").Append(Encode(usage.ObjectName))
                     .Append("</strong><span>").Append(Encode(HumanizeIdentifier(usage.ObjectType)));
                 if (usage.DirectReportLocationCount > 0)
@@ -933,15 +955,44 @@ public static class HtmlReportRenderer
         html.AppendLine("        </section>");
     }
 
+    private static string SemanticTableKicker(SemanticTableInventory table)
+    {
+        if (table.IsSystemGenerated)
+        {
+            return "Power BI-generated table";
+        }
+
+        if (table.IsFieldParameter)
+        {
+            return "Field parameter table";
+        }
+
+        if (table.IsCalculationGroup)
+        {
+            return "Calculation group table";
+        }
+
+        return "Model table";
+    }
+
     private static void AppendUsageGuide(StringBuilder html)
     {
-        html.AppendLine("      <details class=\"usage-guide\"><summary>How usage classification works</summary><dl class=\"facts\">");
-        AppendFact(html, "Directly used", "Used in a visual, filter, tooltip or drillthrough setting.");
-        AppendFact(html, "Indirectly used", "Needed by something used directly, such as a DAX measure.");
-        AppendFact(html, "Structurally required", "Needed by the model structure, such as a relationship key.");
-        AppendFact(html, "Used only by unused branch", "Only referenced by an object with no detected report usage.");
-        AppendFact(html, "Apparently unused", "No usage was found here. This does not prove it is safe to remove.");
-        html.AppendLine("      </dl></details>");
+        html.AppendLine("      <details class=\"usage-guide\"><summary><span>How usage classification works</span><span class=\"usage-guide-hint\">5 statuses explained</span></summary>");
+        html.AppendLine("        <div class=\"usage-guide-body\"><dl class=\"usage-classification-list\">");
+        AppendUsageGuideItem(html, "Directly used", "Used in a visual, filter, tooltip or drillthrough setting.", SemanticUsageStates.DirectlyUsed);
+        AppendUsageGuideItem(html, "Indirectly used", "Needed by something used directly, such as a DAX measure.", SemanticUsageStates.IndirectlyUsed);
+        AppendUsageGuideItem(html, "Structurally required", "Needed by the model structure, such as a relationship key.", SemanticUsageStates.StructurallyRequired);
+        AppendUsageGuideItem(html, "Used only by unused branch", "Only referenced by an object with no detected report usage.", SemanticUsageStates.UsedOnlyByUnusedBranch);
+        AppendUsageGuideItem(html, "Apparently unused", "No usage was found here. This does not prove it is safe to remove.", SemanticUsageStates.ApparentlyUnused);
+        html.AppendLine("        </dl></div>");
+        html.AppendLine("      </details>");
+    }
+
+    private static void AppendUsageGuideItem(StringBuilder html, string label, string description, string usageState)
+    {
+        html.Append("          <div class=\"usage-classification-row\"><dt><span class=\"badge ")
+            .Append(UsageClass(usageState)).Append("\">").Append(Encode(label))
+            .Append("</span></dt><dd>").Append(Encode(description)).AppendLine("</dd></div>");
     }
 
     private static void AppendUsageDetails(StringBuilder html, ProjectInventory inventory, SemanticObjectUsage usage)
@@ -951,47 +1002,103 @@ public static class HtmlReportRenderer
             return;
         }
 
-        html.AppendLine("                <details class=\"technical-details usage-details\"><summary>Where used</summary><ul class=\"usage-location-list\">");
-        foreach (var location in usage.DirectReportLocations)
+        html.AppendLine("                <details class=\"usage-details\"><summary>Where used</summary><div class=\"usage-location-groups\">");
+        foreach (var locationGroup in usage.DirectReportLocations.GroupBy(
+                     location => $"{location.Report}\u001f{location.Page}",
+                     StringComparer.OrdinalIgnoreCase))
         {
+            var firstLocation = locationGroup.First();
             var report = inventory.Reports.FirstOrDefault(candidate =>
-                string.Equals(candidate.Name, location.Report, StringComparison.OrdinalIgnoreCase));
+                string.Equals(candidate.Name, firstLocation.Report, StringComparison.OrdinalIgnoreCase));
             var page = report?.Pages.FirstOrDefault(candidate =>
-                string.Equals(candidate.Name, location.Page, StringComparison.OrdinalIgnoreCase));
-            var visual = page?.Visuals.FirstOrDefault(candidate =>
-                string.Equals(candidate.Name, location.Visual, StringComparison.OrdinalIgnoreCase));
-            var pageLabel = page?.DisplayName ?? location.Page ?? location.Report;
-            var locationLabel = visual is not null
-                ? VisualDisplayName(visual)
-                : location.UsageContext == UsageContexts.Drillthrough
-                    ? "Drillthrough field"
-                    : HumanizeIdentifier(location.UsageContext ?? location.LocationKind);
-            var roles = usage.DirectReportReferences
-                .Where(evidence => string.Equals(evidence.Report, location.Report, StringComparison.OrdinalIgnoreCase) &&
-                    string.Equals(evidence.Page, location.Page, StringComparison.OrdinalIgnoreCase) &&
-                    string.Equals(evidence.Visual, location.Visual, StringComparison.OrdinalIgnoreCase))
-                .Select(evidence => evidence.Role)
-                .Where(role => !string.IsNullOrWhiteSpace(role))
-                .Distinct(StringComparer.OrdinalIgnoreCase)
-                .ToArray();
-            if (roles.Any(role => !string.Equals(role, "filter", StringComparison.OrdinalIgnoreCase)))
+                string.Equals(candidate.Name, firstLocation.Page, StringComparison.OrdinalIgnoreCase));
+            var pageLabel = page?.DisplayName ?? firstLocation.Page;
+
+            html.AppendLine("                  <section class=\"usage-page-group\">");
+            if (inventory.ReportCount > 1)
             {
-                roles = roles.Where(role => !string.Equals(role, "filter", StringComparison.OrdinalIgnoreCase)).ToArray();
+                html.Append("                    <p class=\"usage-report\"><span class=\"usage-label\">Report:</span> ")
+                    .Append(Encode(report?.Name ?? firstLocation.Report)).AppendLine("</p>");
             }
 
-            var roleLabel = string.Join(", ", roles.Select(role =>
-                string.Equals(role, "filter", StringComparison.OrdinalIgnoreCase) && visual is not null
-                    ? "Visual filter"
-                    : HumanizeIdentifier(role!)));
-            html.Append("                  <li><span class=\"usage-page\">").Append(Encode(pageLabel))
-                .Append("</span><span class=\"usage-context\">").Append(Encode(locationLabel));
-            if (!string.IsNullOrWhiteSpace(roleLabel))
+            if (!string.IsNullOrWhiteSpace(pageLabel))
             {
-                html.Append(" · ").Append(Encode(roleLabel));
+                html.Append("                    <h5><span class=\"usage-label\">Page:</span> ")
+                    .Append(Encode(pageLabel));
+                if (page is not null && !string.Equals(PageRole(page), "Standard", StringComparison.OrdinalIgnoreCase))
+                {
+                    html.Append(" <span class=\"usage-page-kind\">· ")
+                        .Append(Encode($"{PageRole(page)} page")).Append("</span>");
+                }
+                html.AppendLine("</h5>");
             }
-            html.AppendLine("</span></li>");
+            else
+            {
+                html.AppendLine("                    <h5>Report-level use</h5>");
+            }
+
+            html.AppendLine("                    <ul class=\"usage-location-list\">");
+            foreach (var location in locationGroup)
+            {
+                var visual = page?.Visuals.FirstOrDefault(candidate =>
+                    string.Equals(candidate.Name, location.Visual, StringComparison.OrdinalIgnoreCase));
+                var locationLabel = visual is not null
+                    ? VisualDisplayName(visual)
+                    : location.UsageContext == UsageContexts.Drillthrough
+                        ? "Drillthrough field"
+                        : HumanizeIdentifier(location.UsageContext ?? location.LocationKind);
+                var roleLabel = UsageRoleLabel(usage, location, visual is not null);
+                html.AppendLine("                      <li>");
+                if (visual is not null && report is not null && page is not null)
+                {
+                    var visualType = HumanizeVisualType(visual.VisualType);
+                    html.Append("                        <span class=\"usage-visual\"><span class=\"usage-label\">Visual:</span> <a href=\"#")
+                        .Append(Encode(VisualAnchor(report, page, visual))).Append("\">")
+                        .Append(Encode(locationLabel)).Append("</a>");
+                    if (!string.Equals(locationLabel, visualType, StringComparison.OrdinalIgnoreCase))
+                    {
+                        html.Append(" · ").Append(Encode(visualType));
+                    }
+                    html.Append(" · ").Append(Encode(DescribePosition(page, visual))).AppendLine("</span>");
+                }
+                else
+                {
+                    html.Append("                        <span class=\"usage-context\"><span class=\"usage-label\">Used in:</span> ")
+                        .Append(Encode(locationLabel)).AppendLine("</span>");
+                }
+                if (!string.IsNullOrWhiteSpace(roleLabel))
+                {
+                    html.Append("                        <span class=\"usage-role\"><span class=\"usage-label\">Used as:</span> ")
+                        .Append(Encode(roleLabel)).AppendLine("</span>");
+                }
+                html.AppendLine("                      </li>");
+            }
+
+            html.AppendLine("                    </ul>");
+            html.AppendLine("                  </section>");
         }
-        html.AppendLine("                </ul></details>");
+        html.AppendLine("                </div></details>");
+    }
+
+    private static string UsageRoleLabel(SemanticObjectUsage usage, SemanticUsageLocation location, bool hasVisual)
+    {
+        var roles = usage.DirectReportReferences
+            .Where(evidence => string.Equals(evidence.Report, location.Report, StringComparison.OrdinalIgnoreCase) &&
+                string.Equals(evidence.Page, location.Page, StringComparison.OrdinalIgnoreCase) &&
+                string.Equals(evidence.Visual, location.Visual, StringComparison.OrdinalIgnoreCase))
+            .Select(evidence => evidence.Role)
+            .Where(role => !string.IsNullOrWhiteSpace(role))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToArray();
+        if (roles.Any(role => !string.Equals(role, "filter", StringComparison.OrdinalIgnoreCase)))
+        {
+            roles = roles.Where(role => !string.Equals(role, "filter", StringComparison.OrdinalIgnoreCase)).ToArray();
+        }
+
+        return string.Join(", ", roles.Select(role =>
+            string.Equals(role, "filter", StringComparison.OrdinalIgnoreCase) && hasVisual
+                ? "Visual filter"
+                : HumanizeIdentifier(role!)));
     }
 
     private static void AppendSemanticFeatures(StringBuilder html, SemanticTableInventory table)
@@ -1809,8 +1916,18 @@ public static class HtmlReportRenderer
     .section-nav a > span { font-weight: 750; }
     .section-nav small { color: inherit; font-size: .82rem; opacity: .9; overflow-wrap: anywhere; }
     main > section { min-width: 0; margin: 1.5rem 0; padding: 1.5rem; background: var(--surface); border: 1px solid var(--border); border-radius: .4rem; }
-    .metrics { display: grid; grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr)); gap: .8rem; }
+    .summary-groups { display: grid; min-width: 0; gap: 1.2rem; }
+    .summary-group { min-width: 0; }
+    .summary-group h3 { display: flex; align-items: center; gap: .75rem; margin: 0 0 .65rem; color: var(--muted); font-size: .88rem; letter-spacing: .06em; text-transform: uppercase; }
+    .summary-group h3::after { height: 1px; flex: 1; background: #d7dee5; content: ""; }
+    .summary-group-assurance { padding: .85rem; border: 2px solid #91a2b3; border-radius: .35rem; background: #f7fafc; }
+    .summary-group-assurance h3 { color: #15324b; }
+    .section-intro { max-width: 68rem; margin: -.35rem 0 1rem; color: var(--muted); }
+    .group-explanation { max-width: 64rem; margin: -.2rem 0 .7rem; color: var(--muted); font-size: .92rem; }
+    .metrics { display: grid; grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr)); gap: .7rem; margin: 0; }
     .metric { padding: 1rem; border: 1px solid var(--border); border-left: .5rem solid #66788a; border-radius: .25rem; }
+    .summary-group-project .metric, .summary-group-semantic .metric { padding: .75rem .85rem; }
+    .summary-group-project .metric dd, .summary-group-semantic .metric dd { font-size: 1.65rem; }
     .metric dt { color: var(--muted); font-weight: 700; }
     .metric dd { margin: .15rem 0 0; font-size: 2rem; font-weight: 750; }
     .metric-error { border-left-color: var(--error); }
@@ -1868,12 +1985,30 @@ public static class HtmlReportRenderer
     .object-list li > span, .object-name > span { color: var(--muted); font-size: .86rem; }
     .object-name { display: flex; min-width: 0; flex: 1 1 12rem; flex-direction: column; overflow-wrap: anywhere; }
     .usage-reason { min-width: 0; max-width: 100%; margin: .5rem 0 0; color: var(--muted); font-size: .86rem; overflow-wrap: anywhere; }
-    .usage-details { min-width: 0; max-width: 100%; }
-    .usage-location-list { display: grid; min-width: 0; max-width: 100%; gap: .45rem; margin: .55rem 0 .35rem; padding: 0; list-style: none; }
-    .usage-location-list li { display: grid; min-width: 0; max-width: 100%; gap: .05rem; padding: .35rem 0; border: 0; border-top: 1px solid #e4e9ee; border-radius: 0; background: transparent; overflow-wrap: anywhere; }
+    .usage-guide { min-width: 0; max-width: 100%; margin: 1rem 0; border: 1px solid #91a2b3; border-radius: .4rem; background: #f7fafc; overflow: clip; }
+    .usage-guide > summary { display: flex; min-width: 0; align-items: center; justify-content: space-between; gap: .75rem; padding: .75rem .9rem; color: var(--link); }
+    .usage-guide > summary::after { flex: 0 0 auto; content: "+"; font-size: 1.25rem; font-weight: 800; line-height: 1; }
+    .usage-guide[open] > summary { border-bottom: 1px solid #c8d2dc; background: #eef4f8; }
+    .usage-guide[open] > summary::after { content: "−"; }
+    .usage-guide-hint { margin-left: auto; color: var(--muted); font-size: .84rem; font-weight: 450; }
+    .usage-guide-body { padding: .35rem .9rem .55rem; }
+    .usage-classification-list { margin: 0; padding: 0; }
+    .usage-classification-row { display: grid; min-width: 0; grid-template-columns: minmax(12rem, 14rem) minmax(0, 1fr); gap: 1rem; align-items: center; padding: .65rem 0; }
+    .usage-classification-row + .usage-classification-row { border-top: 1px solid #d7dee5; }
+    .usage-classification-row dt, .usage-classification-row dd { min-width: 0; margin: 0; }
+    .usage-classification-row dd { color: var(--text); overflow-wrap: anywhere; }
+    .usage-details { min-width: 0; max-width: 100%; margin-top: .65rem; padding-top: .45rem; border-top: 1px solid #d7dee5; }
+    .usage-location-groups { display: grid; min-width: 0; max-width: 100%; gap: .8rem; margin-top: .55rem; }
+    .usage-page-group { min-width: 0; max-width: 100%; }
+    .usage-page-group + .usage-page-group { padding-top: .75rem; border-top: 1px solid #d7dee5; }
+    .usage-page-group h5, .usage-report { margin: 0 0 .3rem; color: var(--text); font-size: .92rem; }
+    .usage-label { font-weight: 750; }
+    .usage-page-kind { color: var(--muted); font-weight: 450; }
+    .usage-location-list { display: grid; min-width: 0; max-width: 100%; gap: .45rem; margin: 0; padding: 0; list-style: none; }
+    .usage-location-list li { display: grid; min-width: 0; max-width: 100%; gap: .08rem; padding: .4rem 0; border: 0; border-top: 1px solid #e4e9ee; border-radius: 0; background: transparent; overflow-wrap: anywhere; }
     .usage-location-list li:first-child { border-top: 0; }
-    .usage-page { color: var(--text); font-weight: 700; }
-    .usage-context { min-width: 0; color: var(--muted); }
+    .usage-visual, .usage-context, .usage-role { min-width: 0; }
+    .usage-role { color: var(--muted); }
     .plain-list { margin: .5rem 0 1rem; }
     .related-findings li { display: flex; align-items: flex-start; gap: .45rem; }
     .model-block + .model-block { margin-top: 2rem; }
@@ -1914,6 +2049,7 @@ public static class HtmlReportRenderer
       .finding-card > summary, .page-card > summary, .relationship-card > summary, .visual-card > summary, .semantic-table > summary { gap: .6rem; padding: .75rem; }
       .card-body, .page-body, .visual-body { padding: .75rem; }
       .object-list, .semantic-object-list { grid-template-columns: 1fr; }
+      .usage-classification-row { grid-template-columns: 1fr; gap: .35rem; align-items: start; }
       .count-pill { white-space: normal; }
       .technical-list div, .finding-location div { grid-template-columns: 1fr; gap: .15rem; }
     }
@@ -2053,7 +2189,7 @@ public static class HtmlReportRenderer
         semanticTableList.querySelectorAll('.semantic-table').forEach(table => {
           let tableVisible = 0;
           table.querySelectorAll('.semantic-object').forEach(item => {
-            const show = (!query || normalise(item.textContent).includes(query)) &&
+            const show = (!query || normalise(item.dataset.searchText).includes(query)) &&
               (!state || item.dataset.usageState === state) &&
               (!type || item.dataset.objectType === type) &&
               (!origin || item.dataset.objectOrigin === origin);

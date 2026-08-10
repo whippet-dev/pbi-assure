@@ -2,6 +2,7 @@
   <Folder Name="/src/">
     <Project Path="src/PbiAssure.Cli/PbiAssure.Cli.csproj" />
     <Project Path="src/PbiAssure.Core/PbiAssure.Core.csproj" />
+    <Project Path="src/PbiAssure.Desktop/PbiAssure.Desktop.csproj" />
     <Project Path="src/PbiAssure.Reporting/PbiAssure.Reporting.csproj" />
   </Folder>
   <Folder Name="/tests/">

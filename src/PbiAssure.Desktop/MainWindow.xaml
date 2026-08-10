@@ -1,0 +1,48 @@
+<Window x:Class="PbiAssure.Desktop.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="PBI Assure"
+        Width="760"
+        MinWidth="580"
+        Height="430"
+        MinHeight="360"
+        WindowStartupLocation="CenterScreen">
+  <Grid Margin="28">
+    <Grid.RowDefinitions>
+      <RowDefinition Height="Auto" />
+      <RowDefinition Height="Auto" />
+      <RowDefinition Height="*" />
+      <RowDefinition Height="Auto" />
+    </Grid.RowDefinitions>
+
+    <StackPanel Grid.Row="0">
+      <TextBlock FontSize="26" FontWeight="SemiBold" Text="PBI Assure" />
+      <TextBlock Margin="0,6,0,22" Foreground="#52606D" TextWrapping="Wrap"
+                 Text="Run a read-only assurance review of a local Power BI project." />
+      <TextBlock FontWeight="SemiBold" Text="Power BI project folder" />
+      <DockPanel Margin="0,6,0,0">
+        <Button x:Name="SelectProjectFolderButton" DockPanel.Dock="Right" Click="SelectProjectFolder_Click" Content="Select project folder" />
+        <TextBox x:Name="ProjectPathTextBox" IsReadOnly="True" MinHeight="38" Padding="10,7"
+                 VerticalContentAlignment="Center" ToolTip="Select a folder containing a PBIP or PBIR project." />
+      </DockPanel>
+    </StackPanel>
+
+    <StackPanel Grid.Row="1" Margin="0,20,0,0" Orientation="Horizontal">
+      <Button x:Name="RunAssuranceButton" Click="RunAssurance_Click" Content="Run assurance" IsEnabled="False" />
+      <Button x:Name="OpenReportButton" Click="OpenReport_Click" Content="Open latest report" IsEnabled="False" />
+    </StackPanel>
+
+    <Border Grid.Row="2" Margin="0,18,0,0" Padding="14" Background="#F4F7FA" BorderBrush="#B8C2CC" BorderThickness="1" CornerRadius="4">
+      <StackPanel>
+        <TextBlock FontWeight="SemiBold" Text="Status" />
+        <TextBlock x:Name="StatusTextBlock" Margin="0,5,0,12" TextWrapping="Wrap" Text="Select a Power BI project folder to begin." />
+        <TextBlock FontWeight="SemiBold" Text="Latest report" />
+        <TextBox x:Name="OutputPathTextBox" Margin="0,5,0,0" IsReadOnly="True" BorderThickness="0" Background="Transparent"
+                 Padding="0" TextWrapping="Wrap" ToolTip="The latest generated HTML report path." />
+      </StackPanel>
+    </Border>
+
+    <TextBlock Grid.Row="3" Margin="0,18,0,0" Foreground="#52606D" TextWrapping="Wrap"
+               Text="PBI Assure does not change the selected Power BI project. Reports are saved in its outputs folder." />
+  </Grid>
+</Window>

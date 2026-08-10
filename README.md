@@ -60,6 +60,16 @@ dotnet run --project src/PbiAssure.Cli -- scan "C:\path\to\YourProject" --output
 
 The output format is inferred from a `.html` extension and otherwise defaults to JSON when `--output` is supplied. Without `--output`, HTML is the default; use `--format json` to create a timestamped JSON inventory instead. Explicit output paths continue to create only the requested file. The scanner is read-only with respect to the selected Power BI project; it writes only generated output files.
 
+## Desktop app (Windows)
+
+For a simple local developer workflow, run the lightweight desktop app:
+
+```powershell
+dotnet run --project src/PbiAssure.Desktop
+```
+
+Choose the folder containing the PBIP/PBIR project, select **Run assurance**, then select **Open latest report**. The app uses the same scanner and renderer as the command-line tool. It saves the timestamped report and stable latest copy in the selected project's `outputs/` folder, and does not change the Power BI project itself.
+
 The HTML report is organised as expandable review cards rather than long data tables. Each report page contains collapsible visual summaries showing the visible title or on-canvas label, friendly visual type, approximate page position, referenced columns and measures, behaviour, accessibility metadata, and related findings. Findings and semantic-model tables are separately searchable and collapsible. Internal PBIR identifiers remain available only inside technical details.
 
 ## Repository structure
@@ -68,6 +78,7 @@ The HTML report is organised as expandable review cards rather than long data ta
 src/PbiAssure.Core/       Domain types and analysis logic
 src/PbiAssure.Reporting/  Accessible human-readable report rendering
 src/PbiAssure.Cli/        Thin command-line entry point
+src/PbiAssure.Desktop/     Lightweight Windows desktop workflow
 tests/                    Automated tests using synthetic files
 docs/                     Architecture, assurance, and security decisions
 samples-local/            Ignored local PBIP/PBIR projects and scan outputs
