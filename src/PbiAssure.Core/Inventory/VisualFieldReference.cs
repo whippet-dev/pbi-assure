@@ -1,3 +1,5 @@
+using System.Text.Json.Serialization;
+
 namespace PbiAssure.Core.Inventory;
 
 public sealed record VisualFieldReference(
@@ -7,4 +9,23 @@ public sealed record VisualFieldReference(
     string? HierarchyName,
     string UsageContext,
     string? Role,
-    string EvidencePath);
+    string EvidencePath)
+{
+    [JsonIgnore]
+    public string ReferenceOrigin { get; init; } = VisualReferenceOrigins.Unknown;
+
+    [JsonIgnore]
+    public string ReferenceRelevance { get; init; } = VisualReferenceRelevance.Ambiguous;
+
+    [JsonIgnore]
+    public string? FormattingObject { get; init; }
+
+    [JsonIgnore]
+    public string? FormattingProperty { get; init; }
+
+    [JsonIgnore]
+    public string? SelectorKind { get; init; }
+
+    [JsonIgnore]
+    public string? MatchedProjectionQueryRef { get; init; }
+}

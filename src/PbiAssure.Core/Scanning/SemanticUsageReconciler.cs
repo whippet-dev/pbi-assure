@@ -82,7 +82,15 @@ internal static class SemanticUsageReconciler
                     HierarchyName: context.Reference.HierarchyName,
                     UsageContext: context.Reference.UsageContext,
                     Role: context.Reference.Role,
-                    EvidencePath: context.Reference.EvidencePath));
+                    EvidencePath: context.Reference.EvidencePath)
+                {
+                    ReferenceOrigin = context.Reference.ReferenceOrigin,
+                    ReferenceRelevance = context.Reference.ReferenceRelevance,
+                    FormattingObject = context.Reference.FormattingObject,
+                    FormattingProperty = context.Reference.FormattingProperty,
+                    SelectorKind = context.Reference.SelectorKind,
+                    MatchedProjectionQueryRef = context.Reference.MatchedProjectionQueryRef,
+                });
             }
         }
 

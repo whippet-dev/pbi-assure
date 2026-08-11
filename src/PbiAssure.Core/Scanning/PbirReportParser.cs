@@ -332,6 +332,9 @@ internal static class PbirReportParser
             ? GetString(visualElement, "visualType")
             : null;
         var onCanvasText = PbirVisualTextParser.Parse(visualElement);
+        var referenceClassification = PbirVisualReferenceClassifier.Classify(
+            visualRoot,
+            PbirFieldReferenceExtractor.Extract(visualRoot));
 
         TryGetObject(visualRoot, "position", out var position);
 
@@ -351,9 +354,12 @@ internal static class PbirReportParser
             Accessibility: PbirVisualAccessibilityParser.Parse(visualElement),
             OnCanvasText: onCanvasText.Text,
             OnCanvasTextIsDynamic: onCanvasText.IsDynamic,
-            FieldReferences: PbirFieldReferenceExtractor.Extract(visualRoot),
+            FieldReferences: referenceClassification.References,
             Actions: PbirVisualActionParser.Parse(visualElement),
-            TooltipBindings: PbirVisualTooltipParser.Parse(visualElement));
+            TooltipBindings: PbirVisualTooltipParser.Parse(visualElement))
+        {
+            FormattingSelectors = referenceClassification.Selectors,
+        };
     }
 
     private static VisualInteractionInventory[] ParseVisualInteractions(JsonElement pageRoot)

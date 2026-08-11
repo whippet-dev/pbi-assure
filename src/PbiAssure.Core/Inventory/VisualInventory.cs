@@ -1,3 +1,5 @@
+using System.Text.Json.Serialization;
+
 namespace PbiAssure.Core.Inventory;
 
 public sealed record VisualInventory(
@@ -14,6 +16,9 @@ public sealed record VisualInventory(
     IReadOnlyList<VisualActionInventory> Actions,
     IReadOnlyList<VisualTooltipBindingInventory> TooltipBindings)
 {
+    [JsonIgnore]
+    public IReadOnlyList<VisualFormattingSelectorContext> FormattingSelectors { get; init; } = [];
+
     public bool IsExplicitlyExcludedFromTabOrder => Position.TabOrder is < 0;
 
     public bool HasExplicitTabOrder => Position.TabOrder is >= 0;

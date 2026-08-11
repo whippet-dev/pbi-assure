@@ -140,6 +140,7 @@ internal static class PbirFieldReferenceExtractor
         string evidencePath,
         IReadOnlyList<string> ancestors)
     {
+        var origin = DetermineReferenceOrigin(ancestors);
         return new VisualFieldReference(
             Table: table,
             ObjectName: objectName,
@@ -147,7 +148,112 @@ internal static class PbirFieldReferenceExtractor
             HierarchyName: hierarchyName,
             UsageContext: DetermineUsageContext(ancestors),
             Role: DetermineRole(ancestors),
-            EvidencePath: evidencePath);
+            EvidencePath: evidencePath)
+        {
+            ReferenceOrigin = origin,
+            ReferenceRelevance = origin is VisualReferenceOrigins.Binding or VisualReferenceOrigins.FormattingPropertyExpression
+                ? VisualReferenceRelevance.Active
+                : VisualReferenceRelevance.Ambiguous,
+            FormattingObject = FindFormattingSegment(ancestors, offset: 1),
+            FormattingProperty = FindFormattingProperty(ancestors),
+            SelectorKind = origin == VisualReferenceOrigins.FormattingSelectorIdentity
+                ? DetermineSelectorKind(ancestors)
+                : null,
+        };
+    }
+
+    private static string DetermineReferenceOrigin(IReadOnlyList<string> ancestors)
+    {
+        var formattingIndex = FindFormattingIndex(ancestors);
+        if (formattingIndex < 0)
+        {
+            return VisualReferenceOrigins.Binding;
+        }
+
+        var selectorIndex = IndexOfAfter(ancestors, "selector", formattingIndex);
+        if (selectorIndex >= 0)
+        {
+            return VisualReferenceOrigins.FormattingSelectorIdentity;
+        }
+
+        return IndexOfAfter(ancestors, "properties", formattingIndex) >= 0
+            ? VisualReferenceOrigins.FormattingPropertyExpression
+            : VisualReferenceOrigins.Unknown;
+    }
+
+    private static string? FindFormattingSegment(IReadOnlyList<string> ancestors, int offset)
+    {
+        var index = FindFormattingIndex(ancestors);
+        return index >= 0 && index + offset < ancestors.Count
+            ? ancestors[index + offset]
+            : null;
+    }
+
+    private static string? FindFormattingProperty(IReadOnlyList<string> ancestors)
+    {
+        var formattingIndex = FindFormattingIndex(ancestors);
+        var propertiesIndex = IndexOfAfter(ancestors, "properties", formattingIndex);
+        return propertiesIndex >= 0 && propertiesIndex + 1 < ancestors.Count
+            ? ancestors[propertiesIndex + 1]
+            : null;
+    }
+
+    private static string DetermineSelectorKind(IReadOnlyList<string> ancestors)
+    {
+        var selectorIndex = IndexOf(ancestors, "selector");
+        if (IndexOfAfter(ancestors, "scopeId", selectorIndex) >= 0)
+        {
+            return VisualSelectorKinds.ScopeId;
+        }
+
+        if (IndexOfAfter(ancestors, "metadata", selectorIndex) >= 0)
+        {
+            return VisualSelectorKinds.Metadata;
+        }
+
+        if (IndexOfAfter(ancestors, "dataViewWildcard", selectorIndex) >= 0)
+        {
+            return VisualSelectorKinds.Wildcard;
+        }
+
+        if (IndexOfAfter(ancestors, "total", selectorIndex) >= 0)
+        {
+            return VisualSelectorKinds.Total;
+        }
+
+        if (IndexOfAfter(ancestors, "id", selectorIndex) >= 0)
+        {
+            return VisualSelectorKinds.Id;
+        }
+
+        return VisualSelectorKinds.Unknown;
+    }
+
+    private static int FindFormattingIndex(IReadOnlyList<string> ancestors)
+    {
+        var objectsIndex = IndexOf(ancestors, "objects");
+        var containerObjectsIndex = IndexOf(ancestors, "visualContainerObjects");
+        if (objectsIndex < 0)
+        {
+            return containerObjectsIndex;
+        }
+
+        return containerObjectsIndex < 0
+            ? objectsIndex
+            : Math.Min(objectsIndex, containerObjectsIndex);
+    }
+
+    private static int IndexOfAfter(IReadOnlyList<string> values, string expected, int startIndex)
+    {
+        for (var index = Math.Max(0, startIndex + 1); index < values.Count; index++)
+        {
+            if (string.Equals(values[index], expected, StringComparison.OrdinalIgnoreCase))
+            {
+                return index;
+            }
+        }
+
+        return -1;
     }
 
     private static string DetermineUsageContext(IReadOnlyList<string> ancestors)

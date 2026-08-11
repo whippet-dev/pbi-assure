@@ -30,6 +30,8 @@ internal sealed class UnresolvedReportReferenceRule : IAssuranceRule
                 reference.Table,
                 reference.HierarchyName ?? string.Empty,
                 reference.ObjectName), StringComparer.OrdinalIgnoreCase)
+            .Where(group => group.Any(reference =>
+                reference.ReferenceRelevance != VisualReferenceRelevance.HighConfidencePersisted))
             .Select(group =>
             {
                 var reference = group.First();
