@@ -281,9 +281,9 @@ public static class HtmlReportRenderer
             var locationLabels = connectorGroup.Select(source => SourceLocationLabel(source.LocationKind))
                 .Distinct(StringComparer.Ordinal).ToArray();
             html.Append("        <details class=\"semantic-table power-query-card data-source-card\"><summary><span class=\"summary-copy\"><strong>")
-                .Append(Encode(connectorGroup.Key)).Append("</strong><span>")
-                .Append(Encode(string.Join(", ", locationLabels)))
-                .Append("</span></span><span class=\"count-pill\">")
+                .Append(Encode(connectorGroup.Key)).Append("</strong>");
+            AppendSummaryMetadata(html, ("Location", string.Join(", ", locationLabels)));
+            html.Append("</span><span class=\"count-pill\">")
                 .Append(queries.Length.ToString(CultureInfo.InvariantCulture))
                 .Append(queries.Length == 1 ? " query" : " queries")
                 .AppendLine("</span></summary>");
@@ -312,12 +312,12 @@ public static class HtmlReportRenderer
 
     private static string SourceLocationLabel(string locationKind) => locationKind switch
     {
-        DataSourceLocationKinds.LocalFile => "File on a developer computer",
+        DataSourceLocationKinds.LocalFile => "File on a developer’s computer",
         DataSourceLocationKinds.NetworkFile => "Network file",
         DataSourceLocationKinds.RelativeFile => "Relative file path",
         DataSourceLocationKinds.WebAddress => "Web or cloud address",
         DataSourceLocationKinds.NamedServer => "Named server or database",
-        _ => "Dynamic or not exposed",
+        _ => "Built dynamically or not available in the report metadata",
     };
 
     private static string PowerQueryRoleLabel(PowerQueryUsage usage) => usage.QueryRole switch
@@ -331,8 +331,8 @@ public static class HtmlReportRenderer
 
     private static string PowerQueryRoleBadgeLabel(PowerQueryUsage usage) => usage.QueryRole switch
     {
-        PowerQueryRoles.LoadedAndSupporting => "Loaded + upstream",
-        PowerQueryRoles.LoadedOnly => "Loaded",
+        PowerQueryRoles.LoadedAndSupporting => "Loaded to model + used by other queries",
+        PowerQueryRoles.LoadedOnly => "Loaded to model",
         PowerQueryRoles.HelperOrStaging => "Helper / staging",
         PowerQueryRoles.ApparentlyOrphaned => "No known consumers",
         _ => "Review",
@@ -402,8 +402,9 @@ public static class HtmlReportRenderer
                 .Append(Encode(finding.Severity)).Append("\" data-category=\"").Append(Encode(finding.Category)).AppendLine("\">");
             html.Append("          <summary><span class=\"badge ").Append(SeverityClass(finding.Severity))
                 .Append("\">").Append(Encode(finding.Severity)).Append("</span><span class=\"summary-copy\"><strong>")
-                .Append(Encode(FriendlyFindingMessage(finding, context))).Append("</strong><span>")
-                .Append(Encode(FindingLocationSummary(finding, context))).AppendLine("</span></span></summary>");
+                .Append(Encode(FriendlyFindingMessage(finding, context))).Append("</strong>");
+            AppendFindingLocationSummary(html, finding, context);
+            html.AppendLine("</span></summary>");
             html.AppendLine("          <div class=\"card-body\">");
             AppendFindingLocation(html, inventory, finding);
             html.AppendLine("            <h3>Suggested action</h3>");
@@ -434,6 +435,10 @@ public static class HtmlReportRenderer
             html.AppendLine("    </section>");
             return;
         }
+
+        AppendSummaryDefinitions(html, "What these page metrics count", [
+            ("Configured visual interactions", "Saved edit-interaction settings between source and target visuals, such as filtering, highlighting or no interaction."),
+            ("Model object references", "References from visuals and page-level settings to semantic-model objects. Repeated uses of the same object are counted separately.")]);
 
         html.AppendLine("      <div class=\"filters page-tools\" aria-label=\"Find report pages and visuals\">");
         html.AppendLine("        <div><label for=\"page-search\">Find a page, visual, column or measure</label><input id=\"page-search\" type=\"search\" autocomplete=\"off\"></div>");
@@ -615,7 +620,7 @@ public static class HtmlReportRenderer
     {
         html.AppendLine("    <section id=\"semantic-usage\" class=\"report-section\" data-report-section=\"semantic-usage\" aria-labelledby=\"semantic-usage-heading\">");
         html.AppendLine("      <h2 id=\"semantic-usage-heading\" tabindex=\"-1\">Semantic model</h2>");
-        html.AppendLine("      <p class=\"section-intro\">Review columns, measures and other model objects by table. Expand an object to see why it has its status and exactly where it is used.</p>");
+        html.AppendLine("      <p class=\"section-intro\">Review columns, measures and other model objects by table. Expand an object to see why it has its status, exactly where it is used and, where available, its DAX expression.</p>");
         AppendUsageGuide(html);
         if (inventory.SemanticModels.Count == 0)
         {
@@ -687,9 +692,13 @@ public static class HtmlReportRenderer
         html.AppendLine(">");
         html.Append("          <summary><span class=\"summary-copy\"><span class=\"kicker\">")
             .Append(pageNumber is null ? "Report page" : $"Page {pageNumber}").Append("</span><strong>")
-            .Append(Encode(page.DisplayName)).Append("</strong><span>")
-            .Append(Encode($"{PageRole(page)} · {PageVisibility(page)} · {page.VisualCount} visuals"))
-            .AppendLine("</span></span>");
+            .Append(Encode(page.DisplayName)).Append("</strong>");
+        AppendSummaryMetadata(
+            html,
+            ("Page type", PageRole(page)),
+            ("Visibility", PageVisibility(page)),
+            ("Visuals", page.VisualCount.ToString(CultureInfo.InvariantCulture)));
+        html.AppendLine("</span>");
         if (pageFindings > 0)
         {
             html.Append("            <span class=\"count-pill\">").Append(pageFindings.ToString(CultureInfo.InvariantCulture))
@@ -701,8 +710,8 @@ public static class HtmlReportRenderer
         html.AppendLine("            <dl class=\"fact-strip\">");
         AppendFact(html, "Visuals", page.VisualCount.ToString(CultureInfo.InvariantCulture));
         AppendFact(html, "Page filters", page.FilterCount.ToString(CultureInfo.InvariantCulture));
-        AppendFact(html, "Interactions", page.VisualInteractionCount.ToString(CultureInfo.InvariantCulture));
-        AppendFact(html, "Object uses", page.FieldReferenceCount.ToString(CultureInfo.InvariantCulture));
+        AppendFact(html, "Configured visual interactions", page.VisualInteractionCount.ToString(CultureInfo.InvariantCulture));
+        AppendFact(html, "Model object references", page.FieldReferenceCount.ToString(CultureInfo.InvariantCulture));
         html.AppendLine("            </dl>");
 
         if (page.FieldReferences.Count > 0)
@@ -865,10 +874,8 @@ public static class HtmlReportRenderer
             if (roles.Length > 0)
             {
                 var roleLabel = string.Join(", ", roles.Select(role =>
-                    string.Equals(role, "filter", StringComparison.OrdinalIgnoreCase)
-                        ? visualScope ? "Visual filter" : "Page filter"
-                        : HumanizeIdentifier(role!)));
-                html.Append(" - ").Append(Encode(roleLabel));
+                    FieldRoleLabel(role!, visualScope, pageScope: !visualScope)));
+                html.Append(" · ").Append(Encode(roleLabel));
             }
 
             html.AppendLine("</span></li>");
@@ -1014,6 +1021,7 @@ public static class HtmlReportRenderer
             html.AppendLine("</summary>");
             AppendSemanticTablePowerQueryContext(html, inventory, model, table, usages, unusedCount);
             AppendSemanticFeatures(html, table);
+            AppendCalculatedTableExpressions(html, table);
             html.AppendLine("            <ul class=\"semantic-object-list\">");
             foreach (var usage in usages)
             {
@@ -1040,6 +1048,7 @@ public static class HtmlReportRenderer
                 }
                 AppendPowerQueryColumnUsage(html, inventory, usage);
                 AppendUsageDetails(html, inventory, usage);
+                AppendSemanticObjectExpression(html, table, usage);
                 html.AppendLine("              </li>");
             }
 
@@ -1110,6 +1119,7 @@ public static class HtmlReportRenderer
             var pageLabel = page?.DisplayName ?? firstLocation.Page;
 
             html.AppendLine("                  <section class=\"usage-page-group\">");
+            html.AppendLine("                    <header class=\"usage-page-heading\">");
             if (inventory.ReportCount > 1)
             {
                 html.Append("                    <p class=\"usage-report\"><span class=\"usage-label\">Report:</span> ")
@@ -1118,19 +1128,20 @@ public static class HtmlReportRenderer
 
             if (!string.IsNullOrWhiteSpace(pageLabel))
             {
-                html.Append("                    <h5><span class=\"usage-label\">Page:</span> ")
-                    .Append(Encode(pageLabel));
+                html.AppendLine("                      <span class=\"usage-group-type\">Report page</span>");
+                html.Append("                      <h5>").Append(Encode(pageLabel)).AppendLine("</h5>");
                 if (page is not null && !string.Equals(PageRole(page), "Standard", StringComparison.OrdinalIgnoreCase))
                 {
-                    html.Append(" <span class=\"usage-page-kind\">· ")
-                        .Append(Encode($"{PageRole(page)} page")).Append("</span>");
+                    html.Append("                      <p class=\"usage-page-kind\">")
+                        .Append(Encode($"{PageRole(page)} page")).AppendLine("</p>");
                 }
-                html.AppendLine("</h5>");
             }
             else
             {
-                html.AppendLine("                    <h5>Report-level use</h5>");
+                html.AppendLine("                      <span class=\"usage-group-type\">Report</span>");
+                html.AppendLine("                      <h5>Report-level use</h5>");
             }
+            html.AppendLine("                    </header>");
 
             html.AppendLine("                    <ul class=\"usage-location-list\">");
             foreach (var location in locationGroup)
@@ -1161,7 +1172,8 @@ public static class HtmlReportRenderer
                     html.Append("                        <span class=\"usage-context\"><span class=\"usage-label\">Used in:</span> ")
                         .Append(Encode(locationLabel)).AppendLine("</span>");
                 }
-                if (!string.IsNullOrWhiteSpace(roleLabel))
+                if (!string.IsNullOrWhiteSpace(roleLabel) &&
+                    !string.Equals(roleLabel, locationLabel, StringComparison.OrdinalIgnoreCase))
                 {
                     html.Append("                        <span class=\"usage-role\"><span class=\"usage-label\">Used as:</span> ")
                         .Append(Encode(roleLabel)).AppendLine("</span>");
@@ -1191,9 +1203,22 @@ public static class HtmlReportRenderer
         }
 
         return string.Join(", ", roles.Select(role =>
-            string.Equals(role, "filter", StringComparison.OrdinalIgnoreCase) && hasVisual
-                ? "Visual filter"
-                : HumanizeIdentifier(role!)));
+            FieldRoleLabel(role!, hasVisual, pageScope: !string.IsNullOrWhiteSpace(location.Page))));
+    }
+
+    private static string FieldRoleLabel(string role, bool visualScope, bool pageScope)
+    {
+        if (string.Equals(role, "filter", StringComparison.OrdinalIgnoreCase))
+        {
+            return visualScope ? "Visual filter" : pageScope ? "Page filter" : "Report filter";
+        }
+
+        if (string.Equals(role, "drillthrough", StringComparison.OrdinalIgnoreCase))
+        {
+            return "Drillthrough field";
+        }
+
+        return HumanizeIdentifier(role);
     }
 
     private static void AppendSemanticTablePowerQueryContext(
@@ -1426,19 +1451,81 @@ public static class HtmlReportRenderer
                          .OrderBy(item => item.Ordinal ?? int.MaxValue)
                          .ThenBy(item => item.Name, StringComparer.OrdinalIgnoreCase))
             {
-                html.Append("                <li><span class=\"object-name\"><strong>")
+                html.Append("                <li class=\"calculation-item\"><span class=\"object-name\"><strong>")
                     .Append(Encode(item.Name)).Append("</strong><span>Calculation item");
                 if (item.Ordinal is not null)
                 {
                     html.Append(" · order ").Append(item.Ordinal.Value.ToString(CultureInfo.InvariantCulture));
                 }
 
-                html.AppendLine("</span></span></li>");
+                html.AppendLine("</span></span>");
+                AppendDaxExpression(html, item.Expression);
+                html.AppendLine("                </li>");
             }
 
             html.AppendLine("              </ul>");
             html.AppendLine("            </section>");
         }
+    }
+
+    private static void AppendCalculatedTableExpressions(StringBuilder html, SemanticTableInventory table)
+    {
+        if (table.IsFieldParameter)
+        {
+            return;
+        }
+
+        foreach (var partition in table.Partitions.Where(partition =>
+                     string.Equals(partition.SourceType, "calculated", StringComparison.OrdinalIgnoreCase) &&
+                     !string.IsNullOrWhiteSpace(partition.Expression)))
+        {
+            AppendDaxExpression(
+                html,
+                partition.Expression!,
+                "View calculated-table DAX expression",
+                "calculated-table-expression");
+        }
+    }
+
+    private static void AppendSemanticObjectExpression(
+        StringBuilder html,
+        SemanticTableInventory table,
+        SemanticObjectUsage usage)
+    {
+        var expression = usage.ObjectType switch
+        {
+            SemanticObjectTypes.Measure => table.Measures.FirstOrDefault(measure =>
+                string.Equals(measure.Name, usage.ObjectName, StringComparison.OrdinalIgnoreCase))?.Expression,
+            SemanticObjectTypes.Column => table.Columns.FirstOrDefault(column =>
+                string.Equals(column.Name, usage.ObjectName, StringComparison.OrdinalIgnoreCase))?.Expression,
+            _ => null,
+        };
+
+        AppendDaxExpression(html, expression);
+    }
+
+    private static void AppendDaxExpression(
+        StringBuilder html,
+        string? expression,
+        string summary = "View DAX expression",
+        string? additionalClass = null)
+    {
+        if (string.IsNullOrWhiteSpace(expression))
+        {
+            return;
+        }
+
+        html.Append("                <details class=\"technical-details semantic-expression");
+        if (!string.IsNullOrWhiteSpace(additionalClass))
+        {
+            html.Append(' ').Append(Encode(additionalClass));
+        }
+
+        html.Append("\"><summary>");
+        html.Append(Encode(summary));
+        html.AppendLine("</summary><pre><code>");
+        html.Append(Encode(expression));
+        html.AppendLine("</code></pre></details>");
     }
 
     private static string? DescribeSemanticUsageReason(ProjectInventory inventory, SemanticObjectUsage usage)
@@ -1494,30 +1581,54 @@ public static class HtmlReportRenderer
             StringComparison.OrdinalIgnoreCase);
     }
 
-    private static string FindingLocationSummary(AssuranceFinding finding, VisualContext? context)
+    private static void AppendFindingLocationSummary(
+        StringBuilder html,
+        AssuranceFinding finding,
+        VisualContext? context)
     {
         if (context is not null)
         {
-            var identity = VisualDisplayName(context.Visual);
-            return $"Page {context.Page.DisplayName} · {identity} · {DescribePosition(context.Page, context.Visual)}";
+            AppendSummaryMetadata(
+                html,
+                ("Page", context.Page.DisplayName),
+                ("Visual", VisualDisplayName(context.Visual)),
+                ("Position", DescribePosition(context.Page, context.Visual)));
+            return;
         }
 
         if (!string.IsNullOrWhiteSpace(finding.PageDisplayName ?? finding.Page))
         {
-            return $"Page {finding.PageDisplayName ?? finding.Page}";
+            AppendSummaryMetadata(html, ("Page", finding.PageDisplayName ?? finding.Page));
+            return;
         }
 
         if (!string.IsNullOrWhiteSpace(finding.Table) || !string.IsNullOrWhiteSpace(finding.ObjectName))
         {
-            return string.Join(" · ", new[] { finding.Table, finding.ObjectName }.Where(value => !string.IsNullOrWhiteSpace(value)));
+            AppendSummaryMetadata(html, ("Table", finding.Table), ("Object", finding.ObjectName));
+            return;
         }
 
         if (!string.IsNullOrWhiteSpace(finding.SemanticModel))
         {
-            return $"Semantic model {finding.SemanticModel}";
+            AppendSummaryMetadata(html, ("Semantic model", finding.SemanticModel));
+            return;
         }
 
-        return "Project-wide";
+        AppendSummaryMetadata(html, ("Scope", "Project-wide"));
+    }
+
+    private static void AppendSummaryMetadata(
+        StringBuilder html,
+        params (string Label, string? Value)[] items)
+    {
+        html.Append("<span class=\"summary-metadata\">");
+        foreach (var item in items.Where(item => !string.IsNullOrWhiteSpace(item.Value)))
+        {
+            html.Append("<span><strong>").Append(Encode(item.Label)).Append(":</strong> ")
+                .Append(Encode(item.Value!)).Append("</span>");
+        }
+
+        html.Append("</span>");
     }
 
     private static string VisualDisplayName(VisualInventory visual)
@@ -2231,6 +2342,11 @@ public static class HtmlReportRenderer
     .summary-copy { display: flex; min-width: 0; flex: 1; flex-direction: column; gap: .15rem; overflow-wrap: anywhere; }
     .summary-copy > strong, .visual-name > strong { font-size: 1.05rem; color: var(--text); }
     .summary-copy > span:not(.kicker), .visual-name .secondary { color: var(--muted); font-weight: 450; }
+    .summary-metadata { display: flex; min-width: 0; flex-wrap: wrap; gap: .15rem .35rem; }
+    .summary-metadata > span { min-width: 0; overflow-wrap: anywhere; }
+    .summary-metadata > span:not(:last-child)::after { content: " ·"; color: var(--muted); font-weight: 450; }
+    .summary-metadata strong { color: var(--text); font-weight: 700; }
+    .finding-card .summary-metadata strong, .page-card .summary-metadata strong { color: inherit; font-weight: 600; }
     .kicker { color: var(--link); font-size: .78rem; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; }
     .count-pill { align-self: center; padding: .2rem .5rem; border-radius: 999px; background: #e4eaf0; color: #344054; font-size: .84rem; font-weight: 750; white-space: nowrap; }
     .card-body, .page-body, .visual-body { min-width: 0; max-width: 100%; padding: 1rem; }
@@ -2243,6 +2359,9 @@ public static class HtmlReportRenderer
     .fact-strip.compact { grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr)); }
     .semantic-feature { min-width: 0; max-width: 100%; margin: .75rem 1rem; padding: .8rem 1rem; border-left: .3rem solid #6b879d; background: #f5f8fa; overflow-wrap: anywhere; }
     .semantic-feature h4, .semantic-feature p { margin: 0 0 .35rem; }
+    .calculation-item { display: block !important; }
+    .semantic-expression { margin-top: .65rem; }
+    .calculated-table-expression { width: calc(100% - 2rem); margin: .75rem 1rem 0; box-sizing: border-box; }
     .relationship-body { min-width: 0; max-width: 100%; padding: .85rem 1rem; }
     .relationship-facts { display: grid; min-width: 0; grid-template-columns: repeat(auto-fit, minmax(min(100%, 12rem), 1fr)); gap: .65rem; margin: 0; }
     .relationship-facts div { min-width: 0; padding: .55rem .65rem; border-radius: .3rem; background: #f4f7fa; }
@@ -2255,6 +2374,7 @@ public static class HtmlReportRenderer
     .semantic-object-header { display: flex; min-width: 0; max-width: 100%; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: .5rem .75rem; }
     .object-list li > span, .object-name > span { color: var(--muted); font-size: .86rem; }
     .object-name { display: flex; min-width: 0; flex: 1 1 12rem; flex-direction: column; overflow-wrap: anywhere; }
+    .semantic-object[data-usage-state="StructurallyRequired"] .object-name { flex-basis: 8rem; }
     .usage-reason { min-width: 0; max-width: 100%; margin: .5rem 0 0; color: var(--muted); font-size: .86rem; overflow-wrap: anywhere; }
     .power-query-context { min-width: 0; max-width: 100%; margin: .8rem 1rem 1rem; padding: .8rem .9rem; border-left: .25rem solid var(--link); border-radius: .3rem; background: #eef6fc; overflow-wrap: anywhere; }
     .power-query-context h4 { margin: 0 0 .35rem; color: var(--text); }
@@ -2291,12 +2411,15 @@ public static class HtmlReportRenderer
     .usage-classification-row dt, .usage-classification-row dd { min-width: 0; margin: 0; }
     .usage-classification-row dd { color: var(--text); overflow-wrap: anywhere; }
     .usage-details { min-width: 0; max-width: 100%; margin-top: .65rem; padding-top: .45rem; border-top: 1px solid #d7dee5; }
-    .usage-location-groups { display: grid; min-width: 0; max-width: 100%; gap: .8rem; margin-top: .55rem; }
-    .usage-page-group { min-width: 0; max-width: 100%; }
-    .usage-page-group + .usage-page-group { padding-top: .75rem; border-top: 1px solid #d7dee5; }
-    .usage-page-group h5, .usage-report { margin: 0 0 .3rem; color: var(--text); font-size: .92rem; }
+    .usage-location-groups { display: grid; min-width: 0; max-width: 100%; gap: .9rem; margin-top: .55rem; }
+    .usage-page-group { min-width: 0; max-width: 100%; padding-left: .75rem; border-left: .2rem solid #9bb3c7; }
+    .usage-page-group + .usage-page-group { padding-top: .8rem; border-top: 1px solid #d7dee5; }
+    .usage-page-heading { min-width: 0; margin: 0 0 .35rem; }
+    .usage-group-type { display: block; color: var(--link); font-size: .72rem; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; }
+    .usage-page-group h5 { margin: .08rem 0 0; color: var(--text); font-size: 1rem; overflow-wrap: anywhere; }
+    .usage-report { margin: 0 0 .3rem; color: var(--text); font-size: .88rem; }
     .usage-label { font-weight: 750; }
-    .usage-page-kind { color: var(--muted); font-weight: 450; }
+    .usage-page-kind { margin: .08rem 0 0; color: var(--muted); font-size: .86rem; font-weight: 450; }
     .usage-location-list { display: grid; min-width: 0; max-width: 100%; gap: .45rem; margin: 0; padding: 0; list-style: none; }
     .usage-location-list li { display: grid; min-width: 0; max-width: 100%; gap: .08rem; padding: .4rem 0; border: 0; border-top: 1px solid #e4e9ee; border-radius: 0; background: transparent; overflow-wrap: anywhere; }
     .usage-location-list li:first-child { border-top: 0; }

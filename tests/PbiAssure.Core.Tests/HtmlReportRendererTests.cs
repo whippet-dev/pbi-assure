@@ -58,6 +58,12 @@ public sealed class HtmlReportRendererTests : IDisposable
         Assert.Contains("Upper-left of page", html, StringComparison.Ordinal);
         Assert.Contains("“Go to details”", html, StringComparison.Ordinal);
         Assert.Contains("Lower-left of page", html, StringComparison.Ordinal);
+        Assert.Contains("<strong>Page:</strong> &lt;script&gt;alert(&#x27;unsafe&#x27;)&lt;/script&gt;", html, StringComparison.Ordinal);
+        Assert.Contains("<strong>Visual:</strong>", html, StringComparison.Ordinal);
+        Assert.Contains("<strong>Position:</strong> Upper-left of page", html, StringComparison.Ordinal);
+        Assert.Contains("<strong>Page type:</strong> Standard", html, StringComparison.Ordinal);
+        Assert.Contains("<strong>Visibility:</strong> Visible", html, StringComparison.Ordinal);
+        Assert.Contains("<strong>Visuals:</strong> 2", html, StringComparison.Ordinal);
         Assert.Contains("Hidden in saved report state", html, StringComparison.Ordinal);
         Assert.Contains("This visual links to a bookmark that no longer exists.", html, StringComparison.Ordinal);
         Assert.Contains("Open this visual under its report page", html, StringComparison.Ordinal);
@@ -181,6 +187,7 @@ public sealed class HtmlReportRendererTests : IDisposable
         Assert.Contains("class=\"badge badge-used\">Directly used</span>", html, StringComparison.Ordinal);
         Assert.Contains("class=\"badge badge-indirect\">Indirectly used</span>", html, StringComparison.Ordinal);
         Assert.Contains("class=\"badge badge-structural\">Structurally required</span>", html, StringComparison.Ordinal);
+        Assert.Contains($"<span class=\"badge badge-structural\">Structurally required</span></div>{Environment.NewLine}                <p class=\"usage-reason\">Why:", html, StringComparison.Ordinal);
         Assert.Contains("class=\"badge badge-unused-branch\">Used only by unused branch</span>", html, StringComparison.Ordinal);
         Assert.Contains("class=\"badge badge-unused\">Apparently unused</span>", html, StringComparison.Ordinal);
         Assert.Contains("This is not proof it is safe to delete or unused by external reports", html, StringComparison.Ordinal);
@@ -197,7 +204,7 @@ public sealed class HtmlReportRendererTests : IDisposable
         Assert.Contains("Data sources", html, StringComparison.Ordinal);
         Assert.Contains("Raw connection arguments are not repeated in this source summary.", html, StringComparison.Ordinal);
         Assert.Contains("Full M expressions remain available in the query details and can contain sensitive values.", html, StringComparison.Ordinal);
-        Assert.Contains("File on a developer computer", html, StringComparison.Ordinal);
+        Assert.Contains("<strong>Location:</strong> File on a developer", html, StringComparison.Ordinal);
         Assert.Contains("Connector details", html, StringComparison.Ordinal);
         Assert.Contains("Loads into the model", html, StringComparison.Ordinal);
         Assert.Contains("Helper / staging", html, StringComparison.Ordinal);
@@ -243,13 +250,20 @@ public sealed class HtmlReportRendererTests : IDisposable
         Assert.Contains("<div class=\"usage-location-groups\">", html, StringComparison.Ordinal);
         Assert.Contains("<section class=\"usage-page-group\">", html, StringComparison.Ordinal);
         Assert.Contains("<ul class=\"usage-location-list\">", html, StringComparison.Ordinal);
-        Assert.Contains("<span class=\"usage-label\">Page:</span>", html, StringComparison.Ordinal);
+        Assert.Contains("<span class=\"usage-group-type\">Report page</span>", html, StringComparison.Ordinal);
+        Assert.Contains("<header class=\"usage-page-heading\">", html, StringComparison.Ordinal);
         Assert.Contains("<span class=\"usage-label\">Visual:</span> <a href=\"#visual-", html, StringComparison.Ordinal);
         Assert.Contains("<span class=\"usage-label\">Used as:</span>", html, StringComparison.Ordinal);
         Assert.Contains(".semantic-object-header { display: flex; min-width: 0; max-width: 100%; flex-wrap: wrap;", html, StringComparison.Ordinal);
+        Assert.Contains(".semantic-object[data-usage-state=\"StructurallyRequired\"] .object-name { flex-basis: 8rem; }", html, StringComparison.Ordinal);
         Assert.Contains(".technical-details pre { max-width: 100%; overflow-x: auto; }", html, StringComparison.Ordinal);
         Assert.DoesNotContain("Filter, Values", html, StringComparison.Ordinal);
         Assert.DoesNotContain("Filter, Tooltips", html, StringComparison.Ordinal);
+        var page = inventory.Reports.Single().Pages.Single();
+        Assert.Contains($"<dt>Configured visual interactions</dt><dd>{page.VisualInteractionCount}</dd>", html, StringComparison.Ordinal);
+        Assert.Contains($"<dt>Model object references</dt><dd>{page.FieldReferenceCount}</dd>", html, StringComparison.Ordinal);
+        Assert.Contains("Repeated uses of the same object are counted separately.", html, StringComparison.Ordinal);
+        Assert.DoesNotContain("<dt>Object uses</dt>", html, StringComparison.Ordinal);
         Assert.Contains("Apparently unused", html, StringComparison.Ordinal);
         Assert.Contains("data-severity=\"Warning\"", html, StringComparison.Ordinal);
     }
@@ -272,8 +286,8 @@ public sealed class HtmlReportRendererTests : IDisposable
         Assert.Contains("href=\"#power-query-crosslayer-customer-tablepartition-customer\"", html, StringComparison.Ordinal);
         Assert.Contains("Loaded into model and used by other queries", html, StringComparison.Ordinal);
         Assert.Contains("Loaded into model only", html, StringComparison.Ordinal);
-        Assert.Contains(">Loaded &#x2B; upstream</span>", html, StringComparison.Ordinal);
-        Assert.Contains(">Loaded</span>", html, StringComparison.Ordinal);
+        Assert.Contains(">Loaded to model &#x2B; used by other queries</span>", html, StringComparison.Ordinal);
+        Assert.Contains(">Loaded to model</span>", html, StringComparison.Ordinal);
         Assert.Contains("class=\"query-dependency-grid\"", html, StringComparison.Ordinal);
         Assert.Contains("<dt>Uses</dt><dd>", html, StringComparison.Ordinal);
         Assert.Contains("<dt>Used by</dt><dd>", html, StringComparison.Ordinal);
@@ -291,6 +305,87 @@ public sealed class HtmlReportRendererTests : IDisposable
         Assert.Contains("Power Query column usage is based on explicit static M references", html, StringComparison.Ordinal);
         Assert.DoesNotContain("</code><script>alert('m-unsafe')</script>", html, StringComparison.Ordinal);
         Assert.Contains("&lt;/code&gt;&lt;script&gt;alert(&#x27;m-unsafe&#x27;)&lt;/script&gt;", html, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void RenderShowsAvailableSemanticDaxExpressionsWithoutChangingUsageCounts()
+    {
+        CreateSampleProject();
+
+        var inventory = ProjectScanner.Scan(testRoot);
+        var html = HtmlReportRenderer.Render(inventory);
+
+        Assert.Equal(3, CountOccurrences(html, "<summary>View DAX expression</summary>"));
+        Assert.Contains("class=\"technical-details semantic-expression calculated-table-expression\"", html, StringComparison.Ordinal);
+        Assert.Contains("<summary>View calculated-table DAX expression</summary>", html, StringComparison.Ordinal);
+        Assert.Contains("VAR MeasureMarkup = &quot;&lt;DAX-MEASURE-UNSAFE&gt;&amp;&quot;", html, StringComparison.Ordinal);
+        Assert.Contains("VAR ColumnMarkup = &quot;&lt;DAX-COLUMN-UNSAFE&gt;&amp;&quot;", html, StringComparison.Ordinal);
+        Assert.Contains("VAR TableMarkup = &quot;&lt;DAX-TABLE-UNSAFE&gt;&amp;&quot;", html, StringComparison.Ordinal);
+        Assert.Contains("VAR ItemMarkup = &quot;&lt;DAX-ITEM-UNSAFE&gt;&amp;&quot;", html, StringComparison.Ordinal);
+        Assert.DoesNotContain("<DAX-MEASURE-UNSAFE>", html, StringComparison.Ordinal);
+        Assert.DoesNotContain("<DAX-COLUMN-UNSAFE>", html, StringComparison.Ordinal);
+        var sales = inventory.SemanticModels.Single().Tables.Single(table => table.Name == "Sales");
+        Assert.Contains(Environment.NewLine, sales.Measures.Single(measure => measure.Name == "Total Sales").Expression, StringComparison.Ordinal);
+        Assert.Contains(Environment.NewLine, sales.Columns.Single(column => column.Name == "Calculated Label").Expression, StringComparison.Ordinal);
+        Assert.Equal(inventory.DeveloperSemanticObjectCount, inventory.SemanticObjectUsages.Count(usage => !inventory.IsSystemGeneratedSemanticObject(usage)));
+    }
+
+    [Fact]
+    public void RenderMakesDrillthroughPageGroupingAndFieldRoleExplicit()
+    {
+        WriteFile("Hierarchy.pbip", "{}");
+        WriteFile(
+            Path.Combine("Hierarchy.Report", "definition.pbir"),
+            """
+            {
+              "datasetReference": { "byPath": { "path": "../Hierarchy.SemanticModel" } }
+            }
+            """);
+        WriteFile(
+            Path.Combine("Hierarchy.Report", "definition", "pages", "pages.json"),
+            "{ \"pageOrder\": [\"customer-detail\"] }");
+        WriteFile(
+            Path.Combine("Hierarchy.Report", "definition", "pages", "customer-detail", "page.json"),
+            """
+            {
+              "name": "customer-detail",
+              "displayName": "Customer detail",
+              "pageBinding": {
+                "name": "CustomerDetail",
+                "type": "Drillthrough",
+                "parameters": [
+                  {
+                    "name": "CustomerParameter",
+                    "fieldExpr": {
+                      "Column": {
+                        "Expression": { "SourceRef": { "Entity": "Customer" } },
+                        "Property": "CustomerName"
+                      }
+                    }
+                  }
+                ]
+              }
+            }
+            """);
+        WriteFile(Path.Combine("Hierarchy.SemanticModel", "definition.pbism"), "{}");
+        WriteFile(
+            Path.Combine("Hierarchy.SemanticModel", "definition", "tables", "Customer.tmdl"),
+            """
+            table Customer
+                column CustomerName
+                    dataType: string
+            """);
+
+        var inventory = ProjectScanner.Scan(testRoot);
+        var html = HtmlReportRenderer.Render(inventory);
+        var usage = Assert.Single(inventory.SemanticObjectUsages, item => item.ObjectName == "CustomerName");
+
+        Assert.Equal(1, usage.DirectReportLocationCount);
+        Assert.Contains("<span class=\"usage-group-type\">Report page</span>", html, StringComparison.Ordinal);
+        Assert.Contains("<h5>Customer detail</h5>", html, StringComparison.Ordinal);
+        Assert.Contains("<p class=\"usage-page-kind\">Drillthrough page</p>", html, StringComparison.Ordinal);
+        Assert.Contains("<span class=\"usage-label\">Used in:</span> Drillthrough field", html, StringComparison.Ordinal);
+        Assert.Contains("<code>Customer[CustomerName]</code><span>Column · Drillthrough field</span>", html, StringComparison.Ordinal);
     }
 
     public void Dispose()
@@ -566,6 +661,11 @@ public sealed class HtmlReportRendererTests : IDisposable
                 column Amount
                     dataType: decimal
 
+                column 'Calculated Label' =
+                        VAR ColumnMarkup = "<DAX-COLUMN-UNSAFE>&"
+                        RETURN
+                        FORMAT([Amount], "0.00")
+
                 column CustomerID
                     dataType: int64
 
@@ -584,7 +684,10 @@ public sealed class HtmlReportRendererTests : IDisposable
                 column 'Never Used'
                     dataType: string
 
-                measure 'Total Sales' = SUM(Sales[Amount])
+                measure 'Total Sales' =
+                        VAR MeasureMarkup = "<DAX-MEASURE-UNSAFE>&"
+                        RETURN
+                        SUM(Sales[Amount])
 
                 partition Sales = m
                     mode: import
@@ -605,6 +708,17 @@ public sealed class HtmlReportRendererTests : IDisposable
             table Bridge
                 column BridgeKey
                     dataType: int64
+            """);
+        WriteFile(
+            Path.Combine("Assurance.SemanticModel", "definition", "tables", "Calculated Table.tmdl"),
+            """
+            table 'Calculated Table'
+                partition 'Calculated Table' = calculated
+                    mode: import
+                    source =
+                            VAR TableMarkup = "<DAX-TABLE-UNSAFE>&"
+                            RETURN
+                            ROW("Value", 1)
             """);
         WriteFile(
             Path.Combine("Assurance.SemanticModel", "definition", "tables", "LocalDateTable_generated.tmdl"),
@@ -657,7 +771,10 @@ public sealed class HtmlReportRendererTests : IDisposable
                 calculationGroup
                     precedence: 10
 
-                    calculationItem Current = SELECTEDMEASURE()
+                    calculationItem Current =
+                            VAR ItemMarkup = "<DAX-ITEM-UNSAFE>&"
+                            RETURN
+                            SELECTEDMEASURE()
 
                 column 'Time Calculation'
                     dataType: string
