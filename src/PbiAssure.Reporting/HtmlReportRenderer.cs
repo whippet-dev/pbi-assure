@@ -59,7 +59,7 @@ public static class HtmlReportRenderer
         AppendSectionNavigationItem(html, "reports", "Report pages", $"{inventory.PageCount} {Pluralize(inventory.PageCount, "page", "pages")} · {inventory.VisualCount} {Pluralize(inventory.VisualCount, "visual", "visuals")}");
         AppendSectionNavigationItem(html, "power-query", "Power Query", inventory.PowerQueryCount == 0 ? null : $"{inventory.PowerQueryCount} {Pluralize(inventory.PowerQueryCount, "query", "queries")}");
         AppendSectionNavigationItem(html, "relationships", "Model relationships", $"{inventory.SemanticRelationshipCount} {Pluralize(inventory.SemanticRelationshipCount, "relationship", "relationships")}");
-        AppendSectionNavigationItem(html, "semantic-usage", "Semantic model", $"{inventory.DeveloperSemanticObjectCount} developer {Pluralize(inventory.DeveloperSemanticObjectCount, "object", "objects")}");
+        AppendSectionNavigationItem(html, "semantic-usage", "Semantic model", $"{inventory.DeveloperSemanticObjectCount} developer-authored {Pluralize(inventory.DeveloperSemanticObjectCount, "object", "objects")}");
         html.AppendLine("        </ul>");
         html.AppendLine("      </nav>");
         html.AppendLine("    </div>");
@@ -75,17 +75,22 @@ public static class HtmlReportRenderer
         html.AppendLine("      <div class=\"summary-groups\">");
         html.AppendLine("        <section class=\"summary-group summary-group-assurance\" aria-labelledby=\"summary-assurance-heading\" aria-describedby=\"summary-assurance-help\">");
         html.AppendLine("          <h3 id=\"summary-assurance-heading\">Assurance</h3>");
-        html.AppendLine("          <p id=\"summary-assurance-help\" class=\"group-explanation\">Automated checks that may need attention. Start with errors, then warnings and items that need a person to review them.</p>");
+        html.AppendLine("          <p id=\"summary-assurance-help\" class=\"group-explanation\">Findings from automated checks across the report, semantic model and Power Query. Start with errors, then warnings and items that need a person to review them.</p>");
         html.AppendLine("      <dl class=\"metrics\">");
         AppendMetric(html, "Errors", inventory.ErrorFindingCount, "metric-error");
         AppendMetric(html, "Warnings", inventory.WarningFindingCount, "metric-warning");
         AppendMetric(html, "Review required", inventory.ReviewRequiredCount, "metric-review");
         AppendMetric(html, "Total findings", inventory.FindingCount);
         html.AppendLine("      </dl>");
+        AppendSummaryDefinitions(html, "What these finding numbers mean", [
+            ("Errors", "Higher-confidence issues that would normally merit attention."),
+            ("Warnings", "Potential problems, good-practice concerns or lower-confidence issues worth reviewing."),
+            ("Review required", "Situations that need human judgement or contextual review; they are not necessarily defects."),
+            ("Total findings", "All findings from the automated checks, across every severity and assessment type.")]);
         html.AppendLine("        </section>");
         html.AppendLine("        <section class=\"summary-group summary-group-project\" aria-labelledby=\"summary-project-heading\" aria-describedby=\"summary-project-help\">");
         html.AppendLine("          <h3 id=\"summary-project-heading\">Project</h3>");
-        html.AppendLine("          <p id=\"summary-project-help\" class=\"group-explanation\">The amount of report, model and data-preparation content included in this scan.</p>");
+        html.AppendLine("          <p id=\"summary-project-help\" class=\"group-explanation\">A count of the main report and semantic-model content found in the analysed project.</p>");
         html.AppendLine("      <dl class=\"metrics\">");
         AppendMetric(html, "Reports", inventory.ReportCount);
         AppendMetric(html, "Pages", inventory.PageCount);
@@ -94,24 +99,43 @@ public static class HtmlReportRenderer
         {
             AppendMetric(html, "Report measures", inventory.ReportMeasureCount);
         }
-        AppendMetric(html, "Developer objects", inventory.DeveloperSemanticObjectCount);
+        AppendMetric(html, "Developer-authored model objects", inventory.DeveloperSemanticObjectCount);
         if (inventory.SystemGeneratedSemanticObjectCount > 0)
         {
-            AppendMetric(html, "System-generated", inventory.SystemGeneratedSemanticObjectCount);
-        }
-        if (inventory.PowerQueryCount > 0)
-        {
-            AppendMetric(html, "Power Query sources", inventory.PowerQueryCount);
-        }
-        if (inventory.DataSourceCount > 0)
-        {
-            AppendMetric(html, "Connector types", inventory.DistinctConnectorFamilyCount);
+            AppendMetric(html, "System-generated model objects", inventory.SystemGeneratedSemanticObjectCount);
         }
         html.AppendLine("      </dl>");
+        AppendSummaryDefinitions(html, "What these project numbers count", [
+            ("Reports", "PBIR report definitions found in the project."),
+            ("Pages", "Report pages found across those report definitions."),
+            ("Visuals", "Visuals placed across all report pages."),
+            ("Report measures", "DAX measures defined in the report itself, rather than in its semantic model."),
+            ("Developer-authored model objects", "Columns, measures, hierarchy levels and calculation items in tables not identified as Power BI-generated."),
+            ("System-generated model objects", "The same model-object types in tables PBI Assure identifies as generated by Power BI, such as local date-table artefacts.")]);
         html.AppendLine("        </section>");
+        if (inventory.PowerQueryCount > 0 || inventory.DataSourceCount > 0)
+        {
+            html.AppendLine("        <section class=\"summary-group summary-group-power-query\" aria-labelledby=\"summary-power-query-heading\" aria-describedby=\"summary-power-query-help\">");
+            html.AppendLine("          <h3 id=\"summary-power-query-heading\">Power Query</h3>");
+            html.AppendLine("          <p id=\"summary-power-query-help\" class=\"group-explanation\">Queries, recognised connector types and lineage information detected from the project's Power Query definitions.</p>");
+            html.AppendLine("      <dl class=\"metrics\">");
+            if (inventory.PowerQueryCount > 0)
+            {
+                AppendMetric(html, "Power Query queries", inventory.PowerQueryCount);
+            }
+            if (inventory.DataSourceCount > 0)
+            {
+                AppendMetric(html, "Connector types", inventory.DistinctConnectorFamilyCount);
+            }
+            html.AppendLine("      </dl>");
+            AppendSummaryDefinitions(html, "What these Power Query numbers count", [
+                ("Power Query queries", "M-backed table partitions and named expressions found in the semantic model."),
+                ("Connector types", "Distinct recognised connector families used by those Power Query expressions; this is not a count of connection instances.")]);
+            html.AppendLine("        </section>");
+        }
         html.AppendLine("        <section class=\"summary-group summary-group-semantic\" aria-labelledby=\"summary-semantic-heading\" aria-describedby=\"summary-semantic-help\">");
         html.AppendLine("          <h3 id=\"summary-semantic-heading\">Semantic usage</h3>");
-        html.AppendLine("          <p id=\"summary-semantic-help\" class=\"group-explanation\">How the report uses model objects such as columns and measures. If no use was found, review the object rather than deleting it automatically.</p>");
+        html.AppendLine("          <p id=\"summary-semantic-help\" class=\"group-explanation\">How PBI Assure classified developer-authored model objects according to where and how they are referenced.</p>");
         html.AppendLine("      <dl class=\"metrics\">");
         AppendMetric(html, "Directly used", inventory.DeveloperSemanticObjectCountForState(SemanticUsageStates.DirectlyUsed));
         AppendMetric(html, "Indirectly used", inventory.DeveloperSemanticObjectCountForState(SemanticUsageStates.IndirectlyUsed));
@@ -119,6 +143,13 @@ public static class HtmlReportRenderer
         AppendMetric(html, "Unused branch", inventory.DeveloperSemanticObjectCountForState(SemanticUsageStates.UsedOnlyByUnusedBranch));
         AppendMetric(html, "Apparently unused", inventory.DeveloperApparentlyUnusedSemanticObjectCount, "metric-unused");
         html.AppendLine("      </dl>");
+        html.AppendLine("          <p class=\"summary-caution\"><strong>Apparently unused needs care:</strong> no usage was found within this analysed project. It is not proof that an object is safe to delete or unused by external reports, models or processes.</p>");
+        AppendSummaryDefinitions(html, "What these usage states mean", [
+            ("Directly used", "Referenced directly by the report, for example in a visual, filter, tooltip or drillthrough setting."),
+            ("Indirectly used", "Needed by another model object that has direct report usage, such as a DAX measure."),
+            ("Structurally required", "Needed by model structure detected by PBI Assure, such as relationships, sort-by configuration or hierarchy levels."),
+            ("Unused branch", "Referenced only through an object or dependency branch with no identified report usage."),
+            ("Apparently unused", "No usage was found within the analysed project scope. Review it before removal because external consumers and dynamic behaviour are outside that scope.")]);
         html.AppendLine("        </section>");
         html.AppendLine("      </div>");
         html.Append("      <p class=\"summary-note\"><strong>").Append(inventory.DeveloperApparentlyUnusedSemanticObjectCount.ToString(CultureInfo.InvariantCulture))
@@ -336,6 +367,7 @@ public static class HtmlReportRenderer
         html.AppendLine("    <section id=\"findings\" class=\"report-section\" data-report-section=\"findings\" aria-labelledby=\"findings-heading\">");
         html.AppendLine("      <h2 id=\"findings-heading\" tabindex=\"-1\">Findings</h2>");
         html.AppendLine("      <p class=\"section-intro\">Issues and review points found by automated checks. Expand one to see where it occurs and what to do next.</p>");
+        html.AppendLine("      <details class=\"section-help\"><summary>How to use findings</summary><p>A finding is an automated observation, not a verdict on the whole report. Its location shows where PBI Assure found it and Suggested action gives a practical next step. Items marked Review required can be intentional, depending on your report's context.</p></details>");
         if (inventory.Findings.Count == 0)
         {
             html.AppendLine("      <p>No automated findings were produced. Manual review is still required.</p>");
@@ -611,10 +643,10 @@ public static class HtmlReportRenderer
             html.Append("          <option value=\"").Append(Encode(type)).Append("\">").Append(Encode(HumanizeIdentifier(type))).AppendLine("</option>");
         }
         html.AppendLine("        </select></div>");
-        html.AppendLine("        <div><label for=\"usage-origin\">Object origin</label><select id=\"usage-origin\"><option value=\"developer\" selected>Developer objects</option><option value=\"\">All objects</option><option value=\"system\">Power BI-generated objects</option></select></div>");
+        html.AppendLine("        <div><label for=\"usage-origin\">Object origin</label><select id=\"usage-origin\"><option value=\"developer\" selected>Developer-authored objects</option><option value=\"\">All objects</option><option value=\"system\">Power BI-generated objects</option></select></div>");
         html.AppendLine("      </div>");
         html.Append("      <p id=\"usage-filter-status\" class=\"filter-status\" role=\"status\">")
-            .Append(inventory.DeveloperSemanticObjectCount.ToString(CultureInfo.InvariantCulture)).AppendLine(" developer semantic objects shown.</p>");
+            .Append(inventory.DeveloperSemanticObjectCount.ToString(CultureInfo.InvariantCulture)).AppendLine(" developer-authored model objects shown.</p>");
         AppendDetailsControls(html, "semantic-table-list", "tables");
         html.AppendLine("      <div id=\"semantic-table-list\" class=\"semantic-table-list\">");
         foreach (var model in inventory.SemanticModels)
@@ -911,10 +943,10 @@ public static class HtmlReportRenderer
         }
         AppendFact(html, "Columns", model.ColumnCount.ToString(CultureInfo.InvariantCulture));
         AppendFact(html, "Measures", model.MeasureCount.ToString(CultureInfo.InvariantCulture));
-        AppendFact(html, "Developer objects", (modelUsages.Length - generatedObjects).ToString(CultureInfo.InvariantCulture));
+        AppendFact(html, "Developer-authored model objects", (modelUsages.Length - generatedObjects).ToString(CultureInfo.InvariantCulture));
         if (generatedObjects > 0)
         {
-            AppendFact(html, "System-generated objects", generatedObjects.ToString(CultureInfo.InvariantCulture));
+            AppendFact(html, "System-generated model objects", generatedObjects.ToString(CultureInfo.InvariantCulture));
         }
         AppendFact(html, "Relationships", model.RelationshipCount.ToString(CultureInfo.InvariantCulture));
         if (model.FieldParameterCount > 0)
@@ -1042,11 +1074,11 @@ public static class HtmlReportRenderer
     {
         html.AppendLine("      <details class=\"usage-guide\"><summary><span>How usage classification works</span><span class=\"usage-guide-hint\">5 statuses explained</span></summary>");
         html.AppendLine("        <div class=\"usage-guide-body\"><dl class=\"usage-classification-list\">");
-        AppendUsageGuideItem(html, "Directly used", "Used in a visual, filter, tooltip or drillthrough setting.", SemanticUsageStates.DirectlyUsed);
-        AppendUsageGuideItem(html, "Indirectly used", "Needed by something used directly, such as a DAX measure.", SemanticUsageStates.IndirectlyUsed);
-        AppendUsageGuideItem(html, "Structurally required", "Needed by the model structure, such as a relationship key.", SemanticUsageStates.StructurallyRequired);
-        AppendUsageGuideItem(html, "Used only by unused branch", "Only referenced by an object with no detected report usage.", SemanticUsageStates.UsedOnlyByUnusedBranch);
-        AppendUsageGuideItem(html, "Apparently unused", "No usage was found here. This does not prove it is safe to remove.", SemanticUsageStates.ApparentlyUnused);
+        AppendUsageGuideItem(html, "Directly used", "Referenced directly by the report, for example in a visual, filter, tooltip or drillthrough setting.", SemanticUsageStates.DirectlyUsed);
+        AppendUsageGuideItem(html, "Indirectly used", "Needed by another model object that has direct report usage, such as a DAX measure.", SemanticUsageStates.IndirectlyUsed);
+        AppendUsageGuideItem(html, "Structurally required", "Needed by model structure detected by PBI Assure, such as relationships, sort-by configuration or hierarchy levels.", SemanticUsageStates.StructurallyRequired);
+        AppendUsageGuideItem(html, "Used only by unused branch", "Referenced only through an object or dependency branch with no identified report usage.", SemanticUsageStates.UsedOnlyByUnusedBranch);
+        AppendUsageGuideItem(html, "Apparently unused", "No usage was found within the analysed project scope. This is not proof it is safe to delete or unused by external reports, models or processes.", SemanticUsageStates.ApparentlyUnused);
         html.AppendLine("        </dl></div>");
         html.AppendLine("      </details>");
     }
@@ -1608,6 +1640,21 @@ public static class HtmlReportRenderer
             .Append(value.ToString("N0", CultureInfo.InvariantCulture)).AppendLine("</dd></div>");
     }
 
+    private static void AppendSummaryDefinitions(
+        StringBuilder html,
+        string summary,
+        IReadOnlyList<(string Label, string Description)> definitions)
+    {
+        html.Append("      <details class=\"summary-definitions\"><summary>").Append(Encode(summary))
+            .AppendLine("</summary><dl>");
+        foreach (var definition in definitions)
+        {
+            html.Append("        <div><dt>").Append(Encode(definition.Label)).Append("</dt><dd>")
+                .Append(Encode(definition.Description)).AppendLine("</dd></div>");
+        }
+        html.AppendLine("      </dl></details>");
+    }
+
     private static void AppendSectionNavigationItem(StringBuilder html, string target, string label, string? context)
     {
         html.Append("          <li><a href=\"#").Append(Encode(target)).Append("\" data-section-target=\"")
@@ -2151,6 +2198,14 @@ public static class HtmlReportRenderer
     .metric-review { border-left-color: var(--info); }
     .metric-unused { border-left-color: #5b3f88; }
     .summary-note, .secondary, .filter-status { color: var(--muted); }
+    .summary-caution { max-width: 64rem; margin: .7rem 0 0; padding: .65rem .75rem; border-left: .3rem solid #5b3f88; background: #f6f2fb; color: #3f2c5b; overflow-wrap: anywhere; }
+    .summary-definitions, .section-help { margin-top: .75rem; padding: .55rem .7rem; border: 1px solid #c8d2dc; border-radius: .3rem; background: #f8fafc; }
+    .summary-definitions > summary, .section-help > summary { color: var(--link); font-weight: 700; }
+    .summary-definitions dl { display: grid; gap: .55rem; margin: .75rem 0 .15rem; }
+    .summary-definitions dl div { display: grid; gap: .1rem; }
+    .summary-definitions dt { color: var(--text); font-weight: 700; }
+    .summary-definitions dd { margin: 0; color: var(--muted); overflow-wrap: anywhere; }
+    .section-help > p { max-width: 64rem; margin: .65rem 0 .15rem; color: var(--muted); }
     .scope { border-left: .55rem solid var(--warning) !important; }
     .filters { display: flex; flex-wrap: wrap; gap: 1rem; align-items: end; margin: 1rem 0 .5rem; padding: 1rem; background: #eef2f6; border-radius: .3rem; }
     .filters div { min-width: min(100%, 14rem); flex: 1; }
