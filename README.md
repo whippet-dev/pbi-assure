@@ -90,6 +90,8 @@ The HTML report is organised as expandable review cards rather than long data ta
 
 `PbiAssure.Web` is a standalone Blazor WebAssembly frontend. It lets a user select one PBIP project folder, runs the shared scanner locally in the browser, shows a concise assurance summary, and creates local downloads of the existing self-contained HTML report and semantic-usage CSV. It has no backend and does not upload selected files or results.
 
+For full assurance, prepare a PBIP using PBIR and TMDL, then select the project root folder containing the `.pbip`, `.Report`, and `.SemanticModel` items. See [Prepare a Power BI project for PBI Assure](docs/preparing-power-bi-project.md) for the PBIX-to-PBIP steps and current Microsoft guidance.
+
 ```powershell
 dotnet publish src/PbiAssure.Web -c Release -o artifacts/web
 ```

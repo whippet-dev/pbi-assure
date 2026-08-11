@@ -20,13 +20,15 @@ See [Browser privacy](browser-privacy.md) for the exact boundary and caveats.
 
 ## Selecting a project
 
-Choose the folder that directly contains one root `.pbip` file. PBI Assure accepts metadata from the
-immediate `.Report` and `.SemanticModel` directories in that folder. It rejects folders with no root
-project, more than one root project, unsafe relative paths, or paths that collide when compared without
-letter case.
+PBI Assure provides full browser assurance for a PBIP project using PBIR and TMDL. If starting with a
+PBIX, follow [Prepare a Power BI project for PBI Assure](preparing-power-bi-project.md), then choose the
+folder that directly contains one root `.pbip` file. PBI Assure accepts metadata from the immediate
+`.Report` and `.SemanticModel` directories in that folder. It rejects folders with no root project, more
+than one root project, unsafe relative paths, or paths that collide when compared without letter case.
 
-The primary picker uses `showDirectoryPicker` where supported. **Use alternate folder picker** invokes
-the existing directory-input fallback, including when an organisation policy blocks the primary API.
+The primary picker uses `showDirectoryPicker` where supported. The **Having trouble selecting a folder?**
+disclosure exposes the directory-input fallback when an organisation policy or browser blocks the primary
+picker.
 
 Initial browser safety limits are:
 

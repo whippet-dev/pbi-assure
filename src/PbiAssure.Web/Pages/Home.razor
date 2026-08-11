@@ -16,12 +16,35 @@
         <p>Choose a Power BI project, then run the existing assurance scanner in this browser.</p>
     </header>
 
+    <details class="guidance-panel">
+        <summary>Using a PBIX? See how to prepare it for full assurance</summary>
+        <div class="guidance-content">
+            <p>PBI Assure provides full assurance for a Power BI Project (PBIP) that uses the enhanced report format (PBIR) and the TMDL semantic model format.</p>
+            <ol>
+                <li>Open the PBIX in Power BI Desktop.</li>
+                <li>In <strong>File &gt; Options and settings &gt; Options &gt; Preview features</strong>, enable <strong>Power BI Project (.pbip) save option</strong> if it is shown.</li>
+                <li>Enable <strong>Store reports using enhanced metadata format (PBIR)</strong> and <strong>Store semantic model using TMDL format</strong>.</li>
+                <li>Save the report as a Power BI Project, then select its project root folder here.</li>
+            </ol>
+            <p>PBIR and TMDL store the report and semantic model as structured project files that PBI Assure can analyse locally in your browser.</p>
+            <div class="folder-example" aria-label="Example Power BI project folder structure"><code>MyReport/<br />├── MyReport.pbip<br />├── MyReport.Report/<br />└── MyReport.SemanticModel/</code></div>
+            <p>Select the <strong>project root</strong> shown above, not the <code>.Report</code> or <code>.SemanticModel</code> folder on its own.</p>
+            <p class="guidance-links">Microsoft guidance: <a href="https://learn.microsoft.com/en-us/power-bi/developer/projects/projects-overview" target="_blank" rel="noopener noreferrer">Power BI Projects</a>, <a href="https://learn.microsoft.com/en-us/power-bi/developer/projects/projects-report" target="_blank" rel="noopener noreferrer">PBIR</a>, and <a href="https://learn.microsoft.com/en-us/power-bi/developer/projects/projects-dataset" target="_blank" rel="noopener noreferrer">TMDL semantic models</a>.</p>
+        </div>
+    </details>
+
     <div class="picker">
         <div class="picker-actions">
             <button @onclick="() => ChooseProjectAsync(false)" disabled="@isBusy">Choose Power BI project</button>
-            <button class="secondary-button" @onclick="() => ChooseProjectAsync(true)" disabled="@isBusy">Use alternate folder picker</button>
         </div>
-        <p class="privacy">Your Power BI project is processed locally in your browser. Project files and analysis results are not uploaded.</p>
+        <details class="picker-help">
+            <summary>Having trouble selecting a folder?</summary>
+            <div class="picker-help-content">
+                <p>Use the alternative folder picker if the normal picker is unavailable or blocked by your browser or organisation.</p>
+                <button class="secondary-button" @onclick="() => ChooseProjectAsync(true)" disabled="@isBusy">Use alternative folder picker</button>
+            </div>
+        </details>
+        <p class="privacy"><strong>Kept on this device:</strong> your Power BI project is processed locally in your browser. Project files and analysis results are not uploaded to PBI Assure.</p>
     </div>
 
     @if (selection is not null)
@@ -44,6 +67,14 @@
     {
         <section aria-labelledby="results-title">
             <h2 id="results-title">Assurance summary</h2>
+            <details class="summary-help">
+                <summary>How to read these results</summary>
+                <dl>
+                    <div><dt>Errors</dt><dd>Higher-confidence issues that should normally be addressed.</dd></div>
+                    <div><dt>Warnings</dt><dd>Potential problems or good-practice issues worth reviewing.</dd></div>
+                    <div><dt>Review required</dt><dd>Something PBI Assure found that needs human judgement.</dd></div>
+                </dl>
+            </details>
             <h3>Findings</h3>
             <div class="metrics">
                 <Metric Label="Errors" Value="@inventory.ErrorFindingCount" />
@@ -69,6 +100,10 @@
                 <Metric Label="Unused branch" Value="@UsageCount(SemanticUsageStates.UsedOnlyByUnusedBranch)" />
                 <Metric Label="Apparently unused" Value="@inventory.DeveloperApparentlyUnusedSemanticObjectCount" />
             </div>
+            <details class="summary-help">
+                <summary>What does “Apparently unused” mean?</summary>
+                <p>PBI Assure found no usage within this analysed project. It is not proof that an object is safe to delete, unused everywhere, or unused by an external report, model, or process.</p>
+            </details>
             <div class="downloads">
                 <button @onclick="DownloadHtmlAsync" disabled="@isBusy">Download HTML report</button>
                 <button @onclick="DownloadCsvAsync" disabled="@isBusy">Download semantic CSV</button>
@@ -150,7 +185,7 @@
         }
         catch (JSException exception) when (exception.Message.Contains("BLOCKED", StringComparison.OrdinalIgnoreCase))
         {
-            message = "Folder access was blocked. Try the alternate folder picker.";
+            message = "Folder access was blocked. Open ‘Having trouble selecting a folder?’ and try the alternative folder picker.";
         }
         catch (JSException exception)
         {
@@ -290,6 +325,6 @@
             "That project contains too much metadata for this browser version.",
         var value when value.Contains("DEPTH_LIMIT", StringComparison.OrdinalIgnoreCase) =>
             "That project contains a folder structure that is too deeply nested.",
-        _ => "The project folder could not be opened. Try the alternate folder picker.",
+        _ => "The project folder could not be opened. Open ‘Having trouble selecting a folder?’ and try the alternative folder picker.",
     };
 }

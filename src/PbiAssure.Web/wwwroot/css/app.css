@@ -11,9 +11,26 @@ h3 { margin: 1.25rem 0 0.65rem; font-size: 1rem; }
 .picker, .selection { padding: 1.25rem; border: 1px solid #ccd7e5; border-radius: 0.5rem; background: #fff; }
 button { width: fit-content; padding: 0.65rem 1rem; border: 0; border-radius: 0.3rem; background: #075a46; color: #fff; font: inherit; font-weight: 700; cursor: pointer; }
 button:disabled { opacity: 0.6; cursor: wait; }
+button:focus-visible, summary:focus-visible, a:focus-visible { outline: 3px solid #e48a00; outline-offset: 3px; }
 .picker-actions { display: flex; flex-wrap: wrap; gap: 0.75rem; }
 .secondary-button { border: 1px solid #075a46; background: #fff; color: #075a46; }
 .privacy { color: #38516f; font-size: 0.95rem; }
+.guidance-panel, .picker-help, .summary-help { border: 1px solid #ccd7e5; border-radius: 0.5rem; background: #fff; }
+.guidance-panel { padding: 0.9rem 1.25rem; }
+.picker-help, .summary-help { padding: 0.65rem 0.85rem; }
+.guidance-panel summary, .picker-help summary, .summary-help summary { color: #075a46; font-weight: 700; cursor: pointer; }
+.guidance-content, .picker-help-content, .summary-help > p { display: grid; gap: 0.8rem; margin-top: 1rem; max-width: 48rem; }
+.guidance-content ol { display: grid; gap: 0.5rem; margin: 0; padding-left: 1.35rem; }
+.guidance-content p { line-height: 1.45; }
+.folder-example { width: fit-content; max-width: 100%; padding: 0.75rem; overflow-x: auto; border: 1px solid #dce5ef; border-radius: 0.3rem; background: #f5f8fb; color: #263d59; line-height: 1.5; }
+.guidance-links { color: #38516f; font-size: 0.95rem; }
+.guidance-links a { color: #075a46; }
+.picker-help-content { align-items: start; }
+.summary-help { margin: 0.65rem 0; color: #38516f; font-size: 0.95rem; }
+.summary-help dl { display: grid; gap: 0.7rem; margin: 1rem 0 0; }
+.summary-help dl div { display: grid; gap: 0.15rem; }
+.summary-help dt { color: #15253d; font-weight: 700; }
+.summary-help dd { margin: 0; line-height: 1.4; }
 .sensitivity { max-width: 48rem; color: #5d3a00; font-size: 0.95rem; }
 .message { padding: 0.8rem 1rem; border-left: 4px solid #ad4b00; background: #fff4e7; }
 .metrics { grid-template-columns: repeat(auto-fit, minmax(8rem, 1fr)); }
@@ -26,3 +43,7 @@ button:disabled { opacity: 0.6; cursor: wait; }
 .fatal-message { display: grid; gap: 1rem; padding: 1.25rem; border: 1px solid #ccd7e5; border-radius: 0.5rem; background: #fff; }
 .button-link { width: fit-content; padding: 0.65rem 1rem; border-radius: 0.3rem; background: #075a46; color: #fff; font-weight: 700; text-decoration: none; }
 #blazor-error-ui { display: none; }
+@media (max-width: 34rem) {
+    main { padding: 2rem 1rem 1.5rem; }
+    .guidance-panel, .picker, .selection { padding: 1rem; }
+}
