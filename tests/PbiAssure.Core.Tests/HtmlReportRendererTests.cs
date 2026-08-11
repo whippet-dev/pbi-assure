@@ -89,6 +89,80 @@ public sealed class HtmlReportRendererTests : IDisposable
     }
 
     [Fact]
+    public void RenderProvidesStructuredFindingFacetsAndSafeActiveFilterControls()
+    {
+        CreateSampleProject();
+
+        var inventory = ProjectScanner.Scan(testRoot);
+        var original = inventory.Findings.First(finding => finding.RuleId == "PBI-NAV-001");
+        var findings = new[]
+        {
+            original with
+            {
+                RuleId = "PBI-TEST-<1>",
+                Category = "Navigation & actions",
+                SemanticModel = "Assurance",
+                Table = "Sales & targets",
+                ObjectName = "Total <Sales>",
+            },
+            original with
+            {
+                RuleId = "PBI-TEST-002",
+                Severity = FindingSeverities.Warning,
+                AssessmentType = AssessmentTypes.ReviewRequired,
+                Category = "Accessibility",
+                Visual = "sales-card",
+            },
+        };
+
+        var html = HtmlReportRenderer.Render(inventory with { Findings = findings });
+
+        Assert.Contains("class=\"finding-filter-panel\"", html, StringComparison.Ordinal);
+        Assert.Contains("id=\"finding-rule\" data-finding-facet data-filter-key=\"rule\"", html, StringComparison.Ordinal);
+        Assert.Contains("id=\"finding-page\" data-finding-facet data-filter-key=\"page\"", html, StringComparison.Ordinal);
+        Assert.Contains("id=\"finding-visual\" data-finding-facet data-filter-key=\"visual\"", html, StringComparison.Ordinal);
+        Assert.Contains("id=\"finding-table\" data-finding-facet data-filter-key=\"table\"", html, StringComparison.Ordinal);
+        Assert.Contains("value=\"ReviewRequired\">Review required</option>", html, StringComparison.Ordinal);
+        Assert.Contains("value=\"PBI-TEST-&lt;1&gt;\">PBI-TEST-&lt;1&gt;</option>", html, StringComparison.Ordinal);
+        Assert.Contains("value=\"Navigation &amp; actions\">Navigation &amp; actions</option>", html, StringComparison.Ordinal);
+        Assert.Contains("data-filter-rule=\"PBI-TEST-&lt;1&gt;\"", html, StringComparison.Ordinal);
+        Assert.Contains("data-filter-table=\"Assurance", html, StringComparison.Ordinal);
+        Assert.Contains("Sales &amp; targets\"", html, StringComparison.Ordinal);
+        Assert.Contains("id=\"finding-active-filters\"", html, StringComparison.Ordinal);
+        Assert.Contains("id=\"finding-clear-filters\"", html, StringComparison.Ordinal);
+        Assert.Contains("id=\"finding-empty-state\"", html, StringComparison.Ordinal);
+        Assert.Contains(".filter-chips[hidden], .finding-empty-state[hidden] { display: none; }", html, StringComparison.Ordinal);
+        Assert.Contains("activeFacets.every", html, StringComparison.Ordinal);
+        Assert.Contains("card.findingSearchText.includes(query)", html, StringComparison.Ordinal);
+        Assert.DoesNotContain("normalise(card.textContent).includes(query)", html, StringComparison.Ordinal);
+        Assert.Contains("findingStatus.textContent = activeCount ?", html, StringComparison.Ordinal);
+        Assert.Contains("history.pushState(null, '', `#${sectionName}`)", html, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void RenderKeepsLargeFindingSetsOnOneClientSideFilterSurface()
+    {
+        CreateSampleProject();
+
+        var inventory = ProjectScanner.Scan(testRoot);
+        var original = inventory.Findings[0];
+        var findings = Enumerable.Range(1, 1500)
+            .Select(index => original with
+            {
+                RuleId = $"PBI-SCALE-{index:D4}",
+                Message = $"Synthetic finding {index}",
+            })
+            .ToArray();
+
+        var html = HtmlReportRenderer.Render(inventory with { Findings = findings });
+
+        Assert.Equal(1500, CountOccurrences(html, "class=\"finding-card\""));
+        Assert.Equal(1, CountOccurrences(html, "function filterFindings()"));
+        Assert.Contains("findingCards.forEach(card => { card.findingSearchText", html, StringComparison.Ordinal);
+        Assert.Contains("1,500 findings", html, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void RenderGroupsSummaryMetricsByDeveloperQuestionWithoutChangingValues()
     {
         CreateSampleProject();

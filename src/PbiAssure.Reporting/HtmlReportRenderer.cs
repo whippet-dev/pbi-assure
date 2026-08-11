@@ -375,31 +375,46 @@ public static class HtmlReportRenderer
             return;
         }
 
-        html.AppendLine("      <div class=\"filters\" aria-label=\"Filter findings\">");
-        html.AppendLine("        <div><label for=\"finding-search\">Search findings</label><input id=\"finding-search\" type=\"search\" autocomplete=\"off\"></div>");
-        html.AppendLine("        <div><label for=\"finding-severity\">Severity</label><select id=\"finding-severity\"><option value=\"\">All severities</option><option>Error</option><option>Warning</option><option>Information</option></select></div>");
-        html.AppendLine("        <div><label for=\"finding-category\">Category</label><select id=\"finding-category\"><option value=\"\">All categories</option>");
-        foreach (var category in inventory.Findings
-                     .Select(finding => finding.Category)
-                     .Distinct(StringComparer.OrdinalIgnoreCase)
-                     .OrderBy(category => category, StringComparer.OrdinalIgnoreCase))
-        {
-            html.Append("          <option value=\"").Append(Encode(category)).Append("\">")
-                .Append(Encode(HumanizeIdentifier(category))).AppendLine("</option>");
-        }
-
-        html.AppendLine("        </select></div>");
+        var findingItems = inventory.Findings.Select(finding => CreateFindingRenderItem(inventory, finding)).ToArray();
+        html.AppendLine("      <div class=\"finding-investigation\">");
+        html.AppendLine("        <div class=\"finding-search\"><label for=\"finding-search\">Search findings</label><input id=\"finding-search\" type=\"search\" autocomplete=\"off\" placeholder=\"Search messages, rules, pages, visuals or model objects\"></div>");
+        html.AppendLine("        <details class=\"finding-filter-panel\"><summary>More filters <span id=\"finding-active-filter-count\" class=\"active-filter-count\" hidden></span></summary>");
+        html.AppendLine("          <div class=\"finding-facet-grid\" aria-label=\"Filter findings\">");
+        AppendFindingFacet(html, "finding-severity", "Severity", "All severities", FindingFacetOptions(findingItems, item => (item.FilterSeverity, item.SeverityLabel)));
+        AppendFindingFacet(html, "finding-rule", "Rule", "All rules", FindingFacetOptions(findingItems, item => (item.Finding.RuleId, item.Finding.RuleId)));
+        AppendFindingFacet(html, "finding-category", "Category", "All categories", FindingFacetOptions(findingItems, item => (item.Finding.Category, HumanizeIdentifier(item.Finding.Category))));
+        AppendFindingFacet(html, "finding-page", "Page", "All pages", FindingFacetOptions(findingItems, item => (item.PageKey, item.PageLabel)));
+        AppendFindingFacet(html, "finding-visual", "Visual", "All visuals", FindingFacetOptions(findingItems, item => (item.VisualKey, item.VisualLabel)));
+        AppendFindingFacet(html, "finding-table", "Semantic table", "All tables", FindingFacetOptions(findingItems, item => (item.TableKey, item.TableLabel)));
+        AppendFindingFacet(html, "finding-object-type", "Object type", "All object types", FindingFacetOptions(findingItems, item => (item.ObjectType, HumanizeIdentifier(item.ObjectType ?? string.Empty))));
+        AppendFindingFacet(html, "finding-usage-state", "Usage state", "All usage states", FindingFacetOptions(findingItems, item => (item.UsageState, UsageLabel(item.UsageState ?? string.Empty))));
+        html.AppendLine("          </div>");
+        html.AppendLine("        </details>");
         html.AppendLine("      </div>");
-        html.Append("      <p id=\"finding-filter-status\" class=\"filter-status\" role=\"status\">")
-            .Append(inventory.Findings.Count.ToString(CultureInfo.InvariantCulture)).AppendLine(" findings shown.</p>");
+        html.AppendLine("      <div class=\"finding-results-row\">");
+        html.Append("        <p id=\"finding-filter-status\" class=\"filter-status\" role=\"status\" aria-live=\"polite\" aria-atomic=\"true\">")
+            .Append(inventory.Findings.Count.ToString("N0", CultureInfo.InvariantCulture)).AppendLine(" findings</p>");
+        html.AppendLine("        <button id=\"finding-clear-filters\" type=\"button\" hidden>Clear filters</button>");
+        html.AppendLine("      </div>");
+        html.AppendLine("      <div id=\"finding-active-filters\" class=\"filter-chips\" aria-label=\"Active finding filters\" hidden></div>");
+        html.AppendLine("      <div id=\"finding-empty-state\" class=\"finding-empty-state\" hidden><strong>No findings match these filters.</strong><span>Try removing a filter or changing the search text.</span><button type=\"button\" data-clear-finding-filters>Clear search and filters</button></div>");
         AppendDetailsControls(html, "finding-list", "issues");
         html.AppendLine("      <div id=\"finding-list\" class=\"card-list\">");
-        for (var index = 0; index < inventory.Findings.Count; index++)
+        for (var index = 0; index < findingItems.Length; index++)
         {
-            var finding = inventory.Findings[index];
-            var context = ResolveVisualContext(inventory, finding);
+            var item = findingItems[index];
+            var finding = item.Finding;
+            var context = item.Context;
             html.Append("        <details id=\"").Append(FindingAnchor(index)).Append("\" class=\"finding-card\" data-severity=\"")
-                .Append(Encode(finding.Severity)).Append("\" data-category=\"").Append(Encode(finding.Category)).AppendLine("\">");
+                .Append(Encode(finding.Severity)).Append("\" data-filter-severity=\"").Append(Encode(item.FilterSeverity))
+                .Append("\" data-filter-rule=\"").Append(Encode(finding.RuleId))
+                .Append("\" data-filter-category=\"").Append(Encode(finding.Category))
+                .Append("\" data-filter-page=\"").Append(Encode(item.PageKey ?? string.Empty))
+                .Append("\" data-filter-visual=\"").Append(Encode(item.VisualKey ?? string.Empty))
+                .Append("\" data-filter-table=\"").Append(Encode(item.TableKey ?? string.Empty))
+                .Append("\" data-filter-object-type=\"").Append(Encode(item.ObjectType ?? string.Empty))
+                .Append("\" data-filter-usage-state=\"").Append(Encode(item.UsageState ?? string.Empty))
+                .Append("\" data-search-text=\"").Append(Encode(item.SearchText)).AppendLine("\">");
             html.Append("          <summary><span class=\"badge ").Append(SeverityClass(finding.Severity))
                 .Append("\">").Append(Encode(finding.Severity)).Append("</span><span class=\"summary-copy\"><strong>")
                 .Append(Encode(FriendlyFindingMessage(finding, context))).Append("</strong>");
@@ -422,6 +437,55 @@ public static class HtmlReportRenderer
 
         html.AppendLine("      </div>");
         html.AppendLine("    </section>");
+    }
+
+    private static void AppendFindingFacet(
+        StringBuilder html,
+        string id,
+        string label,
+        string allLabel,
+        IReadOnlyList<FindingFacetOption> options)
+    {
+        if (options.Count == 0)
+        {
+            return;
+        }
+
+        html.Append("            <div><label for=\"").Append(id).Append("\">").Append(Encode(label))
+            .Append("</label><select id=\"").Append(id).Append("\" data-finding-facet data-filter-key=\"")
+            .Append(id[8..]).Append("\"><option value=\"\">").Append(Encode(allLabel)).AppendLine("</option>");
+        foreach (var option in options)
+        {
+            html.Append("              <option value=\"").Append(Encode(option.Value)).Append("\">")
+                .Append(Encode(option.Label)).AppendLine("</option>");
+        }
+
+        html.AppendLine("            </select></div>");
+    }
+
+    private static FindingFacetOption[] FindingFacetOptions(
+        IEnumerable<FindingRenderItem> items,
+        Func<FindingRenderItem, (string? Value, string? Label)> selector)
+    {
+        var options = items.Select(selector)
+            .Where(option => !string.IsNullOrWhiteSpace(option.Value) && !string.IsNullOrWhiteSpace(option.Label))
+            .GroupBy(option => option.Value!, StringComparer.OrdinalIgnoreCase)
+            .Select(group => new FindingFacetOption(group.Key, group.First().Label!))
+            .OrderBy(option => option.Label, StringComparer.OrdinalIgnoreCase)
+            .ToArray();
+        foreach (var duplicateLabels in options
+                     .Select((option, index) => (Option: option, Index: index))
+                     .GroupBy(item => item.Option.Label, StringComparer.OrdinalIgnoreCase)
+                     .Where(group => group.Count() > 1))
+        {
+            var ordinal = 1;
+            foreach (var item in duplicateLabels.OrderBy(item => item.Option.Value, StringComparer.OrdinalIgnoreCase))
+            {
+                options[item.Index] = item.Option with { Label = $"{item.Option.Label} ({ordinal++})" };
+            }
+        }
+
+        return options;
     }
 
     private static void AppendReportInventory(StringBuilder html, ProjectInventory inventory)
@@ -2035,6 +2099,76 @@ public static class HtmlReportRenderer
         return null;
     }
 
+    private static FindingRenderItem CreateFindingRenderItem(ProjectInventory inventory, AssuranceFinding finding)
+    {
+        var context = ResolveVisualContext(inventory, finding);
+        var semanticUsage = inventory.SemanticObjectUsages
+            .Where(usage =>
+                (string.IsNullOrWhiteSpace(finding.SemanticModel) || string.Equals(usage.SemanticModel, finding.SemanticModel, StringComparison.OrdinalIgnoreCase)) &&
+                string.Equals(usage.Table, finding.Table, StringComparison.OrdinalIgnoreCase) &&
+                string.Equals(usage.ObjectName, finding.ObjectName, StringComparison.OrdinalIgnoreCase))
+            .Take(2)
+            .ToArray();
+        var usage = semanticUsage.Length == 1 ? semanticUsage[0] : null;
+        var filterSeverity = finding.AssessmentType == AssessmentTypes.ReviewRequired
+            ? AssessmentTypes.ReviewRequired
+            : finding.Severity;
+        var severityLabel = filterSeverity == AssessmentTypes.ReviewRequired
+            ? "Review required"
+            : finding.Severity;
+        var pageKey = context is null
+            ? CompositeFindingKey(finding.Report, finding.Page ?? finding.PageDisplayName)
+            : CompositeFindingKey(context.Report.Name, context.Page.Name);
+        var pageLabel = context?.Page.DisplayName ?? finding.PageDisplayName ?? finding.Page;
+        if (!string.IsNullOrWhiteSpace(pageLabel) && inventory.ReportCount > 1 && !string.IsNullOrWhiteSpace(finding.Report))
+        {
+            pageLabel = $"{pageLabel} — {finding.Report}";
+        }
+
+        string? visualKey = null;
+        string? visualLabel = null;
+        if (context is not null)
+        {
+            visualKey = CompositeFindingKey(context.Report.Name, context.Page.Name, context.Visual.Name);
+            var visualName = VisualDisplayName(context.Visual);
+            var visualType = HumanizeVisualType(context.Visual.VisualType);
+            var identity = string.Equals(visualName, visualType, StringComparison.OrdinalIgnoreCase)
+                ? visualType
+                : $"{visualName} — {visualType}";
+            visualLabel = $"{identity} · {context.Page.DisplayName} · {DescribePosition(context.Page, context.Visual)}";
+        }
+
+        var tableKey = string.IsNullOrWhiteSpace(finding.Table)
+            ? null
+            : CompositeFindingKey(finding.SemanticModel, finding.Table);
+        var tableLabel = finding.Table;
+        if (!string.IsNullOrWhiteSpace(tableLabel) && inventory.SemanticModelCount > 1 && !string.IsNullOrWhiteSpace(finding.SemanticModel))
+        {
+            tableLabel = $"{tableLabel} — {finding.SemanticModel}";
+        }
+
+        var searchText = string.Join(' ', new[]
+        {
+            finding.RuleId, finding.RuleVersion, finding.Category, HumanizeIdentifier(finding.Category),
+            finding.Severity, severityLabel, finding.AssessmentType, finding.Message,
+            FriendlyFindingMessage(finding, context), finding.Recommendation, finding.Report,
+            finding.Page, finding.PageDisplayName, pageLabel, finding.Visual, visualLabel,
+            finding.SemanticModel, finding.Table, finding.ObjectName, usage?.ObjectType,
+            usage is null ? null : UsageLabel(usage.UsageState), finding.ArtifactPath,
+            string.Join(' ', finding.EvidencePaths),
+        }.Where(value => !string.IsNullOrWhiteSpace(value)));
+
+        return new FindingRenderItem(
+            finding, context, searchText, filterSeverity, severityLabel, pageKey, pageLabel,
+            visualKey, visualLabel, tableKey, tableLabel, usage?.ObjectType, usage?.UsageState);
+    }
+
+    private static string? CompositeFindingKey(params string?[] parts)
+    {
+        var populated = parts.Where(part => !string.IsNullOrWhiteSpace(part)).ToArray();
+        return populated.Length == 0 ? null : string.Join('\u001f', populated);
+    }
+
     private static string DescribePosition(PageInventory page, VisualInventory visual)
     {
         if (page.Width is null or <= 0 || page.Height is null or <= 0 ||
@@ -2168,6 +2302,23 @@ public static class HtmlReportRenderer
     }
 
     private sealed record VisualContext(ReportInventory Report, PageInventory Page, VisualInventory Visual);
+
+    private sealed record FindingFacetOption(string Value, string Label);
+
+    private sealed record FindingRenderItem(
+        AssuranceFinding Finding,
+        VisualContext? Context,
+        string SearchText,
+        string FilterSeverity,
+        string SeverityLabel,
+        string? PageKey,
+        string? PageLabel,
+        string? VisualKey,
+        string? VisualLabel,
+        string? TableKey,
+        string? TableLabel,
+        string? ObjectType,
+        string? UsageState);
 
     private static string PageRole(PageInventory page)
     {
@@ -2320,6 +2471,23 @@ public static class HtmlReportRenderer
     .scope { border-left: .55rem solid var(--warning) !important; }
     .filters { display: flex; flex-wrap: wrap; gap: 1rem; align-items: end; margin: 1rem 0 .5rem; padding: 1rem; background: #eef2f6; border-radius: .3rem; }
     .filters div { min-width: min(100%, 14rem); flex: 1; }
+    .finding-investigation { min-width: 0; margin: 1rem 0 .5rem; padding: 1rem; border-radius: .3rem; background: #eef2f6; }
+    .finding-search { max-width: 48rem; }
+    .finding-filter-panel { min-width: 0; margin-top: .75rem; border-top: 1px solid #c8d2dc; }
+    .finding-filter-panel > summary { display: flex; width: fit-content; align-items: center; gap: .5rem; padding-top: .65rem; }
+    .active-filter-count { padding: .08rem .4rem; border-radius: 999px; background: var(--link); color: #fff; font-size: .78rem; }
+    .finding-facet-grid { display: grid; min-width: 0; grid-template-columns: repeat(auto-fit, minmax(min(100%, 13rem), 1fr)); gap: .75rem 1rem; padding-top: .8rem; }
+    .finding-facet-grid > div { min-width: 0; }
+    .finding-results-row { display: flex; min-width: 0; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .5rem 1rem; margin: .65rem 0 .35rem; }
+    .finding-results-row .filter-status { margin: 0; font-weight: 650; }
+    .finding-results-row button { min-height: 2.15rem; padding: .25rem .6rem; }
+    .filter-chips { display: flex; min-width: 0; flex-wrap: wrap; gap: .4rem; margin: .35rem 0 .75rem; }
+    .filter-chips[hidden], .finding-empty-state[hidden] { display: none; }
+    .filter-chip { min-height: 2rem; max-width: 100%; padding: .2rem .55rem; border-width: 1px; border-radius: 999px; font-size: .86rem; overflow-wrap: anywhere; }
+    .filter-chip::after { margin-left: .35rem; content: "×"; font-size: 1.05em; }
+    .finding-empty-state { display: grid; gap: .3rem; justify-items: start; margin: .75rem 0; padding: 1rem; border: 1px dashed #91a2b3; border-radius: .35rem; background: #f8fafc; }
+    .finding-empty-state span { color: var(--muted); }
+    .finding-empty-state button { margin-top: .35rem; }
     label { display: block; margin-bottom: .3rem; font-weight: 700; }
     input, select { width: 100%; min-height: 2.75rem; padding: .5rem; border: 2px solid #5f6c79; border-radius: .2rem; background: #fff; color: var(--text); font: inherit; }
     button { min-height: 2.5rem; padding: .45rem .8rem; border: 2px solid var(--link); border-radius: .25rem; background: #fff; color: var(--link); font: inherit; font-weight: 700; cursor: pointer; }
@@ -2462,6 +2630,8 @@ public static class HtmlReportRenderer
       main > section { padding: 1rem .65rem; }
       .filters { display: block; }
       .filters div + div { margin-top: .8rem; }
+      .finding-investigation { padding: .75rem; }
+      .finding-facet-grid { grid-template-columns: 1fr; }
       .finding-card > summary, .page-card > summary, .relationship-card > summary, .visual-card > summary, .semantic-table > summary { gap: .6rem; padding: .75rem; }
       .card-body, .page-body, .visual-body { padding: .75rem; }
       .power-query-card > summary { flex-wrap: wrap; }
@@ -2474,7 +2644,7 @@ public static class HtmlReportRenderer
     }
     @media print {
       body { background: #fff; }
-      .skip-link, .section-navigator, .filters, .filter-status, .details-controls { display: none; }
+      .skip-link, .section-navigator, .filters, .filter-status, .details-controls, .finding-investigation, .finding-results-row, .filter-chips, .finding-empty-state { display: none; }
       .report-section[hidden] { display: block !important; }
       main > section { break-inside: avoid; border-color: #777; }
       details { break-inside: avoid; }
@@ -2535,30 +2705,81 @@ public static class HtmlReportRenderer
       };
 
       const findingSearch = document.getElementById('finding-search');
-      const findingSeverity = document.getElementById('finding-severity');
-      const findingCategory = document.getElementById('finding-category');
       const findingList = document.getElementById('finding-list');
       const findingStatus = document.getElementById('finding-filter-status');
+      const findingFacets = [...document.querySelectorAll('[data-finding-facet]')];
+      const findingClear = document.getElementById('finding-clear-filters');
+      const findingChips = document.getElementById('finding-active-filters');
+      const findingEmpty = document.getElementById('finding-empty-state');
+      const findingActiveCount = document.getElementById('finding-active-filter-count');
+      const findingCards = findingList ? [...findingList.querySelectorAll('.finding-card')] : [];
+      findingCards.forEach(card => { card.findingSearchText = normalise(card.dataset.searchText); });
 
-      const filterFindings = () => {
+      const clearFindingFilters = () => {
+        if (findingSearch) findingSearch.value = '';
+        findingFacets.forEach(control => { control.value = ''; });
+        filterFindings();
+        findingSearch?.focus();
+      };
+
+      const addFindingChip = (label, clear) => {
+        if (!findingChips) return;
+        const chip = document.createElement('button');
+        chip.type = 'button';
+        chip.className = 'filter-chip';
+        chip.textContent = label;
+        chip.setAttribute('aria-label', `Remove filter: ${label}`);
+        chip.addEventListener('click', clear);
+        findingChips.append(chip);
+      };
+
+      function filterFindings() {
         if (!findingList) return;
-        const query = normalise(findingSearch.value.trim());
-        const severity = findingSeverity.value;
-        const category = findingCategory.value;
+        const query = normalise(findingSearch?.value.trim());
+        const activeFacets = findingFacets.filter(control => control.value);
         let visible = 0;
-        findingList.querySelectorAll('.finding-card').forEach(card => {
-          const show = (!query || normalise(card.textContent).includes(query)) &&
-            (!severity || card.dataset.severity === severity) &&
-            (!category || card.dataset.category === category);
+        findingCards.forEach(card => {
+          const show = (!query || card.findingSearchText.includes(query)) && activeFacets.every(control =>
+            card.dataset[`filter${control.dataset.filterKey.replace(/(^|-)([a-z])/g, (_, __, character) => character.toUpperCase())}`] === control.value);
           card.hidden = !show;
           if (show) visible += 1;
         });
-        findingStatus.textContent = `${visible} ${visible === 1 ? 'finding' : 'findings'} shown.`;
-      };
 
-      [findingSearch, findingSeverity, findingCategory].forEach(control => {
-        if (control) control.addEventListener('input', filterFindings);
-      });
+        const total = findingCards.length;
+        const activeCount = activeFacets.length + (query ? 1 : 0);
+        const findingWord = total === 1 ? 'finding' : 'findings';
+        findingStatus.textContent = activeCount ? `${visible.toLocaleString()} of ${total.toLocaleString()} ${findingWord}` : `${total.toLocaleString()} ${findingWord}`;
+        if (findingClear) findingClear.hidden = activeCount === 0;
+        if (findingEmpty) findingEmpty.hidden = visible !== 0;
+        if (findingActiveCount) {
+          findingActiveCount.hidden = activeCount === 0;
+          findingActiveCount.textContent = `${activeCount} active`;
+        }
+
+        if (findingChips) {
+          findingChips.replaceChildren();
+          if (query) addFindingChip(`Search: ${findingSearch.value.trim()}`, () => {
+            findingSearch.value = '';
+            filterFindings();
+            findingSearch.focus();
+          });
+          activeFacets.forEach(control => {
+            const label = `${control.previousElementSibling?.textContent}: ${control.selectedOptions[0]?.textContent}`;
+            addFindingChip(label, () => {
+              control.value = '';
+              filterFindings();
+              control.focus();
+            });
+          });
+          findingChips.hidden = activeCount === 0;
+        }
+      }
+
+      findingSearch?.addEventListener('input', filterFindings);
+      findingFacets.forEach(control => control.addEventListener('change', filterFindings));
+      findingClear?.addEventListener('click', clearFindingFilters);
+      document.querySelectorAll('[data-clear-finding-filters]').forEach(button => button.addEventListener('click', clearFindingFilters));
+      filterFindings();
 
       const pageSearch = document.getElementById('page-search');
       const pageList = document.getElementById('page-list');
