@@ -193,6 +193,13 @@ public static class HtmlReportRenderer
 
         AppendDataSourceSummary(html, inventory);
 
+        AppendInvestigationStart(html, "query", "Search queries", "Search query names, connectors, dependencies or model tables");
+        AppendInvestigationFacet(html, "query", "load-state", "Load state", "All load states", inventory.PowerQueryUsages.Select(usage => usage.UsageState).Distinct(StringComparer.OrdinalIgnoreCase).OrderBy(value => value).Select(value => new FindingFacetOption(value, value == PowerQueryUsageStates.LoadedToModel ? "Loaded to model" : value == PowerQueryUsageStates.SupportingQuery ? "Supporting query" : "Apparently unused")));
+        AppendInvestigationFacet(html, "query", "connector", "Connector type", "All connector types", inventory.DataSources.Select(source => source.ConnectorFamily).Where(value => !string.IsNullOrWhiteSpace(value)).Distinct(StringComparer.OrdinalIgnoreCase).OrderBy(value => value).Select(value => new FindingFacetOption(value!, value!)));
+        AppendInvestigationFacet(html, "query", "role", "Query role", "All query roles", inventory.PowerQueryUsages.Select(usage => usage.QueryRole).Where(value => !string.IsNullOrWhiteSpace(value)).Distinct(StringComparer.OrdinalIgnoreCase).OrderBy(value => value).Select(value => new FindingFacetOption(value!, PowerQueryRoleLabel(inventory.PowerQueryUsages.First(usage => usage.QueryRole == value)))));
+        AppendInvestigationEnd(html, "query", inventory.PowerQueryUsages.Count, "query", "queries");
+        html.AppendLine("      <div id=\"query-list\">");
+
         foreach (var modelGroup in inventory.PowerQueryUsages.GroupBy(usage => usage.SemanticModel))
         {
             html.Append("      <h3>").Append(Encode(modelGroup.Key)).AppendLine("</h3>");
@@ -215,8 +222,14 @@ public static class HtmlReportRenderer
                     .OrderBy(name => name, StringComparer.OrdinalIgnoreCase)
                     .ToArray();
 
+                var connectors = inventory.DataSources.Where(source => source.SemanticModel == usage.SemanticModel && source.QueryName == usage.QueryName)
+                    .Select(source => source.ConnectorFamily).Where(value => !string.IsNullOrWhiteSpace(value)).Select(value => value!).Distinct(StringComparer.OrdinalIgnoreCase).ToArray();
+                var searchText = string.Join(' ', new[] { usage.QueryName, usage.Table, usage.SemanticModel, roleLabel, PowerQuerySubtitle(usage, targets.Length, usedBy.Length) }
+                    .Concat(targets).Concat(usedBy).Concat(connectors));
                 html.Append("        <details id=\"").Append(Encode(PowerQueryAnchor(usage)))
-                    .Append("\" class=\"semantic-table power-query-card\"><summary><span class=\"summary-copy\"><strong>")
+                    .Append("\" class=\"semantic-table power-query-card\" data-investigation-item=\"query\" data-search-text=\"").Append(Encode(searchText))
+                    .Append("\" data-filter-load-state=\"").Append(Encode(usage.UsageState)).Append("\" data-filter-connector=\"").Append(Encode(string.Join('\u001f', connectors)))
+                    .Append("\" data-filter-role=\"").Append(Encode(usage.QueryRole ?? string.Empty)).Append("\"><summary><span class=\"summary-copy\"><strong>")
                     .Append(Encode(usage.QueryName)).Append("</strong><span>")
                     .Append(Encode(PowerQuerySubtitle(usage, targets.Length, usedBy.Length)))
                     .Append("</span></span><span class=\"badge ").Append(UsageClass(
@@ -257,6 +270,7 @@ public static class HtmlReportRenderer
             }
             html.AppendLine("      </div>");
         }
+        html.AppendLine("      </div>");
         html.AppendLine("    </section>");
     }
 
@@ -488,6 +502,47 @@ public static class HtmlReportRenderer
         return options;
     }
 
+    private static void AppendInvestigationStart(StringBuilder html, string prefix, string searchLabel, string placeholder)
+    {
+        html.Append("      <div class=\"finding-investigation investigation-controls\" data-investigation=\"").Append(prefix).AppendLine("\">");
+        html.Append("        <div class=\"finding-search\"><label for=\"").Append(prefix).Append("-search\">").Append(Encode(searchLabel))
+            .Append("</label><input id=\"").Append(prefix).Append("-search\" type=\"search\" autocomplete=\"off\" placeholder=\"")
+            .Append(Encode(placeholder)).AppendLine("\"></div>");
+        html.Append("        <details class=\"finding-filter-panel\"><summary>More filters <span id=\"").Append(prefix)
+            .AppendLine("-active-filter-count\" class=\"active-filter-count\" hidden></span></summary>");
+        html.Append("          <div class=\"finding-facet-grid\" aria-label=\"").Append(Encode($"Filter {searchLabel.ToLowerInvariant()}"))
+            .AppendLine("\">");
+    }
+
+    private static void AppendInvestigationFacet(StringBuilder html, string prefix, string key, string label, string allLabel, IEnumerable<FindingFacetOption> options, string? selected = null)
+    {
+        var values = options.ToArray();
+        if (values.Length == 0) return;
+        html.Append("            <div><label for=\"").Append(prefix).Append('-').Append(key).Append("\">").Append(Encode(label))
+            .Append("</label><select id=\"").Append(prefix).Append('-').Append(key).Append("\" data-investigation-facet data-filter-key=\"")
+            .Append(key).Append("\"><option value=\"\">").Append(Encode(allLabel)).AppendLine("</option>");
+        foreach (var option in values)
+        {
+            html.Append("              <option value=\"").Append(Encode(option.Value)).Append('"');
+            if (string.Equals(option.Value, selected, StringComparison.OrdinalIgnoreCase)) html.Append(" selected");
+            html.Append('>').Append(Encode(option.Label)).AppendLine("</option>");
+        }
+        html.AppendLine("            </select></div>");
+    }
+
+    private static void AppendInvestigationEnd(StringBuilder html, string prefix, int initialCount, string singular, string plural)
+    {
+        html.AppendLine("          </div></details></div>");
+        html.AppendLine("      <div class=\"finding-results-row investigation-results-row\">");
+        html.Append("        <p id=\"").Append(prefix).Append("-filter-status\" class=\"filter-status\" role=\"status\" aria-live=\"polite\" aria-atomic=\"true\">")
+            .Append(initialCount.ToString("N0", CultureInfo.InvariantCulture)).Append(' ').Append(initialCount == 1 ? singular : plural).AppendLine("</p>");
+        html.Append("        <button id=\"").Append(prefix).AppendLine("-clear-filters\" type=\"button\" hidden>Clear filters</button></div>");
+        html.Append("      <div id=\"").Append(prefix).AppendLine("-active-filters\" class=\"filter-chips\" aria-label=\"Active filters\" hidden></div>");
+        html.Append("      <div id=\"").Append(prefix).Append("-empty-state\" class=\"finding-empty-state investigation-empty-state\" hidden><strong>No ")
+            .Append(Encode(plural)).Append(" match the current search and filters.</strong><span>Try removing a filter or changing the search text.</span><button type=\"button\" data-clear-investigation=\"")
+            .Append(prefix).AppendLine("\">Clear search and filters</button></div>");
+    }
+
     private static void AppendReportInventory(StringBuilder html, ProjectInventory inventory)
     {
         html.AppendLine("    <section id=\"reports\" class=\"report-section\" data-report-section=\"reports\" aria-labelledby=\"reports-heading\">");
@@ -504,12 +559,12 @@ public static class HtmlReportRenderer
             ("Configured visual interactions", "Saved edit-interaction settings between source and target visuals, such as filtering, highlighting or no interaction."),
             ("Model object references", "References from visuals and page-level settings to semantic-model objects. Repeated uses of the same object are counted separately.")]);
 
-        html.AppendLine("      <div class=\"filters page-tools\" aria-label=\"Find report pages and visuals\">");
-        html.AppendLine("        <div><label for=\"page-search\">Find a page, visual, column or measure</label><input id=\"page-search\" type=\"search\" autocomplete=\"off\"></div>");
-        html.AppendLine("      </div>");
-        html.Append("      <p id=\"page-filter-status\" class=\"filter-status\" role=\"status\">")
-            .Append(inventory.PageCount.ToString(CultureInfo.InvariantCulture)).Append(" pages and ")
-            .Append(inventory.VisualCount.ToString(CultureInfo.InvariantCulture)).AppendLine(" visuals shown.</p>");
+        var pages = inventory.Reports.SelectMany(report => report.Pages).ToArray();
+        AppendInvestigationStart(html, "page", "Search pages and visuals", "Search page names, visual titles, types or model objects");
+        AppendInvestigationFacet(html, "page", "page-type", "Page type", "All page types", pages.Select(page => PageRole(page)).Distinct(StringComparer.OrdinalIgnoreCase).OrderBy(value => value).Select(value => new FindingFacetOption(value, value)));
+        AppendInvestigationFacet(html, "page", "visibility", "Visibility", "All visibility states", pages.Select(page => PageVisibility(page)).Distinct(StringComparer.OrdinalIgnoreCase).OrderBy(value => value).Select(value => new FindingFacetOption(value, value)));
+        AppendInvestigationFacet(html, "page", "visual-type", "Contains visual type", "All visual types", pages.SelectMany(page => page.Visuals).Select(visual => visual.VisualType).Where(value => !string.IsNullOrWhiteSpace(value)).Distinct(StringComparer.OrdinalIgnoreCase).OrderBy(HumanizeVisualType).Select(value => new FindingFacetOption(value!, HumanizeVisualType(value))));
+        AppendInvestigationEnd(html, "page", inventory.PageCount, "page", "pages");
         AppendDetailsControls(html, "page-list", "pages");
         html.AppendLine("      <div id=\"page-list\" class=\"page-list\">");
         foreach (var report in inventory.Reports)
@@ -611,6 +666,14 @@ public static class HtmlReportRenderer
             return;
         }
 
+        var relationships = inventory.SemanticModels.SelectMany(model => model.Relationships).ToArray();
+        AppendInvestigationStart(html, "relationship", "Search relationships", "Search table names, columns, cardinality or filter direction");
+        AppendInvestigationFacet(html, "relationship", "status", "Status", "All statuses", [new("active", "Active"), new("inactive", "Inactive")]);
+        AppendInvestigationFacet(html, "relationship", "cardinality", "Cardinality", "All cardinalities", relationships.Select(RelationshipCardinalityLabel).Distinct(StringComparer.OrdinalIgnoreCase).OrderBy(value => value).Select(value => new FindingFacetOption(value, value)));
+        AppendInvestigationFacet(html, "relationship", "direction", "Cross-filter direction", "All directions", relationships.Select(item => item.CrossFilteringBehavior).Distinct(StringComparer.OrdinalIgnoreCase).OrderBy(RelationshipDirectionLabel).Select(value => new FindingFacetOption(value, RelationshipDirectionLabel(value))));
+        AppendInvestigationEnd(html, "relationship", inventory.SemanticRelationshipCount, "relationship", "relationships");
+        html.AppendLine("      <div id=\"relationship-filter-list\">");
+
         foreach (var model in inventory.SemanticModels.Where(model => model.RelationshipCount > 0))
         {
             if (inventory.SemanticModelCount > 1)
@@ -625,7 +688,15 @@ public static class HtmlReportRenderer
             {
                 var cardinality = RelationshipCardinalityLabel(relationship);
                 var direction = RelationshipDirectionLabel(relationship.CrossFilteringBehavior);
-                html.AppendLine("        <details class=\"relationship-card\">");
+                var reviewTerms = string.Equals(relationship.CrossFilteringBehavior, "bothDirections", StringComparison.OrdinalIgnoreCase) ||
+                                  (string.Equals(relationship.FromCardinality, "many", StringComparison.OrdinalIgnoreCase) && string.Equals(relationship.ToCardinality, "many", StringComparison.OrdinalIgnoreCase))
+                    ? "Review relationship risk"
+                    : string.Empty;
+                var relationshipSearch = $"{relationship.FromTable} {relationship.FromColumn} {relationship.ToTable} {relationship.ToColumn} {cardinality} {direction} {(relationship.IsActive ? "Active" : "Inactive")} {reviewTerms}";
+                html.Append("        <details class=\"relationship-card\" data-investigation-item=\"relationship\" data-search-text=\"").Append(Encode(relationshipSearch))
+                    .Append("\" data-filter-status=\"").Append(relationship.IsActive ? "active" : "inactive")
+                    .Append("\" data-filter-cardinality=\"").Append(Encode(cardinality)).Append("\" data-filter-direction=\"")
+                    .Append(Encode(relationship.CrossFilteringBehavior)).AppendLine("\">");
                 html.Append("          <summary><span class=\"summary-copy\"><strong>")
                     .Append(Encode($"{relationship.FromTable}[{relationship.FromColumn}]"))
                     .Append("</strong><span>").Append(Encode(cardinality)).Append(" · ")
@@ -660,6 +731,8 @@ public static class HtmlReportRenderer
             html.AppendLine("      </div>");
         }
 
+        html.AppendLine("      </div>");
+
         html.AppendLine("    </section>");
     }
 
@@ -693,29 +766,12 @@ public static class HtmlReportRenderer
             return;
         }
 
-        html.AppendLine("      <div class=\"filters\" aria-label=\"Filter semantic objects\">");
-        html.AppendLine("        <div><label for=\"usage-search\">Search tables and objects</label><input id=\"usage-search\" type=\"search\" autocomplete=\"off\"></div>");
-        html.AppendLine("        <div><label for=\"usage-state\">Usage state</label><select id=\"usage-state\"><option value=\"\">All usage states</option>");
-        foreach (var state in inventory.SemanticObjectUsages
-                     .Select(usage => usage.UsageState)
-                     .Distinct(StringComparer.Ordinal)
-                     .OrderBy(UsageOrder))
-        {
-            html.Append("          <option value=\"").Append(Encode(state)).Append("\">")
-                .Append(Encode(UsageLabel(state))).AppendLine("</option>");
-        }
-
-        html.AppendLine("        </select></div>");
-        html.AppendLine("        <div><label for=\"usage-type\">Object type</label><select id=\"usage-type\"><option value=\"\">All object types</option>");
-        foreach (var type in inventory.SemanticObjectUsages.Select(usage => usage.ObjectType).Distinct(StringComparer.Ordinal).OrderBy(type => type, StringComparer.Ordinal))
-        {
-            html.Append("          <option value=\"").Append(Encode(type)).Append("\">").Append(Encode(HumanizeIdentifier(type))).AppendLine("</option>");
-        }
-        html.AppendLine("        </select></div>");
-        html.AppendLine("        <div><label for=\"usage-origin\">Object origin</label><select id=\"usage-origin\"><option value=\"developer\" selected>Developer-authored objects</option><option value=\"\">All objects</option><option value=\"system\">Power BI-generated objects</option></select></div>");
-        html.AppendLine("      </div>");
-        html.Append("      <p id=\"usage-filter-status\" class=\"filter-status\" role=\"status\">")
-            .Append(inventory.DeveloperSemanticObjectCount.ToString(CultureInfo.InvariantCulture)).AppendLine(" developer-authored model objects shown.</p>");
+        AppendInvestigationStart(html, "usage", "Search model objects", "Search tables, columns, measures or usage reasons");
+        AppendInvestigationFacet(html, "usage", "table", "Table", "All tables", inventory.SemanticObjectUsages.Select(usage => usage.Table).Distinct(StringComparer.OrdinalIgnoreCase).OrderBy(value => value).Select(value => new FindingFacetOption(value, value)));
+        AppendInvestigationFacet(html, "usage", "object-type", "Object type", "All object types", inventory.SemanticObjectUsages.Select(usage => usage.ObjectType).Distinct(StringComparer.OrdinalIgnoreCase).OrderBy(value => value).Select(value => new FindingFacetOption(value, HumanizeIdentifier(value))));
+        AppendInvestigationFacet(html, "usage", "usage-state", "Usage state", "All usage states", inventory.SemanticObjectUsages.Select(usage => usage.UsageState).Distinct(StringComparer.OrdinalIgnoreCase).OrderBy(UsageOrder).Select(value => new FindingFacetOption(value, UsageLabel(value))));
+        AppendInvestigationFacet(html, "usage", "origin", "Object origin", "All objects", [new("developer", "Developer-authored objects"), new("system", "Power BI-generated objects")], "developer");
+        AppendInvestigationEnd(html, "usage", inventory.DeveloperSemanticObjectCount, "semantic object", "semantic objects");
         AppendDetailsControls(html, "semantic-table-list", "tables");
         html.AppendLine("      <div id=\"semantic-table-list\" class=\"semantic-table-list\">");
         foreach (var model in inventory.SemanticModels)
@@ -747,7 +803,13 @@ public static class HtmlReportRenderer
             (string.Equals(finding.Page, page.Name, StringComparison.OrdinalIgnoreCase) ||
              string.Equals(finding.PageDisplayName, page.DisplayName, StringComparison.OrdinalIgnoreCase)));
 
-        html.Append("        <details class=\"page-card\" data-page-name=\"").Append(Encode(page.DisplayName)).Append('"');
+        var visualTypes = string.Join('\u001f', page.Visuals.Select(visual => visual.VisualType).Where(value => !string.IsNullOrWhiteSpace(value)).Distinct(StringComparer.OrdinalIgnoreCase));
+        var pageSearchText = string.Join(' ', new[] { page.DisplayName, page.Name, PageRole(page), PageVisibility(page) }
+            .Concat(page.Visuals.SelectMany(visual => new[] { VisualDisplayName(visual), HumanizeVisualType(visual.VisualType), visual.VisualType }))
+            .Concat(page.FieldReferences.Select(reference => $"{reference.Table} {reference.ObjectName} {reference.ObjectType}")));
+        html.Append("        <details class=\"page-card\" data-investigation-item=\"page\" data-search-text=\"").Append(Encode(pageSearchText))
+            .Append("\" data-filter-page-type=\"").Append(Encode(PageRole(page))).Append("\" data-filter-visibility=\"")
+            .Append(Encode(PageVisibility(page))).Append("\" data-filter-visual-type=\"").Append(Encode(visualTypes)).Append("\" data-page-name=\"").Append(Encode(page.DisplayName)).Append('"');
         if (page.IsActive)
         {
             html.Append(" open");
@@ -1092,10 +1154,12 @@ public static class HtmlReportRenderer
                 var usageReason = usage.DirectReportLocationCount == 0
                     ? DescribeSemanticUsageReason(inventory, usage)
                     : null;
-                html.Append("              <li class=\"semantic-object\" data-usage-state=\"").Append(Encode(usage.UsageState))
+                html.Append("              <li class=\"semantic-object\" data-investigation-item=\"usage\" data-filter-table=\"").Append(Encode(table.Name))
+                    .Append("\" data-filter-object-type=\"").Append(Encode(usage.ObjectType)).Append("\" data-filter-usage-state=\"").Append(Encode(usage.UsageState))
+                    .Append("\" data-filter-origin=\"").Append(table.IsSystemGenerated ? "system" : "developer").Append("\" data-usage-state=\"").Append(Encode(usage.UsageState))
                     .Append("\" data-object-type=\"").Append(Encode(usage.ObjectType))
                     .Append("\" data-object-origin=\"").Append(table.IsSystemGenerated ? "system" : "developer")
-                    .Append("\" data-search-text=\"").Append(Encode($"{table.Name} {usage.ObjectName} {HumanizeIdentifier(usage.ObjectType)}"))
+                    .Append("\" data-search-text=\"").Append(Encode($"{table.Name} {usage.ObjectName} {HumanizeIdentifier(usage.ObjectType)} {UsageLabel(usage.UsageState)} {usageReason}"))
                     .Append("\"><div class=\"semantic-object-header\"><span class=\"object-name\"><strong>").Append(Encode(usage.ObjectName))
                     .Append("</strong><span>").Append(Encode(HumanizeIdentifier(usage.ObjectType)));
                 if (usage.DirectReportLocationCount > 0)
@@ -2781,75 +2845,73 @@ public static class HtmlReportRenderer
       document.querySelectorAll('[data-clear-finding-filters]').forEach(button => button.addEventListener('click', clearFindingFilters));
       filterFindings();
 
-      const pageSearch = document.getElementById('page-search');
-      const pageList = document.getElementById('page-list');
-      const pageStatus = document.getElementById('page-filter-status');
+      const investigationConfigs = [
+        { prefix: 'page', singular: 'page', plural: 'pages' },
+        { prefix: 'query', singular: 'query', plural: 'queries' },
+        { prefix: 'relationship', singular: 'relationship', plural: 'relationships' },
+        { prefix: 'usage', singular: 'semantic object', plural: 'semantic objects' }
+      ];
 
-      const filterPages = () => {
-        if (!pageList) return;
-        const query = normalise(pageSearch.value.trim());
-        let visiblePages = 0;
-        let visibleVisuals = 0;
-        pageList.querySelectorAll('.page-card').forEach(page => {
-          const pageSummary = page.querySelector(':scope > summary');
-          const pageMatches = !query || normalise(pageSummary?.textContent).includes(query);
-          let pageVisuals = 0;
-          page.querySelectorAll('.visual-card').forEach(visual => {
-            const show = pageMatches || !query || normalise(visual.textContent).includes(query);
-            visual.hidden = !show;
-            if (show) pageVisuals += 1;
-          });
-          const showPage = pageMatches || pageVisuals > 0;
-          page.hidden = !showPage;
-          if (showPage) {
-            visiblePages += 1;
-            visibleVisuals += pageVisuals;
-            if (query) page.open = true;
-          }
-        });
-        pageStatus.textContent = `${visiblePages} ${visiblePages === 1 ? 'page' : 'pages'} and ${visibleVisuals} ${visibleVisuals === 1 ? 'visual' : 'visuals'} shown.`;
-      };
+      const setupInvestigation = ({ prefix, singular, plural }) => {
+        const search = document.getElementById(`${prefix}-search`);
+        if (!search) return;
+        const items = [...document.querySelectorAll(`[data-investigation-item="${prefix}"]`)];
+        const facets = [...document.querySelectorAll(`[data-investigation="${prefix}"] [data-investigation-facet]`)];
+        const status = document.getElementById(`${prefix}-filter-status`);
+        const clear = document.getElementById(`${prefix}-clear-filters`);
+        const chips = document.getElementById(`${prefix}-active-filters`);
+        const empty = document.getElementById(`${prefix}-empty-state`);
+        const activeBadge = document.getElementById(`${prefix}-active-filter-count`);
+        items.forEach(item => { item.investigationSearchText = normalise(item.dataset.searchText); });
 
-      if (pageSearch) pageSearch.addEventListener('input', filterPages);
-
-      const usageSearch = document.getElementById('usage-search');
-      const usageState = document.getElementById('usage-state');
-      const usageType = document.getElementById('usage-type');
-      const usageOrigin = document.getElementById('usage-origin');
-      const semanticTableList = document.getElementById('semantic-table-list');
-      const usageStatus = document.getElementById('usage-filter-status');
-
-      const filterUsage = () => {
-        if (!semanticTableList) return;
-        const query = normalise(usageSearch.value.trim());
-        const state = usageState.value;
-        const type = usageType.value;
-        const origin = usageOrigin.value;
-        let visible = 0;
-        semanticTableList.querySelectorAll('.semantic-table').forEach(table => {
-          let tableVisible = 0;
-          table.querySelectorAll('.semantic-object').forEach(item => {
-            const show = (!query || normalise(item.dataset.searchText).includes(query)) &&
-              (!state || item.dataset.usageState === state) &&
-              (!type || item.dataset.objectType === type) &&
-              (!origin || item.dataset.objectOrigin === origin);
+        const addChip = (label, remove) => {
+          const chip = document.createElement('button');
+          chip.type = 'button';
+          chip.className = 'filter-chip';
+          chip.textContent = label;
+          chip.setAttribute('aria-label', `Remove filter: ${label}`);
+          chip.addEventListener('click', remove);
+          chips.append(chip);
+        };
+        const run = () => {
+          const query = normalise(search.value.trim());
+          const activeFacets = facets.filter(control => control.value);
+          let visible = 0;
+          items.forEach(item => {
+            const facetMatch = activeFacets.every(control => {
+              const key = `filter${control.dataset.filterKey.replace(/(^|-)([a-z])/g, (_, __, character) => character.toUpperCase())}`;
+              return (item.dataset[key] || '').split('\u001f').includes(control.value);
+            });
+            const show = (!query || item.investigationSearchText.includes(query)) && facetMatch;
             item.hidden = !show;
-            if (show) {
-              tableVisible += 1;
-              visible += 1;
-            }
+            if (show) visible += 1;
           });
-          table.hidden = tableVisible === 0;
-          if (tableVisible > 0 && (query || state || type || origin === 'system')) table.open = true;
-        });
-        const originLabel = origin === 'developer' ? ' developer' : origin === 'system' ? ' Power BI-generated' : ' semantic';
-        usageStatus.textContent = `${visible}${originLabel} ${visible === 1 ? 'object' : 'objects'} shown.`;
+          if (prefix === 'usage') {
+            document.querySelectorAll('#semantic-table-list .semantic-table').forEach(table => {
+              const shown = [...table.querySelectorAll('.semantic-object')].some(item => !item.hidden);
+              table.hidden = !shown;
+              if (shown && (query || activeFacets.length)) table.open = true;
+            });
+          }
+          const activeCount = activeFacets.length + (query ? 1 : 0);
+          status.textContent = activeCount ? `${visible.toLocaleString()} of ${items.length.toLocaleString()} ${items.length === 1 ? singular : plural}` : `${items.length.toLocaleString()} ${items.length === 1 ? singular : plural}`;
+          clear.hidden = activeCount === 0;
+          empty.hidden = visible !== 0;
+          activeBadge.hidden = activeCount === 0;
+          activeBadge.textContent = `${activeCount} active`;
+          chips.replaceChildren();
+          if (query) addChip(`Search: ${search.value.trim()}`, () => { search.value = ''; run(); search.focus(); });
+          activeFacets.forEach(control => addChip(`${control.previousElementSibling?.textContent}: ${control.selectedOptions[0]?.textContent}`, () => { control.value = ''; run(); control.focus(); }));
+          chips.hidden = activeCount === 0;
+        };
+        const clearAll = () => { search.value = ''; facets.forEach(control => { control.value = ''; }); run(); search.focus(); };
+        search.addEventListener('input', run);
+        facets.forEach(control => control.addEventListener('change', run));
+        clear.addEventListener('click', clearAll);
+        document.querySelector(`[data-clear-investigation="${prefix}"]`)?.addEventListener('click', clearAll);
+        run();
       };
-
-      [usageSearch, usageState, usageType, usageOrigin].forEach(control => {
-        if (control) control.addEventListener('input', filterUsage);
-      });
-      filterUsage();
+      investigationConfigs.forEach(setupInvestigation);
 
       document.querySelectorAll('[data-details-action]').forEach(button => {
         button.addEventListener('click', () => {

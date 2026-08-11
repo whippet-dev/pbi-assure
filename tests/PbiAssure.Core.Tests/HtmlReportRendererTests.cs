@@ -163,6 +163,59 @@ public sealed class HtmlReportRendererTests : IDisposable
     }
 
     [Fact]
+    public void RenderUsesOneStructuredInvestigationPatternAcrossMajorReportSections()
+    {
+        CreateSampleProject();
+
+        var inventory = ProjectScanner.Scan(testRoot);
+        var html = HtmlReportRenderer.Render(inventory);
+
+        foreach (var prefix in new[] { "page", "query", "relationship", "usage" })
+        {
+            Assert.Contains($"data-investigation=\"{prefix}\"", html, StringComparison.Ordinal);
+            Assert.Contains($"id=\"{prefix}-search\"", html, StringComparison.Ordinal);
+            Assert.Contains($"id=\"{prefix}-filter-status\"", html, StringComparison.Ordinal);
+            Assert.Contains($"id=\"{prefix}-active-filters\"", html, StringComparison.Ordinal);
+            Assert.Contains($"id=\"{prefix}-clear-filters\"", html, StringComparison.Ordinal);
+            Assert.Contains($"id=\"{prefix}-empty-state\"", html, StringComparison.Ordinal);
+            Assert.Contains($"data-investigation-item=\"{prefix}\"", html, StringComparison.Ordinal);
+        }
+
+        Assert.Contains("id=\"page-page-type\"", html, StringComparison.Ordinal);
+        Assert.Contains("id=\"page-visibility\"", html, StringComparison.Ordinal);
+        Assert.Contains("id=\"page-visual-type\"", html, StringComparison.Ordinal);
+        Assert.Contains("Quarterly revenue", html, StringComparison.Ordinal);
+        Assert.Contains("data-filter-visual-type=\"", html, StringComparison.Ordinal);
+
+        Assert.Contains("id=\"query-load-state\"", html, StringComparison.Ordinal);
+        Assert.Contains("id=\"query-connector\"", html, StringComparison.Ordinal);
+        Assert.Contains("id=\"query-role\"", html, StringComparison.Ordinal);
+        Assert.Contains("data-filter-load-state=", html, StringComparison.Ordinal);
+
+        Assert.Contains("id=\"relationship-status\"", html, StringComparison.Ordinal);
+        Assert.Contains("id=\"relationship-cardinality\"", html, StringComparison.Ordinal);
+        Assert.Contains("id=\"relationship-direction\"", html, StringComparison.Ordinal);
+        Assert.Contains("data-filter-status=\"inactive\"", html, StringComparison.Ordinal);
+        Assert.Contains("data-filter-cardinality=\"Many-to-many\"", html, StringComparison.Ordinal);
+
+        Assert.Contains("id=\"usage-table\"", html, StringComparison.Ordinal);
+        Assert.Contains("id=\"usage-object-type\"", html, StringComparison.Ordinal);
+        Assert.Contains("id=\"usage-usage-state\"", html, StringComparison.Ordinal);
+        Assert.Contains("id=\"usage-origin\"", html, StringComparison.Ordinal);
+        Assert.Contains("data-filter-table=\"Sales\"", html, StringComparison.Ordinal);
+        Assert.Contains("data-filter-usage-state=\"ApparentlyUnused\"", html, StringComparison.Ordinal);
+
+        Assert.Contains("activeFacets.every", html, StringComparison.Ordinal);
+        Assert.Contains("split('\\u001f').includes(control.value)", html, StringComparison.Ordinal);
+        Assert.Contains("Remove filter:", html, StringComparison.Ordinal);
+        Assert.Contains("No semantic objects match the current search and filters.", html, StringComparison.Ordinal);
+        Assert.Contains(".finding-investigation", html, StringComparison.Ordinal);
+        Assert.Contains("@media print", html, StringComparison.Ordinal);
+        Assert.Contains("history.pushState(null, '', `#${sectionName}`)", html, StringComparison.Ordinal);
+        Assert.DoesNotContain("normalise(item.textContent).includes(query)", html, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void RenderGroupsSummaryMetricsByDeveloperQuestionWithoutChangingValues()
     {
         CreateSampleProject();
@@ -306,17 +359,16 @@ public sealed class HtmlReportRendererTests : IDisposable
         Assert.Contains("<span class=\"kicker\">Power BI-generated table</span>", html, StringComparison.Ordinal);
         Assert.Contains("id=\"usage-origin\"", html, StringComparison.Ordinal);
         Assert.Contains("data-object-origin=\"system\"", html, StringComparison.Ordinal);
-        Assert.Contains("item.dataset.objectOrigin === origin", html, StringComparison.Ordinal);
-        Assert.Contains("filterUsage();", html, StringComparison.Ordinal);
+        Assert.Contains("investigationConfigs.forEach(setupInvestigation);", html, StringComparison.Ordinal);
         Assert.Contains("Developer-authored model objects", html, StringComparison.Ordinal);
         Assert.Contains("System-generated model objects", html, StringComparison.Ordinal);
         Assert.Contains("data-usage-state=\"DirectlyUsed\"", html, StringComparison.Ordinal);
         Assert.Contains("data-usage-state=\"ApparentlyUnused\"", html, StringComparison.Ordinal);
-        Assert.Contains("id=\"usage-type\"", html, StringComparison.Ordinal);
+        Assert.Contains("id=\"usage-object-type\"", html, StringComparison.Ordinal);
         Assert.Contains("data-object-type=\"Column\"", html, StringComparison.Ordinal);
-        Assert.Contains("<label for=\"usage-search\">Search tables and objects</label>", html, StringComparison.Ordinal);
+        Assert.Contains("<label for=\"usage-search\">Search model objects</label>", html, StringComparison.Ordinal);
         Assert.Contains("data-search-text=\"Sales ", html, StringComparison.Ordinal);
-        Assert.Contains("normalise(item.dataset.searchText).includes(query)", html, StringComparison.Ordinal);
+        Assert.Contains("item.investigationSearchText.includes(query)", html, StringComparison.Ordinal);
         Assert.DoesNotContain("normalise(item.textContent).includes(query)", html, StringComparison.Ordinal);
         Assert.Contains("Where used", html, StringComparison.Ordinal);
         Assert.Contains("class=\"semantic-object-header\"", html, StringComparison.Ordinal);
