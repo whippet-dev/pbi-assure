@@ -80,7 +80,8 @@ internal static class SemanticDependencyAnalyzer
 
             foreach (var reference in EnumerateReportFieldReferences(report))
             {
-                if (reference.ObjectType == SemanticObjectTypes.Measure &&
+                if (SemanticReportReferencePolicy.EstablishesDirectUsage(reference) &&
+                    reference.ObjectType == SemanticObjectTypes.Measure &&
                     reportMeasures.TryGetValue(QualifiedKey(reference.Table, reference.ObjectName), out var root))
                 {
                     reportMeasureRoots.Add(NodeKey(model.Name, root));

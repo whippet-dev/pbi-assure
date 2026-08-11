@@ -14,7 +14,8 @@ internal static class SemanticUsageReconciler
         foreach (var model in semanticModels)
         {
             var matchingReports = ReportModelBinder.FindReports(model, reports, semanticModels);
-            var evidenceByIdentity = ReadEvidence(matchingReports);
+            var allEvidenceByIdentity = ReadEvidence(matchingReports, includePersistedSelectors: true);
+            var usageEvidenceByIdentity = ReadEvidence(matchingReports, includePersistedSelectors: false);
 
             foreach (var semanticObject in EnumerateObjects(model))
             {
@@ -23,9 +24,9 @@ internal static class SemanticUsageReconciler
                     semanticObject.ObjectName,
                     semanticObject.ObjectType,
                     semanticObject.HierarchyName);
-                evidenceByIdentity.TryGetValue(identity, out var evidence);
+                usageEvidenceByIdentity.TryGetValue(identity, out var evidence);
                 evidence ??= [];
-                if (evidence.Count > 0)
+                if (allEvidenceByIdentity.ContainsKey(identity))
                 {
                     resolvedEvidence.Add(string.Join('\u001f', model.Name, identity));
                 }
@@ -105,11 +106,14 @@ internal static class SemanticUsageReconciler
     }
 
     private static Dictionary<string, IReadOnlyList<SemanticUsageEvidence>> ReadEvidence(
-        IReadOnlyList<ReportInventory> reports)
+        IReadOnlyList<ReportInventory> reports,
+        bool includePersistedSelectors)
     {
         return reports
             .SelectMany(report => EnumerateReferences(report)
                 .Where(context => !IsReportMeasureReference(report, context.Reference))
+                .Where(context => includePersistedSelectors ||
+                    SemanticReportReferencePolicy.EstablishesDirectUsage(context.Reference))
                 .Select(context => new
                 {
                     Identity = FieldIdentity.Create(context.Reference),
