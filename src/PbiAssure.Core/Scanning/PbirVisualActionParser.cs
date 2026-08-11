@@ -23,6 +23,7 @@ internal static class PbirVisualActionParser
                 var show = PbirExpressionReader.ReadProperty(properties, "show");
                 var type = PbirExpressionReader.ReadProperty(properties, "type");
                 var bookmark = PbirExpressionReader.ReadProperty(properties, "bookmark");
+                var navigationSection = PbirExpressionReader.ReadProperty(properties, "navigationSection");
                 var destination = PbirExpressionReader.ReadProperty(properties, "destination");
                 var webUrl = PbirExpressionReader.ReadProperty(properties, "webUrl");
 
@@ -30,11 +31,12 @@ internal static class PbirVisualActionParser
                     IsEnabled: show.IsPresent ? PbirExpressionReader.ParseBoolean(show.Literal) : true,
                     ActionType: type.Literal,
                     BookmarkTarget: bookmark.Literal,
-                    PageTarget: destination.Literal,
+                    PageTarget: navigationSection.Literal ?? destination.Literal,
                     WebUrl: webUrl.Literal,
                     HasDynamicConfiguration: show.IsDynamic ||
                                              type.IsDynamic ||
                                              bookmark.IsDynamic ||
+                                             navigationSection.IsDynamic ||
                                              destination.IsDynamic ||
                                              webUrl.IsDynamic,
                     EvidencePath: $"$.visual.visualContainerObjects.visualLink[{index}]"));

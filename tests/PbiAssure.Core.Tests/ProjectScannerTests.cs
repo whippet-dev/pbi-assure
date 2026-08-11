@@ -1,5 +1,6 @@
 using PbiAssure.Core.Inventory;
 using PbiAssure.Core.Scanning;
+using PbiAssure.Reporting;
 
 namespace PbiAssure.Core.Tests;
 
@@ -1113,6 +1114,85 @@ public sealed class ProjectScannerTests : IDisposable
     }
 
     [Fact]
+    public void ScanResolvesPageNavigationSectionAgainstInternalPageName()
+    {
+        WriteFile(
+            Path.Combine("PageNavigation.Report", "definition", "pages", "pages.json"),
+            """
+            {
+              "pageOrder": ["source-page", "cb23a770a3e916a0c58a"]
+            }
+            """);
+        WriteFile(
+            Path.Combine("PageNavigation.Report", "definition", "pages", "source-page", "page.json"),
+            """
+            {
+              "name": "source-page",
+              "displayName": "Source"
+            }
+            """);
+        WriteFile(
+            Path.Combine("PageNavigation.Report", "definition", "pages", "cb23a770a3e916a0c58a", "page.json"),
+            """
+            {
+              "name": "cb23a770a3e916a0c58a",
+              "displayName": "Corporate - Freedom of Information"
+            }
+            """);
+        WriteFile(
+            Path.Combine("PageNavigation.Report", "definition", "pages", "source-page", "visuals", "actions", "visual.json"),
+            """
+            {
+              "name": "actions",
+              "position": {
+                "x": 10,
+                "y": 10,
+                "height": 40,
+                "width": 120,
+                "tabOrder": 0
+              },
+              "visual": {
+                "visualType": "actionButton",
+                "visualContainerObjects": {
+                  "visualLink": [
+                    {
+                      "properties": {
+                        "show": { "expr": { "Literal": { "Value": "true" } } },
+                        "type": { "expr": { "Literal": { "Value": "'PageNavigation'" } } },
+                        "navigationSection": { "expr": { "Literal": { "Value": "'cb23a770a3e916a0c58a'" } } }
+                      }
+                    },
+                    {
+                      "properties": {
+                        "show": { "expr": { "Literal": { "Value": "true" } } },
+                        "type": { "expr": { "Literal": { "Value": "'PageNavigation'" } } },
+                        "navigationSection": { "expr": { "Literal": { "Value": "'unknown-page'" } } }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+            """);
+
+        var result = ProjectScanner.Scan(testRoot);
+
+        var actions = result.Reports.Single().Pages
+            .Single(page => page.Name == "source-page").Visuals.Single().Actions;
+        Assert.Equal("cb23a770a3e916a0c58a", actions[0].PageTarget);
+        Assert.Equal("unknown-page", actions[1].PageTarget);
+        var missingPageFinding = Assert.Single(result.Findings, finding => finding.RuleId == "PBI-NAV-007");
+        Assert.Equal("unknown-page", missingPageFinding.ObjectName);
+        Assert.DoesNotContain(result.Findings, finding =>
+            finding.RuleId == "PBI-NAV-002" && finding.ObjectName == "cb23a770a3e916a0c58a");
+        var html = HtmlReportRenderer.Render(result);
+        Assert.Contains(
+            "opens report page &#x201C;Corporate - Freedom of Information&#x201D;",
+            html,
+            StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void ScanKeepsQnaGeneratedReferencesStrictWithoutTreatingUnresolvedLanguageAsBrokenBindings()
     {
         WriteFile(
@@ -1647,15 +1727,96 @@ public sealed class ProjectScannerTests : IDisposable
             .Where(finding => finding.RuleId is "PBI-NAV-012" or "PBI-NAV-013" or
                 "PBI-NAV-014" or "PBI-NAV-015" or "PBI-NAV-016")
             .ToArray();
-        Assert.Equal(6, interactionFindings.Length);
+        Assert.Equal(5, interactionFindings.Length);
         Assert.Equal(2, interactionFindings.Count(finding => finding.RuleId == "PBI-NAV-012"));
         Assert.Single(interactionFindings, finding => finding.RuleId == "PBI-NAV-013");
-        Assert.Single(interactionFindings, finding => finding.RuleId == "PBI-NAV-014");
+        Assert.DoesNotContain(interactionFindings, finding => finding.RuleId == "PBI-NAV-014");
         Assert.Single(interactionFindings, finding => finding.RuleId == "PBI-NAV-015");
         var dynamicFinding = Assert.Single(interactionFindings, finding => finding.RuleId == "PBI-NAV-016");
         Assert.Equal(AssessmentTypes.ReviewRequired, dynamicFinding.AssessmentType);
         Assert.DoesNotContain(interactionFindings, finding =>
             finding.EvidencePaths.Contains("$.visual.visualContainerObjects.visualTooltip[4]"));
+    }
+
+    [Fact]
+    public void ScanDistinguishesAutomaticAndExplicitReportPageTooltipTargets()
+    {
+        WriteFile(
+            Path.Combine("Tooltips.Report", "definition", "pages", "pages.json"),
+            """
+            {
+              "pageOrder": ["source-page", "tooltip-page"]
+            }
+            """);
+        WriteFile(
+            Path.Combine("Tooltips.Report", "definition", "pages", "source-page", "page.json"),
+            "{ \"name\": \"source-page\", \"displayName\": \"Source\" }");
+        WriteFile(
+            Path.Combine("Tooltips.Report", "definition", "pages", "tooltip-page", "page.json"),
+            "{ \"name\": \"tooltip-page\", \"displayName\": \"Tooltip\", \"type\": \"Tooltip\" }");
+        WriteFile(
+            Path.Combine("Tooltips.Report", "definition", "pages", "source-page", "visuals", "tooltip-visual", "visual.json"),
+            """
+            {
+              "name": "tooltip-visual",
+              "visual": {
+                "visualType": "columnChart",
+                "visualContainerObjects": {
+                  "visualTooltip": [
+                    {
+                      "properties": {
+                        "show": { "expr": { "Literal": { "Value": "true" } } },
+                        "type": { "expr": { "Literal": { "Value": "'Canvas'" } } }
+                      }
+                    },
+                    {
+                      "properties": {
+                        "show": { "expr": { "Literal": { "Value": "true" } } },
+                        "type": { "expr": { "Literal": { "Value": "'Canvas'" } } },
+                        "section": { "expr": { "Literal": { "Value": "'tooltip-page'" } } }
+                      }
+                    },
+                    {
+                      "properties": {
+                        "show": { "expr": { "Literal": { "Value": "true" } } },
+                        "type": { "expr": { "Literal": { "Value": "'Canvas'" } } },
+                        "section": { "expr": { "Literal": { "Value": "''" } } }
+                      }
+                    },
+                    {
+                      "properties": {
+                        "show": { "expr": { "Literal": { "Value": "true" } } },
+                        "type": { "expr": { "Literal": { "Value": "'Canvas'" } } },
+                        "section": { "expr": { "Literal": { "Value": "'deleted-tooltip-page'" } } }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+            """);
+
+        var result = ProjectScanner.Scan(testRoot);
+
+        var bindings = result.Reports.Single().Pages
+            .Single(page => page.Name == "source-page").Visuals.Single().TooltipBindings;
+        Assert.Equal(4, bindings.Count);
+        Assert.False(bindings[0].HasExplicitTarget);
+        Assert.Null(bindings[0].TargetPage);
+        Assert.True(bindings[1].HasExplicitTarget);
+        Assert.Equal("tooltip-page", bindings[1].TargetPage);
+        Assert.DoesNotContain(result.Findings, finding =>
+            (finding.RuleId is "PBI-NAV-013" or "PBI-NAV-014") &&
+            finding.EvidencePaths.Contains("$.visual.visualContainerObjects.visualTooltip[0]"));
+        Assert.DoesNotContain(result.Findings, finding =>
+            (finding.RuleId is "PBI-NAV-013" or "PBI-NAV-014") &&
+            finding.EvidencePaths.Contains("$.visual.visualContainerObjects.visualTooltip[1]"));
+        Assert.Single(result.Findings, finding =>
+            finding.RuleId == "PBI-NAV-014" &&
+            finding.EvidencePaths.Contains("$.visual.visualContainerObjects.visualTooltip[2]"));
+        Assert.Single(result.Findings, finding =>
+            finding.RuleId == "PBI-NAV-013" &&
+            finding.EvidencePaths.Contains("$.visual.visualContainerObjects.visualTooltip[3]"));
     }
 
     [Fact]
