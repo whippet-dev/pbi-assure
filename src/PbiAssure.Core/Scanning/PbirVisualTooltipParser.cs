@@ -48,7 +48,6 @@ internal static class PbirVisualTooltipParser
                         BindingKind: bindingKind,
                         IsEnabled: show.IsPresent ? PbirExpressionReader.ParseBoolean(show.Literal) : true,
                         TargetPage: section.Literal,
-                        HasExplicitTarget: section.IsPresent,
                         TooltipType: type.Literal,
                         HasDynamicConfiguration: show.IsDynamic || section.IsDynamic || type.IsDynamic,
                         EvidencePath: $"$.visual.visualContainerObjects.{propertyName}[{index}]"));

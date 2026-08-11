@@ -108,7 +108,7 @@ internal sealed class ReportInteractionRule : IAssuranceRule
 
                     if (string.IsNullOrWhiteSpace(binding.TargetPage))
                     {
-                        if (binding.HasExplicitTarget && !binding.HasDynamicConfiguration)
+                        if (!binding.HasDynamicConfiguration)
                         {
                             yield return TooltipFinding(
                                 ruleId: "PBI-NAV-014",
