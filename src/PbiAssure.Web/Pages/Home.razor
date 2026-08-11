@@ -70,9 +70,15 @@
             <details class="summary-help">
                 <summary>How to read these results</summary>
                 <dl>
+                    <div><dt>Findings</dt><dd>Automated results split into errors, warnings and items that need human review.</dd></div>
                     <div><dt>Errors</dt><dd>Higher-confidence issues that should normally be addressed.</dd></div>
                     <div><dt>Warnings</dt><dd>Potential problems or good-practice issues worth reviewing.</dd></div>
                     <div><dt>Review required</dt><dd>Something PBI Assure found that needs human judgement.</dd></div>
+                    <div><dt>Project</dt><dd>Counts of report and semantic-model content found in the selected project.</dd></div>
+                    <div><dt>Power Query queries</dt><dd>M-backed table partitions and named expressions found in the semantic model.</dd></div>
+                    <div><dt>Connector types</dt><dd>Distinct recognised connector families used by Power Query expressions. This is not a count of connector references.</dd></div>
+                    <div><dt>Recognised connector references</dt><dd>Recognised connector functions found in Power Query expressions, counted once per query and connector function. This can differ from connector types and can be zero when queries use no supported connector function.</dd></div>
+                    <div><dt>Semantic usage</dt><dd>How developer-authored model objects are classified from the references PBI Assure can detect.</dd></div>
                 </dl>
             </details>
             <h3>Findings</h3>
@@ -83,14 +89,18 @@
                 <Metric Label="Total findings" Value="@inventory.FindingCount" />
             </div>
             <h3>Project</h3>
-            <div class="metrics">
+            <div class="metrics project-metrics">
                 <Metric Label="Reports" Value="@inventory.ReportCount" />
                 <Metric Label="Pages" Value="@inventory.PageCount" />
                 <Metric Label="Visuals" Value="@inventory.VisualCount" />
-                <Metric Label="Developer objects" Value="@inventory.DeveloperSemanticObjectCount" />
-                <Metric Label="System-generated objects" Value="@inventory.SystemGeneratedSemanticObjectCount" />
+                <Metric Label="Developer-authored model objects" Value="@inventory.DeveloperSemanticObjectCount" />
+                <Metric Label="System-generated model objects" Value="@inventory.SystemGeneratedSemanticObjectCount" />
+            </div>
+            <h3>Power Query</h3>
+            <div class="metrics power-query-metrics">
                 <Metric Label="Power Query queries" Value="@inventory.PowerQueryCount" />
-                <Metric Label="Power Query sources" Value="@inventory.DataSourceCount" />
+                <Metric Label="Connector types" Value="@inventory.DistinctConnectorFamilyCount" />
+                <Metric Label="Recognised connector references" Value="@inventory.DataSourceCount" />
             </div>
             <h3>Semantic usage</h3>
             <div class="metrics">
@@ -105,6 +115,7 @@
                 <p>PBI Assure found no usage within this analysed project. It is not proof that an object is safe to delete, unused everywhere, or unused by an external report, model, or process.</p>
             </details>
             <div class="downloads">
+                <button @onclick="OpenHtmlAsync" disabled="@isBusy">Open HTML report</button>
                 <button @onclick="DownloadHtmlAsync" disabled="@isBusy">Download HTML report</button>
                 <button @onclick="DownloadCsvAsync" disabled="@isBusy">Download semantic CSV</button>
             </div>
@@ -273,6 +284,31 @@
         catch (Exception)
         {
             outputMessage = "Analysis completed, but the HTML report could not be generated or downloaded.";
+        }
+    }
+
+    private async Task OpenHtmlAsync()
+    {
+        if (inventory is null)
+        {
+            return;
+        }
+
+        outputMessage = null;
+        try
+        {
+            var stopwatch = Stopwatch.StartNew();
+            var html = HtmlReportRenderer.Render(inventory);
+            htmlRenderElapsed = stopwatch.Elapsed;
+            htmlLength = System.Text.Encoding.UTF8.GetByteCount(html);
+            var opened = await JS.InvokeAsync<bool>("pbiAssureDownload.open", "text/html;charset=utf-8", html);
+            outputMessage = opened
+                ? "HTML report opened in a new tab."
+                : "The browser blocked the new tab. Allow pop-ups for this site or download the HTML report instead.";
+        }
+        catch (Exception)
+        {
+            outputMessage = "Analysis completed, but the HTML report could not be generated or opened.";
         }
     }
 

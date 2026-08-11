@@ -34,16 +34,24 @@ button:focus-visible, summary:focus-visible, a:focus-visible { outline: 3px soli
 .sensitivity { max-width: 48rem; color: #5d3a00; font-size: 0.95rem; }
 .message { padding: 0.8rem 1rem; border-left: 4px solid #ad4b00; background: #fff4e7; }
 .metrics { grid-template-columns: repeat(auto-fit, minmax(8rem, 1fr)); }
+.project-metrics { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+.power-query-metrics { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 .downloads { display: flex; flex-wrap: wrap; gap: 0.75rem; margin-top: 1.25rem; }
-.metric { padding: 1rem; border-radius: 0.45rem; background: #eaf0f6; }
-.metric span { display: block; color: #38516f; font-size: 0.9rem; }
+.metric { min-width: 0; padding: 1rem; border-radius: 0.45rem; background: #eaf0f6; }
+.metric span { display: block; color: #38516f; font-size: 0.9rem; overflow-wrap: anywhere; }
 .metric strong { display: block; margin-top: 0.25rem; font-size: 1.5rem; }
 .app-footer { max-width: 56rem; margin: 0 auto; padding: 0 1.25rem 2rem; color: #586b82; font-size: 0.9rem; }
 .app-footer a { color: #075a46; }
 .fatal-message { display: grid; gap: 1rem; padding: 1.25rem; border: 1px solid #ccd7e5; border-radius: 0.5rem; background: #fff; }
 .button-link { width: fit-content; padding: 0.65rem 1rem; border-radius: 0.3rem; background: #075a46; color: #fff; font-weight: 700; text-decoration: none; }
 #blazor-error-ui { display: none; }
+@media (max-width: 46rem) {
+    .project-metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .project-metrics .metric:last-child { grid-column: 1 / -1; }
+}
 @media (max-width: 34rem) {
     main { padding: 2rem 1rem 1.5rem; }
     .guidance-panel, .picker, .selection { padding: 1rem; }
+    .project-metrics, .power-query-metrics { grid-template-columns: minmax(0, 1fr); }
+    .project-metrics .metric:last-child { grid-column: auto; }
 }
