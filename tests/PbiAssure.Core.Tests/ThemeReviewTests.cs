@@ -130,14 +130,14 @@ public sealed class ThemeReviewTests
         Assert.Contains("Consistency review", html, StringComparison.Ordinal);
         Assert.Contains("Accessibility review", html, StringComparison.Ordinal);
         Assert.Contains("Theme contents", html, StringComparison.Ordinal);
-        Assert.Contains("Saved formatting evidence", html, StringComparison.Ordinal);
+        Assert.Contains("Formatting details", html, StringComparison.Ordinal);
         Assert.Contains("<summary>Supporting theme details</summary>", html, StringComparison.Ordinal);
         Assert.Contains("<div class=\"theme-early-access\" role=\"note\"><strong>Beta coverage</strong>", html, StringComparison.Ordinal);
-        Assert.Contains("covers only formatting mappings PBI Assure can assess confidently", html, StringComparison.Ordinal);
-        Assert.Contains("No flagged deviation does not mean every visual property was checked.", html, StringComparison.Ordinal);
+        Assert.Contains("compares only the theme settings it can assess confidently", html, StringComparison.Ordinal);
+        Assert.Contains("no flagged differences may still contain properties that were not checked", html, StringComparison.Ordinal);
         Assert.Contains("Coverage will expand over time", html, StringComparison.Ordinal);
         Assert.Contains("support, not replace, human design and governance review", html, StringComparison.Ordinal);
-        Assert.Contains("Theme-linked references", html, StringComparison.Ordinal);
+        Assert.Contains("Colours linked to the theme", html, StringComparison.Ordinal);
         Assert.Contains("Dynamic or conditional value", html, StringComparison.Ordinal);
         Assert.Contains("data-investigation=\"theme\"", html, StringComparison.Ordinal);
         Assert.Contains("Intentional design exceptions can be valid", html, StringComparison.Ordinal);
@@ -155,17 +155,17 @@ public sealed class ThemeReviewTests
         var noLocalHtml = HtmlReportRenderer.Render(Scan(
             ReportJson(customName: "Custom.json"), BaseThemeJson, CustomThemeJson, BasicVisual));
 
-        Assert.Contains("Saved value differs from supported active-theme rule", differentHtml, StringComparison.Ordinal);
+        Assert.Contains("Saved value differs from the theme", differentHtml, StringComparison.Ordinal);
         Assert.Contains("Title font size differs from the theme", differentHtml, StringComparison.Ordinal);
         Assert.Contains("Review whether this difference is intentional.", differentHtml, StringComparison.Ordinal);
         Assert.Contains("<strong>Saved value:</strong> 30 pt", differentHtml, StringComparison.Ordinal);
-        Assert.Contains("<strong>Theme rule:</strong> 18 pt", differentHtml, StringComparison.Ordinal);
+        Assert.Contains("<strong>Theme setting:</strong> 18 pt", differentHtml, StringComparison.Ordinal);
         Assert.Contains("data-filter-comparison=\"SavedValueDiffersFromTheme\"", differentHtml, StringComparison.Ordinal);
         Assert.Contains("data-investigation=\"theme-governance\"", differentHtml, StringComparison.Ordinal);
         Assert.Contains("id=\"theme-governance-search\"", differentHtml, StringComparison.Ordinal);
         Assert.Contains("data-investigation-item=\"theme-governance\"", differentHtml, StringComparison.Ordinal);
-        Assert.Contains("No saved local value", noLocalHtml, StringComparison.Ordinal);
-        Assert.Contains("<strong>Supported active-theme rule:</strong> 18 pt", noLocalHtml, StringComparison.Ordinal);
+        Assert.Contains("No formatting value saved in the visual", noLocalHtml, StringComparison.Ordinal);
+        Assert.Contains("<strong>Theme setting:</strong> 18 pt", noLocalHtml, StringComparison.Ordinal);
         Assert.DoesNotContain("matches supported active-theme rule", noLocalHtml, StringComparison.OrdinalIgnoreCase);
         Assert.DoesNotContain("compliant", differentHtml, StringComparison.OrdinalIgnoreCase);
         Assert.DoesNotContain("safe to reset", differentHtml, StringComparison.OrdinalIgnoreCase);
@@ -188,7 +188,7 @@ public sealed class ThemeReviewTests
         Assert.Contains("clip: rect(0, 0, 0, 0) !important;", html, StringComparison.Ordinal);
         Assert.Contains(".theme-colour-chip { flex: 0 0 auto; width: 1.05rem;", html, StringComparison.Ordinal);
         Assert.Contains("border: 1px solid #637282;", html, StringComparison.Ordinal);
-        Assert.Contains("Counts represent applicable visual/property combinations, not visuals.", html, StringComparison.Ordinal);
+        Assert.Contains("Counts represent visual and property combinations, not visuals.", html, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -198,11 +198,11 @@ public sealed class ThemeReviewTests
         var classificationFilter = SelectMarkup(html, "theme-classification");
         var scopeFilter = SelectMarkup(html, "theme-scope");
 
-        Assert.Contains("<option value=\"PersistedLiteral\">Persisted literal value</option>", classificationFilter, StringComparison.Ordinal);
-        Assert.Contains("<option value=\"ThemeReference\">Theme-linked colour reference</option>", classificationFilter, StringComparison.Ordinal);
-        Assert.DoesNotContain("scoped to series/category", classificationFilter, StringComparison.OrdinalIgnoreCase);
-        Assert.Contains("<option value=\"Scoped\">Scoped to series/category</option>", scopeFilter, StringComparison.Ordinal);
-        Assert.Contains("<option value=\"VisualWide\">Not selector-scoped</option>", scopeFilter, StringComparison.Ordinal);
+        Assert.Contains("<option value=\"PersistedLiteral\">Saved value</option>", classificationFilter, StringComparison.Ordinal);
+        Assert.Contains("<option value=\"ThemeReference\">Colour linked to the theme</option>", classificationFilter, StringComparison.Ordinal);
+        Assert.DoesNotContain("specific series or category", classificationFilter, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("<option value=\"Scoped\">Specific series or category</option>", scopeFilter, StringComparison.Ordinal);
+        Assert.Contains("<option value=\"VisualWide\">Whole visual</option>", scopeFilter, StringComparison.Ordinal);
         Assert.Contains("data-filter-scope=\"VisualWide&#x1F;Scoped\"", html, StringComparison.Ordinal);
         Assert.Contains(".theme-visual-card[open] > summary::after { content: \"−\"; }", html, StringComparison.Ordinal);
         Assert.DoesNotContain("âˆ’", html, StringComparison.Ordinal);

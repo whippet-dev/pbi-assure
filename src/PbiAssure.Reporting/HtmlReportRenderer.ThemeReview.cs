@@ -16,8 +16,8 @@ public static partial class HtmlReportRenderer
 
         html.AppendLine("    <section id=\"theme-review\" class=\"report-section\" data-report-section=\"theme-review\" aria-labelledby=\"theme-review-heading\">");
         html.AppendLine("      <h2 id=\"theme-review-heading\" tabindex=\"-1\">Theme Review</h2>");
-        html.AppendLine("      <p class=\"section-intro\">See which theme is applied, which supported saved formatting differs from it and whether comparable visuals contain obvious formatting outliers.</p>");
-        html.AppendLine("      <div class=\"theme-early-access\" role=\"note\"><strong>Beta coverage</strong><p>Automated comparison currently covers only formatting mappings PBI Assure can assess confidently. No flagged deviation does not mean every visual property was checked. Coverage will expand over time; use these observations to support, not replace, human design and governance review.</p></div>");
+        html.AppendLine("      <p class=\"section-intro\">See which theme is applied, which formatting differs from it and whether similar visuals use noticeably different formatting.</p>");
+        html.AppendLine("      <div class=\"theme-early-access\" role=\"note\"><strong>Beta coverage</strong><p>PBI Assure compares only the theme settings it can assess confidently. A report with no flagged differences may still contain properties that were not checked. Coverage will expand over time; use Theme Review to support, not replace, human design and governance review.</p></div>");
         html.AppendLine("      <div class=\"theme-boundary\"><strong>Interpret differences in context</strong><p>Intentional design exceptions can be valid. Theme Review does not grade the report or reproduce Power BI’s full formatting engine.</p></div>");
         AppendThemeSummary(html, inventory);
         AppendThemeReviewFilters(html, inventory);
@@ -42,10 +42,10 @@ public static partial class HtmlReportRenderer
             html.Append("          <article class=\"theme-report-card\"><h4>").Append(Encode(report.Name)).AppendLine("</h4>");
             html.Append("            <p class=\"theme-state\">").Append(Encode(ThemeStatusLabel(report.ThemeReview.Status.State))).AppendLine("</p>");
             AppendThemeSourceSummary(html, "Base theme", report.Theme.BaseSource);
-            if (report.Theme.CustomSource is { } custom) AppendThemeSourceSummary(html, "Active custom theme", custom);
+            if (report.Theme.CustomSource is { } custom) AppendThemeSourceSummary(html, "Custom theme", custom);
             if (report.Theme.ResolutionIssues.Count > 0)
             {
-                html.AppendLine("            <div class=\"theme-resolution-issues\"><strong>Resource resolution needs attention</strong><ul>");
+                html.AppendLine("            <div class=\"theme-resolution-issues\"><strong>Some theme details could not be read</strong><ul>");
                 foreach (var issue in report.Theme.ResolutionIssues) html.Append("              <li>").Append(Encode(issue)).AppendLine("</li>");
                 html.AppendLine("            </ul></div>");
             }
@@ -78,16 +78,23 @@ public static partial class HtmlReportRenderer
         var deviations = inventory.Reports.SelectMany(report => report.ThemeReview.Deviations.Select(item => (report, item))).ToArray();
         html.AppendLine("      <section class=\"theme-review-group\" aria-labelledby=\"theme-deviations-heading\">");
         html.AppendLine("        <h3 id=\"theme-deviations-heading\">Significant theme deviations</h3>");
-        html.AppendLine("        <p class=\"group-explanation\">Saved formatting that differs from an applicable, supported active-theme rule. A difference is not automatically a problem; review whether it is intentional.</p>");
+        html.AppendLine("        <p class=\"group-explanation\">Formatting that differs from the report's theme and may need review. A difference is not automatically a problem; check whether it is intentional.</p>");
         var checkedCount = inventory.Reports.SelectMany(report => report.Pages).SelectMany(page => page.Visuals)
             .SelectMany(visual => visual.PersistedFormatting).Count(item => item.ThemeComparison is not null);
-        html.Append("        <p class=\"theme-check-summary\"><strong>").Append(checkedCount.ToString("N0", CultureInfo.InvariantCulture))
-            .Append(" supported ").Append(Pluralize(checkedCount, "comparison", "comparisons")).Append(" checked</strong> · ")
-            .Append(deviations.Length.ToString("N0", CultureInfo.InvariantCulture)).Append(' ')
-            .Append(Pluralize(deviations.Length, "difference", "differences")).AppendLine(" found</p>");
+        if (checkedCount == 0)
+        {
+            html.AppendLine("        <p class=\"theme-check-summary\"><strong>No theme settings could be compared automatically in this report.</strong></p>");
+        }
+        else
+        {
+            html.Append("        <p class=\"theme-check-summary\"><strong>").Append(checkedCount.ToString("N0", CultureInfo.InvariantCulture))
+                .Append(' ').Append(Pluralize(checkedCount, "theme setting", "theme settings")).Append(" checked</strong> · ")
+                .Append(deviations.Length.ToString("N0", CultureInfo.InvariantCulture)).Append(' ')
+                .Append(Pluralize(deviations.Length, "difference", "differences")).AppendLine(" found</p>");
+        }
         if (deviations.Length == 0)
         {
-            html.AppendLine("        <p class=\"theme-empty-state\">No supported theme differences need review.</p>");
+            html.AppendLine("        <p class=\"theme-empty-state\">No differences were found in the theme settings PBI Assure could compare.</p>");
         }
         else
         {
@@ -125,10 +132,10 @@ public static partial class HtmlReportRenderer
         var observations = inventory.Reports.SelectMany(report => report.ThemeReview.ConsistencyObservations.Select(item => (report, item))).ToArray();
         html.AppendLine("      <section class=\"theme-review-group\" aria-labelledby=\"theme-consistency-heading\">");
         html.AppendLine("        <h3 id=\"theme-consistency-heading\">Consistency review</h3>");
-        html.AppendLine("        <p class=\"group-explanation\">Unusual saved title formatting among otherwise comparable visuals. PBI Assure compares only the same visual type and property, with at least four peers and a value used by at least 75% of them.</p>");
+        html.AppendLine("        <p class=\"group-explanation\">Looks for visuals whose saved title formatting is noticeably different from similar visuals elsewhere in the report. Only strong, like-for-like patterns are shown.</p>");
         if (observations.Length == 0)
         {
-            html.AppendLine("        <p class=\"theme-empty-state\">No high-confidence formatting outliers were found among comparable visuals.</p>");
+            html.AppendLine("        <p class=\"theme-empty-state\">No clear formatting differences were found among comparable visuals.</p>");
         }
         else
         {
@@ -170,7 +177,7 @@ public static partial class HtmlReportRenderer
         html.AppendLine("      <section class=\"theme-review-group\" aria-labelledby=\"theme-accessibility-heading\">");
         html.AppendLine("        <h3 id=\"theme-accessibility-heading\">Accessibility review</h3>");
         if (observations == 0)
-            html.AppendLine("        <p class=\"theme-empty-state\">No theme-based accessibility claims are currently made. Contrast needs resolved foreground, background and transparency values from the same formatting context; the current evidence is not yet sufficient.</p>");
+            html.AppendLine("        <p class=\"theme-empty-state\">Automated theme accessibility checks are not available yet. Contrast will be reported only when PBI Assure can determine the colours used by Power BI reliably.</p>");
         html.AppendLine("      </section>");
     }
 
@@ -215,22 +222,22 @@ public static partial class HtmlReportRenderer
 
     private static string ThemeStatusLabel(string state) => state switch
     {
-        ThemeReviewStatusStates.CustomThemeAppliedOverBase => "Custom theme applied over base",
-        ThemeReviewStatusStates.BaseThemeOnly => "Base theme only",
-        _ => "Theme resource unavailable or unresolved",
+        ThemeReviewStatusStates.CustomThemeAppliedOverBase => "Custom theme applied",
+        ThemeReviewStatusStates.BaseThemeOnly => "Built-in theme applied",
+        _ => "Theme details unavailable",
     };
 
     private static void AppendThemeSourceSummary(StringBuilder html, string label, ThemeSourceInventory source)
     {
         html.AppendLine("            <dl class=\"theme-source-summary\">");
-        AppendDefinition(html, label, source.ThemeName ?? source.ReferenceName ?? "Metadata unavailable");
-        AppendDefinition(html, "Source", source.Kind switch
+        AppendDefinition(html, label, source.ThemeName ?? source.ReferenceName ?? "Name unavailable");
+        AppendDefinition(html, "Theme type", source.Kind switch
         {
-            ThemeSourceKinds.RegisteredCustom => "Registered report resource",
-            ThemeSourceKinds.SharedBase => "Shared base resource",
-            _ => "Base theme metadata unavailable",
+            ThemeSourceKinds.RegisteredCustom => "Custom theme saved with the report",
+            ThemeSourceKinds.SharedBase => "Built-in Power BI base theme",
+            _ => "Base theme details unavailable",
         });
-        AppendDefinition(html, "Resource", FriendlyAvailability(source.AvailabilityState));
+        AppendDefinition(html, "Status", FriendlyAvailability(source.AvailabilityState));
         html.AppendLine("            </dl>");
         if (source.ResourcePath is null && source.ReportVersionAtImport is null) return;
         html.AppendLine("            <details class=\"technical-details\"><summary>Technical theme details</summary><dl class=\"technical-list\">");
@@ -248,7 +255,7 @@ public static partial class HtmlReportRenderer
     {
         html.AppendLine("      <section class=\"theme-review-group\" aria-labelledby=\"theme-contents-heading\">");
         html.AppendLine("        <h3 id=\"theme-contents-heading\">Theme contents</h3>");
-        html.AppendLine("        <p class=\"group-explanation\">A compact view of metadata directly present in resolved theme files. Missing custom values may be supplied by the base theme, but that merge is not assessed here.</p>");
+        html.AppendLine("        <p class=\"group-explanation\">Colours, text styles and visual settings found in the available theme files. Settings not defined by a custom theme may still come from the base theme.</p>");
         foreach (var report in inventory.Reports)
         {
             html.Append("        <div class=\"theme-content-report\"><h4>").Append(Encode(report.Name)).AppendLine("</h4><div class=\"theme-content-grid\">");
@@ -333,23 +340,23 @@ public static partial class HtmlReportRenderer
         PersistedFormattingObservation[] headline)
     {
         html.AppendLine("      <section class=\"theme-review-group\" aria-labelledby=\"persisted-formatting-heading\">");
-        html.AppendLine("        <h3 id=\"persisted-formatting-heading\">Saved formatting evidence</h3>");
-        html.AppendLine("        <p class=\"group-explanation\">Technical evidence from supported formatting properties stored in the report definition. Counts represent applicable visual/property combinations, not visuals. A property with no saved local value may still inherit formatting from Power BI or the active theme.</p>");
+        html.AppendLine("        <h3 id=\"persisted-formatting-heading\">Formatting details</h3>");
+        html.AppendLine("        <p class=\"group-explanation\">Formatting values PBI Assure could read from visuals. Counts represent visual and property combinations, not visuals. When no value is saved in a visual, Power BI or the theme may still provide it.</p>");
         html.AppendLine("        <dl class=\"metrics theme-metrics\">");
-        AppendMetric(html, "Formatting properties inspected", headline.Length);
-        AppendMetric(html, "No saved local value", Count(headline, PersistedFormattingClassifications.NoPersistedValue));
-        AppendMetric(html, "Saved literal values", Count(headline, PersistedFormattingClassifications.PersistedLiteral));
-        AppendMetric(html, "Theme-linked references", Count(headline, PersistedFormattingClassifications.ThemeReference));
-        AppendMetric(html, "Dynamic values", Count(headline, PersistedFormattingClassifications.DynamicExpression));
-        AppendMetric(html, "Series/category-specific values", headline.Count(item => item.IsSelectorScoped));
-        AppendMetric(html, "Unsupported or ambiguous", headline.Count(item => item.Classification == PersistedFormattingClassifications.Unsupported || item.IsAmbiguous));
+        AppendMetric(html, "Formatting values reviewed", headline.Length);
+        AppendMetric(html, "No value saved in visual", Count(headline, PersistedFormattingClassifications.NoPersistedValue));
+        AppendMetric(html, "Saved values", Count(headline, PersistedFormattingClassifications.PersistedLiteral));
+        AppendMetric(html, "Colours linked to the theme", Count(headline, PersistedFormattingClassifications.ThemeReference));
+        AppendMetric(html, "Dynamic or conditional values", Count(headline, PersistedFormattingClassifications.DynamicExpression));
+        AppendMetric(html, "Specific series/category values", headline.Count(item => item.IsSelectorScoped));
+        AppendMetric(html, "Could not interpret confidently", headline.Count(item => item.Classification == PersistedFormattingClassifications.Unsupported || item.IsAmbiguous));
         html.AppendLine("        </dl>");
         var staleCount = all.Count(item => !item.IncludeInHeadline);
         if (staleCount > 0)
         {
             html.Append("        <p class=\"secondary\">").Append(staleCount.ToString("N0", CultureInfo.InvariantCulture))
-                .Append(" high-confidence stale selector ").Append(Pluralize(staleCount, "observation was", "observations were"))
-                .AppendLine(" excluded from these headline counts and retained in technical detail.</p>");
+                .Append(" saved formatting ").Append(Pluralize(staleCount, "entry was", "entries were"))
+                .AppendLine(" linked to items no longer used by the visual. These are excluded from the summary and retained in technical details.</p>");
         }
 
         var details = contexts.Where(context => DisplayedFormattingValues(context).Any()).ToArray();
@@ -376,10 +383,10 @@ public static partial class HtmlReportRenderer
             .Select(context => new FindingFacetOption(context.Visual.VisualType ?? "Unknown", HumanizeVisualType(context.Visual.VisualType))).Distinct());
         AppendInvestigationFacet(html, "theme", "classification", "Saved value type", "All saved value types", details
             .SelectMany(DisplayedFormattingValues).Select(item => new FindingFacetOption(item.Classification, FormattingClassificationLabel(item.Classification))).Distinct());
-        AppendInvestigationFacet(html, "theme", "scope", "Formatting scope", "All formatting scopes", details
+        AppendInvestigationFacet(html, "theme", "scope", "Where formatting applies", "All formatting locations", details
             .SelectMany(DisplayedFormattingValues).Select(item => new FindingFacetOption(
                 item.IsSelectorScoped ? "Scoped" : "VisualWide",
-                item.IsSelectorScoped ? "Scoped to series/category" : "Not selector-scoped")).Distinct());
+                item.IsSelectorScoped ? "Specific series or category" : "Whole visual")).Distinct());
         AppendInvestigationFacet(html, "theme", "property", "Property", "All properties", details
             .SelectMany(DisplayedFormattingValues).Select(item => new FindingFacetOption(item.PropertyKey, item.PropertyLabel)).Distinct());
         var comparisonOptions = details.SelectMany(DisplayedFormattingValues).Where(item => item.ThemeComparison is not null)
@@ -415,10 +422,10 @@ public static partial class HtmlReportRenderer
             .Append(Encode(observation.PropertyLabel)).Append("</strong><span>").Append(Encode(FormattingClassificationLabel(observation))).AppendLine("</span></span></div>");
         if (observation.ThemeComparison is { } comparison) AppendThemeComparison(html, comparison);
         else if (!string.IsNullOrWhiteSpace(observation.NormalizedValue)) html.Append("                <p><strong>Saved evidence:</strong> ").Append(Encode(observation.NormalizedValue)).AppendLine("</p>");
-        if (observation.IsSelectorScoped) html.Append("                <p><strong>Scope:</strong> ").Append(Encode(observation.SelectorScope ?? observation.SelectorKind ?? "Selector-scoped")).AppendLine("</p>");
-        if (!string.IsNullOrWhiteSpace(observation.ExpressionSource)) html.Append("                <p><strong>Expression source:</strong> ").Append(Encode(observation.ExpressionSource)).AppendLine("</p>");
-        if (observation.IsAmbiguous) html.AppendLine("                <p class=\"secondary\">Selector mapping is ambiguous; this evidence is shown conservatively.</p>");
-        if (!observation.IncludeInHeadline) html.AppendLine("                <p class=\"secondary\">High-confidence stale selector evidence; excluded from headline counts.</p>");
+        if (observation.IsSelectorScoped) html.Append("                <p><strong>Applies to:</strong> ").Append(Encode(observation.SelectorScope ?? "A specific series or category")).AppendLine("</p>");
+        if (!string.IsNullOrWhiteSpace(observation.ExpressionSource)) html.Append("                <p><strong>Value comes from:</strong> ").Append(Encode(observation.ExpressionSource)).AppendLine("</p>");
+        if (observation.IsAmbiguous) html.AppendLine("                <p class=\"secondary\">PBI Assure could not determine exactly which series or category this setting applies to, so it is shown for review only.</p>");
+        if (!observation.IncludeInHeadline) html.AppendLine("                <p class=\"secondary\">This setting appears to belong to an item no longer used by the visual, so it is excluded from the summary.</p>");
         html.AppendLine("                <details class=\"technical-details\"><summary>Technical details</summary><dl class=\"technical-list\">");
         AppendDefinition(html, "Visual definition", context.Visual.RelativePath);
         AppendDefinition(html, "Evidence path", observation.EvidencePath);
@@ -437,10 +444,7 @@ public static partial class HtmlReportRenderer
         if (comparison.SavedValue is not null) html.Append("                <p><strong>Saved value:</strong> ").Append(Encode(comparison.SavedValue)).AppendLine(" pt</p>");
         if (comparison.ThemeRuleValue is not null)
         {
-            var label = comparison.State == ThemeFormattingComparisonStates.NoSavedLocalValue
-                ? "Supported active-theme rule"
-                : "Theme rule";
-            html.Append("                <p><strong>").Append(label).Append(":</strong> ").Append(Encode(comparison.ThemeRuleValue)).AppendLine(" pt</p>");
+            html.Append("                <p><strong>Theme setting:</strong> ").Append(Encode(comparison.ThemeRuleValue)).AppendLine(" pt</p>");
         }
     }
 
@@ -455,35 +459,35 @@ public static partial class HtmlReportRenderer
     {
         var label = FormattingClassificationLabel(observation.Classification);
         return observation.IsSelectorScoped && observation.Classification is not PersistedFormattingClassifications.NoPersistedValue and not PersistedFormattingClassifications.Unsupported
-            ? $"{label} · scoped to series/category"
+            ? $"{label} · specific series or category"
             : label;
     }
 
     private static string FormattingClassificationLabel(string classification) => classification switch
     {
-        PersistedFormattingClassifications.NoPersistedValue => "No saved local value",
-        PersistedFormattingClassifications.PersistedLiteral => "Persisted literal value",
-        PersistedFormattingClassifications.ThemeReference => "Theme-linked colour reference",
+        PersistedFormattingClassifications.NoPersistedValue => "No value saved in visual",
+        PersistedFormattingClassifications.PersistedLiteral => "Saved value",
+        PersistedFormattingClassifications.ThemeReference => "Colour linked to the theme",
         PersistedFormattingClassifications.DynamicExpression => "Dynamic or conditional value",
-        _ => "Unsupported or ambiguous mapping",
+        _ => "Could not be interpreted confidently",
     };
 
     private static string ThemeComparisonLabel(string state) => state switch
     {
-        ThemeFormattingComparisonStates.NoSavedLocalValue => "No saved local value",
-        ThemeFormattingComparisonStates.SavedValueMatchesTheme => "Saved value matches supported active-theme rule",
-        ThemeFormattingComparisonStates.SavedValueDiffersFromTheme => "Saved value differs from supported active-theme rule",
-        ThemeFormattingComparisonStates.ThemeCandidateUnavailable => "Supported theme rule unavailable",
-        ThemeFormattingComparisonStates.ComparisonAmbiguous => "Comparison ambiguous",
-        _ => "Unsupported for comparison",
+        ThemeFormattingComparisonStates.NoSavedLocalValue => "No formatting value saved in the visual",
+        ThemeFormattingComparisonStates.SavedValueMatchesTheme => "Saved value matches the theme",
+        ThemeFormattingComparisonStates.SavedValueDiffersFromTheme => "Saved value differs from the theme",
+        ThemeFormattingComparisonStates.ThemeCandidateUnavailable => "No comparable theme setting found",
+        ThemeFormattingComparisonStates.ComparisonAmbiguous => "Could not compare confidently",
+        _ => "Not available for automatic comparison",
     };
 
     private static string FriendlyAvailability(string state) => state switch
     {
-        ThemeAvailabilityStates.Available => "Theme resource resolved",
-        ThemeAvailabilityStates.ReferencedButUnavailable => "Referenced theme resource unavailable",
-        ThemeAvailabilityStates.Malformed => "Theme resource could not be parsed",
-        _ => "Base theme metadata unavailable",
+        ThemeAvailabilityStates.Available => "Available",
+        ThemeAvailabilityStates.ReferencedButUnavailable => "Theme file unavailable",
+        ThemeAvailabilityStates.Malformed => "Theme file could not be read",
+        _ => "Theme details unavailable",
     };
 
     private static bool IsSafeSwatchColor(string value) =>

@@ -233,7 +233,7 @@ public sealed class HtmlReportRendererTests : IDisposable
         Assert.Contains("activeFacets.every", html, StringComparison.Ordinal);
         Assert.Contains("split('\\u001f').includes(control.value)", html, StringComparison.Ordinal);
         Assert.Contains("Remove filter:", html, StringComparison.Ordinal);
-        Assert.Contains("No semantic objects match the current search and filters.", html, StringComparison.Ordinal);
+        Assert.Contains("No model objects match the current search and filters.", html, StringComparison.Ordinal);
         Assert.Contains("theme-governance', singular: 'review item', plural: 'review items'", html, StringComparison.Ordinal);
         Assert.Contains(".finding-investigation", html, StringComparison.Ordinal);
         Assert.Contains("@media print", html, StringComparison.Ordinal);
@@ -270,27 +270,27 @@ public sealed class HtmlReportRendererTests : IDisposable
         AssertMetric(project, "Reports", inventory.ReportCount);
         AssertMetric(project, "Pages", inventory.PageCount);
         AssertMetric(project, "Visuals", inventory.VisualCount);
-        AssertMetric(project, "Developer-authored model objects", inventory.DeveloperSemanticObjectCount);
+        AssertMetric(project, "Your model objects", inventory.DeveloperSemanticObjectCount);
         if (inventory.ReportMeasureCount > 0) AssertMetric(project, "Report measures", inventory.ReportMeasureCount);
         if (inventory.SystemGeneratedSemanticObjectCount > 0) AssertMetric(project, "System-generated model objects", inventory.SystemGeneratedSemanticObjectCount);
         Assert.Contains("Columns, measures, hierarchy levels and calculation items", project, StringComparison.Ordinal);
-        Assert.Contains("local date-table artefacts", project, StringComparison.Ordinal);
+        Assert.Contains("objects in local date tables", project, StringComparison.Ordinal);
 
         Assert.Contains("<h3 id=\"summary-power-query-heading\">Power Query</h3>", powerQuery, StringComparison.Ordinal);
-        Assert.Contains("M-backed table partitions and named expressions", powerQuery, StringComparison.Ordinal);
+        Assert.Contains("Power Query queries, data source types and dependencies", powerQuery, StringComparison.Ordinal);
         if (inventory.PowerQueryCount > 0) AssertMetric(powerQuery, "Power Query queries", inventory.PowerQueryCount);
-        if (inventory.DataSourceCount > 0) AssertMetric(powerQuery, "Connector types", inventory.DistinctConnectorFamilyCount);
+        if (inventory.DataSourceCount > 0) AssertMetric(powerQuery, "Data source types", inventory.DistinctConnectorFamilyCount);
 
         Assert.Contains("<h3 id=\"summary-semantic-heading\">Semantic usage</h3>", semantic, StringComparison.Ordinal);
         Assert.Contains("aria-describedby=\"summary-semantic-help\"", semantic, StringComparison.Ordinal);
-        Assert.Contains("classified developer-authored model objects", semantic, StringComparison.Ordinal);
+        Assert.Contains("How columns, measures and other objects in your model are used", semantic, StringComparison.Ordinal);
         AssertMetric(semantic, "Directly used", inventory.DeveloperSemanticObjectCountForState(SemanticUsageStates.DirectlyUsed));
         AssertMetric(semantic, "Indirectly used", inventory.DeveloperSemanticObjectCountForState(SemanticUsageStates.IndirectlyUsed));
         AssertMetric(semantic, "Structurally required", inventory.DeveloperSemanticObjectCountForState(SemanticUsageStates.StructurallyRequired));
-        AssertMetric(semantic, "Unused branch", inventory.DeveloperSemanticObjectCountForState(SemanticUsageStates.UsedOnlyByUnusedBranch));
+        AssertMetric(semantic, "Only used by unused items", inventory.DeveloperSemanticObjectCountForState(SemanticUsageStates.UsedOnlyByUnusedBranch));
         AssertMetric(semantic, "Apparently unused", inventory.DeveloperApparentlyUnusedSemanticObjectCount);
-        Assert.Contains("It is not proof that an object is safe to delete", semantic, StringComparison.Ordinal);
-        Assert.Contains("external reports, models or processes", semantic, StringComparison.Ordinal);
+        Assert.Contains("Check before removing it", semantic, StringComparison.Ordinal);
+        Assert.Contains("external reports and dynamic behaviour", semantic, StringComparison.Ordinal);
 
         Assert.DoesNotContain("<dt>Reports</dt>", assurance, StringComparison.Ordinal);
         Assert.DoesNotContain("<dt>Directly used</dt>", project, StringComparison.Ordinal);
@@ -307,14 +307,14 @@ public sealed class HtmlReportRendererTests : IDisposable
         Assert.Equal(8, html.Split("<p class=\"section-intro\">", StringSplitOptions.None).Length - 1);
         Assert.Contains("Start here for the overall assurance result", html, StringComparison.Ordinal);
         Assert.Contains("Keep these limits in mind", html, StringComparison.Ordinal);
-        Assert.Contains("See how data-preparation queries feed the model", html, StringComparison.Ordinal);
+        Assert.Contains("See which queries load data into the model", html, StringComparison.Ordinal);
         Assert.Contains("Issues and review points found by automated checks", html, StringComparison.Ordinal);
         Assert.Contains("How to use findings", html, StringComparison.Ordinal);
         Assert.Contains("Suggested action gives a practical next step", html, StringComparison.Ordinal);
         Assert.Contains("Browse the report page by page and visual by visual", html, StringComparison.Ordinal);
         Assert.Contains("See which theme is applied", html, StringComparison.Ordinal);
         Assert.Contains("See how tables are connected", html, StringComparison.Ordinal);
-        Assert.Contains("Review columns, measures and other model objects by table", html, StringComparison.Ordinal);
+        Assert.Contains("Review tables, columns, measures and other model objects", html, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -332,8 +332,9 @@ public sealed class HtmlReportRendererTests : IDisposable
         Assert.Contains("Assurance summary", html, StringComparison.Ordinal);
         Assert.Contains("Indirectly used", html, StringComparison.Ordinal);
         Assert.Contains("Structurally required", html, StringComparison.Ordinal);
-        Assert.Contains("Used only by unused branch", html, StringComparison.Ordinal);
-        Assert.Contains("Review them before removing anything.", html, StringComparison.Ordinal);
+        Assert.Contains("Only used by unused items", html, StringComparison.Ordinal);
+        Assert.Contains("Only used by other model items that themselves have no detected report usage.", html, StringComparison.Ordinal);
+        Assert.Contains("Check apparently unused objects before removing them", html, StringComparison.Ordinal);
         Assert.Contains("How usage classification works", html, StringComparison.Ordinal);
         Assert.Contains("<span class=\"usage-guide-hint\">5 statuses explained</span>", html, StringComparison.Ordinal);
         Assert.Contains("<dl class=\"usage-classification-list\">", html, StringComparison.Ordinal);
@@ -342,11 +343,11 @@ public sealed class HtmlReportRendererTests : IDisposable
         Assert.Contains("class=\"badge badge-indirect\">Indirectly used</span>", html, StringComparison.Ordinal);
         Assert.Contains("class=\"badge badge-structural\">Structurally required</span>", html, StringComparison.Ordinal);
         Assert.Contains($"<span class=\"badge badge-structural\">Structurally required</span></div>{Environment.NewLine}                <p class=\"usage-reason\">Why:", html, StringComparison.Ordinal);
-        Assert.Contains("class=\"badge badge-unused-branch\">Used only by unused branch</span>", html, StringComparison.Ordinal);
+        Assert.Contains("class=\"badge badge-unused-branch\">Only used by unused items</span>", html, StringComparison.Ordinal);
         Assert.Contains("class=\"badge badge-unused\">Apparently unused</span>", html, StringComparison.Ordinal);
-        Assert.Contains("This is not proof it is safe to delete or unused by external reports", html, StringComparison.Ordinal);
-        Assert.Contains("Important interpretation boundaries", html, StringComparison.Ordinal);
-        Assert.Contains("bookmark-captured semantic state", html, StringComparison.Ordinal);
+        Assert.Contains("It does not mean the object is safe to delete", html, StringComparison.Ordinal);
+        Assert.Contains("Things PBI Assure cannot always detect", html, StringComparison.Ordinal);
+        Assert.Contains("some bookmark state", html, StringComparison.Ordinal);
         Assert.Contains("Report pages", html, StringComparison.Ordinal);
         Assert.Contains("Uses semantic model Assurance; its definition is available in this project.", html, StringComparison.Ordinal);
         Assert.Contains("Report calculations", html, StringComparison.Ordinal);
@@ -354,7 +355,7 @@ public sealed class HtmlReportRendererTests : IDisposable
         Assert.Contains("not placed directly on the report", html, StringComparison.Ordinal);
         Assert.Contains("Sales[Total Sales] (model measure)", html, StringComparison.Ordinal);
         Assert.Contains("Semantic model", html, StringComparison.Ordinal);
-        Assert.Contains("Power Query lineage", html, StringComparison.Ordinal);
+        Assert.Contains("Power Query", html, StringComparison.Ordinal);
         Assert.Contains("Data sources", html, StringComparison.Ordinal);
         Assert.Contains("Raw connection arguments are not repeated in this source summary.", html, StringComparison.Ordinal);
         Assert.Contains("Full M expressions remain available in the query details and can contain sensitive values.", html, StringComparison.Ordinal);
@@ -387,7 +388,7 @@ public sealed class HtmlReportRendererTests : IDisposable
         Assert.Contains("id=\"usage-origin\"", html, StringComparison.Ordinal);
         Assert.Contains("data-object-origin=\"system\"", html, StringComparison.Ordinal);
         Assert.Contains("investigationConfigs.forEach(setupInvestigation);", html, StringComparison.Ordinal);
-        Assert.Contains("Developer-authored model objects", html, StringComparison.Ordinal);
+        Assert.Contains("Your model objects", html, StringComparison.Ordinal);
         Assert.Contains("System-generated model objects", html, StringComparison.Ordinal);
         Assert.Contains("data-usage-state=\"DirectlyUsed\"", html, StringComparison.Ordinal);
         Assert.Contains("data-usage-state=\"ApparentlyUnused\"", html, StringComparison.Ordinal);
@@ -432,9 +433,9 @@ public sealed class HtmlReportRendererTests : IDisposable
         Assert.All(inventory.SemanticObjectUsages.Where(usage => usage.Table == "Age"), usage =>
             Assert.Equal(SemanticUsageStates.ApparentlyUnused, usage.UsageState));
         Assert.Contains("Power Query dependency", html, StringComparison.Ordinal);
-        Assert.Contains("This table&#x27;s model objects appear unused in the semantic and report layers", html, StringComparison.Ordinal);
-        Assert.Contains("The backing Power Query is still required during data preparation.", html, StringComparison.Ordinal);
-        Assert.Contains("Review whether loading this table into the semantic model is still required.", html, StringComparison.Ordinal);
+        Assert.Contains("This table's model objects appear unused in the report and model", html, StringComparison.Ordinal);
+        Assert.Contains("Its Power Query is therefore still required while the data is being prepared.", html, StringComparison.Ordinal);
+        Assert.Contains("Check whether this table still needs to be loaded into the model.", html, StringComparison.Ordinal);
         Assert.Contains("href=\"#power-query-crosslayer-age-tablepartition-age\"", html, StringComparison.Ordinal);
         Assert.Contains("href=\"#power-query-crosslayer-customer-tablepartition-customer\"", html, StringComparison.Ordinal);
         Assert.Contains("Loaded into model and used by other queries", html, StringComparison.Ordinal);
@@ -454,8 +455,8 @@ public sealed class HtmlReportRendererTests : IDisposable
         Assert.Contains("Used as a merge key by Power Query Customer.", html, StringComparison.Ordinal);
         Assert.Contains("Expanded into Power Query Customer.", html, StringComparison.Ordinal);
         Assert.Contains("Power Query evidence", html, StringComparison.Ordinal);
-        Assert.Contains("Semantic usage and Power Query dependency are separate", html, StringComparison.Ordinal);
-        Assert.Contains("Power Query column usage is based on explicit static M references", html, StringComparison.Ordinal);
+        Assert.Contains("A model table can look unused in the report while its Power Query is still needed by another query", html, StringComparison.Ordinal);
+        Assert.Contains("Power Query dependencies built dynamically may not be detected", html, StringComparison.Ordinal);
         Assert.DoesNotContain("</code><script>alert('m-unsafe')</script>", html, StringComparison.Ordinal);
         Assert.Contains("&lt;/code&gt;&lt;script&gt;alert(&#x27;m-unsafe&#x27;)&lt;/script&gt;", html, StringComparison.Ordinal);
     }
