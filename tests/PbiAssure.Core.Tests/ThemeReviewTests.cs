@@ -132,6 +132,49 @@ public sealed class ThemeReviewTests
         Assert.DoesNotContain("WCAG pass", html, StringComparison.OrdinalIgnoreCase);
     }
 
+    [Fact]
+    public void RendersAccessibleBoundedPaletteSwatchesAndClearEligibilityExplanation()
+    {
+        var palette = string.Join(", ", Enumerable.Range(0, 30).Select(index => $"\"#{index:X6}\""));
+        var customTheme = $"{{ \"name\": \"Large palette\", \"dataColors\": [{palette}] }}";
+        var html = HtmlReportRenderer.Render(Scan(ReportJson(customName: "Custom.json"), BaseThemeJson, customTheme, BasicVisual));
+
+        Assert.Equal(24, CountOccurrences(html, "Palette colour #000"));
+        Assert.Contains("Showing 24 swatches from 30 palette colours.", html, StringComparison.Ordinal);
+        Assert.Contains("title=\"#000000\"", html, StringComparison.Ordinal);
+        Assert.Contains("<span class=\"visually-hidden\">Palette colour #000000</span>", html, StringComparison.Ordinal);
+        Assert.DoesNotContain("class=\"theme-swatch\" style=\"--swatch:#000000\">#000000", html, StringComparison.Ordinal);
+        Assert.Contains("The eligible count is across applicable visual/property combinations, so it is not a visual count and not every property applies to every visual.", html, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void KeepsClassificationAndScopeFiltersSemanticallyDistinct()
+    {
+        var html = HtmlReportRenderer.Render(Scan(ReportJson(customName: null), BaseThemeJson, null, FormattingVisual));
+        var classificationFilter = SelectMarkup(html, "theme-classification");
+        var scopeFilter = SelectMarkup(html, "theme-scope");
+
+        Assert.Contains("<option value=\"PersistedLiteral\">Persisted literal value</option>", classificationFilter, StringComparison.Ordinal);
+        Assert.Contains("<option value=\"ThemeReference\">Theme-linked colour reference</option>", classificationFilter, StringComparison.Ordinal);
+        Assert.DoesNotContain("scoped to series/category", classificationFilter, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("<option value=\"Scoped\">Scoped to series/category</option>", scopeFilter, StringComparison.Ordinal);
+        Assert.Contains("<option value=\"VisualWide\">Not selector-scoped</option>", scopeFilter, StringComparison.Ordinal);
+        Assert.Contains("data-filter-scope=\"VisualWide&#x1F;Scoped\"", html, StringComparison.Ordinal);
+        Assert.Contains(".theme-visual-card[open] > summary::after { content: \"−\"; }", html, StringComparison.Ordinal);
+        Assert.DoesNotContain("âˆ’", html, StringComparison.Ordinal);
+    }
+
+    private static int CountOccurrences(string value, string search) => value.Split(search, StringSplitOptions.None).Length - 1;
+
+    private static string SelectMarkup(string html, string id)
+    {
+        var start = html.IndexOf($"<select id=\"{id}\"", StringComparison.Ordinal);
+        Assert.True(start >= 0, $"Select '{id}' was not rendered.");
+        var end = html.IndexOf("</select>", start, StringComparison.Ordinal);
+        Assert.True(end >= 0, $"Select '{id}' was not closed.");
+        return html[start..(end + "</select>".Length)];
+    }
+
     private static ProjectInventory Scan(string reportJson, string baseTheme, string? customTheme, string visualJson)
     {
         var files = StandardFiles(reportJson, visualJson);

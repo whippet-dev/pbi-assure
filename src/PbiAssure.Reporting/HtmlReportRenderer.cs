@@ -58,10 +58,10 @@ public static partial class HtmlReportRenderer
         AppendSectionNavigationItem(html, "summary", "Summary", null);
         AppendSectionNavigationItem(html, "findings", "Findings", FindingNavigationSummary(inventory));
         AppendSectionNavigationItem(html, "reports", "Report pages", $"{inventory.PageCount} {Pluralize(inventory.PageCount, "page", "pages")} · {inventory.VisualCount} {Pluralize(inventory.VisualCount, "visual", "visuals")}");
-        AppendSectionNavigationItem(html, "theme-review", "Theme Review", inventory.Reports.Count == 0 ? null : $"{inventory.Reports.Count} {Pluralize(inventory.Reports.Count, "report", "reports")}");
         AppendSectionNavigationItem(html, "power-query", "Power Query", inventory.PowerQueryCount == 0 ? null : $"{inventory.PowerQueryCount} {Pluralize(inventory.PowerQueryCount, "query", "queries")}");
         AppendSectionNavigationItem(html, "relationships", "Model relationships", $"{inventory.SemanticRelationshipCount} {Pluralize(inventory.SemanticRelationshipCount, "relationship", "relationships")}");
         AppendSectionNavigationItem(html, "semantic-usage", "Semantic model", $"{inventory.DeveloperSemanticObjectCount} developer-authored {Pluralize(inventory.DeveloperSemanticObjectCount, "object", "objects")}");
+        AppendSectionNavigationItem(html, "theme-review", "Theme Review", inventory.Reports.Count == 0 ? null : $"{inventory.Reports.Count} {Pluralize(inventory.Reports.Count, "report", "reports")}");
         html.AppendLine("        </ul>");
         html.AppendLine("      </nav>");
         html.AppendLine("    </div>");
@@ -2543,8 +2543,8 @@ public static partial class HtmlReportRenderer
     .theme-resolution-issues { margin-top: .75rem; padding: .65rem .75rem; border-left: .3rem solid var(--warning); background: var(--warning-bg); }
     .theme-resolution-issues ul { margin-bottom: 0; }
     .theme-content-report { min-width: 0; margin-top: 1rem; }
-    .theme-palette { display: flex; min-width: 0; flex-wrap: wrap; gap: .3rem; margin: .75rem 0 .35rem; }
-    .theme-swatch { width: 1.65rem; height: 1.65rem; border: 1px solid #637282; border-radius: .2rem; background: var(--swatch); }
+    .theme-palette { display: grid; grid-template-columns: repeat(auto-fill, minmax(1.65rem, 1.65rem)); min-width: 0; max-width: 100%; gap: .4rem; margin: .75rem 0 .35rem; padding: 0; list-style: none; }
+    .theme-swatch { display: grid; width: 1.65rem; height: 1.65rem; overflow: hidden; border: 1px solid #637282; border-radius: .2rem; background: var(--swatch); }
     .theme-metadata-grid { min-width: 0; margin-top: .8rem; padding-top: .65rem; border-top: 1px solid #d7dee5; }
     .theme-metadata-grid h6 { margin: 0; font-size: .92rem; }
     .theme-metrics { margin-bottom: 1rem; }
@@ -2552,7 +2552,7 @@ public static partial class HtmlReportRenderer
     .theme-visual-card > summary { display: flex; min-width: 0; justify-content: space-between; gap: .75rem; padding: .8rem .9rem; color: var(--text); }
     .theme-visual-card > summary::after { align-self: center; content: "+"; color: var(--link); font-size: 1.3rem; font-weight: 800; }
     .theme-visual-card[open] > summary { border-bottom: 1px solid var(--border); }
-    .theme-visual-card[open] > summary::after { content: "âˆ’"; }
+    .theme-visual-card[open] > summary::after { content: "−"; }
     .theme-visual-body { min-width: 0; padding: .75rem .9rem; }
     .theme-observation-list { display: grid; min-width: 0; grid-template-columns: repeat(auto-fit, minmax(min(100%, 22rem), 1fr)); gap: .65rem; }
     .theme-observation { min-width: 0; padding: .75rem; border: 1px solid #d7dee5; border-radius: .35rem; overflow-wrap: anywhere; }

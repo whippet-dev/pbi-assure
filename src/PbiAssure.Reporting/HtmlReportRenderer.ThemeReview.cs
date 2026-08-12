@@ -109,13 +109,13 @@ public static partial class HtmlReportRenderer
         if (metadata.DataColors.Count > 0)
         {
             var preview = metadata.DataColors.Where(IsSafeSwatchColor).Take(24).ToArray();
-            html.Append("            <div class=\"theme-palette\" aria-label=\"Palette preview: ").Append(preview.Length).Append(" of ").Append(metadata.DataColors.Count).AppendLine(" colours\">");
+            html.Append("            <ul class=\"theme-palette\" aria-label=\"Palette preview: ").Append(preview.Length).Append(" of ").Append(metadata.DataColors.Count).AppendLine(" colours\">");
             foreach (var color in preview)
             {
-                html.Append("              <span class=\"theme-swatch\" style=\"--swatch:").Append(Encode(color)).Append("\"><span class=\"visually-hidden\">").Append(Encode(color)).AppendLine("</span></span>");
+                html.Append("              <li class=\"theme-swatch\" style=\"--swatch:").Append(Encode(color)).Append("\" title=\"").Append(Encode(color)).Append("\"><span class=\"visually-hidden\">Palette colour ").Append(Encode(color)).AppendLine("</span></li>");
             }
-            html.AppendLine("            </div>");
-            if (metadata.DataColors.Count > 24) html.Append("            <p class=\"secondary\">Showing the first 24 of ").Append(metadata.DataColors.Count.ToString("N0", CultureInfo.InvariantCulture)).AppendLine(" palette colours.</p>");
+            html.AppendLine("            </ul>");
+            if (metadata.DataColors.Count > preview.Length) html.Append("            <p class=\"secondary\">Showing ").Append(preview.Length.ToString("N0", CultureInfo.InvariantCulture)).Append(" swatches from ").Append(metadata.DataColors.Count.ToString("N0", CultureInfo.InvariantCulture)).AppendLine(" palette colours.</p>");
         }
         AppendThemeMetadataLists(html, metadata);
         html.AppendLine("          </article>");
@@ -150,7 +150,7 @@ public static partial class HtmlReportRenderer
     {
         html.AppendLine("      <section class=\"theme-review-group\" aria-labelledby=\"persisted-formatting-heading\">");
         html.AppendLine("        <h3 id=\"persisted-formatting-heading\">Persisted formatting</h3>");
-        html.AppendLine("        <p class=\"group-explanation\">Saved evidence for four currently supported property paths. No saved local value is a storage state only; it does not prove what Power BI finally renders.</p>");
+        html.AppendLine("        <p class=\"group-explanation\">Theme Review currently checks four supported formatting property paths. The eligible count is across applicable visual/property combinations, so it is not a visual count and not every property applies to every visual. No saved local value is a storage state only; it does not prove what Power BI finally renders.</p>");
         html.AppendLine("        <dl class=\"metrics theme-metrics\">");
         AppendMetric(html, "Eligible supported properties", headline.Length);
         AppendMetric(html, "No saved local value", Count(headline, PersistedFormattingClassifications.NoPersistedValue));
@@ -192,7 +192,11 @@ public static partial class HtmlReportRenderer
         AppendInvestigationFacet(html, "theme", "visual-type", "Visual type", "All visual types", details
             .Select(context => new FindingFacetOption(context.Visual.VisualType ?? "Unknown", HumanizeVisualType(context.Visual.VisualType))).Distinct());
         AppendInvestigationFacet(html, "theme", "classification", "Classification", "All classifications", details
-            .SelectMany(PersistedValues).Select(item => new FindingFacetOption(item.Classification, FormattingClassificationLabel(item))).Distinct());
+            .SelectMany(PersistedValues).Select(item => new FindingFacetOption(item.Classification, FormattingClassificationLabel(item.Classification))).Distinct());
+        AppendInvestigationFacet(html, "theme", "scope", "Scope", "All scopes", details
+            .SelectMany(PersistedValues).Select(item => new FindingFacetOption(
+                item.IsSelectorScoped ? "Scoped" : "VisualWide",
+                item.IsSelectorScoped ? "Scoped to series/category" : "Not selector-scoped")).Distinct());
         AppendInvestigationFacet(html, "theme", "property", "Property", "All properties", details
             .SelectMany(PersistedValues).Select(item => new FindingFacetOption(item.PropertyKey, item.PropertyLabel)).Distinct());
         AppendInvestigationEnd(html, "theme", details.Length, "visual", "visuals");
@@ -202,12 +206,13 @@ public static partial class HtmlReportRenderer
     {
         var observations = PersistedValues(context).ToArray();
         var classifications = string.Join('\u001f', observations.Select(item => item.Classification).Distinct(StringComparer.Ordinal));
+        var scopes = string.Join('\u001f', observations.Select(item => item.IsSelectorScoped ? "Scoped" : "VisualWide").Distinct(StringComparer.Ordinal));
         var properties = string.Join('\u001f', observations.Select(item => item.PropertyKey).Distinct(StringComparer.Ordinal));
         var search = string.Join(' ', context.Report.Name, context.Page.DisplayName, VisualDisplayName(context.Visual), context.Visual.VisualType,
             string.Join(' ', observations.Select(item => $"{item.PropertyLabel} {item.NormalizedValue} {item.SelectorScope} {item.ExpressionSource}")));
         html.Append("          <details class=\"theme-visual-card\" data-investigation-item=\"theme\" data-search-text=\"").Append(Encode(search))
             .Append("\" data-filter-page=\"").Append(Encode(context.Page.DisplayName)).Append("\" data-filter-visual-type=\"").Append(Encode(context.Visual.VisualType ?? "Unknown"))
-            .Append("\" data-filter-classification=\"").Append(Encode(classifications)).Append("\" data-filter-property=\"").Append(Encode(properties)).AppendLine("\">");
+            .Append("\" data-filter-classification=\"").Append(Encode(classifications)).Append("\" data-filter-scope=\"").Append(Encode(scopes)).Append("\" data-filter-property=\"").Append(Encode(properties)).AppendLine("\">");
         html.Append("            <summary><span class=\"summary-copy\"><strong>").Append(Encode(VisualDisplayName(context.Visual))).Append("</strong><span><strong>Page:</strong> ")
             .Append(Encode(context.Page.DisplayName)).Append(" · ").Append(Encode(HumanizeVisualType(context.Visual.VisualType))).Append(" · ")
             .Append(observations.Length).Append(' ').Append(Pluralize(observations.Length, "saved observation", "saved observations")).AppendLine("</span></span></summary>");
@@ -241,12 +246,20 @@ public static partial class HtmlReportRenderer
     private static int Count(IEnumerable<PersistedFormattingObservation> values, string classification) =>
         values.Count(item => item.Classification == classification);
 
-    private static string FormattingClassificationLabel(PersistedFormattingObservation observation) => observation.Classification switch
+    private static string FormattingClassificationLabel(PersistedFormattingObservation observation)
+    {
+        var label = FormattingClassificationLabel(observation.Classification);
+        return observation.IsSelectorScoped && observation.Classification is not PersistedFormattingClassifications.NoPersistedValue and not PersistedFormattingClassifications.Unsupported
+            ? $"{label} · scoped to series/category"
+            : label;
+    }
+
+    private static string FormattingClassificationLabel(string classification) => classification switch
     {
         PersistedFormattingClassifications.NoPersistedValue => "No saved local value",
-        PersistedFormattingClassifications.PersistedLiteral => observation.IsSelectorScoped ? "Persisted literal value · scoped to series/category" : "Persisted literal value",
-        PersistedFormattingClassifications.ThemeReference => observation.IsSelectorScoped ? "Theme-linked colour reference · scoped to series/category" : "Theme-linked colour reference",
-        PersistedFormattingClassifications.DynamicExpression => observation.IsSelectorScoped ? "Dynamic or conditional value · scoped to series/category" : "Dynamic or conditional value",
+        PersistedFormattingClassifications.PersistedLiteral => "Persisted literal value",
+        PersistedFormattingClassifications.ThemeReference => "Theme-linked colour reference",
+        PersistedFormattingClassifications.DynamicExpression => "Dynamic or conditional value",
         _ => "Unsupported or ambiguous mapping",
     };
 
