@@ -16,25 +16,31 @@ public static partial class HtmlReportRenderer
 
         html.AppendLine("    <section id=\"theme-review\" class=\"report-section\" data-report-section=\"theme-review\" aria-labelledby=\"theme-review-heading\">");
         html.AppendLine("      <h2 id=\"theme-review-heading\" tabindex=\"-1\">Theme Review</h2>");
-        html.AppendLine("      <p class=\"section-intro\">See which theme resources are active, what metadata they contain and which supported formatting values are saved in the report.</p>");
-        html.AppendLine("      <div class=\"theme-early-access\" role=\"note\"><strong>Early access</strong><p>Theme Review is under active development. It currently inventories theme resources and saved formatting, and compares only one fixture-validated property mapping: clustered column chart title font size. Other theme properties may be shown as evidence but are not yet compared.</p></div>");
-        html.AppendLine("      <div class=\"theme-boundary\"><strong>What this review means</strong><p>Theme Review compares only a small set of explicitly supported saved formatting properties against supported active-theme rules. It does not reproduce Power BI’s full formatting engine, infer authoring intent, determine final rendered formatting or assess accessibility compliance.</p></div>");
+        html.AppendLine("      <p class=\"section-intro\">See which theme is applied, which supported saved formatting differs from it and whether comparable visuals contain obvious formatting outliers.</p>");
+        html.AppendLine("      <div class=\"theme-early-access\" role=\"note\"><strong>Early access</strong><p>Theme Review is under active development. Theme comparison currently supports one fixture-validated property mapping: clustered column chart title font size. Consistency review uses a small set of saved title properties; other theme evidence remains available in technical details.</p></div>");
+        html.AppendLine("      <div class=\"theme-boundary\"><strong>What this review means</strong><p>Theme Review surfaces evidence for human judgement. It does not reproduce Power BI’s full formatting engine, infer authoring intent, grade the report or assess full accessibility compliance.</p></div>");
         AppendThemeSummary(html, inventory);
+        AppendThemeReviewFilters(html, inventory);
+        AppendThemeDeviations(html, inventory, contexts);
+        AppendThemeConsistency(html, inventory, contexts);
+        AppendThemeAccessibility(html, inventory);
+        html.AppendLine("      <details class=\"theme-supporting-details\"><summary>Theme details and technical evidence</summary><div class=\"theme-supporting-body\">");
         AppendThemeContentsSection(html, inventory);
         AppendPersistedFormatting(html, contexts, all, headline);
+        html.AppendLine("      </div></details>");
         html.AppendLine("    </section>");
     }
 
     private static void AppendThemeSummary(StringBuilder html, ProjectInventory inventory)
     {
         html.AppendLine("      <section class=\"theme-review-group\" aria-labelledby=\"theme-summary-heading\">");
-        html.AppendLine("        <h3 id=\"theme-summary-heading\">Theme summary</h3>");
-        html.AppendLine("        <p class=\"group-explanation\">The base and custom theme layers selected by each report. A custom theme, when present, is shown separately from the base theme.</p>");
+        html.AppendLine("        <h3 id=\"theme-summary-heading\">Theme status</h3>");
+        html.AppendLine("        <p class=\"group-explanation\">The theme currently associated with each report, including whether a custom theme is applied over the built-in base theme.</p>");
         html.AppendLine("        <div class=\"theme-report-list\">");
         foreach (var report in inventory.Reports)
         {
             html.Append("          <article class=\"theme-report-card\"><h4>").Append(Encode(report.Name)).AppendLine("</h4>");
-            html.Append("            <p class=\"theme-state\">").Append(Encode(report.Theme.ActiveState)).AppendLine("</p>");
+            html.Append("            <p class=\"theme-state\">").Append(Encode(ThemeStatusLabel(report.ThemeReview.Status.State))).AppendLine("</p>");
             AppendThemeSourceSummary(html, "Base theme", report.Theme.BaseSource);
             if (report.Theme.CustomSource is { } custom) AppendThemeSourceSummary(html, "Active custom theme", custom);
             if (report.Theme.ResolutionIssues.Count > 0)
@@ -49,6 +55,170 @@ public static partial class HtmlReportRenderer
         html.AppendLine("        </div>");
         html.AppendLine("      </section>");
     }
+
+    private static void AppendThemeReviewFilters(StringBuilder html, ProjectInventory inventory)
+    {
+        var items = ReviewItems(inventory).ToArray();
+        if (items.Length == 0) return;
+
+        AppendInvestigationStart(html, "theme-governance", "Search items needing review", "Search page, visual, property or value");
+        AppendInvestigationFacet(html, "theme-governance", "page", "Page", "All pages", items
+            .Select(item => new FindingFacetOption(item.PageDisplayName, item.PageDisplayName)).Distinct());
+        AppendInvestigationFacet(html, "theme-governance", "visual-type", "Visual type", "All visual types", items
+            .Select(item => new FindingFacetOption(item.VisualType ?? "Unknown", HumanizeVisualType(item.VisualType))).Distinct());
+        AppendInvestigationFacet(html, "theme-governance", "review-type", "Review type", "All review types", items
+            .Select(item => new FindingFacetOption(item.ReviewType, item.ReviewType)).Distinct());
+        AppendInvestigationFacet(html, "theme-governance", "property", "Property", "All properties", items
+            .Select(item => new FindingFacetOption(item.PropertyKey, item.PropertyLabel)).Distinct());
+        AppendInvestigationEnd(html, "theme-governance", items.Length, "review item", "review items");
+    }
+
+    private static void AppendThemeDeviations(StringBuilder html, ProjectInventory inventory, ThemeVisualContext[] contexts)
+    {
+        var deviations = inventory.Reports.SelectMany(report => report.ThemeReview.Deviations.Select(item => (report, item))).ToArray();
+        html.AppendLine("      <section class=\"theme-review-group\" aria-labelledby=\"theme-deviations-heading\">");
+        html.AppendLine("        <h3 id=\"theme-deviations-heading\">Significant theme deviations</h3>");
+        html.AppendLine("        <p class=\"group-explanation\">Saved formatting that differs from an applicable, supported active-theme rule. A difference is not automatically a problem; review whether it is intentional.</p>");
+        var checkedCount = inventory.Reports.SelectMany(report => report.Pages).SelectMany(page => page.Visuals)
+            .SelectMany(visual => visual.PersistedFormatting).Count(item => item.ThemeComparison is not null);
+        html.Append("        <p class=\"theme-check-summary\"><strong>").Append(checkedCount.ToString("N0", CultureInfo.InvariantCulture))
+            .Append(" supported ").Append(Pluralize(checkedCount, "comparison", "comparisons")).Append(" checked</strong> · ")
+            .Append(deviations.Length.ToString("N0", CultureInfo.InvariantCulture)).Append(' ')
+            .Append(Pluralize(deviations.Length, "difference", "differences")).AppendLine(" found</p>");
+        if (deviations.Length == 0)
+        {
+            html.AppendLine("        <p class=\"theme-empty-state\">No supported theme differences need review.</p>");
+        }
+        else
+        {
+            html.AppendLine("        <div class=\"theme-governance-list\">");
+            foreach (var group in deviations.GroupBy(value => new
+                     {
+                         ReportName = value.report.Name,
+                         value.item.PageDisplayName,
+                         value.item.PropertyKey,
+                         value.item.PropertyLabel,
+                         value.item.SavedValue,
+                         value.item.ThemeValue,
+                         value.item.VisualType,
+                     }))
+            {
+                var examples = group.ToArray();
+                var first = examples[0].item;
+                AppendGovernanceCardStart(html, "Theme deviation", first.PageDisplayName, first.VisualType,
+                    first.PropertyKey, first.PropertyLabel, $"{first.SavedValue} {first.ThemeValue}");
+                html.Append("            <h4>").Append(Encode(first.PropertyLabel)).AppendLine(" differs from the theme</h4>");
+                html.Append("            <p><strong>Saved value:</strong> ").Append(Encode(FormattingValue(first.PropertyKey, first.SavedValue)))
+                    .Append(" · <strong>Theme setting:</strong> ").Append(Encode(FormattingValue(first.PropertyKey, first.ThemeValue))).AppendLine("</p>");
+                html.Append("            <p class=\"secondary\">").Append(examples.Length.ToString("N0", CultureInfo.InvariantCulture)).Append(' ')
+                    .Append(Pluralize(examples.Length, "visual is", "visuals are")).AppendLine(" affected. Review whether this difference is intentional.</p>");
+                AppendGovernanceExamples(html, examples.Select(value => ContextFor(contexts, value.report, value.item.PageName, value.item.VisualName)));
+                html.AppendLine("          </article>");
+            }
+            html.AppendLine("        </div>");
+        }
+        html.AppendLine("      </section>");
+    }
+
+    private static void AppendThemeConsistency(StringBuilder html, ProjectInventory inventory, ThemeVisualContext[] contexts)
+    {
+        var observations = inventory.Reports.SelectMany(report => report.ThemeReview.ConsistencyObservations.Select(item => (report, item))).ToArray();
+        html.AppendLine("      <section class=\"theme-review-group\" aria-labelledby=\"theme-consistency-heading\">");
+        html.AppendLine("        <h3 id=\"theme-consistency-heading\">Consistency review</h3>");
+        html.AppendLine("        <p class=\"group-explanation\">Unusual saved title formatting among otherwise comparable visuals. PBI Assure compares only the same visual type and property, with at least four peers and a value used by at least 75% of them.</p>");
+        if (observations.Length == 0)
+        {
+            html.AppendLine("        <p class=\"theme-empty-state\">No high-confidence formatting outliers were found among comparable visuals.</p>");
+        }
+        else
+        {
+            html.AppendLine("        <div class=\"theme-governance-list\">");
+            foreach (var group in observations.GroupBy(value => new
+                     {
+                         ReportName = value.report.Name,
+                         value.item.PageDisplayName,
+                         value.item.VisualType,
+                         value.item.PropertyKey,
+                         value.item.PropertyLabel,
+                         value.item.ObservedValue,
+                         value.item.DominantValue,
+                         value.item.PeerCount,
+                         value.item.DominantCount,
+                     }))
+            {
+                var examples = group.ToArray();
+                var first = examples[0].item;
+                AppendGovernanceCardStart(html, "Consistency review", first.PageDisplayName, first.VisualType,
+                    first.PropertyKey, first.PropertyLabel, $"{first.ObservedValue} {first.DominantValue}");
+                html.Append("            <h4>").Append(Encode(first.PropertyLabel)).AppendLine(" differs from comparable visuals</h4>");
+                html.Append("            <p><strong>Most comparable visuals use:</strong> ").Append(Encode(FormattingValue(first.PropertyKey, first.DominantValue)))
+                    .Append(" (" ).Append(first.DominantCount).Append(" of ").Append(first.PeerCount).AppendLine(")</p>");
+                html.Append("            <p><strong>This ").Append(Pluralize(examples.Length, "visual uses", "group uses")).Append(":</strong> ")
+                    .Append(Encode(FormattingValue(first.PropertyKey, first.ObservedValue))).AppendLine("</p>");
+                html.AppendLine("            <p class=\"secondary\">Review whether this difference is intentional.</p>");
+                AppendGovernanceExamples(html, examples.Select(value => ContextFor(contexts, value.report, value.item.PageName, value.item.VisualName)));
+                html.AppendLine("          </article>");
+            }
+            html.AppendLine("        </div>");
+        }
+        html.AppendLine("      </section>");
+    }
+
+    private static void AppendThemeAccessibility(StringBuilder html, ProjectInventory inventory)
+    {
+        var observations = inventory.Reports.Sum(report => report.ThemeReview.AccessibilityObservations.Count);
+        html.AppendLine("      <section class=\"theme-review-group\" aria-labelledby=\"theme-accessibility-heading\">");
+        html.AppendLine("        <h3 id=\"theme-accessibility-heading\">Accessibility review</h3>");
+        if (observations == 0)
+            html.AppendLine("        <p class=\"theme-empty-state\">No theme-based accessibility claims are currently made. Contrast needs resolved foreground, background and transparency values from the same formatting context; the current evidence is not yet sufficient.</p>");
+        html.AppendLine("      </section>");
+    }
+
+    private static void AppendGovernanceCardStart(StringBuilder html, string reviewType, string page, string? visualType,
+        string propertyKey, string propertyLabel, string values)
+    {
+        html.Append("          <article class=\"theme-governance-card\" data-investigation-item=\"theme-governance\" data-search-text=\"")
+            .Append(Encode($"{reviewType} {page} {visualType} {propertyLabel} {values}"))
+            .Append("\" data-filter-page=\"").Append(Encode(page)).Append("\" data-filter-visual-type=\"").Append(Encode(visualType ?? "Unknown"))
+            .Append("\" data-filter-review-type=\"").Append(Encode(reviewType)).Append("\" data-filter-property=\"").Append(Encode(propertyKey)).AppendLine("\">");
+        html.Append("            <span class=\"theme-review-kind\">").Append(Encode(reviewType)).AppendLine("</span>");
+    }
+
+    private static void AppendGovernanceExamples(StringBuilder html, IEnumerable<ThemeVisualContext?> contexts)
+    {
+        var examples = contexts.Where(context => context is not null).Cast<ThemeVisualContext>().ToArray();
+        if (examples.Length == 0) return;
+        html.Append("            <details class=\"technical-details\"><summary>Show affected ").Append(Pluralize(examples.Length, "visual", "visuals")).AppendLine("</summary><ul class=\"theme-example-list\">");
+        foreach (var context in examples.Take(20))
+        {
+            html.Append("              <li><strong>Page:</strong> ").Append(Encode(context.Page.DisplayName)).Append(" · ")
+                .Append(Encode(VisualDisplayName(context.Visual))).Append(" · ").Append(Encode(HumanizeVisualType(context.Visual.VisualType))).AppendLine("</li>");
+        }
+        if (examples.Length > 20) html.Append("              <li>").Append((examples.Length - 20).ToString("N0", CultureInfo.InvariantCulture)).AppendLine(" more affected visuals</li>");
+        html.AppendLine("            </ul></details>");
+    }
+
+    private static ThemeVisualContext? ContextFor(ThemeVisualContext[] contexts, ReportInventory report, string pageName, string visualName) =>
+        contexts.FirstOrDefault(context => ReferenceEquals(context.Report, report) &&
+            string.Equals(context.Page.Name, pageName, StringComparison.Ordinal) &&
+            string.Equals(context.Visual.Name, visualName, StringComparison.Ordinal));
+
+    private static IEnumerable<ThemeReviewItem> ReviewItems(ProjectInventory inventory) =>
+        inventory.Reports.SelectMany(report =>
+            report.ThemeReview.Deviations.Select(item => new ThemeReviewItem(
+                "Theme deviation", item.PageDisplayName, item.VisualType, item.PropertyKey, item.PropertyLabel))
+            .Concat(report.ThemeReview.ConsistencyObservations.Select(item => new ThemeReviewItem(
+                "Consistency review", item.PageDisplayName, item.VisualType, item.PropertyKey, item.PropertyLabel))));
+
+    private static string FormattingValue(string propertyKey, string value) =>
+        propertyKey.EndsWith("fontSize", StringComparison.Ordinal) ? $"{value} pt" : value;
+
+    private static string ThemeStatusLabel(string state) => state switch
+    {
+        ThemeReviewStatusStates.CustomThemeAppliedOverBase => "Custom theme applied over base",
+        ThemeReviewStatusStates.BaseThemeOnly => "Base theme only",
+        _ => "Theme resource unavailable or unresolved",
+    };
 
     private static void AppendThemeSourceSummary(StringBuilder html, string label, ThemeSourceInventory source)
     {
@@ -318,6 +488,13 @@ public static partial class HtmlReportRenderer
 
     private static bool IsSafeSwatchColor(string value) =>
         value.Length is 4 or 7 or 9 && value[0] == '#' && value[1..].All(Uri.IsHexDigit);
+
+    private sealed record ThemeReviewItem(
+        string ReviewType,
+        string PageDisplayName,
+        string? VisualType,
+        string PropertyKey,
+        string PropertyLabel);
 
     private sealed record ThemeVisualContext(ReportInventory Report, PageInventory Page, VisualInventory Visual);
 }

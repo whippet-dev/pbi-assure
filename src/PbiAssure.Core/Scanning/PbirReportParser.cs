@@ -58,6 +58,7 @@ internal static class PbirReportParser
                 Bookmarks: bookmarkResult.Bookmarks)
             {
                 Theme = theme,
+                ThemeReview = ThemeReviewAnalyzer.Analyze(theme, []),
             };
         }
 
@@ -97,6 +98,7 @@ internal static class PbirReportParser
             Bookmarks: bookmarkResult.Bookmarks)
         {
             Theme = theme,
+            ThemeReview = ThemeReviewAnalyzer.Analyze(theme, pages),
         };
     }
 

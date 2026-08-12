@@ -20,6 +20,8 @@ public sealed record ReportInventory(
 {
     public ThemeInventory Theme { get; init; } = ThemeInventory.Unavailable;
 
+    public ThemeReviewInventory ThemeReview { get; init; } = ThemeReviewInventory.Unavailable;
+
     public int PageCount => Pages.Count;
 
     public int VisualCount => Pages.Sum(page => page.VisualCount);

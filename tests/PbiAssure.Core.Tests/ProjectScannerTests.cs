@@ -25,7 +25,7 @@ public sealed class ProjectScannerTests : IDisposable
 
         var result = ProjectScanner.Scan(testRoot);
 
-        Assert.Equal("0.19", result.SchemaVersion);
+        Assert.Equal("0.20", result.SchemaVersion);
         Assert.Equal(1, result.ReportCount);
         Assert.Equal(1, result.SemanticModelCount);
         Assert.Contains(result.Artifacts, artifact =>

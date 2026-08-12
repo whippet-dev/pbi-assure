@@ -125,17 +125,21 @@ public sealed class ThemeReviewTests
 
         Assert.Contains("data-section-target=\"theme-review\"", html, StringComparison.Ordinal);
         Assert.Contains("id=\"theme-review\"", html, StringComparison.Ordinal);
-        Assert.Contains("Theme summary", html, StringComparison.Ordinal);
+        Assert.Contains("Theme status", html, StringComparison.Ordinal);
+        Assert.Contains("Significant theme deviations", html, StringComparison.Ordinal);
+        Assert.Contains("Consistency review", html, StringComparison.Ordinal);
+        Assert.Contains("Accessibility review", html, StringComparison.Ordinal);
         Assert.Contains("Theme contents", html, StringComparison.Ordinal);
         Assert.Contains("Persisted formatting", html, StringComparison.Ordinal);
+        Assert.Contains("<summary>Theme details and technical evidence</summary>", html, StringComparison.Ordinal);
         Assert.Contains("<div class=\"theme-early-access\" role=\"note\"><strong>Early access</strong>", html, StringComparison.Ordinal);
-        Assert.Contains("compares only one fixture-validated property mapping: clustered column chart title font size", html, StringComparison.Ordinal);
-        Assert.Contains("Other theme properties may be shown as evidence but are not yet compared.", html, StringComparison.Ordinal);
+        Assert.Contains("Theme comparison currently supports one fixture-validated property mapping: clustered column chart title font size", html, StringComparison.Ordinal);
+        Assert.Contains("Consistency review uses a small set of saved title properties", html, StringComparison.Ordinal);
         Assert.Contains("Theme-linked references", html, StringComparison.Ordinal);
         Assert.Contains("Dynamic or conditional value", html, StringComparison.Ordinal);
         Assert.Contains("data-investigation=\"theme\"", html, StringComparison.Ordinal);
-        Assert.Contains("compares only a small set of explicitly supported saved formatting properties", html, StringComparison.Ordinal);
-        Assert.Contains("does not reproduce Power BI’s full formatting engine, infer authoring intent, determine final rendered formatting or assess accessibility compliance", html, StringComparison.Ordinal);
+        Assert.Contains("surfaces evidence for human judgement", html, StringComparison.Ordinal);
+        Assert.Contains("does not reproduce Power BI’s full formatting engine, infer authoring intent, grade the report or assess full accessibility compliance", html, StringComparison.Ordinal);
         Assert.DoesNotContain("theme compliance", html, StringComparison.OrdinalIgnoreCase);
         Assert.DoesNotContain("manually overridden", html, StringComparison.OrdinalIgnoreCase);
         Assert.DoesNotContain("WCAG pass", html, StringComparison.OrdinalIgnoreCase);
@@ -150,6 +154,8 @@ public sealed class ThemeReviewTests
             ReportJson(customName: "Custom.json"), BaseThemeJson, CustomThemeJson, BasicVisual));
 
         Assert.Contains("Saved value differs from supported active-theme rule", differentHtml, StringComparison.Ordinal);
+        Assert.Contains("Title font size differs from the theme", differentHtml, StringComparison.Ordinal);
+        Assert.Contains("Review whether this difference is intentional.", differentHtml, StringComparison.Ordinal);
         Assert.Contains("<strong>Saved value:</strong> 30 pt", differentHtml, StringComparison.Ordinal);
         Assert.Contains("<strong>Theme rule:</strong> 18 pt", differentHtml, StringComparison.Ordinal);
         Assert.Contains("data-filter-comparison=\"SavedValueDiffersFromTheme\"", differentHtml, StringComparison.Ordinal);
@@ -158,6 +164,7 @@ public sealed class ThemeReviewTests
         Assert.DoesNotContain("matches supported active-theme rule", noLocalHtml, StringComparison.OrdinalIgnoreCase);
         Assert.DoesNotContain("compliant", differentHtml, StringComparison.OrdinalIgnoreCase);
         Assert.DoesNotContain("safe to reset", differentHtml, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("compliance score", differentHtml, StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]
