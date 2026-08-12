@@ -2528,6 +2528,8 @@ public static partial class HtmlReportRenderer
     .metric-unused { border-left-color: #5b3f88; }
     .summary-note, .secondary, .filter-status { color: var(--muted); }
     .summary-caution { max-width: 64rem; margin: .7rem 0 0; padding: .65rem .75rem; border-left: .3rem solid #5b3f88; background: #f6f2fb; color: #3f2c5b; overflow-wrap: anywhere; }
+    .theme-early-access { max-width: 68rem; margin: 0 0 .75rem; padding: .75rem .85rem; border: 1px solid #d1b24b; border-left: .35rem solid #8a6500; border-radius: .25rem; background: #fff8dc; color: #493600; }
+    .theme-early-access p { margin: .25rem 0 0; }
     .theme-boundary { max-width: 68rem; margin: 0 0 1.25rem; padding: .75rem .85rem; border-left: .35rem solid var(--info); background: var(--info-bg); }
     .theme-boundary p { margin: .25rem 0 0; }
     .theme-review-group + .theme-review-group { margin-top: 2rem; padding-top: 1.25rem; border-top: 1px solid #d7dee5; }

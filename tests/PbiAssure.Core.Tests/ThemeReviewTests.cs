@@ -128,6 +128,9 @@ public sealed class ThemeReviewTests
         Assert.Contains("Theme summary", html, StringComparison.Ordinal);
         Assert.Contains("Theme contents", html, StringComparison.Ordinal);
         Assert.Contains("Persisted formatting", html, StringComparison.Ordinal);
+        Assert.Contains("<div class=\"theme-early-access\" role=\"note\"><strong>Early access</strong>", html, StringComparison.Ordinal);
+        Assert.Contains("compares only one fixture-validated property mapping: clustered column chart title font size", html, StringComparison.Ordinal);
+        Assert.Contains("Other theme properties may be shown as evidence but are not yet compared.", html, StringComparison.Ordinal);
         Assert.Contains("Theme-linked references", html, StringComparison.Ordinal);
         Assert.Contains("Dynamic or conditional value", html, StringComparison.Ordinal);
         Assert.Contains("data-investigation=\"theme\"", html, StringComparison.Ordinal);

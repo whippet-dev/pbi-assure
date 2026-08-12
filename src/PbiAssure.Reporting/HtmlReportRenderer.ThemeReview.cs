@@ -17,6 +17,7 @@ public static partial class HtmlReportRenderer
         html.AppendLine("    <section id=\"theme-review\" class=\"report-section\" data-report-section=\"theme-review\" aria-labelledby=\"theme-review-heading\">");
         html.AppendLine("      <h2 id=\"theme-review-heading\" tabindex=\"-1\">Theme Review</h2>");
         html.AppendLine("      <p class=\"section-intro\">See which theme resources are active, what metadata they contain and which supported formatting values are saved in the report.</p>");
+        html.AppendLine("      <div class=\"theme-early-access\" role=\"note\"><strong>Early access</strong><p>Theme Review is under active development. It currently inventories theme resources and saved formatting, and compares only one fixture-validated property mapping: clustered column chart title font size. Other theme properties may be shown as evidence but are not yet compared.</p></div>");
         html.AppendLine("      <div class=\"theme-boundary\"><strong>What this review means</strong><p>Theme Review compares only a small set of explicitly supported saved formatting properties against supported active-theme rules. It does not reproduce Power BI’s full formatting engine, infer authoring intent, determine final rendered formatting or assess accessibility compliance.</p></div>");
         AppendThemeSummary(html, inventory);
         AppendThemeContentsSection(html, inventory);
