@@ -2479,6 +2479,7 @@ public static partial class HtmlReportRenderer
       --used: #145a32;
       --used-bg: #e8f6ee;
     }
+    .visually-hidden { position: absolute !important; width: 1px !important; height: 1px !important; padding: 0 !important; margin: -1px !important; overflow: hidden !important; clip: rect(0, 0, 0, 0) !important; white-space: nowrap !important; border: 0 !important; }
     * { box-sizing: border-box; }
     html { scroll-behavior: smooth; }
     body { margin: 0; background: var(--background); color: var(--text); font-family: "Segoe UI", Arial, sans-serif; line-height: 1.5; }
@@ -2545,6 +2546,8 @@ public static partial class HtmlReportRenderer
     .theme-content-report { min-width: 0; margin-top: 1rem; }
     .theme-palette { display: grid; grid-template-columns: repeat(auto-fill, minmax(1.65rem, 1.65rem)); min-width: 0; max-width: 100%; gap: .4rem; margin: .75rem 0 .35rem; padding: 0; list-style: none; }
     .theme-swatch { display: grid; width: 1.65rem; height: 1.65rem; overflow: hidden; border: 1px solid #637282; border-radius: .2rem; background: var(--swatch); }
+    .theme-colour-value { display: inline-flex; min-width: 0; align-items: center; gap: .35rem; vertical-align: middle; }
+    .theme-colour-chip { flex: 0 0 auto; width: 1.05rem; height: 1.05rem; border: 1px solid #637282; border-radius: .15rem; background: var(--colour-chip); }
     .theme-metadata-grid { min-width: 0; margin-top: .8rem; padding-top: .65rem; border-top: 1px solid #d7dee5; }
     .theme-metadata-grid h6 { margin: 0; font-size: .92rem; }
     .theme-metrics { margin-bottom: 1rem; }

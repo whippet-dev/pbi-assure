@@ -144,6 +144,10 @@ public sealed class ThemeReviewTests
         Assert.Contains("title=\"#000000\"", html, StringComparison.Ordinal);
         Assert.Contains("<span class=\"visually-hidden\">Palette colour #000000</span>", html, StringComparison.Ordinal);
         Assert.DoesNotContain("class=\"theme-swatch\" style=\"--swatch:#000000\">#000000", html, StringComparison.Ordinal);
+        Assert.Contains(".visually-hidden { position: absolute !important;", html, StringComparison.Ordinal);
+        Assert.Contains("clip: rect(0, 0, 0, 0) !important;", html, StringComparison.Ordinal);
+        Assert.Contains(".theme-colour-chip { flex: 0 0 auto; width: 1.05rem;", html, StringComparison.Ordinal);
+        Assert.Contains("border: 1px solid #637282;", html, StringComparison.Ordinal);
         Assert.Contains("The eligible count is across applicable visual/property combinations, so it is not a visual count and not every property applies to every visual.", html, StringComparison.Ordinal);
     }
 

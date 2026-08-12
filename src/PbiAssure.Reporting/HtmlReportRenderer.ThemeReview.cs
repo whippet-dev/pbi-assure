@@ -128,18 +128,31 @@ public static partial class HtmlReportRenderer
             html.AppendLine("            <div class=\"theme-metadata-grid\"><h6>Text classes</h6><dl>");
             foreach (var textClass in metadata.TextClasses)
             {
-                var parts = new[] { textClass.FontFamily, textClass.FontSize is null ? null : $"{textClass.FontSize:0.##} pt", textClass.Color }
+                var parts = new[] { textClass.FontFamily, textClass.FontSize is null ? null : $"{textClass.FontSize:0.##} pt" }
                     .Where(value => !string.IsNullOrWhiteSpace(value));
-                AppendDefinition(html, HumanizeIdentifier(textClass.Name), string.Join(" · ", parts));
+                AppendThemeColourDefinition(html, HumanizeIdentifier(textClass.Name), string.Join(" · ", parts), textClass.Color);
             }
             html.AppendLine("            </dl></div>");
         }
         if (metadata.NamedColors.Count > 0)
         {
             html.AppendLine("            <div class=\"theme-metadata-grid\"><h6>Named colours</h6><dl>");
-            foreach (var color in metadata.NamedColors) AppendDefinition(html, HumanizeIdentifier(color.Name), color.Value);
+            foreach (var color in metadata.NamedColors) AppendThemeColourDefinition(html, HumanizeIdentifier(color.Name), null, color.Value);
             html.AppendLine("            </dl></div>");
         }
+    }
+
+    private static void AppendThemeColourDefinition(StringBuilder html, string term, string? prefix, string? color)
+    {
+        html.Append("              <div><dt>").Append(Encode(term)).Append("</dt><dd>");
+        if (!string.IsNullOrWhiteSpace(prefix)) html.Append(Encode(prefix)).Append(" · ");
+        if (IsSafeSwatchColor(color ?? string.Empty))
+        {
+            html.Append("<span class=\"theme-colour-value\"><span class=\"theme-colour-chip\" style=\"--colour-chip:")
+                .Append(Encode(color!)).Append("\" aria-hidden=\"true\"></span>").Append(Encode(color!)).Append("</span>");
+        }
+        else html.Append(Encode(color ?? "Not supplied"));
+        html.AppendLine("</dd></div>");
     }
 
     private static void AppendPersistedFormatting(
