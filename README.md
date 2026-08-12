@@ -8,6 +8,8 @@ The semantic graph classifies model objects as directly used, indirectly used, s
 
 The scanner also emits versioned assurance findings with severities, evidence paths, remediation guidance, assessment type, and authoritative references. Current rules cover unresolved report bindings, relationship configurations worth reviewing, Power BI Q&A retirement, alternative text, duplicate or excluded tab-order entries, explicitly disabled data-visual titles, broken or incomplete bookmark and page navigation, drillthrough configuration, visual-interaction endpoints, and report-tooltip targets. See the [rule catalog](docs/rule-catalog.md).
 
+The generated HTML also includes an informational Theme Review. It identifies the active PBIR base and custom theme resources, summarizes bounded theme metadata, and classifies saved evidence for a deliberately small set of title and data-colour formatting properties. This first phase does not assess theme alignment, infer manual changes, resolve final rendered colours, or produce accessibility findings.
+
 ## Ways to run PBI Assure
 
 The same analysis and reporting libraries support three frontends:

@@ -31,6 +31,20 @@ public sealed class BrowserProjectSelectionTests
     }
 
     [Fact]
+    public void AcceptsThemeResourcesInsideTheReportArtifact()
+    {
+        var selection = Selection(
+            File("Sales.pbip"),
+            File("Sales.Report/definition/report.json"),
+            File("Sales.Report/StaticResources/SharedResources/BaseThemes/CY26SU07.json"),
+            File("Sales.Report/StaticResources/RegisteredResources/Custom.json"));
+
+        var validated = BrowserProjectSelectionValidator.Validate(selection);
+
+        Assert.Equal(4, validated.Files.Count);
+    }
+
+    [Fact]
     public void RejectsFolderWithNoRootProject()
     {
         var selection = Selection(File("Sales.Report/definition/pages/pages.json"));

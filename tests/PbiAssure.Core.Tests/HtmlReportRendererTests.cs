@@ -278,7 +278,7 @@ public sealed class HtmlReportRendererTests : IDisposable
 
         var html = HtmlReportRenderer.Render(ProjectScanner.Scan(testRoot));
 
-        Assert.Equal(7, html.Split("<p class=\"section-intro\">", StringSplitOptions.None).Length - 1);
+        Assert.Equal(8, html.Split("<p class=\"section-intro\">", StringSplitOptions.None).Length - 1);
         Assert.Contains("Start here for the overall assurance result", html, StringComparison.Ordinal);
         Assert.Contains("Keep these limits in mind", html, StringComparison.Ordinal);
         Assert.Contains("See how data-preparation queries feed the model", html, StringComparison.Ordinal);
@@ -286,6 +286,7 @@ public sealed class HtmlReportRendererTests : IDisposable
         Assert.Contains("How to use findings", html, StringComparison.Ordinal);
         Assert.Contains("Suggested action gives a practical next step", html, StringComparison.Ordinal);
         Assert.Contains("Browse the report page by page and visual by visual", html, StringComparison.Ordinal);
+        Assert.Contains("See which theme resources are active", html, StringComparison.Ordinal);
         Assert.Contains("See how tables are connected", html, StringComparison.Ordinal);
         Assert.Contains("Review columns, measures and other model objects by table", html, StringComparison.Ordinal);
     }

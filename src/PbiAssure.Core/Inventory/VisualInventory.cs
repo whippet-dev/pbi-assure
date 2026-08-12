@@ -19,6 +19,8 @@ public sealed record VisualInventory(
     [JsonIgnore]
     public IReadOnlyList<VisualFormattingSelectorContext> FormattingSelectors { get; init; } = [];
 
+    public IReadOnlyList<PersistedFormattingObservation> PersistedFormatting { get; init; } = [];
+
     public bool IsExplicitlyExcludedFromTabOrder => Position.TabOrder is < 0;
 
     public bool HasExplicitTabOrder => Position.TabOrder is >= 0;

@@ -5,7 +5,7 @@ using PbiAssure.Core.Inventory;
 
 namespace PbiAssure.Reporting;
 
-public static class HtmlReportRenderer
+public static partial class HtmlReportRenderer
 {
     public static string Render(ProjectInventory inventory)
     {
@@ -17,6 +17,7 @@ public static class HtmlReportRenderer
         AppendScope(html);
         AppendFindings(html, inventory);
         AppendReportInventory(html, inventory);
+        AppendThemeReview(html, inventory);
         AppendPowerQueryLineage(html, inventory);
         AppendRelationships(html, inventory);
         AppendSemanticUsage(html, inventory);
@@ -57,6 +58,7 @@ public static class HtmlReportRenderer
         AppendSectionNavigationItem(html, "summary", "Summary", null);
         AppendSectionNavigationItem(html, "findings", "Findings", FindingNavigationSummary(inventory));
         AppendSectionNavigationItem(html, "reports", "Report pages", $"{inventory.PageCount} {Pluralize(inventory.PageCount, "page", "pages")} · {inventory.VisualCount} {Pluralize(inventory.VisualCount, "visual", "visuals")}");
+        AppendSectionNavigationItem(html, "theme-review", "Theme Review", inventory.Reports.Count == 0 ? null : $"{inventory.Reports.Count} {Pluralize(inventory.Reports.Count, "report", "reports")}");
         AppendSectionNavigationItem(html, "power-query", "Power Query", inventory.PowerQueryCount == 0 ? null : $"{inventory.PowerQueryCount} {Pluralize(inventory.PowerQueryCount, "query", "queries")}");
         AppendSectionNavigationItem(html, "relationships", "Model relationships", $"{inventory.SemanticRelationshipCount} {Pluralize(inventory.SemanticRelationshipCount, "relationship", "relationships")}");
         AppendSectionNavigationItem(html, "semantic-usage", "Semantic model", $"{inventory.DeveloperSemanticObjectCount} developer-authored {Pluralize(inventory.DeveloperSemanticObjectCount, "object", "objects")}");
@@ -2525,6 +2527,36 @@ public static class HtmlReportRenderer
     .metric-unused { border-left-color: #5b3f88; }
     .summary-note, .secondary, .filter-status { color: var(--muted); }
     .summary-caution { max-width: 64rem; margin: .7rem 0 0; padding: .65rem .75rem; border-left: .3rem solid #5b3f88; background: #f6f2fb; color: #3f2c5b; overflow-wrap: anywhere; }
+    .theme-boundary { max-width: 68rem; margin: 0 0 1.25rem; padding: .75rem .85rem; border-left: .35rem solid var(--info); background: var(--info-bg); }
+    .theme-boundary p { margin: .25rem 0 0; }
+    .theme-review-group + .theme-review-group { margin-top: 2rem; padding-top: 1.25rem; border-top: 1px solid #d7dee5; }
+    .theme-review-group > h3 { margin: 0 0 .65rem; }
+    .theme-report-list, .theme-content-grid, .theme-visual-list { display: grid; min-width: 0; gap: .75rem; }
+    .theme-report-list, .theme-content-grid { grid-template-columns: repeat(auto-fit, minmax(min(100%, 25rem), 1fr)); }
+    .theme-report-card, .theme-content-card { min-width: 0; padding: .9rem 1rem; border: 1px solid var(--border); border-radius: .4rem; background: #f9fbfc; }
+    .theme-report-card h4, .theme-content-report > h4, .theme-content-card h5 { margin: 0 0 .45rem; }
+    .theme-state { margin: 0 0 .65rem; color: var(--link); font-weight: 750; }
+    .theme-source-summary, .theme-content-facts, .theme-metadata-grid dl { display: grid; gap: .4rem; margin: .5rem 0; }
+    .theme-source-summary div, .theme-content-facts div, .theme-metadata-grid dl div { display: grid; min-width: 0; grid-template-columns: minmax(7rem, 10rem) minmax(0, 1fr); gap: .65rem; }
+    .theme-source-summary dt, .theme-content-facts dt, .theme-metadata-grid dt { color: var(--muted); font-weight: 700; }
+    .theme-source-summary dd, .theme-content-facts dd, .theme-metadata-grid dd { min-width: 0; margin: 0; overflow-wrap: anywhere; }
+    .theme-resolution-issues { margin-top: .75rem; padding: .65rem .75rem; border-left: .3rem solid var(--warning); background: var(--warning-bg); }
+    .theme-resolution-issues ul { margin-bottom: 0; }
+    .theme-content-report { min-width: 0; margin-top: 1rem; }
+    .theme-palette { display: flex; min-width: 0; flex-wrap: wrap; gap: .3rem; margin: .75rem 0 .35rem; }
+    .theme-swatch { width: 1.65rem; height: 1.65rem; border: 1px solid #637282; border-radius: .2rem; background: var(--swatch); }
+    .theme-metadata-grid { min-width: 0; margin-top: .8rem; padding-top: .65rem; border-top: 1px solid #d7dee5; }
+    .theme-metadata-grid h6 { margin: 0; font-size: .92rem; }
+    .theme-metrics { margin-bottom: 1rem; }
+    .theme-visual-card { min-width: 0; max-width: 100%; margin: 0; border: 1px solid var(--border); border-radius: .4rem; background: #fff; overflow: clip; }
+    .theme-visual-card > summary { display: flex; min-width: 0; justify-content: space-between; gap: .75rem; padding: .8rem .9rem; color: var(--text); }
+    .theme-visual-card > summary::after { align-self: center; content: "+"; color: var(--link); font-size: 1.3rem; font-weight: 800; }
+    .theme-visual-card[open] > summary { border-bottom: 1px solid var(--border); }
+    .theme-visual-card[open] > summary::after { content: "âˆ’"; }
+    .theme-visual-body { min-width: 0; padding: .75rem .9rem; }
+    .theme-observation-list { display: grid; min-width: 0; grid-template-columns: repeat(auto-fit, minmax(min(100%, 22rem), 1fr)); gap: .65rem; }
+    .theme-observation { min-width: 0; padding: .75rem; border: 1px solid #d7dee5; border-radius: .35rem; overflow-wrap: anywhere; }
+    .theme-observation p { margin: .45rem 0 0; }
     .summary-definitions, .section-help { margin-top: .75rem; padding: .55rem .7rem; border: 1px solid #c8d2dc; border-radius: .3rem; background: #f8fafc; }
     .summary-definitions > summary, .section-help > summary { color: var(--link); font-weight: 700; }
     .summary-definitions dl { display: grid; gap: .55rem; margin: .75rem 0 .15rem; }
@@ -2662,7 +2694,7 @@ public static class HtmlReportRenderer
     .model-block + .model-block { margin-top: 2rem; }
     .model-block h3 { margin-bottom: .65rem; }
     .system-generated-table { border-style: dashed; background: #fafbfc; }
-    .semantic-table[hidden], .semantic-object[hidden], .finding-card[hidden], .page-card[hidden], .visual-card[hidden] { display: none; }
+    .semantic-table[hidden], .semantic-object[hidden], .finding-card[hidden], .page-card[hidden], .visual-card[hidden], .theme-visual-card[hidden] { display: none; }
     .badge { display: inline-block; max-width: 100%; flex: 0 0 auto; padding: .2rem .45rem; border: 1px solid currentColor; border-radius: .2rem; font-weight: 700; white-space: nowrap; }
     .badge-error { color: var(--error); background: var(--error-bg); }
     .badge-warning { color: var(--warning); background: var(--warning-bg); }
@@ -2705,6 +2737,7 @@ public static class HtmlReportRenderer
       .usage-classification-row { grid-template-columns: 1fr; gap: .35rem; align-items: start; }
       .count-pill { white-space: normal; }
       .technical-list div, .finding-location div { grid-template-columns: 1fr; gap: .15rem; }
+      .theme-source-summary div, .theme-content-facts div, .theme-metadata-grid dl div { grid-template-columns: 1fr; gap: .1rem; }
     }
     @media print {
       body { background: #fff; }
@@ -2849,7 +2882,8 @@ public static class HtmlReportRenderer
         { prefix: 'page', singular: 'page', plural: 'pages' },
         { prefix: 'query', singular: 'query', plural: 'queries' },
         { prefix: 'relationship', singular: 'relationship', plural: 'relationships' },
-        { prefix: 'usage', singular: 'semantic object', plural: 'semantic objects' }
+        { prefix: 'usage', singular: 'semantic object', plural: 'semantic objects' },
+        { prefix: 'theme', singular: 'visual', plural: 'visuals' }
       ];
 
       const setupInvestigation = ({ prefix, singular, plural }) => {

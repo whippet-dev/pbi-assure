@@ -18,6 +18,8 @@ public sealed record ReportInventory(
     IReadOnlyList<string> BookmarkOrder,
     IReadOnlyList<BookmarkInventory> Bookmarks)
 {
+    public ThemeInventory Theme { get; init; } = ThemeInventory.Unavailable;
+
     public int PageCount => Pages.Count;
 
     public int VisualCount => Pages.Sum(page => page.VisualCount);

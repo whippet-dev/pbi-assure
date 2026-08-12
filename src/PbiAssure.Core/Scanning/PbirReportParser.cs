@@ -20,12 +20,14 @@ internal static class PbirReportParser
         var reportExtensions = ParseReportExtensions(source, reportExtensionsPath);
         var reportDefinitionPath = ProjectFilePaths.Combine(reportDirectory, "definition", "report.json");
         string? reportSchemaUri = null;
+        var theme = ThemeInventory.Unavailable;
         VisualFieldReference[] reportFieldReferences = [];
         ReportFilterInventory[] reportFilters = [];
         if (source.FileExists(reportDefinitionPath))
         {
             using var reportDefinition = OpenJsonDocument(source, reportDefinitionPath);
             reportSchemaUri = GetString(reportDefinition.RootElement, "$schema");
+            theme = PbirThemeParser.Parse(source, reportDirectory, reportDefinition.RootElement);
             reportFieldReferences = PbirFieldReferenceExtractor.Extract(reportDefinition.RootElement);
             reportFilters = ParseFilters(reportDefinition.RootElement);
         }
@@ -53,7 +55,10 @@ internal static class PbirReportParser
                 ReportMeasures: reportExtensions.Measures,
                 BookmarksSchemaUri: bookmarkResult.SchemaUri,
                 BookmarkOrder: bookmarkResult.BookmarkOrder,
-                Bookmarks: bookmarkResult.Bookmarks);
+                Bookmarks: bookmarkResult.Bookmarks)
+            {
+                Theme = theme,
+            };
         }
 
         using var pagesMetadata = OpenJsonDocument(source, pagesMetadataPath);
@@ -89,7 +94,10 @@ internal static class PbirReportParser
             ReportMeasures: reportExtensions.Measures,
             BookmarksSchemaUri: bookmarkResult.SchemaUri,
             BookmarkOrder: bookmarkResult.BookmarkOrder,
-            Bookmarks: bookmarkResult.Bookmarks);
+            Bookmarks: bookmarkResult.Bookmarks)
+        {
+            Theme = theme,
+        };
     }
 
     private static ReportModelConnectionInventory ParseModelConnection(IProjectFileSource source, string reportDirectory)
@@ -335,6 +343,7 @@ internal static class PbirReportParser
         var referenceClassification = PbirVisualReferenceClassifier.Classify(
             visualRoot,
             PbirFieldReferenceExtractor.Extract(visualRoot));
+        var persistedFormatting = PbirVisualFormattingParser.Parse(visualRoot, referenceClassification.Selectors);
 
         TryGetObject(visualRoot, "position", out var position);
 
@@ -359,6 +368,7 @@ internal static class PbirReportParser
             TooltipBindings: PbirVisualTooltipParser.Parse(visualElement))
         {
             FormattingSelectors = referenceClassification.Selectors,
+            PersistedFormatting = persistedFormatting,
         };
     }
 
