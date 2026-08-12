@@ -17,10 +17,10 @@ public static partial class HtmlReportRenderer
         AppendScope(html);
         AppendFindings(html, inventory);
         AppendReportInventory(html, inventory);
-        AppendThemeReview(html, inventory);
         AppendPowerQueryLineage(html, inventory);
         AppendRelationships(html, inventory);
         AppendSemanticUsage(html, inventory);
+        AppendThemeReview(html, inventory);
         AppendDocumentEnd(html, inventory);
         return html.ToString();
     }
@@ -55,13 +55,13 @@ public static partial class HtmlReportRenderer
         html.AppendLine("      </dl>");
         html.AppendLine("      <nav class=\"section-navigator\" aria-label=\"Report sections\">");
         html.AppendLine("        <ul class=\"section-nav\">");
-        AppendSectionNavigationItem(html, "summary", "Summary", null);
-        AppendSectionNavigationItem(html, "findings", "Findings", FindingNavigationSummary(inventory));
-        AppendSectionNavigationItem(html, "reports", "Report pages", $"{inventory.PageCount} {Pluralize(inventory.PageCount, "page", "pages")} · {inventory.VisualCount} {Pluralize(inventory.VisualCount, "visual", "visuals")}");
-        AppendSectionNavigationItem(html, "power-query", "Power Query", inventory.PowerQueryCount == 0 ? null : $"{inventory.PowerQueryCount} {Pluralize(inventory.PowerQueryCount, "query", "queries")}");
-        AppendSectionNavigationItem(html, "relationships", "Model relationships", $"{inventory.SemanticRelationshipCount} {Pluralize(inventory.SemanticRelationshipCount, "relationship", "relationships")}");
-        AppendSectionNavigationItem(html, "semantic-usage", "Semantic model", $"{inventory.DeveloperSemanticObjectCount} developer-authored {Pluralize(inventory.DeveloperSemanticObjectCount, "object", "objects")}");
-        AppendSectionNavigationItem(html, "theme-review", "Theme Review", inventory.Reports.Count == 0 ? null : $"{inventory.Reports.Count} {Pluralize(inventory.Reports.Count, "report", "reports")}");
+        AppendSectionNavigationItem(html, "summary", "Summary", "Overview and key counts");
+        AppendSectionNavigationItem(html, "findings", "Findings", "Issues and review items");
+        AppendSectionNavigationItem(html, "reports", "Report pages", "Pages, visuals and fields");
+        AppendSectionNavigationItem(html, "power-query", "Power Query", "Queries, sources and lineage");
+        AppendSectionNavigationItem(html, "relationships", "Model relationships", "Table connections and filtering");
+        AppendSectionNavigationItem(html, "semantic-usage", "Semantic model", "Model objects and usage");
+        AppendSectionNavigationItem(html, "theme-review", "Theme Review", "Design and theme review");
         html.AppendLine("        </ul>");
         html.AppendLine("      </nav>");
         html.AppendLine("    </div>");
@@ -188,7 +188,7 @@ public static partial class HtmlReportRenderer
         html.AppendLine("      <p class=\"section-intro\">See how data-preparation queries feed the model and support one another. Expand a query for the known steps it depends on.</p>");
         if (inventory.PowerQueryUsages.Count == 0)
         {
-            html.AppendLine("      <p>No Power Query M partitions or named expressions were found.</p>");
+            AppendSectionEmptyState(html, "No Power Query definitions available", "No supported Power Query table partitions or named expressions were found in the selected project.", "unavailable");
             html.AppendLine("    </section>");
             return;
         }
@@ -281,7 +281,7 @@ public static partial class HtmlReportRenderer
         html.AppendLine("      <h3>Data sources</h3>");
         if (inventory.DataSources.Count == 0)
         {
-            html.AppendLine("      <p>No recognised connector calls were found in the available M expressions.</p>");
+            AppendSectionEmptyState(html, "No recognised data sources", "No supported connector calls were identified in the available Power Query expressions.", "neutral");
             return;
         }
 
@@ -386,7 +386,7 @@ public static partial class HtmlReportRenderer
         html.AppendLine("      <details class=\"section-help\"><summary>How to use findings</summary><p>A finding is an automated observation, not a verdict on the whole report. Its location shows where PBI Assure found it and Suggested action gives a practical next step. Items marked Review required can be intentional, depending on your report's context.</p></details>");
         if (inventory.Findings.Count == 0)
         {
-            html.AppendLine("      <p>No automated findings were produced. Manual review is still required.</p>");
+            AppendSectionEmptyState(html, "No automated findings", "PBI Assure did not identify any issues or review items in its current checks. Manual review is still recommended.", "success");
             html.AppendLine("    </section>");
             return;
         }
@@ -410,10 +410,10 @@ public static partial class HtmlReportRenderer
         html.AppendLine("      <div class=\"finding-results-row\">");
         html.Append("        <p id=\"finding-filter-status\" class=\"filter-status\" role=\"status\" aria-live=\"polite\" aria-atomic=\"true\">")
             .Append(inventory.Findings.Count.ToString("N0", CultureInfo.InvariantCulture)).AppendLine(" findings</p>");
-        html.AppendLine("        <button id=\"finding-clear-filters\" type=\"button\" hidden>Clear filters</button>");
+        html.AppendLine("        <button id=\"finding-clear-filters\" type=\"button\" hidden>Clear search and filters</button>");
         html.AppendLine("      </div>");
         html.AppendLine("      <div id=\"finding-active-filters\" class=\"filter-chips\" aria-label=\"Active finding filters\" hidden></div>");
-        html.AppendLine("      <div id=\"finding-empty-state\" class=\"finding-empty-state\" hidden><strong>No findings match these filters.</strong><span>Try removing a filter or changing the search text.</span><button type=\"button\" data-clear-finding-filters>Clear search and filters</button></div>");
+        html.AppendLine("      <div id=\"finding-empty-state\" class=\"finding-empty-state\" role=\"status\" aria-live=\"polite\" hidden><strong>No findings match the current search and filters.</strong><span>Try removing a filter or changing the search text.</span><button type=\"button\" data-clear-finding-filters>Clear search and filters</button></div>");
         AppendDetailsControls(html, "finding-list", "issues");
         html.AppendLine("      <div id=\"finding-list\" class=\"card-list\">");
         for (var index = 0; index < findingItems.Length; index++)
@@ -538,9 +538,9 @@ public static partial class HtmlReportRenderer
         html.AppendLine("      <div class=\"finding-results-row investigation-results-row\">");
         html.Append("        <p id=\"").Append(prefix).Append("-filter-status\" class=\"filter-status\" role=\"status\" aria-live=\"polite\" aria-atomic=\"true\">")
             .Append(initialCount.ToString("N0", CultureInfo.InvariantCulture)).Append(' ').Append(initialCount == 1 ? singular : plural).AppendLine("</p>");
-        html.Append("        <button id=\"").Append(prefix).AppendLine("-clear-filters\" type=\"button\" hidden>Clear filters</button></div>");
+        html.Append("        <button id=\"").Append(prefix).AppendLine("-clear-filters\" type=\"button\" hidden>Clear search and filters</button></div>");
         html.Append("      <div id=\"").Append(prefix).AppendLine("-active-filters\" class=\"filter-chips\" aria-label=\"Active filters\" hidden></div>");
-        html.Append("      <div id=\"").Append(prefix).Append("-empty-state\" class=\"finding-empty-state investigation-empty-state\" hidden><strong>No ")
+        html.Append("      <div id=\"").Append(prefix).Append("-empty-state\" class=\"finding-empty-state investigation-empty-state\" role=\"status\" aria-live=\"polite\" hidden><strong>No ")
             .Append(Encode(plural)).Append(" match the current search and filters.</strong><span>Try removing a filter or changing the search text.</span><button type=\"button\" data-clear-investigation=\"")
             .Append(prefix).AppendLine("\">Clear search and filters</button></div>");
     }
@@ -552,7 +552,7 @@ public static partial class HtmlReportRenderer
         html.AppendLine("      <p class=\"section-intro\">Browse the report page by page and visual by visual. Expand a visual to see the columns and measures it uses.</p>");
         if (inventory.Reports.Count == 0)
         {
-            html.AppendLine("      <p>No PBIR report definitions were found.</p>");
+            AppendSectionEmptyState(html, "No report pages available", "No supported Power BI report definition was found in the selected project.", "unavailable");
             html.AppendLine("    </section>");
             return;
         }
@@ -663,7 +663,7 @@ public static partial class HtmlReportRenderer
         html.AppendLine("      <p class=\"section-intro\">See how tables are connected, whether each connection is active and which way filtering can flow.</p>");
         if (inventory.SemanticRelationshipCount == 0)
         {
-            html.AppendLine("      <p>No model relationships were found.</p>");
+            AppendSectionEmptyState(html, "No model relationships found", "The analysed semantic model does not contain any relationships to review.", "neutral");
             html.AppendLine("    </section>");
             return;
         }
@@ -763,7 +763,7 @@ public static partial class HtmlReportRenderer
         AppendUsageGuide(html);
         if (inventory.SemanticModels.Count == 0)
         {
-            html.AppendLine("      <p>No supported semantic model definition was found.</p>");
+            AppendSectionEmptyState(html, "No semantic model available", "No supported local semantic-model definition was found in the selected project.", "unavailable");
             html.AppendLine("    </section>");
             return;
         }
@@ -1908,17 +1908,15 @@ public static partial class HtmlReportRenderer
         html.AppendLine("</a></li>");
     }
 
-    private static string? FindingNavigationSummary(ProjectInventory inventory)
+    private static void AppendSectionEmptyState(
+        StringBuilder html,
+        string heading,
+        string explanation,
+        string kind)
     {
-        var parts = new List<string>();
-        if (inventory.ErrorFindingCount > 0)
-        {
-            parts.Add($"{inventory.ErrorFindingCount} {Pluralize(inventory.ErrorFindingCount, "error", "errors")}");
-        }
-
-        parts.Add($"{inventory.WarningFindingCount} {Pluralize(inventory.WarningFindingCount, "warning", "warnings")}");
-        parts.Add($"{inventory.ReviewRequiredCount} {Pluralize(inventory.ReviewRequiredCount, "review", "reviews")}");
-        return string.Join(" · ", parts);
+        html.Append("      <div class=\"section-empty-state section-empty-").Append(Encode(kind))
+            .Append("\" role=\"note\"><strong>").Append(Encode(heading)).Append("</strong><span>")
+            .Append(Encode(explanation)).AppendLine("</span></div>");
     }
 
     private static string Pluralize(int count, string singular, string plural)
@@ -2516,6 +2514,10 @@ public static partial class HtmlReportRenderer
     .summary-group-assurance h3 { color: #15324b; }
     .section-intro { max-width: 68rem; margin: -.35rem 0 1rem; color: var(--muted); }
     .group-explanation { max-width: 64rem; margin: -.2rem 0 .7rem; color: var(--muted); font-size: .92rem; }
+    .section-empty-state { display: grid; max-width: 68rem; gap: .2rem; margin: .75rem 0; padding: .8rem .9rem; border: 1px solid #bdc9d5; border-left: .35rem solid #66788a; border-radius: .3rem; background: #f7f9fb; overflow-wrap: anywhere; }
+    .section-empty-state span { color: var(--muted); }
+    .section-empty-success { border-left-color: var(--used); background: var(--used-bg); }
+    .section-empty-unavailable { border-left-color: var(--info); background: var(--info-bg); }
     .metrics { display: grid; grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr)); gap: .7rem; margin: 0; }
     .metric { padding: 1rem; border: 1px solid var(--border); border-left: .5rem solid #66788a; border-radius: .25rem; }
     .summary-group-project .metric, .summary-group-semantic .metric { padding: .75rem .85rem; }
@@ -2528,7 +2530,7 @@ public static partial class HtmlReportRenderer
     .metric-unused { border-left-color: #5b3f88; }
     .summary-note, .secondary, .filter-status { color: var(--muted); }
     .summary-caution { max-width: 64rem; margin: .7rem 0 0; padding: .65rem .75rem; border-left: .3rem solid #5b3f88; background: #f6f2fb; color: #3f2c5b; overflow-wrap: anywhere; }
-    .theme-early-access { max-width: 68rem; margin: 0 0 .75rem; padding: .75rem .85rem; border: 1px solid #d1b24b; border-left: .35rem solid #8a6500; border-radius: .25rem; background: #fff8dc; color: #493600; }
+    .theme-early-access { max-width: 68rem; margin: 0 0 .75rem; padding: .75rem .85rem; border: 1px solid #9bbbd3; border-left: .35rem solid var(--info); border-radius: .25rem; background: var(--info-bg); color: var(--text); }
     .theme-early-access p { margin: .25rem 0 0; }
     .theme-boundary { max-width: 68rem; margin: 0 0 1.25rem; padding: .75rem .85rem; border-left: .35rem solid var(--info); background: var(--info-bg); }
     .theme-boundary p { margin: .25rem 0 0; }
@@ -2713,7 +2715,7 @@ public static partial class HtmlReportRenderer
     .model-block + .model-block { margin-top: 2rem; }
     .model-block h3 { margin-bottom: .65rem; }
     .system-generated-table { border-style: dashed; background: #fafbfc; }
-    .semantic-table[hidden], .semantic-object[hidden], .finding-card[hidden], .page-card[hidden], .visual-card[hidden], .theme-visual-card[hidden] { display: none; }
+    .semantic-table[hidden], .semantic-object[hidden], .finding-card[hidden], .page-card[hidden], .visual-card[hidden], .theme-visual-card[hidden], .theme-governance-card[hidden] { display: none; }
     .badge { display: inline-block; max-width: 100%; flex: 0 0 auto; padding: .2rem .45rem; border: 1px solid currentColor; border-radius: .2rem; font-weight: 700; white-space: nowrap; }
     .badge-error { color: var(--error); background: var(--error-bg); }
     .badge-warning { color: var(--warning); background: var(--warning-bg); }
@@ -2757,6 +2759,8 @@ public static partial class HtmlReportRenderer
       .count-pill { white-space: normal; }
       .technical-list div, .finding-location div { grid-template-columns: 1fr; gap: .15rem; }
       .theme-source-summary div, .theme-content-facts div, .theme-metadata-grid dl div { grid-template-columns: 1fr; gap: .1rem; }
+      .theme-governance-card { padding: .75rem; }
+      .theme-supporting-body { padding: 0 .65rem .75rem; }
     }
     @media print {
       body { background: #fff; }
@@ -2902,7 +2906,8 @@ public static partial class HtmlReportRenderer
         { prefix: 'query', singular: 'query', plural: 'queries' },
         { prefix: 'relationship', singular: 'relationship', plural: 'relationships' },
         { prefix: 'usage', singular: 'semantic object', plural: 'semantic objects' },
-        { prefix: 'theme', singular: 'visual', plural: 'visuals' }
+        { prefix: 'theme', singular: 'visual', plural: 'visuals' },
+        { prefix: 'theme-governance', singular: 'review item', plural: 'review items' }
       ];
 
       const setupInvestigation = ({ prefix, singular, plural }) => {

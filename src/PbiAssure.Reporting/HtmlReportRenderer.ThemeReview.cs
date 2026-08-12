@@ -17,14 +17,14 @@ public static partial class HtmlReportRenderer
         html.AppendLine("    <section id=\"theme-review\" class=\"report-section\" data-report-section=\"theme-review\" aria-labelledby=\"theme-review-heading\">");
         html.AppendLine("      <h2 id=\"theme-review-heading\" tabindex=\"-1\">Theme Review</h2>");
         html.AppendLine("      <p class=\"section-intro\">See which theme is applied, which supported saved formatting differs from it and whether comparable visuals contain obvious formatting outliers.</p>");
-        html.AppendLine("      <div class=\"theme-early-access\" role=\"note\"><strong>Early access</strong><p>Theme Review is under active development. Theme comparison currently supports one fixture-validated property mapping: clustered column chart title font size. Consistency review uses a small set of saved title properties; other theme evidence remains available in technical details.</p></div>");
-        html.AppendLine("      <div class=\"theme-boundary\"><strong>What this review means</strong><p>Theme Review surfaces evidence for human judgement. It does not reproduce Power BI’s full formatting engine, infer authoring intent, grade the report or assess full accessibility compliance.</p></div>");
+        html.AppendLine("      <div class=\"theme-early-access\" role=\"note\"><strong>Beta coverage</strong><p>Automated comparison currently covers only formatting mappings PBI Assure can assess confidently. No flagged deviation does not mean every visual property was checked. Coverage will expand over time; use these observations to support, not replace, human design and governance review.</p></div>");
+        html.AppendLine("      <div class=\"theme-boundary\"><strong>Interpret differences in context</strong><p>Intentional design exceptions can be valid. Theme Review does not grade the report or reproduce Power BI’s full formatting engine.</p></div>");
         AppendThemeSummary(html, inventory);
         AppendThemeReviewFilters(html, inventory);
         AppendThemeDeviations(html, inventory, contexts);
         AppendThemeConsistency(html, inventory, contexts);
         AppendThemeAccessibility(html, inventory);
-        html.AppendLine("      <details class=\"theme-supporting-details\"><summary>Theme details and technical evidence</summary><div class=\"theme-supporting-body\">");
+        html.AppendLine("      <details class=\"theme-supporting-details\"><summary>Supporting theme details</summary><div class=\"theme-supporting-body\">");
         AppendThemeContentsSection(html, inventory);
         AppendPersistedFormatting(html, contexts, all, headline);
         html.AppendLine("      </div></details>");
@@ -333,15 +333,15 @@ public static partial class HtmlReportRenderer
         PersistedFormattingObservation[] headline)
     {
         html.AppendLine("      <section class=\"theme-review-group\" aria-labelledby=\"persisted-formatting-heading\">");
-        html.AppendLine("        <h3 id=\"persisted-formatting-heading\">Persisted formatting</h3>");
-        html.AppendLine("        <p class=\"group-explanation\">Theme Review currently checks four supported formatting property paths. The eligible count is across applicable visual/property combinations, so it is not a visual count and not every property applies to every visual. No saved local value is a storage state only; it does not prove what Power BI finally renders.</p>");
+        html.AppendLine("        <h3 id=\"persisted-formatting-heading\">Saved formatting evidence</h3>");
+        html.AppendLine("        <p class=\"group-explanation\">Technical evidence from supported formatting properties stored in the report definition. Counts represent applicable visual/property combinations, not visuals. A property with no saved local value may still inherit formatting from Power BI or the active theme.</p>");
         html.AppendLine("        <dl class=\"metrics theme-metrics\">");
-        AppendMetric(html, "Eligible supported properties", headline.Length);
+        AppendMetric(html, "Formatting properties inspected", headline.Length);
         AppendMetric(html, "No saved local value", Count(headline, PersistedFormattingClassifications.NoPersistedValue));
-        AppendMetric(html, "Persisted literals", Count(headline, PersistedFormattingClassifications.PersistedLiteral));
+        AppendMetric(html, "Saved literal values", Count(headline, PersistedFormattingClassifications.PersistedLiteral));
         AppendMetric(html, "Theme-linked references", Count(headline, PersistedFormattingClassifications.ThemeReference));
         AppendMetric(html, "Dynamic values", Count(headline, PersistedFormattingClassifications.DynamicExpression));
-        AppendMetric(html, "Selector-scoped values", headline.Count(item => item.IsSelectorScoped));
+        AppendMetric(html, "Series/category-specific values", headline.Count(item => item.IsSelectorScoped));
         AppendMetric(html, "Unsupported or ambiguous", headline.Count(item => item.Classification == PersistedFormattingClassifications.Unsupported || item.IsAmbiguous));
         html.AppendLine("        </dl>");
         var staleCount = all.Count(item => !item.IncludeInHeadline);
@@ -355,7 +355,7 @@ public static partial class HtmlReportRenderer
         var details = contexts.Where(context => DisplayedFormattingValues(context).Any()).ToArray();
         if (details.Length == 0)
         {
-            html.AppendLine("        <p>No supported persisted values were found. Supported properties without a saved value are included in the aggregate above.</p>");
+            html.AppendLine("        <p>No supported saved formatting values were found. Properties without a locally saved value are included in the summary above.</p>");
             html.AppendLine("      </section>");
             return;
         }
@@ -369,14 +369,14 @@ public static partial class HtmlReportRenderer
 
     private static void AppendThemeFilters(StringBuilder html, ThemeVisualContext[] details)
     {
-        AppendInvestigationStart(html, "theme", "Search persisted formatting", "Search page, visual, property or value");
+        AppendInvestigationStart(html, "theme", "Search saved formatting", "Search page, visual, property or value");
         AppendInvestigationFacet(html, "theme", "page", "Page", "All pages", details
             .Select(context => new FindingFacetOption(context.Page.DisplayName, context.Page.DisplayName)).Distinct());
         AppendInvestigationFacet(html, "theme", "visual-type", "Visual type", "All visual types", details
             .Select(context => new FindingFacetOption(context.Visual.VisualType ?? "Unknown", HumanizeVisualType(context.Visual.VisualType))).Distinct());
-        AppendInvestigationFacet(html, "theme", "classification", "Classification", "All classifications", details
+        AppendInvestigationFacet(html, "theme", "classification", "Saved value type", "All saved value types", details
             .SelectMany(DisplayedFormattingValues).Select(item => new FindingFacetOption(item.Classification, FormattingClassificationLabel(item.Classification))).Distinct());
-        AppendInvestigationFacet(html, "theme", "scope", "Scope", "All scopes", details
+        AppendInvestigationFacet(html, "theme", "scope", "Formatting scope", "All formatting scopes", details
             .SelectMany(DisplayedFormattingValues).Select(item => new FindingFacetOption(
                 item.IsSelectorScoped ? "Scoped" : "VisualWide",
                 item.IsSelectorScoped ? "Scoped to series/category" : "Not selector-scoped")).Distinct());

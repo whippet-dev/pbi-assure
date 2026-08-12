@@ -34,6 +34,14 @@ public sealed class HtmlReportRendererTests : IDisposable
         Assert.Contains("data-section-target=\"power-query\"", html, StringComparison.Ordinal);
         Assert.Contains("data-section-target=\"relationships\"", html, StringComparison.Ordinal);
         Assert.Contains("data-section-target=\"semantic-usage\"", html, StringComparison.Ordinal);
+        Assert.Contains("<small>Overview and key counts</small>", html, StringComparison.Ordinal);
+        Assert.Contains("<small>Issues and review items</small>", html, StringComparison.Ordinal);
+        Assert.Contains("<small>Model objects and usage</small>", html, StringComparison.Ordinal);
+        Assert.Contains("<small>Design and theme review</small>", html, StringComparison.Ordinal);
+        Assert.True(html.IndexOf("data-section-target=\"semantic-usage\"", StringComparison.Ordinal) <
+            html.IndexOf("data-section-target=\"theme-review\"", StringComparison.Ordinal));
+        Assert.True(html.IndexOf("id=\"semantic-usage\"", StringComparison.Ordinal) <
+            html.IndexOf("id=\"theme-review\"", StringComparison.Ordinal));
         Assert.Contains("class=\"report-section\" data-report-section=\"summary\"", html, StringComparison.Ordinal);
         Assert.Contains("data-report-section=\"findings\"", html, StringComparison.Ordinal);
         Assert.Contains("data-report-section=\"reports\"", html, StringComparison.Ordinal);
@@ -89,6 +97,20 @@ public sealed class HtmlReportRendererTests : IDisposable
     }
 
     [Fact]
+    public void RenderDistinguishesStaticAndFilteredEmptyStates()
+    {
+        CreateSampleProject();
+
+        var inventory = ProjectScanner.Scan(testRoot);
+        var html = HtmlReportRenderer.Render(inventory with { Findings = [] });
+
+        Assert.Contains("section-empty-state section-empty-success\" role=\"note\"", html, StringComparison.Ordinal);
+        Assert.Contains("<strong>No automated findings</strong>", html, StringComparison.Ordinal);
+        Assert.Contains("Manual review is still recommended.", html, StringComparison.Ordinal);
+        Assert.Contains("class=\"finding-empty-state investigation-empty-state\" role=\"status\" aria-live=\"polite\"", html, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void RenderProvidesStructuredFindingFacetsAndSafeActiveFilterControls()
     {
         CreateSampleProject();
@@ -130,7 +152,10 @@ public sealed class HtmlReportRendererTests : IDisposable
         Assert.Contains("Sales &amp; targets\"", html, StringComparison.Ordinal);
         Assert.Contains("id=\"finding-active-filters\"", html, StringComparison.Ordinal);
         Assert.Contains("id=\"finding-clear-filters\"", html, StringComparison.Ordinal);
+        Assert.Contains("id=\"finding-clear-filters\" type=\"button\" hidden>Clear search and filters</button>", html, StringComparison.Ordinal);
         Assert.Contains("id=\"finding-empty-state\"", html, StringComparison.Ordinal);
+        Assert.Contains("id=\"finding-empty-state\" class=\"finding-empty-state\" role=\"status\" aria-live=\"polite\"", html, StringComparison.Ordinal);
+        Assert.Contains("No findings match the current search and filters.", html, StringComparison.Ordinal);
         Assert.Contains(".filter-chips[hidden], .finding-empty-state[hidden] { display: none; }", html, StringComparison.Ordinal);
         Assert.Contains("activeFacets.every", html, StringComparison.Ordinal);
         Assert.Contains("card.findingSearchText.includes(query)", html, StringComparison.Ordinal);
@@ -209,6 +234,7 @@ public sealed class HtmlReportRendererTests : IDisposable
         Assert.Contains("split('\\u001f').includes(control.value)", html, StringComparison.Ordinal);
         Assert.Contains("Remove filter:", html, StringComparison.Ordinal);
         Assert.Contains("No semantic objects match the current search and filters.", html, StringComparison.Ordinal);
+        Assert.Contains("theme-governance', singular: 'review item', plural: 'review items'", html, StringComparison.Ordinal);
         Assert.Contains(".finding-investigation", html, StringComparison.Ordinal);
         Assert.Contains("@media print", html, StringComparison.Ordinal);
         Assert.Contains("history.pushState(null, '', `#${sectionName}`)", html, StringComparison.Ordinal);

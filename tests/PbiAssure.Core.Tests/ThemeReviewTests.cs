@@ -130,16 +130,18 @@ public sealed class ThemeReviewTests
         Assert.Contains("Consistency review", html, StringComparison.Ordinal);
         Assert.Contains("Accessibility review", html, StringComparison.Ordinal);
         Assert.Contains("Theme contents", html, StringComparison.Ordinal);
-        Assert.Contains("Persisted formatting", html, StringComparison.Ordinal);
-        Assert.Contains("<summary>Theme details and technical evidence</summary>", html, StringComparison.Ordinal);
-        Assert.Contains("<div class=\"theme-early-access\" role=\"note\"><strong>Early access</strong>", html, StringComparison.Ordinal);
-        Assert.Contains("Theme comparison currently supports one fixture-validated property mapping: clustered column chart title font size", html, StringComparison.Ordinal);
-        Assert.Contains("Consistency review uses a small set of saved title properties", html, StringComparison.Ordinal);
+        Assert.Contains("Saved formatting evidence", html, StringComparison.Ordinal);
+        Assert.Contains("<summary>Supporting theme details</summary>", html, StringComparison.Ordinal);
+        Assert.Contains("<div class=\"theme-early-access\" role=\"note\"><strong>Beta coverage</strong>", html, StringComparison.Ordinal);
+        Assert.Contains("covers only formatting mappings PBI Assure can assess confidently", html, StringComparison.Ordinal);
+        Assert.Contains("No flagged deviation does not mean every visual property was checked.", html, StringComparison.Ordinal);
+        Assert.Contains("Coverage will expand over time", html, StringComparison.Ordinal);
+        Assert.Contains("support, not replace, human design and governance review", html, StringComparison.Ordinal);
         Assert.Contains("Theme-linked references", html, StringComparison.Ordinal);
         Assert.Contains("Dynamic or conditional value", html, StringComparison.Ordinal);
         Assert.Contains("data-investigation=\"theme\"", html, StringComparison.Ordinal);
-        Assert.Contains("surfaces evidence for human judgement", html, StringComparison.Ordinal);
-        Assert.Contains("does not reproduce Power BI’s full formatting engine, infer authoring intent, grade the report or assess full accessibility compliance", html, StringComparison.Ordinal);
+        Assert.Contains("Intentional design exceptions can be valid", html, StringComparison.Ordinal);
+        Assert.Contains("does not grade the report or reproduce Power BI’s full formatting engine", html, StringComparison.Ordinal);
         Assert.DoesNotContain("theme compliance", html, StringComparison.OrdinalIgnoreCase);
         Assert.DoesNotContain("manually overridden", html, StringComparison.OrdinalIgnoreCase);
         Assert.DoesNotContain("WCAG pass", html, StringComparison.OrdinalIgnoreCase);
@@ -159,6 +161,9 @@ public sealed class ThemeReviewTests
         Assert.Contains("<strong>Saved value:</strong> 30 pt", differentHtml, StringComparison.Ordinal);
         Assert.Contains("<strong>Theme rule:</strong> 18 pt", differentHtml, StringComparison.Ordinal);
         Assert.Contains("data-filter-comparison=\"SavedValueDiffersFromTheme\"", differentHtml, StringComparison.Ordinal);
+        Assert.Contains("data-investigation=\"theme-governance\"", differentHtml, StringComparison.Ordinal);
+        Assert.Contains("id=\"theme-governance-search\"", differentHtml, StringComparison.Ordinal);
+        Assert.Contains("data-investigation-item=\"theme-governance\"", differentHtml, StringComparison.Ordinal);
         Assert.Contains("No saved local value", noLocalHtml, StringComparison.Ordinal);
         Assert.Contains("<strong>Supported active-theme rule:</strong> 18 pt", noLocalHtml, StringComparison.Ordinal);
         Assert.DoesNotContain("matches supported active-theme rule", noLocalHtml, StringComparison.OrdinalIgnoreCase);
@@ -183,7 +188,7 @@ public sealed class ThemeReviewTests
         Assert.Contains("clip: rect(0, 0, 0, 0) !important;", html, StringComparison.Ordinal);
         Assert.Contains(".theme-colour-chip { flex: 0 0 auto; width: 1.05rem;", html, StringComparison.Ordinal);
         Assert.Contains("border: 1px solid #637282;", html, StringComparison.Ordinal);
-        Assert.Contains("The eligible count is across applicable visual/property combinations, so it is not a visual count and not every property applies to every visual.", html, StringComparison.Ordinal);
+        Assert.Contains("Counts represent applicable visual/property combinations, not visuals.", html, StringComparison.Ordinal);
     }
 
     [Fact]
