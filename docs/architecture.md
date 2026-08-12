@@ -2,7 +2,7 @@
 
 ## Objective
 
-PBI Assure will turn Power BI report and semantic-model metadata into a normalised inventory and dependency graph. Versioned rule packs will evaluate that graph for maintainability, performance, governance, and accessibility concerns.
+PBI Assure turns Power BI report and semantic-model metadata into a normalised inventory and dependency graph. Versioned rules evaluate that graph for maintainability, model quality, compatibility, and accessibility concerns.
 
 ## Processing flow
 
@@ -50,13 +50,6 @@ a bounded, canonical, in-memory project-file source; analysis and report renderi
 the browser. Web contains no independent semantic analysis, backend, upload or telemetry path. See
 [Browser application](browser-app.md) and [Browser privacy](browser-privacy.md).
 
-### Future projects
-
-- `PbiAssure.Pbir`: detailed PBIR parsing if it becomes large enough to isolate.
-- `PbiAssure.Tabular`: TMDL/TOM and XMLA integration.
-
-These should be introduced only when their boundaries are real; empty architectural layers add maintenance cost.
-
 ## Dependency graph
 
 Report-to-model binding happens before field reconciliation. An explicit `byPath` reference is matched by normalized project-relative model path rather than by folder-name similarity. A `byConnection` reference is recorded as remote and is not compared with local model objects. Name matching remains only as a compatibility fallback for incomplete or older fixtures with no explicit dataset reference. If an explicit local target is missing, PBI Assure emits one model-level finding and suppresses cascading field-resolution errors until the model is available.
@@ -82,6 +75,8 @@ Report filters, page filters, drillthrough parameters, and visual references all
 Bookmark and action reconciliation is kept alongside, rather than inside, the semantic dependency graph. It compares enabled typed actions with bookmark definitions and report pages, and compares bookmark state with page and visual inventories. Disabled action configuration remains visible in inventory but does not create a broken-target finding. Bookmark-captured semantic state is not yet treated as a dependency root.
 
 Page visual interactions are reconciled against the visuals on their own page. Report-tooltip page bindings are parsed only when PBIR provides a `section` expression or explicitly requests a canvas tooltip; built-in default tooltip settings and visual-header text tooltips are not page bindings. Disabled bindings remain in inventory without producing stale-target findings, while dynamic targets require human review.
+
+Visual semantic references are also classified by their PBIR role and relevance. Active projections, filters, sorts, tooltips, drillthrough fields, and executable formatting expressions remain dependency evidence. Selector identities are correlated with current visual bindings: confidently persisted historical selectors do not establish direct semantic usage or missing-object errors, while ambiguous selectors remain visible as review evidence. This prevents stale formatting state from being treated like executable report behaviour without weakening active conditional-formatting dependencies.
 
 ## Format evolution
 

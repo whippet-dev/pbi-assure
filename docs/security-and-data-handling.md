@@ -2,7 +2,7 @@
 
 ## Default operating model
 
-The initial scanner runs locally and performs no network requests. It reads metadata from a user-selected PBIP directory and does not query model data.
+PBI Assure runs locally and performs no analysis-time network requests. It reads metadata from a user-selected PBIP directory and does not query model data. The browser host serves static application assets, but selected project files and generated results are not uploaded.
 
 ## Data minimisation
 
@@ -25,7 +25,7 @@ apply the CSP and other response headers in [Browser static hosting](browser-hos
 
 ## Filesystem boundary
 
-Analysis is read-only against source projects. Generated output is written only to an operator-selected path. Future remediation features must be separate from analysis, show an exact change preview, and require explicit confirmation.
+Analysis is read-only against source projects. CLI and desktop outputs are written to the documented project-local `outputs/` directory or an explicitly supplied path; browser outputs are created in memory and opened or downloaded locally. Future remediation features must be separate from analysis, show an exact change preview, and require explicit confirmation.
 
 ## Test data
 

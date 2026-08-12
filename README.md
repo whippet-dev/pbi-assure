@@ -1,20 +1,24 @@
 # PBI Assure
 
-PBI Assure is the provisional name for a general-purpose Power BI assurance tool. Its intended purpose is to inspect Power BI Project (PBIP) source without changing it, document the report and semantic model, trace dependencies, and produce evidence-led quality and accessibility findings.
+PBI Assure is a general-purpose, read-only Power BI pre-flight checker. It inspects Power BI Project (PBIP) source, documents the report and semantic model, traces dependencies, and produces evidence-led quality and accessibility findings.
 
-The repository is at foundation stage. The executable can discover the report and semantic-model parts of a PBIP project; resolve each report's local semantic-model connection from `definition.pbir`; distinguish local, remote, and missing model targets; parse PBIR pages, page roles, report and page filters, drillthrough bindings, visual interactions, report-tooltip page bindings, visual containers, bookmarks, visual actions, report extensions, and report-level measures; extract evidence-rich field references from report, page, and visual scopes; inventory TMDL tables, columns, measures, hierarchies, partitions, relationships, field parameters, calculation groups, and calculation items; and build an evidence-backed dependency graph across DAX, report-measure references, parameter choices, calculation items, sort-by columns, hierarchy levels, relationship endpoints, and containing tables.
+The shared scanner discovers the report and semantic-model parts of a PBIP project; resolves each report's local semantic-model connection from `definition.pbir`; distinguishes local, remote, and missing model targets; parses PBIR pages, page roles, filters, drillthrough bindings, visual interactions, report tooltips, bookmarks, visual actions, report extensions, and report-level measures; inventories TMDL tables, columns, measures, hierarchies, partitions, relationships, field parameters, calculation groups, and calculation items; and builds an evidence-backed dependency graph across report and model metadata.
 
 The semantic graph classifies model objects as directly used, indirectly used, structurally required, used only by an unused branch, or apparently unused within the analysed scope. Power BI-generated Auto Date/Time tables remain in that analysis but are identified separately from developer-authored objects. A relationship inventory shows endpoints, cardinality, active state and cross-filter direction, with review findings for bidirectional and many-to-many configurations. Power Query analysis separately traces query-level dependencies between M-backed table partitions and named expressions, plus explicit column-level merge, expand, select, rename, remove, and type-transform evidence. Recognised connector calls are summarised by family and location category without copying their arguments into connector records. Dynamic M and consumers outside the selected PBIP project remain analysis boundaries, so “apparently unused” does not mean “safe to delete.” See [usage classification](docs/usage-classification.md) for the exact contract.
 
-The scanner also emits versioned assurance findings with severities, evidence paths, remediation guidance, assessment type, and authoritative references. The initial rules cover unresolved report bindings, relationship configurations worth reviewing, Power BI Q&A retirement, alternative text, duplicate or excluded tab-order entries, explicitly disabled data-visual titles, broken or incomplete bookmark and page navigation, drillthrough configuration, visual-interaction endpoints, and report-tooltip targets. See the [rule catalog](docs/rule-catalog.md).
+The scanner also emits versioned assurance findings with severities, evidence paths, remediation guidance, assessment type, and authoritative references. Current rules cover unresolved report bindings, relationship configurations worth reviewing, Power BI Q&A retirement, alternative text, duplicate or excluded tab-order entries, explicitly disabled data-visual titles, broken or incomplete bookmark and page navigation, drillthrough configuration, visual-interaction endpoints, and report-tooltip targets. See the [rule catalog](docs/rule-catalog.md).
 
-## Why a command-line tool first?
+## Ways to run PBI Assure
 
-The analysis engine needs to work in several environments: on a developer workstation, in a build pipeline, and eventually behind a desktop interface. Starting with a command-line interface keeps the behaviour testable and prevents user-interface decisions from becoming coupled to the analysis logic.
+The same analysis and reporting libraries support three frontends:
+
+- a local browser/WebAssembly application that processes selected project files without uploading them;
+- a command-line tool for developer and automation workflows; and
+- a lightweight Windows desktop application.
 
 ## Prerequisites
 
-- Windows, macOS, or Linux for the current source-only scanner. Power BI Desktop integration will later require Windows.
+- Windows, macOS, or Linux for the command-line scanner and browser application. The desktop application requires Windows.
 - .NET 10 SDK. The repository pins the supported feature band in `global.json`.
 - Git.
 - A PBIP project for real-world testing. Do not commit real reports or data to this repository.
@@ -84,7 +88,7 @@ After user-facing desktop changes, refresh the Windows publish output with:
 dotnet publish src/PbiAssure.Desktop -c Release -o artifacts/desktop
 ```
 
-The HTML report is organised as expandable review cards rather than long data tables. Each report page contains collapsible visual summaries showing the visible title or on-canvas label, friendly visual type, approximate page position, referenced columns and measures, behaviour, accessibility metadata, and related findings. Findings and semantic-model tables are separately searchable and collapsible. Internal PBIR identifiers remain available only inside technical details.
+The HTML report is organised as expandable review cards rather than long data tables. Each report page contains collapsible visual summaries showing the visible title or on-canvas label, friendly visual type, approximate page position, referenced columns and measures, behaviour, accessibility metadata, and related findings. Findings, report pages, Power Query, relationships, and semantic-model objects provide context-specific search and filtering. Internal PBIR identifiers remain available only inside technical details.
 
 ## Browser application
 
@@ -100,7 +104,7 @@ Serve `artifacts/web/wwwroot` with a normal static web server. Current desktop E
 
 Choose the folder that directly contains one `.pbip` file. Browser ingestion is bounded to 10,000 visited entries, 5,000 accepted metadata files, 25 MiB per file, 100 MiB total and 64 directory levels. The HTML export contains detailed project metadata and full M expressions and should be reviewed before sharing.
 
-See [the browser application guide](docs/browser-app.md), [browser privacy model](docs/browser-privacy.md), and [static-hosting requirements](docs/browser-hosting.md). The original [browser/WebAssembly feasibility assessment](docs/browser-wasm-feasibility.md) is retained as a superseded planning record.
+See [the browser application guide](docs/browser-app.md), [browser privacy model](docs/browser-privacy.md), and [static-hosting requirements](docs/browser-hosting.md).
 
 ## Repository structure
 
@@ -125,3 +129,7 @@ Start with [the architecture overview](docs/architecture.md), [the product roadm
 - Current dependency analysis covers report, page, and visual PBIR references, report-level measure references, DAX expressions, field-parameter choices, calculation groups and items, sort-by columns, hierarchy levels, relationship endpoints, static Power Query references, and a privacy-minimised inventory of common M connector families. It does not yet inspect bookmark-captured semantic state, complete dynamic M, or detailed external data-source lineage.
 - A finding is evidence for review, not a declaration of legal or WCAG compliance.
 - “Unused” always means “not referenced within the analysed scope,” never automatically “safe to delete.”
+
+## Security and licensing
+
+See [security and data handling](docs/security-and-data-handling.md) for the local-processing and output-sensitivity boundaries. The source is publicly visible, but no open-source licence has been selected; see [ownership and licensing](docs/ownership-and-licensing.md) before copying, modifying, or redistributing it.
