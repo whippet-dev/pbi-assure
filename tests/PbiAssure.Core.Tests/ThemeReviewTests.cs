@@ -1,4 +1,5 @@
 using System.Text;
+using System.Text.Json;
 using PbiAssure.Core.Inventory;
 using PbiAssure.Core.Scanning;
 using PbiAssure.Reporting;
@@ -31,6 +32,10 @@ public sealed class ThemeReviewTests
         Assert.Equal(["columnChart"], custom.Metadata.VisualTypes);
         Assert.True(custom.Metadata.VisualStyleRuleCount > 0);
         Assert.Single(theme.RegisteredThemeResources, item => item.IsActive);
+        Assert.Single(theme.ActiveVisualStyleRules.Rules, rule =>
+            rule.Layer == ThemeLayers.Custom && rule.VisualType == "columnChart" &&
+            rule.Preset == "*" && rule.Card == "title" && rule.Property == "fontSize");
+        Assert.DoesNotContain("VisualStyleRules", JsonSerializer.Serialize(inventory), StringComparison.Ordinal);
     }
 
     [Fact]

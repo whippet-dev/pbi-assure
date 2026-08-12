@@ -41,6 +41,8 @@ public sealed record ThemeMetadataInventory(
     string? SchemaUri)
 {
     public int DistinctDataColorCount => DataColors.Distinct(StringComparer.OrdinalIgnoreCase).Count();
+
+    internal ThemeRuleIndex VisualStyleRules { get; init; } = ThemeRuleIndex.Empty;
 }
 
 public sealed record ThemeNamedColorInventory(
@@ -67,6 +69,8 @@ public sealed record ThemeInventory(
     IReadOnlyList<RegisteredThemeResourceInventory> RegisteredThemeResources,
     IReadOnlyList<string> ResolutionIssues)
 {
+    internal ThemeRuleIndex ActiveVisualStyleRules { get; init; } = ThemeRuleIndex.Empty;
+
     public static ThemeInventory Unavailable { get; } = new(
         new ThemeSourceInventory(
             ThemeSourceKinds.ImplicitBase,

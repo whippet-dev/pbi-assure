@@ -48,7 +48,12 @@ internal static class PbirThemeParser
             })
             .ToArray();
 
-        return new ThemeInventory(baseSource, customSource, registered, issues.ToArray());
+        return new ThemeInventory(baseSource, customSource, registered, issues.ToArray())
+        {
+            ActiveVisualStyleRules = new ThemeRuleIndex(
+                (baseSource.Metadata?.VisualStyleRules.Rules ?? [])
+                    .Concat(customSource?.Metadata?.VisualStyleRules.Rules ?? [])),
+        };
     }
 
     private static ThemeSourceInventory ResolveSource(
@@ -102,7 +107,7 @@ internal static class PbirThemeParser
         {
             using var stream = source.OpenRead(resourcePath);
             using var document = JsonDocument.Parse(stream);
-            var metadata = ParseMetadata(document.RootElement);
+            var metadata = ParseMetadata(document.RootElement, kind, referenceName, resourcePath);
             return new ThemeSourceInventory(kind, referenceName, metadata.Name, resourcePath, version,
                 ThemeAvailabilityStates.Available, evidencePath, metadata);
         }
@@ -114,7 +119,7 @@ internal static class PbirThemeParser
         }
     }
 
-    private static ThemeMetadataInventory ParseMetadata(JsonElement root)
+    private static ThemeMetadataInventory ParseMetadata(JsonElement root, string sourceKind, string? sourceReference, string? sourcePath)
     {
         var colors = root.TryGetProperty("dataColors", out var dataColors) && dataColors.ValueKind == JsonValueKind.Array
             ? dataColors.EnumerateArray()
@@ -148,50 +153,33 @@ internal static class PbirThemeParser
             }
         }
 
-        var visualTypes = new List<string>();
-        var ruleCount = 0;
-        if (TryGetObject(root, "visualStyles", out var visualStyles))
-        {
-            foreach (var visualType in visualStyles.EnumerateObject())
-            {
-                if (!string.Equals(visualType.Name, "*", StringComparison.Ordinal))
-                {
-                    visualTypes.Add(visualType.Name);
-                }
-
-                ruleCount += CountLeafProperties(visualType.Value);
-            }
-        }
+        var layer = sourceKind == ThemeSourceKinds.RegisteredCustom ? ThemeLayers.Custom : ThemeLayers.Base;
+        var ruleIndex = PbirThemeVisualStyleParser.Parse(root, layer, sourceReference, sourcePath);
+        var visibleRuleCount = TryGetObject(root, "visualStyles", out var visualStyles)
+            ? CountLeafProperties(visualStyles)
+            : 0;
+        var visualTypes = ruleIndex.Rules.Where(rule => rule.VisualType != "*")
+            .Select(rule => rule.VisualType).Distinct(StringComparer.OrdinalIgnoreCase)
+            .OrderBy(value => value, StringComparer.OrdinalIgnoreCase).ToArray();
 
         return new ThemeMetadataInventory(
             GetString(root, "name"),
             colors,
             namedColors,
             textClasses.OrderBy(item => item.Name, StringComparer.OrdinalIgnoreCase).ToArray(),
-            ruleCount,
-            visualTypes.Distinct(StringComparer.OrdinalIgnoreCase).OrderBy(value => value, StringComparer.OrdinalIgnoreCase).ToArray(),
-            GetString(root, "$schema"));
+            visibleRuleCount,
+            visualTypes,
+            GetString(root, "$schema"))
+        {
+            VisualStyleRules = ruleIndex,
+        };
     }
 
     private static int CountLeafProperties(JsonElement element)
     {
-        if (element.ValueKind == JsonValueKind.Array)
-        {
-            return element.EnumerateArray().Sum(CountLeafProperties);
-        }
-
-        if (element.ValueKind != JsonValueKind.Object)
-        {
-            return 0;
-        }
-
-        var properties = element.EnumerateObject().ToArray();
-        if (properties.Length == 0)
-        {
-            return 0;
-        }
-
-        return properties.Sum(property => property.Value.ValueKind is JsonValueKind.Object or JsonValueKind.Array
+        if (element.ValueKind == JsonValueKind.Array) return element.EnumerateArray().Sum(CountLeafProperties);
+        if (element.ValueKind != JsonValueKind.Object) return 0;
+        return element.EnumerateObject().Sum(property => property.Value.ValueKind is JsonValueKind.Object or JsonValueKind.Array
             ? CountLeafProperties(property.Value)
             : 1);
     }
