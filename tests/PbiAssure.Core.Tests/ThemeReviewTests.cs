@@ -131,10 +131,30 @@ public sealed class ThemeReviewTests
         Assert.Contains("Theme-linked references", html, StringComparison.Ordinal);
         Assert.Contains("Dynamic or conditional value", html, StringComparison.Ordinal);
         Assert.Contains("data-investigation=\"theme\"", html, StringComparison.Ordinal);
-        Assert.Contains("It does not assess theme alignment, authoring intent, final rendered colours or accessibility compliance.", html, StringComparison.Ordinal);
+        Assert.Contains("compares only a small set of explicitly supported saved formatting properties", html, StringComparison.Ordinal);
+        Assert.Contains("does not reproduce Power BI’s full formatting engine, infer authoring intent, determine final rendered formatting or assess accessibility compliance", html, StringComparison.Ordinal);
         Assert.DoesNotContain("theme compliance", html, StringComparison.OrdinalIgnoreCase);
         Assert.DoesNotContain("manually overridden", html, StringComparison.OrdinalIgnoreCase);
         Assert.DoesNotContain("WCAG pass", html, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public void RendersOnlyTheSupportedTitleFontSizeComparisonStates()
+    {
+        var differentHtml = HtmlReportRenderer.Render(Scan(
+            ReportJson(customName: "Custom.json"), BaseThemeJson, CustomThemeJson, FormattingVisual));
+        var noLocalHtml = HtmlReportRenderer.Render(Scan(
+            ReportJson(customName: "Custom.json"), BaseThemeJson, CustomThemeJson, BasicVisual));
+
+        Assert.Contains("Saved value differs from supported active-theme rule", differentHtml, StringComparison.Ordinal);
+        Assert.Contains("<strong>Saved value:</strong> 30 pt", differentHtml, StringComparison.Ordinal);
+        Assert.Contains("<strong>Theme rule:</strong> 18 pt", differentHtml, StringComparison.Ordinal);
+        Assert.Contains("data-filter-comparison=\"SavedValueDiffersFromTheme\"", differentHtml, StringComparison.Ordinal);
+        Assert.Contains("No saved local value", noLocalHtml, StringComparison.Ordinal);
+        Assert.Contains("<strong>Supported active-theme rule:</strong> 18 pt", noLocalHtml, StringComparison.Ordinal);
+        Assert.DoesNotContain("matches supported active-theme rule", noLocalHtml, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("compliant", differentHtml, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("safe to reset", differentHtml, StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]

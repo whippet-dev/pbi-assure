@@ -17,7 +17,7 @@ public static partial class HtmlReportRenderer
         html.AppendLine("    <section id=\"theme-review\" class=\"report-section\" data-report-section=\"theme-review\" aria-labelledby=\"theme-review-heading\">");
         html.AppendLine("      <h2 id=\"theme-review-heading\" tabindex=\"-1\">Theme Review</h2>");
         html.AppendLine("      <p class=\"section-intro\">See which theme resources are active, what metadata they contain and which supported formatting values are saved in the report.</p>");
-        html.AppendLine("      <div class=\"theme-boundary\"><strong>What this review means</strong><p>This is an inventory of saved evidence. It does not assess theme alignment, authoring intent, final rendered colours or accessibility compliance.</p></div>");
+        html.AppendLine("      <div class=\"theme-boundary\"><strong>What this review means</strong><p>Theme Review compares only a small set of explicitly supported saved formatting properties against supported active-theme rules. It does not reproduce Power BI’s full formatting engine, infer authoring intent, determine final rendered formatting or assess accessibility compliance.</p></div>");
         AppendThemeSummary(html, inventory);
         AppendThemeContentsSection(html, inventory);
         AppendPersistedFormatting(html, contexts, all, headline);
@@ -181,8 +181,7 @@ public static partial class HtmlReportRenderer
                 .AppendLine(" excluded from these headline counts and retained in technical detail.</p>");
         }
 
-        var details = contexts.Where(context => context.Visual.PersistedFormatting.Any(item =>
-            item.Classification != PersistedFormattingClassifications.NoPersistedValue)).ToArray();
+        var details = contexts.Where(context => DisplayedFormattingValues(context).Any()).ToArray();
         if (details.Length == 0)
         {
             html.AppendLine("        <p>No supported persisted values were found. Supported properties without a saved value are included in the aggregate above.</p>");
@@ -205,30 +204,35 @@ public static partial class HtmlReportRenderer
         AppendInvestigationFacet(html, "theme", "visual-type", "Visual type", "All visual types", details
             .Select(context => new FindingFacetOption(context.Visual.VisualType ?? "Unknown", HumanizeVisualType(context.Visual.VisualType))).Distinct());
         AppendInvestigationFacet(html, "theme", "classification", "Classification", "All classifications", details
-            .SelectMany(PersistedValues).Select(item => new FindingFacetOption(item.Classification, FormattingClassificationLabel(item.Classification))).Distinct());
+            .SelectMany(DisplayedFormattingValues).Select(item => new FindingFacetOption(item.Classification, FormattingClassificationLabel(item.Classification))).Distinct());
         AppendInvestigationFacet(html, "theme", "scope", "Scope", "All scopes", details
-            .SelectMany(PersistedValues).Select(item => new FindingFacetOption(
+            .SelectMany(DisplayedFormattingValues).Select(item => new FindingFacetOption(
                 item.IsSelectorScoped ? "Scoped" : "VisualWide",
                 item.IsSelectorScoped ? "Scoped to series/category" : "Not selector-scoped")).Distinct());
         AppendInvestigationFacet(html, "theme", "property", "Property", "All properties", details
-            .SelectMany(PersistedValues).Select(item => new FindingFacetOption(item.PropertyKey, item.PropertyLabel)).Distinct());
+            .SelectMany(DisplayedFormattingValues).Select(item => new FindingFacetOption(item.PropertyKey, item.PropertyLabel)).Distinct());
+        var comparisonOptions = details.SelectMany(DisplayedFormattingValues).Where(item => item.ThemeComparison is not null)
+            .Select(item => new FindingFacetOption(item.ThemeComparison!.State, ThemeComparisonLabel(item.ThemeComparison.State))).Distinct().ToArray();
+        if (comparisonOptions.Length > 0)
+            AppendInvestigationFacet(html, "theme", "comparison", "Comparison state", "All comparison states", comparisonOptions);
         AppendInvestigationEnd(html, "theme", details.Length, "visual", "visuals");
     }
 
     private static void AppendThemeVisual(StringBuilder html, ThemeVisualContext context)
     {
-        var observations = PersistedValues(context).ToArray();
+        var observations = DisplayedFormattingValues(context).ToArray();
         var classifications = string.Join('\u001f', observations.Select(item => item.Classification).Distinct(StringComparer.Ordinal));
         var scopes = string.Join('\u001f', observations.Select(item => item.IsSelectorScoped ? "Scoped" : "VisualWide").Distinct(StringComparer.Ordinal));
         var properties = string.Join('\u001f', observations.Select(item => item.PropertyKey).Distinct(StringComparer.Ordinal));
+        var comparisons = string.Join('\u001f', observations.Where(item => item.ThemeComparison is not null).Select(item => item.ThemeComparison!.State).Distinct(StringComparer.Ordinal));
         var search = string.Join(' ', context.Report.Name, context.Page.DisplayName, VisualDisplayName(context.Visual), context.Visual.VisualType,
-            string.Join(' ', observations.Select(item => $"{item.PropertyLabel} {item.NormalizedValue} {item.SelectorScope} {item.ExpressionSource}")));
+            string.Join(' ', observations.Select(item => $"{item.PropertyLabel} {item.NormalizedValue} {item.SelectorScope} {item.ExpressionSource} {item.ThemeComparison?.State} {item.ThemeComparison?.ThemeRuleValue}")));
         html.Append("          <details class=\"theme-visual-card\" data-investigation-item=\"theme\" data-search-text=\"").Append(Encode(search))
             .Append("\" data-filter-page=\"").Append(Encode(context.Page.DisplayName)).Append("\" data-filter-visual-type=\"").Append(Encode(context.Visual.VisualType ?? "Unknown"))
-            .Append("\" data-filter-classification=\"").Append(Encode(classifications)).Append("\" data-filter-scope=\"").Append(Encode(scopes)).Append("\" data-filter-property=\"").Append(Encode(properties)).AppendLine("\">");
+            .Append("\" data-filter-classification=\"").Append(Encode(classifications)).Append("\" data-filter-scope=\"").Append(Encode(scopes)).Append("\" data-filter-property=\"").Append(Encode(properties)).Append("\" data-filter-comparison=\"").Append(Encode(comparisons)).AppendLine("\">");
         html.Append("            <summary><span class=\"summary-copy\"><strong>").Append(Encode(VisualDisplayName(context.Visual))).Append("</strong><span><strong>Page:</strong> ")
             .Append(Encode(context.Page.DisplayName)).Append(" · ").Append(Encode(HumanizeVisualType(context.Visual.VisualType))).Append(" · ")
-            .Append(observations.Length).Append(' ').Append(Pluralize(observations.Length, "saved observation", "saved observations")).AppendLine("</span></span></summary>");
+            .Append(observations.Length).Append(' ').Append(Pluralize(observations.Length, "formatting property", "formatting properties")).AppendLine("</span></span></summary>");
         html.AppendLine("            <div class=\"theme-visual-body\"><div class=\"theme-observation-list\">");
         foreach (var observation in observations) AppendThemeObservation(html, context, observation);
         html.AppendLine("            </div></div></details>");
@@ -238,7 +242,8 @@ public static partial class HtmlReportRenderer
     {
         html.Append("              <article class=\"theme-observation\"><div class=\"semantic-object-header\"><span class=\"object-name\"><strong>")
             .Append(Encode(observation.PropertyLabel)).Append("</strong><span>").Append(Encode(FormattingClassificationLabel(observation))).AppendLine("</span></span></div>");
-        if (!string.IsNullOrWhiteSpace(observation.NormalizedValue)) html.Append("                <p><strong>Saved evidence:</strong> ").Append(Encode(observation.NormalizedValue)).AppendLine("</p>");
+        if (observation.ThemeComparison is { } comparison) AppendThemeComparison(html, comparison);
+        else if (!string.IsNullOrWhiteSpace(observation.NormalizedValue)) html.Append("                <p><strong>Saved evidence:</strong> ").Append(Encode(observation.NormalizedValue)).AppendLine("</p>");
         if (observation.IsSelectorScoped) html.Append("                <p><strong>Scope:</strong> ").Append(Encode(observation.SelectorScope ?? observation.SelectorKind ?? "Selector-scoped")).AppendLine("</p>");
         if (!string.IsNullOrWhiteSpace(observation.ExpressionSource)) html.Append("                <p><strong>Expression source:</strong> ").Append(Encode(observation.ExpressionSource)).AppendLine("</p>");
         if (observation.IsAmbiguous) html.AppendLine("                <p class=\"secondary\">Selector mapping is ambiguous; this evidence is shown conservatively.</p>");
@@ -250,11 +255,27 @@ public static partial class HtmlReportRenderer
         AppendDefinition(html, "Selector kind", observation.SelectorKind ?? "None");
         AppendDefinition(html, "Selector relevance", observation.SelectorRelevance ?? "Not applicable");
         if (!string.IsNullOrWhiteSpace(observation.RawValue)) AppendDefinition(html, "Raw saved value", observation.RawValue);
+        if (observation.ThemeComparison?.ThemeRuleEvidencePath is { } rulePath) AppendDefinition(html, "Theme rule evidence", rulePath);
+        if (observation.ThemeComparison?.ThemeSourcePath is { } sourcePath) AppendDefinition(html, "Theme source", sourcePath);
         html.AppendLine("                </dl></details></article>");
     }
 
-    private static IEnumerable<PersistedFormattingObservation> PersistedValues(ThemeVisualContext context) =>
-        context.Visual.PersistedFormatting.Where(item => item.Classification != PersistedFormattingClassifications.NoPersistedValue);
+    private static void AppendThemeComparison(StringBuilder html, ThemeFormattingComparison comparison)
+    {
+        html.Append("                <p class=\"theme-comparison-state\"><strong>").Append(Encode(ThemeComparisonLabel(comparison.State))).AppendLine("</strong></p>");
+        if (comparison.SavedValue is not null) html.Append("                <p><strong>Saved value:</strong> ").Append(Encode(comparison.SavedValue)).AppendLine(" pt</p>");
+        if (comparison.ThemeRuleValue is not null)
+        {
+            var label = comparison.State == ThemeFormattingComparisonStates.NoSavedLocalValue
+                ? "Supported active-theme rule"
+                : "Theme rule";
+            html.Append("                <p><strong>").Append(label).Append(":</strong> ").Append(Encode(comparison.ThemeRuleValue)).AppendLine(" pt</p>");
+        }
+    }
+
+    private static IEnumerable<PersistedFormattingObservation> DisplayedFormattingValues(ThemeVisualContext context) =>
+        context.Visual.PersistedFormatting.Where(item =>
+            item.Classification != PersistedFormattingClassifications.NoPersistedValue || item.ThemeComparison is not null);
 
     private static int Count(IEnumerable<PersistedFormattingObservation> values, string classification) =>
         values.Count(item => item.Classification == classification);
@@ -274,6 +295,16 @@ public static partial class HtmlReportRenderer
         PersistedFormattingClassifications.ThemeReference => "Theme-linked colour reference",
         PersistedFormattingClassifications.DynamicExpression => "Dynamic or conditional value",
         _ => "Unsupported or ambiguous mapping",
+    };
+
+    private static string ThemeComparisonLabel(string state) => state switch
+    {
+        ThemeFormattingComparisonStates.NoSavedLocalValue => "No saved local value",
+        ThemeFormattingComparisonStates.SavedValueMatchesTheme => "Saved value matches supported active-theme rule",
+        ThemeFormattingComparisonStates.SavedValueDiffersFromTheme => "Saved value differs from supported active-theme rule",
+        ThemeFormattingComparisonStates.ThemeCandidateUnavailable => "Supported theme rule unavailable",
+        ThemeFormattingComparisonStates.ComparisonAmbiguous => "Comparison ambiguous",
+        _ => "Unsupported for comparison",
     };
 
     private static string FriendlyAvailability(string state) => state switch

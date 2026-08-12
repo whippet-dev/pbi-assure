@@ -2560,6 +2560,7 @@ public static partial class HtmlReportRenderer
     .theme-observation-list { display: grid; min-width: 0; grid-template-columns: repeat(auto-fit, minmax(min(100%, 22rem), 1fr)); gap: .65rem; }
     .theme-observation { min-width: 0; padding: .75rem; border: 1px solid #d7dee5; border-radius: .35rem; overflow-wrap: anywhere; }
     .theme-observation p { margin: .45rem 0 0; }
+    .theme-comparison-state { padding: .35rem .5rem; border-left: .25rem solid var(--info); background: var(--info-bg); }
     .summary-definitions, .section-help { margin-top: .75rem; padding: .55rem .7rem; border: 1px solid #c8d2dc; border-radius: .3rem; background: #f8fafc; }
     .summary-definitions > summary, .section-help > summary { color: var(--link); font-weight: 700; }
     .summary-definitions dl { display: grid; gap: .55rem; margin: .75rem 0 .15rem; }

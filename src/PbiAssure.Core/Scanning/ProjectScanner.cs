@@ -40,7 +40,7 @@ public static class ProjectScanner
         var semanticTablePowerQueryContexts = SemanticTablePowerQueryEnricher.Build(powerQueryAnalysis.Usages);
 
         var inventory = new ProjectInventory(
-            SchemaVersion: "0.18",
+            SchemaVersion: "0.19",
             RootPath: source.SourceRoot ?? source.DisplayName,
             ScannedAtUtc: DateTimeOffset.UtcNow,
             Artifacts: artifacts

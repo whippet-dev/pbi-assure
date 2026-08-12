@@ -69,7 +69,7 @@ internal static class PbirReportParser
 
         var pages = source
             .EnumerateDirectories(pagesDirectory)
-            .Select(directory => ParsePage(source, ProjectFilePaths.Combine(pagesDirectory, directory), pageOrder, activePageName))
+            .Select(directory => ParsePage(source, ProjectFilePaths.Combine(pagesDirectory, directory), pageOrder, activePageName, theme))
             .Where(page => page is not null)
             .Cast<PageInventory>()
             .OrderBy(page => page.Order ?? int.MaxValue)
@@ -239,7 +239,8 @@ internal static class PbirReportParser
         IProjectFileSource source,
         string pageDirectory,
         Dictionary<string, int> pageOrder,
-        string? activePageName)
+        string? activePageName,
+        ThemeInventory theme)
     {
         var pagePath = ProjectFilePaths.Combine(pageDirectory, "page.json");
         if (!source.FileExists(pagePath))
@@ -252,7 +253,7 @@ internal static class PbirReportParser
         var name = GetString(pageRoot, "name") ?? ProjectFilePaths.GetFileName(pageDirectory);
         var displayName = GetString(pageRoot, "displayName") ?? name;
         var visualsDirectory = ProjectFilePaths.Combine(pageDirectory, "visuals");
-        var visuals = ParseVisuals(source, visualsDirectory);
+        var visuals = ParseVisuals(source, visualsDirectory, theme);
 
         return new PageInventory(
             Name: name,
@@ -318,17 +319,17 @@ internal static class PbirReportParser
             .ToArray();
     }
 
-    private static VisualInventory[] ParseVisuals(IProjectFileSource source, string visualsDirectory)
+    private static VisualInventory[] ParseVisuals(IProjectFileSource source, string visualsDirectory, ThemeInventory theme)
     {
         return source
             .EnumerateFiles(visualsDirectory)
             .Where(file => string.Equals(ProjectFilePaths.GetFileName(file.RelativePath), "visual.json", StringComparison.OrdinalIgnoreCase))
-            .Select(file => ParseVisual(source, file.RelativePath))
+            .Select(file => ParseVisual(source, file.RelativePath, theme))
             .OrderBy(visual => visual.Name, StringComparer.OrdinalIgnoreCase)
             .ToArray();
     }
 
-    private static VisualInventory ParseVisual(IProjectFileSource source, string visualPath)
+    private static VisualInventory ParseVisual(IProjectFileSource source, string visualPath, ThemeInventory theme)
     {
         using var visualDocument = OpenJsonDocument(source, visualPath);
         var visualRoot = visualDocument.RootElement;
@@ -343,7 +344,10 @@ internal static class PbirReportParser
         var referenceClassification = PbirVisualReferenceClassifier.Classify(
             visualRoot,
             PbirFieldReferenceExtractor.Extract(visualRoot));
-        var persistedFormatting = PbirVisualFormattingParser.Parse(visualRoot, referenceClassification.Selectors);
+        var persistedFormatting = ThemeFormattingComparisonAnalyzer.Apply(
+            visualType,
+            PbirVisualFormattingParser.Parse(visualRoot, referenceClassification.Selectors),
+            theme.ActiveVisualStyleRules);
 
         TryGetObject(visualRoot, "position", out var position);
 
