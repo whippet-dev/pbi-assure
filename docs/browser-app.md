@@ -11,7 +11,7 @@ Browser directory picker
     -> InMemoryProjectFileSource
     -> PbiAssure.Core analysis and assurance rules
     -> PbiAssure.Reporting HTML and semantic-usage CSV renderers
-    -> local browser downloads
+    -> local browser downloads or same-origin local report viewer
 ```
 
 There is no backend, upload API, account, telemetry or analytics service. The static host serves only
@@ -50,27 +50,34 @@ message when one is exceeded.
 - **Not initially supported:** mobile browsers and older enterprise browser versions.
 
 Managed-browser policies can independently block folder access, WebAssembly execution or downloads.
-Release testing should cover primary and alternate picking, HTML and CSV downloads, the production CSP,
-OneDrive placeholder files, and organisation download/security controls.
+Release testing should cover primary and alternate picking, a styled and interactive Open report, HTML
+and CSV downloads, the production CSP, OneDrive placeholder files, and organisation download/security
+controls.
 
 ## Build and publish locally
 
 ```powershell
-dotnet publish src/PbiAssure.Web -c Release -o artifacts/web
+.\scripts\Publish-Web.cmd
 ```
 
-Serve `artifacts/web/wwwroot` over HTTP for local development or HTTPS for deployed use. Do not open
-`index.html` directly through `file://` because Blazor must load its framework assets from a web origin.
+The normal command refuses tracked source changes, removes only `artifacts/web`, publishes Release
+output and embeds the full current Git commit. Serve `artifacts/web/wwwroot` over HTTP for local
+development or HTTPS for deployed use. Do not open `index.html` directly through `file://` because
+Blazor must load its framework assets from a web origin.
 
-For an identifiable release build, pass the current commit as `SourceRevisionId`:
+For a local review build while tracked changes are intentionally uncommitted:
 
 ```powershell
-$revision = git rev-parse --short HEAD
-dotnet publish src/PbiAssure.Web -c Release -o artifacts/web -p:SourceRevisionId=$revision
+.\scripts\Publish-Web.cmd -AllowDirty
 ```
 
-The footer always displays the application version and displays the revision only when the build
-supplies one. It links to the public source repository.
+The footer labels review output with the first 12 characters of the current commit plus `-dirty`. A
+production publish must not contain that suffix. Untracked build inputs in the Web, Core or Reporting
+projects also produce a dirty build; unrelated untracked research documents do not affect the compiled
+application.
+
+The publish includes the source-controlled Cloudflare Pages `_headers` policy. The footer links the
+displayed build identity to the public source repository.
 
 Production hosting requires additional response headers, caching and MIME configuration. See
 [Browser static hosting](browser-hosting.md).

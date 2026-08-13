@@ -99,7 +99,7 @@ The HTML report is organised as expandable review cards rather than long data ta
 For full assurance, prepare a PBIP using PBIR and TMDL, then select the project root folder containing the `.pbip`, `.Report`, and `.SemanticModel` items. See [Prepare a Power BI project for PBI Assure](docs/preparing-power-bi-project.md) for the PBIX-to-PBIP steps and current Microsoft guidance.
 
 ```powershell
-dotnet publish src/PbiAssure.Web -c Release -o artifacts/web
+.\scripts\Publish-Web.cmd
 ```
 
 Serve `artifacts/web/wwwroot` with a normal static web server. Current desktop Edge and Chrome are the supported first-beta browsers; Firefox and Safari are best effort only after fallback testing, and mobile or older enterprise browsers are not initially supported.

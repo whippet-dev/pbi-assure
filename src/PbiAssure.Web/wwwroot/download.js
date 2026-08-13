@@ -1,16 +1,31 @@
 window.pbiAssureDownload = {
     open(mimeType, content) {
-        const blob = new Blob([content], { type: mimeType });
-        const objectUrl = URL.createObjectURL(blob);
-        const reportWindow = window.open(objectUrl, "_blank");
+        const viewerUrl = new URL(
+            "report-viewer.html?v=__PBIASSURE_ASSET_VERSION__",
+            document.baseURI);
+        const reportWindow = window.open(viewerUrl.href, "_blank");
 
         if (reportWindow === null) {
-            URL.revokeObjectURL(objectUrl);
             return false;
         }
 
-        reportWindow.opener = null;
-        setTimeout(() => URL.revokeObjectURL(objectUrl), 60000);
+        const handleViewerReady = event => {
+            if (event.origin !== viewerUrl.origin ||
+                event.source !== reportWindow ||
+                event.data?.type !== "pbi-assure-report-viewer-ready") {
+                return;
+            }
+
+            window.removeEventListener("message", handleViewerReady);
+            reportWindow.postMessage({
+                type: "pbi-assure-report-content",
+                mimeType,
+                content
+            }, viewerUrl.origin);
+        };
+
+        window.addEventListener("message", handleViewerReady);
+        setTimeout(() => window.removeEventListener("message", handleViewerReady), 30000);
         return true;
     },
 

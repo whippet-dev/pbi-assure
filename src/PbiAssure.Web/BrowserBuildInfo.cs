@@ -15,14 +15,22 @@ public static class BrowserBuildInfo
             var informationalVersion = Assembly
                 .GetCustomAttribute<AssemblyInformationalVersionAttribute>()?
                 .InformationalVersion;
-            var separator = informationalVersion?.LastIndexOf('+') ?? -1;
-            if (separator < 0 || separator == informationalVersion!.Length - 1)
-            {
-                return null;
-            }
-
-            var revision = informationalVersion[(separator + 1)..];
-            return revision.Length > 12 ? revision[..12] : revision;
+            return DisplayRevision(informationalVersion);
         }
+    }
+
+    public static string? DisplayRevision(string? informationalVersion)
+    {
+        var separator = informationalVersion?.LastIndexOf('+') ?? -1;
+        if (separator < 0 || separator == informationalVersion!.Length - 1)
+        {
+            return null;
+        }
+
+        var revision = informationalVersion[(separator + 1)..];
+        var isDirty = revision.EndsWith("-dirty", StringComparison.Ordinal);
+        var commit = isDirty ? revision[..^"-dirty".Length] : revision;
+        var displayCommit = commit.Length > 12 ? commit[..12] : commit;
+        return isDirty ? $"{displayCommit}-dirty" : displayCommit;
     }
 }
