@@ -1,3 +1,4 @@
+using PbiAssure.Core.Assurance;
 using PbiAssure.Core.Inventory;
 using PbiAssure.Core.Scanning;
 using PbiAssure.Reporting;
@@ -187,6 +188,41 @@ public sealed class HtmlReportRendererTests : IDisposable
         Assert.DoesNotContain("normalise(card.textContent).includes(query)", html, StringComparison.Ordinal);
         Assert.Contains("findingStatus.textContent = activeCount ?", html, StringComparison.Ordinal);
         Assert.Contains("history.pushState(null, '', `#${sectionName}`)", html, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void RenderExplainsActiveRulesAndConnectsCatalogueCountsToExistingRuleFilter()
+    {
+        CreateSampleProject();
+
+        var inventory = ProjectScanner.Scan(testRoot);
+        var html = HtmlReportRenderer.Render(inventory);
+        var missingBookmarkCount = inventory.Findings.Count(finding => finding.RuleId == "PBI-NAV-001");
+        var zeroFindingRule = AssuranceRuleCatalog.ActiveRules.First(rule =>
+            inventory.Findings.All(finding => !string.Equals(finding.RuleId, rule.RuleId, StringComparison.Ordinal)));
+        Assert.True(missingBookmarkCount > 0);
+
+        Assert.Contains("<details class=\"section-help rule-catalogue\"><summary>Checks in PBI Assure", html, StringComparison.Ordinal);
+        Assert.Equal(AssuranceRuleCatalog.ActiveRules.Count, CountOccurrences(html, "class=\"rule-catalogue-item\""));
+        Assert.Contains("value=\"PBI-NAV-001\">PBI-NAV-001 &#x2014; Bookmark target missing</option>", html, StringComparison.Ordinal);
+        Assert.Contains("<code>PBI-NAV-001</code><span aria-hidden=\"true\"> — </span>Bookmark target missing", html, StringComparison.Ordinal);
+        Assert.Contains("Checks saved bookmark-action targets for bookmarks that do not exist.", html, StringComparison.Ordinal);
+        Assert.Contains("data-filter-findings-by-rule=\"PBI-NAV-001\"", html, StringComparison.Ordinal);
+        Assert.Contains("aria-label=\"Show findings for PBI-NAV-001", html, StringComparison.Ordinal);
+        Assert.Contains($">{missingBookmarkCount} finding", html, StringComparison.Ordinal);
+        Assert.Contains("<code>PBI-COMPAT-001</code><span aria-hidden=\"true\"> — </span>Q&amp;A visual retirement", html, StringComparison.Ordinal);
+        Assert.Contains("Power BI Q&amp;A visuals that Microsoft is retiring.", html, StringComparison.Ordinal);
+        Assert.Contains("No findings in this report", html, StringComparison.Ordinal);
+        Assert.Contains($"<code>{zeroFindingRule.RuleId}</code>", html, StringComparison.Ordinal);
+        Assert.DoesNotContain($"data-filter-findings-by-rule=\"{zeroFindingRule.RuleId}\"", html, StringComparison.Ordinal);
+        Assert.DoesNotContain(">Passed<", html, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain(">Compliant<", html, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("const findingRule = document.getElementById('finding-rule');", html, StringComparison.Ordinal);
+        Assert.Contains("findingRule.value = button.dataset.filterFindingsByRule;", html, StringComparison.Ordinal);
+        Assert.Contains("filterFindings();", html, StringComparison.Ordinal);
+        Assert.Contains("activateSection('findings');", html, StringComparison.Ordinal);
+        Assert.Contains(".rule-catalogue-list { display: grid; min-width: 0; grid-template-columns: repeat(auto-fit", html, StringComparison.Ordinal);
+        Assert.Contains(".rule-catalogue-list { grid-template-columns: 1fr; }", html, StringComparison.Ordinal);
     }
 
     [Fact]

@@ -1,6 +1,7 @@
 using System.Globalization;
 using System.Text;
 using System.Text.Encodings.Web;
+using PbiAssure.Core.Assurance;
 using PbiAssure.Core.Inventory;
 
 namespace PbiAssure.Reporting;
@@ -384,6 +385,7 @@ public static partial class HtmlReportRenderer
         html.AppendLine("      <h2 id=\"findings-heading\" tabindex=\"-1\">Findings</h2>");
         html.AppendLine("      <p class=\"section-intro\">Issues and review points found by automated checks. Expand one to see where it occurs and what to do next.</p>");
         html.AppendLine("      <details class=\"section-help\"><summary>How to use findings</summary><p>A finding is an automated observation, not a verdict on the whole report. Its location shows where PBI Assure found it and Suggested action gives a practical next step. Items marked Review required can be intentional, depending on your report's context.</p></details>");
+        AppendRuleCatalogue(html, inventory);
         if (inventory.Findings.Count == 0)
         {
             AppendSectionEmptyState(html, "No automated findings", "PBI Assure did not identify any issues or review items in its current checks. Manual review is still recommended.", "success");
@@ -397,7 +399,11 @@ public static partial class HtmlReportRenderer
         html.AppendLine("        <details class=\"finding-filter-panel\"><summary>More filters <span id=\"finding-active-filter-count\" class=\"active-filter-count\" hidden></span></summary>");
         html.AppendLine("          <div class=\"finding-facet-grid\" aria-label=\"Filter findings\">");
         AppendFindingFacet(html, "finding-severity", "Severity", "All severities", FindingFacetOptions(findingItems, item => (item.FilterSeverity, item.SeverityLabel)));
-        AppendFindingFacet(html, "finding-rule", "Rule", "All rules", FindingFacetOptions(findingItems, item => (item.Finding.RuleId, item.Finding.RuleId)));
+        AppendFindingFacet(html, "finding-rule", "Rule", "All rules", FindingFacetOptions(findingItems, item =>
+        {
+            var metadata = AssuranceRuleCatalog.Find(item.Finding.RuleId);
+            return (item.Finding.RuleId, metadata is null ? item.Finding.RuleId : $"{item.Finding.RuleId} — {metadata.FriendlyName}");
+        }));
         AppendFindingFacet(html, "finding-category", "Category", "All categories", FindingFacetOptions(findingItems, item => (item.Finding.Category, HumanizeIdentifier(item.Finding.Category))));
         AppendFindingFacet(html, "finding-page", "Page", "All pages", FindingFacetOptions(findingItems, item => (item.PageKey, item.PageLabel)));
         AppendFindingFacet(html, "finding-visual", "Visual", "All visuals", FindingFacetOptions(findingItems, item => (item.VisualKey, item.VisualLabel)));
@@ -408,7 +414,7 @@ public static partial class HtmlReportRenderer
         html.AppendLine("        </details>");
         html.AppendLine("      </div>");
         html.AppendLine("      <div class=\"finding-results-row\">");
-        html.Append("        <p id=\"finding-filter-status\" class=\"filter-status\" role=\"status\" aria-live=\"polite\" aria-atomic=\"true\">")
+        html.Append("        <p id=\"finding-filter-status\" class=\"filter-status\" role=\"status\" aria-live=\"polite\" aria-atomic=\"true\" tabindex=\"-1\">")
             .Append(inventory.Findings.Count.ToString("N0", CultureInfo.InvariantCulture)).AppendLine(" findings</p>");
         html.AppendLine("        <button id=\"finding-clear-filters\" type=\"button\" hidden>Clear search and filters</button>");
         html.AppendLine("      </div>");
@@ -453,6 +459,46 @@ public static partial class HtmlReportRenderer
 
         html.AppendLine("      </div>");
         html.AppendLine("    </section>");
+    }
+
+    private static void AppendRuleCatalogue(StringBuilder html, ProjectInventory inventory)
+    {
+        var counts = inventory.Findings
+            .GroupBy(finding => finding.RuleId, StringComparer.OrdinalIgnoreCase)
+            .ToDictionary(group => group.Key, group => group.Count(), StringComparer.OrdinalIgnoreCase);
+        html.AppendLine("      <details class=\"section-help rule-catalogue\"><summary>Checks in PBI Assure <span class=\"rule-catalogue-hint\">Rule catalogue</span></summary>");
+        html.AppendLine("        <p>PBI Assure runs these automated checks. No findings from a check does not prove full compliance.</p>");
+        foreach (var category in AssuranceRuleCatalog.ActiveRules.GroupBy(rule => rule.Category))
+        {
+            var categoryId = category.Key.ToLowerInvariant();
+            html.Append("        <section class=\"rule-category\" aria-labelledby=\"rule-category-")
+                .Append(Encode(categoryId)).AppendLine("\">");
+            html.Append("          <h3 id=\"rule-category-").Append(Encode(categoryId)).Append("\">")
+                .Append(Encode(HumanizeIdentifier(category.Key))).AppendLine("</h3>");
+            html.AppendLine("          <div class=\"rule-catalogue-list\">");
+            foreach (var rule in category.OrderBy(rule => rule.RuleId, StringComparer.Ordinal))
+            {
+                var count = counts.GetValueOrDefault(rule.RuleId);
+                html.Append("            <article class=\"rule-catalogue-item\"><h4><code>").Append(Encode(rule.RuleId))
+                    .Append("</code><span aria-hidden=\"true\"> — </span>").Append(Encode(rule.FriendlyName)).AppendLine("</h4>");
+                html.Append("              <p>").Append(Encode(rule.Description)).AppendLine("</p>");
+                if (count > 0)
+                {
+                    html.Append("              <button type=\"button\" class=\"rule-finding-count\" data-filter-findings-by-rule=\"")
+                        .Append(Encode(rule.RuleId)).Append("\" aria-label=\"Show findings for ").Append(Encode(rule.RuleId)).Append(" — ")
+                        .Append(Encode(rule.FriendlyName)).Append("\">").Append(count.ToString("N0", CultureInfo.InvariantCulture)).Append(' ')
+                        .Append(Pluralize(count, "finding", "findings")).AppendLine(" in this report</button>");
+                }
+                else
+                {
+                    html.AppendLine("              <p class=\"rule-finding-count-empty\">No findings in this report</p>");
+                }
+                html.AppendLine("            </article>");
+            }
+            html.AppendLine("          </div>");
+            html.AppendLine("        </section>");
+        }
+        html.AppendLine("      </details>");
     }
 
     private static void AppendFindingFacet(
@@ -2587,6 +2633,16 @@ public static partial class HtmlReportRenderer
     .summary-definitions dt { color: var(--text); font-weight: 700; }
     .summary-definitions dd { margin: 0; color: var(--muted); overflow-wrap: anywhere; }
     .section-help > p { max-width: 64rem; margin: .65rem 0 .15rem; color: var(--muted); }
+    .rule-catalogue-hint { margin-left: .35rem; color: var(--muted); font-size: .82rem; font-weight: 500; }
+    .rule-category { min-width: 0; margin-top: 1rem; }
+    .rule-category h3 { margin-bottom: .55rem; font-size: 1rem; }
+    .rule-catalogue-list { display: grid; min-width: 0; grid-template-columns: repeat(auto-fit, minmax(min(100%, 19rem), 1fr)); gap: .65rem; }
+    .rule-catalogue-item { display: flex; min-width: 0; flex-direction: column; align-items: flex-start; padding: .7rem; border: 1px solid #d7dee5; border-radius: .3rem; background: #fff; overflow-wrap: anywhere; }
+    .rule-catalogue-item h4 { margin: 0; font-size: .95rem; }
+    .rule-catalogue-item p { margin: .35rem 0 0; color: var(--muted); }
+    .rule-finding-count { min-height: 0; margin-top: auto; padding: .45rem 0 0; border: 0; background: transparent; text-align: left; text-decoration: underline; }
+    .rule-finding-count:hover { background: transparent; text-decoration-thickness: .14em; }
+    .rule-finding-count-empty { padding-top: .15rem; font-size: .9rem; }
     .scope { border-left: .55rem solid var(--warning) !important; }
     .filters { display: flex; flex-wrap: wrap; gap: 1rem; align-items: end; margin: 1rem 0 .5rem; padding: 1rem; background: #eef2f6; border-radius: .3rem; }
     .filters div { min-width: min(100%, 14rem); flex: 1; }
@@ -2751,6 +2807,7 @@ public static partial class HtmlReportRenderer
       .filters div + div { margin-top: .8rem; }
       .finding-investigation { padding: .75rem; }
       .finding-facet-grid { grid-template-columns: 1fr; }
+      .rule-catalogue-list { grid-template-columns: 1fr; }
       .finding-card > summary, .page-card > summary, .relationship-card > summary, .visual-card > summary, .semantic-table > summary { gap: .6rem; padding: .75rem; }
       .card-body, .page-body, .visual-body { padding: .75rem; }
       .power-query-card > summary { flex-wrap: wrap; }
@@ -2834,6 +2891,7 @@ public static partial class HtmlReportRenderer
       const findingChips = document.getElementById('finding-active-filters');
       const findingEmpty = document.getElementById('finding-empty-state');
       const findingActiveCount = document.getElementById('finding-active-filter-count');
+      const findingRule = document.getElementById('finding-rule');
       const findingCards = findingList ? [...findingList.querySelectorAll('.finding-card')] : [];
       findingCards.forEach(card => { card.findingSearchText = normalise(card.dataset.searchText); });
 
@@ -2901,6 +2959,18 @@ public static partial class HtmlReportRenderer
       findingFacets.forEach(control => control.addEventListener('change', filterFindings));
       findingClear?.addEventListener('click', clearFindingFilters);
       document.querySelectorAll('[data-clear-finding-filters]').forEach(button => button.addEventListener('click', clearFindingFilters));
+      document.querySelectorAll('[data-filter-findings-by-rule]').forEach(button => button.addEventListener('click', () => {
+        if (!findingRule) return;
+        if (findingSearch) findingSearch.value = '';
+        findingFacets.forEach(control => { control.value = ''; });
+        findingRule.value = button.dataset.filterFindingsByRule;
+        filterFindings();
+        activateSection('findings');
+        requestAnimationFrame(() => {
+          findingStatus?.scrollIntoView({ block: 'start' });
+          findingStatus?.focus({ preventScroll: true });
+        });
+      }));
       filterFindings();
 
       const investigationConfigs = [
