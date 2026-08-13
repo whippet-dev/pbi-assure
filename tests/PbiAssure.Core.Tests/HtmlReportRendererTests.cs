@@ -97,6 +97,31 @@ public sealed class HtmlReportRendererTests : IDisposable
     }
 
     [Fact]
+    public void RenderNormalizesOnlyKnownDisplayPathsWithoutChangingSourceValuesOrEscaping()
+    {
+        const string sourceRoot = @"C:\Projects\PBI & Reports\Sample";
+        const string artifactPath = @"Sample.Report\definition\visual & card.json";
+        const string unrelatedMessage = @"Literal text C:\not\a\display-path & <tag>";
+        const string evidencePropertyPath = @"objects\title\text";
+        var inventory = ProjectScanner.Scan(new InMemoryProjectFileSource(sourceRoot, []));
+        var finding = new AssuranceFinding(
+            "TEST-PATH", "1.0", "Test", "Info", unrelatedMessage, "Review the literal text.",
+            null, null, null, null, null, null, null, artifactPath, [evidencePropertyPath],
+            "Finding", null);
+        inventory = inventory with { Findings = [finding] };
+
+        var html = HtmlReportRenderer.Render(inventory);
+
+        Assert.Equal(sourceRoot, inventory.RootPath);
+        Assert.Equal(artifactPath, Assert.Single(inventory.Findings).ArtifactPath);
+        Assert.Contains("C:/Projects/PBI &amp; Reports/Sample", html, StringComparison.Ordinal);
+        Assert.Contains("Sample.Report/definition/visual &amp; card.json", html, StringComparison.Ordinal);
+        Assert.Contains("Literal text C:\\not\\a\\display-path &amp; &lt;tag&gt;", html, StringComparison.Ordinal);
+        Assert.Contains("objects\\title\\text", html, StringComparison.Ordinal);
+        Assert.DoesNotContain("C:\\Projects\\PBI &amp; Reports\\Sample", html, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void RenderDistinguishesStaticAndFilteredEmptyStates()
     {
         CreateSampleProject();

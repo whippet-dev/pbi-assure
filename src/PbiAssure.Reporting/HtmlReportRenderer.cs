@@ -51,7 +51,7 @@ public static partial class HtmlReportRenderer
             "dd MMMM yyyy, HH:mm 'UTC'",
             CultureInfo.InvariantCulture));
         AppendDefinition(html, "Inventory schema", inventory.SchemaVersion);
-        AppendDefinition(html, "Source project", inventory.RootPath);
+        AppendDefinition(html, "Source project", DisplayPath(inventory.RootPath));
         html.AppendLine("      </dl>");
         html.AppendLine("      <nav class=\"section-navigator\" aria-label=\"Report sections\">");
         html.AppendLine("        <ul class=\"section-nav\">");
@@ -725,7 +725,7 @@ public static partial class HtmlReportRenderer
                 }
                 html.AppendLine("            <details class=\"technical-details\"><summary>Technical details</summary><dl class=\"technical-list\">");
                 AppendFact(html, "Relationship ID", relationship.Name, code: true);
-                AppendFact(html, "Source file", Path.Combine(model.RelativePath, "definition", "relationships.tmdl"), code: true);
+                AppendFact(html, "Source file", DisplayPath(Path.Combine(model.RelativePath, "definition", "relationships.tmdl")), code: true);
                 html.AppendLine("            </dl></details>");
                 html.AppendLine("          </div>");
                 html.AppendLine("        </details>");
@@ -932,7 +932,7 @@ public static partial class HtmlReportRenderer
         html.AppendLine("                  <details class=\"technical-details\"><summary>Technical details</summary>");
         html.AppendLine("                    <dl class=\"technical-list\">");
         AppendFact(html, "Visual ID", visual.Name, code: true);
-        AppendFact(html, "Source file", visual.RelativePath, code: true);
+        AppendFact(html, "Source file", DisplayPath(visual.RelativePath), code: true);
         AppendFact(html, "Position", FormatCoordinates(visual.Position));
         AppendFact(
             html,
@@ -1453,7 +1453,7 @@ public static partial class HtmlReportRenderer
             {
                 html.Append(" · step <code>").Append(Encode(usage.StepName)).Append("</code>");
             }
-            html.Append(" · <code>").Append(Encode(usage.ArtifactPath)).AppendLine("</code></li>");
+            html.Append(" · <code>").Append(Encode(DisplayPath(usage.ArtifactPath))).AppendLine("</code></li>");
         }
         html.AppendLine("                  </ul></details>");
         html.AppendLine(isApparentlyUnused ? "                </aside>" : "                </details>");
@@ -1966,7 +1966,7 @@ public static partial class HtmlReportRenderer
             AppendFact(html, "Object or target", finding.ObjectName, code: true);
         }
 
-        AppendFact(html, "Source file", finding.ArtifactPath, code: true);
+        AppendFact(html, "Source file", DisplayPath(finding.ArtifactPath), code: true);
         html.AppendLine("              </dl>");
         if (finding.EvidencePaths.Count > 0)
         {
@@ -2457,6 +2457,8 @@ public static partial class HtmlReportRenderer
     {
         return HtmlEncoder.Default.Encode(value);
     }
+
+    private static string DisplayPath(string value) => value.Replace('\\', '/');
 
     private const string Styles = """
     :root {

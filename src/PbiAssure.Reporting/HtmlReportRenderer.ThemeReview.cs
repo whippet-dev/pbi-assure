@@ -241,7 +241,7 @@ public static partial class HtmlReportRenderer
         html.AppendLine("            </dl>");
         if (source.ResourcePath is null && source.ReportVersionAtImport is null) return;
         html.AppendLine("            <details class=\"technical-details\"><summary>Technical theme details</summary><dl class=\"technical-list\">");
-        if (source.ResourcePath is not null) AppendDefinition(html, "Resource path", source.ResourcePath);
+        if (source.ResourcePath is not null) AppendDefinition(html, "Resource path", DisplayPath(source.ResourcePath));
         AppendDefinition(html, "Reference", source.ReferenceName ?? "Unavailable");
         if (source.ReportVersionAtImport is { } version)
         {
@@ -427,14 +427,14 @@ public static partial class HtmlReportRenderer
         if (observation.IsAmbiguous) html.AppendLine("                <p class=\"secondary\">PBI Assure could not determine exactly which series or category this setting applies to, so it is shown for review only.</p>");
         if (!observation.IncludeInHeadline) html.AppendLine("                <p class=\"secondary\">This setting appears to belong to an item no longer used by the visual, so it is excluded from the summary.</p>");
         html.AppendLine("                <details class=\"technical-details\"><summary>Technical details</summary><dl class=\"technical-list\">");
-        AppendDefinition(html, "Visual definition", context.Visual.RelativePath);
+        AppendDefinition(html, "Visual definition", DisplayPath(context.Visual.RelativePath));
         AppendDefinition(html, "Evidence path", observation.EvidencePath);
         AppendDefinition(html, "Expression kind", observation.ExpressionKind ?? "None");
         AppendDefinition(html, "Selector kind", observation.SelectorKind ?? "None");
         AppendDefinition(html, "Selector relevance", observation.SelectorRelevance ?? "Not applicable");
         if (!string.IsNullOrWhiteSpace(observation.RawValue)) AppendDefinition(html, "Raw saved value", observation.RawValue);
         if (observation.ThemeComparison?.ThemeRuleEvidencePath is { } rulePath) AppendDefinition(html, "Theme rule evidence", rulePath);
-        if (observation.ThemeComparison?.ThemeSourcePath is { } sourcePath) AppendDefinition(html, "Theme source", sourcePath);
+        if (observation.ThemeComparison?.ThemeSourcePath is { } sourcePath) AppendDefinition(html, "Theme source", DisplayPath(sourcePath));
         html.AppendLine("                </dl></details></article>");
     }
 
