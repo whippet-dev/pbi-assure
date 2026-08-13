@@ -66,6 +66,8 @@ public sealed class WebSecurityAndPublishTests
             Path.Combine(repositoryRoot, "scripts", "Publish-Web.cmd"));
         var powerShellLauncher = File.ReadAllText(
             Path.Combine(repositoryRoot, "scripts", "Publish-Web.ps1"));
+        var cloudflareLauncher = File.ReadAllText(
+            Path.Combine(repositoryRoot, "scripts", "Publish-Web-Cloudflare.sh"));
 
         Assert.Contains("resolve(repositoryRoot, \"artifacts\", \"web\")", script, StringComparison.Ordinal);
         Assert.Contains("rmSync(outputDirectory, { recursive: true, force: true })", script, StringComparison.Ordinal);
@@ -84,6 +86,13 @@ public sealed class WebSecurityAndPublishTests
         Assert.Contains("Publish-Web.mjs", commandLauncher, StringComparison.Ordinal);
         Assert.Contains("Publish-Web.mjs", powerShellLauncher, StringComparison.Ordinal);
         Assert.Contains("--source-revision", powerShellLauncher, StringComparison.Ordinal);
+        Assert.Contains("global.json", cloudflareLauncher, StringComparison.Ordinal);
+        Assert.Contains("https://dot.net/v1/dotnet-install.sh", cloudflareLauncher, StringComparison.Ordinal);
+        Assert.Contains("--version", cloudflareLauncher, StringComparison.Ordinal);
+        Assert.Contains("DOTNET_CLI_TELEMETRY_OPTOUT=1", cloudflareLauncher, StringComparison.Ordinal);
+        Assert.Contains("CF_PAGES_COMMIT_SHA", cloudflareLauncher, StringComparison.Ordinal);
+        Assert.Contains("Publish-Web.mjs", cloudflareLauncher, StringComparison.Ordinal);
+        Assert.DoesNotContain("dotnet publish", cloudflareLauncher, StringComparison.Ordinal);
     }
 
     private static string FindRepositoryRoot()

@@ -4,6 +4,7 @@
 .vscode/
 TestResults/
 artifacts/
+/.dotnet/
 samples-local/
 notes-local/
 *.user

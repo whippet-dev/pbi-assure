@@ -118,10 +118,13 @@ The HTML and non-fingerprinted helper files use `Cache-Control: no-cache`, so br
 while fingerprinted framework assets retain their normal caching. This prevents a current WebAssembly
 build from being combined with an older folder picker or report-opening script.
 
-Cloudflare builds normally start from a clean checkout. Configure this exact build command:
+Cloudflare builds normally start from a clean checkout, but the current Pages v2/v3 build images do
+not include the .NET SDK. The Cloudflare launcher installs the exact SDK pinned by `global.json` when
+`dotnet` is unavailable, then hands off to the same clean cross-platform publisher used locally.
+Configure this exact build command:
 
 ```bash
-node ./scripts/Publish-Web.mjs --source-revision "$CF_PAGES_COMMIT_SHA"
+bash ./scripts/Publish-Web-Cloudflare.sh
 ```
 
 Configure the build output directory as:
@@ -130,10 +133,11 @@ Configure the build output directory as:
 artifacts/web/wwwroot
 ```
 
-The command verifies that `CF_PAGES_COMMIT_SHA` is a full commit SHA matching the checked-out revision,
-cleans only `artifacts/web`, publishes Release output, embeds that revision, versions the browser helper
-assets and verifies the required output. Cloudflare's current build image provides Node; the Pages
-project must retain the existing .NET SDK setup that already supports its current `dotnet publish` build.
+The launcher requires `CF_PAGES_COMMIT_SHA`, opts the .NET CLI out of telemetry, and installs the SDK only
+as a build prerequisite. The canonical publisher then verifies that the SHA is a full commit matching the
+checked-out revision, cleans only `artifacts/web`, publishes Release output, embeds that revision, versions
+the browser helper assets and verifies the required output. The SDK download and NuGet restore are
+build-time dependency requests; they do not add any network behaviour to the published browser app.
 
 ## Cloudflare dashboard verification
 
