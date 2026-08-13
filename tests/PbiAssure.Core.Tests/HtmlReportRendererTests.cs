@@ -303,6 +303,33 @@ public sealed class HtmlReportRendererTests : IDisposable
     }
 
     [Fact]
+    public void RenderFiltersVisibilityWithoutChangingDisclosureState()
+    {
+        CreateSampleProject();
+
+        var html = HtmlReportRenderer.Render(ProjectScanner.Scan(testRoot));
+
+        Assert.Contains("card.hidden = !show;", html, StringComparison.Ordinal);
+        Assert.Contains("item.hidden = !show;", html, StringComparison.Ordinal);
+        Assert.Contains("table.hidden = !shown;", html, StringComparison.Ordinal);
+        Assert.DoesNotContain("table.open = true;", html, StringComparison.Ordinal);
+        Assert.DoesNotContain("item.open = true;", html, StringComparison.Ordinal);
+        Assert.DoesNotContain("card.open = true;", html, StringComparison.Ordinal);
+        Assert.Contains("findingSearch?.addEventListener('input', filterFindings);", html, StringComparison.Ordinal);
+        Assert.Contains("search.addEventListener('input', run);", html, StringComparison.Ordinal);
+        Assert.Contains("findingFacets.forEach(control => control.addEventListener('change', filterFindings));", html, StringComparison.Ordinal);
+        Assert.Contains("facets.forEach(control => control.addEventListener('change', run));", html, StringComparison.Ordinal);
+        Assert.Contains("findingRule.value = button.dataset.filterFindingsByRule;", html, StringComparison.Ordinal);
+        Assert.Contains("filterFindings();", html, StringComparison.Ordinal);
+
+        Assert.Contains("details.forEach(item => { item.open = button.dataset.detailsAction === 'expand'; });", html, StringComparison.Ordinal);
+        Assert.Contains("data-details-action=\"expand\"", html, StringComparison.Ordinal);
+        Assert.Contains("data-details-action=\"collapse\"", html, StringComparison.Ordinal);
+        Assert.Contains("if (target instanceof HTMLDetailsElement) target.open = true;", html, StringComparison.Ordinal);
+        Assert.Equal(3, CountOccurrences(html, ".open ="));
+    }
+
+    [Fact]
     public void RenderGroupsSummaryMetricsByDeveloperQuestionWithoutChangingValues()
     {
         CreateSampleProject();

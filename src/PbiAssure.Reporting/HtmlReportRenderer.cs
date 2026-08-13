@@ -3020,7 +3020,6 @@ public static partial class HtmlReportRenderer
             document.querySelectorAll('#semantic-table-list .semantic-table').forEach(table => {
               const shown = [...table.querySelectorAll('.semantic-object')].some(item => !item.hidden);
               table.hidden = !shown;
-              if (shown && (query || activeFacets.length)) table.open = true;
             });
           }
           const activeCount = activeFacets.length + (query ? 1 : 0);
