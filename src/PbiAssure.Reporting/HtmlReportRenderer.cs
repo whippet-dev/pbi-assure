@@ -48,9 +48,7 @@ public static partial class HtmlReportRenderer
         html.Append("      <h1>").Append(Encode(projectName)).AppendLine("</h1>");
         html.AppendLine("      <p class=\"lede\">A read-only review of this Power BI project.</p>");
         html.AppendLine("      <dl class=\"report-meta\">");
-        AppendDefinition(html, "Scanned", inventory.ScannedAtUtc.UtcDateTime.ToString(
-            "dd MMMM yyyy, HH:mm 'UTC'",
-            CultureInfo.InvariantCulture));
+        AppendScanTimestamp(html, inventory.ScannedAtUtc);
         AppendDefinition(html, "Inventory schema", inventory.SchemaVersion);
         AppendDefinition(html, "Source project", DisplayPath(inventory.RootPath));
         html.AppendLine("      </dl>");
@@ -1994,6 +1992,15 @@ public static partial class HtmlReportRenderer
             .Append(Encode(value)).AppendLine("</dd></div>");
     }
 
+    private static void AppendScanTimestamp(StringBuilder html, DateTimeOffset scannedAtUtc)
+    {
+        var utc = scannedAtUtc.UtcDateTime;
+        html.Append("        <div><dt>Scanned</dt><dd><time id=\"scan-timestamp\" datetime=\"")
+            .Append(utc.ToString("yyyy-MM-dd'T'HH:mm:ss.fffffff'Z'", CultureInfo.InvariantCulture))
+            .Append("\">").Append(utc.ToString("dd MMMM yyyy, HH:mm 'UTC'", CultureInfo.InvariantCulture))
+            .AppendLine("</time></dd></div>");
+    }
+
     private static void AppendEvidence(StringBuilder html, AssuranceFinding finding)
     {
         html.Append("            <details class=\"technical-details\"><summary>Technical details and evidence (")
@@ -2842,6 +2849,25 @@ public static partial class HtmlReportRenderer
     private const string FilterScript = """
     (() => {
       const normalise = value => (value || '').toLocaleLowerCase();
+      const scanTimestamp = document.getElementById('scan-timestamp');
+      if (scanTimestamp) {
+        try {
+          const instant = new Date(scanTimestamp.dateTime);
+          if (!Number.isNaN(instant.getTime())) {
+            const formatter = new Intl.DateTimeFormat('en-GB', {
+              day: 'numeric', month: 'long', year: 'numeric',
+              hour: '2-digit', minute: '2-digit', hourCycle: 'h23', timeZoneName: 'short'
+            });
+            const parts = Object.fromEntries(formatter.formatToParts(instant)
+              .filter(part => part.type !== 'literal').map(part => [part.type, part.value]));
+            if ([parts.day, parts.month, parts.year, parts.hour, parts.minute, parts.timeZoneName].every(Boolean)) {
+              scanTimestamp.textContent = `${parts.day} ${parts.month} ${parts.year}, ${parts.hour}:${parts.minute} ${parts.timeZoneName}`;
+            }
+          }
+        } catch {
+          // Keep the rendered UTC fallback if browser-local formatting is unavailable.
+        }
+      }
       const reportSections = [...document.querySelectorAll('[data-report-section]')];
       const sectionLinks = [...document.querySelectorAll('[data-section-target]')];
 

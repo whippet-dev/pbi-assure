@@ -98,6 +98,29 @@ public sealed class HtmlReportRendererTests : IDisposable
     }
 
     [Fact]
+    public void RenderPreservesUtcScanInstantAndEnhancesOnlyItsDisplayedTextToBrowserLocalTime()
+    {
+        CreateSampleProject();
+        var scannedAtUtc = new DateTimeOffset(2026, 8, 13, 8, 16, 0, TimeSpan.Zero);
+        var inventory = ProjectScanner.Scan(testRoot) with { ScannedAtUtc = scannedAtUtc };
+
+        var html = HtmlReportRenderer.Render(inventory);
+
+        Assert.Equal(scannedAtUtc, inventory.ScannedAtUtc);
+        Assert.Contains("<time id=\"scan-timestamp\" datetime=\"2026-08-13T08:16:00.0000000Z\">13 August 2026, 08:16 UTC</time>", html, StringComparison.Ordinal);
+        Assert.Contains("const scanTimestamp = document.getElementById('scan-timestamp');", html, StringComparison.Ordinal);
+        Assert.Contains("const instant = new Date(scanTimestamp.dateTime);", html, StringComparison.Ordinal);
+        Assert.Contains("new Intl.DateTimeFormat('en-GB'", html, StringComparison.Ordinal);
+        Assert.Contains("timeZoneName: 'short'", html, StringComparison.Ordinal);
+        Assert.Contains("formatter.formatToParts(instant)", html, StringComparison.Ordinal);
+        Assert.Contains("scanTimestamp.textContent =", html, StringComparison.Ordinal);
+        Assert.Contains("Keep the rendered UTC fallback", html, StringComparison.Ordinal);
+        Assert.Contains("const activateSection = (sectionName, options = {})", html, StringComparison.Ordinal);
+        Assert.Contains("function filterFindings()", html, StringComparison.Ordinal);
+        Assert.DoesNotContain("timeZone: 'Europe/London'", html, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void RenderNormalizesOnlyKnownDisplayPathsWithoutChangingSourceValuesOrEscaping()
     {
         const string sourceRoot = @"C:\Projects\PBI & Reports\Sample";
