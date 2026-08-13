@@ -158,12 +158,17 @@ public static partial class HtmlReportRenderer
                 AppendGovernanceCardStart(html, "Consistency review", first.PageDisplayName, first.VisualType,
                     first.PropertyKey, first.PropertyLabel, $"{first.ObservedValue} {first.DominantValue}");
                 html.Append("            <h4>").Append(Encode(first.PropertyLabel)).AppendLine(" differs from comparable visuals</h4>");
+                var affectedVisuals = examples.Select(value => new AffectedVisual(
+                    ContextFor(contexts, value.report, value.item.PageName, value.item.VisualName),
+                    value.item.PageDisplayName,
+                    value.item.VisualType)).ToArray();
+                AppendAffectedVisuals(html, affectedVisuals);
                 html.Append("            <p><strong>Most comparable visuals use:</strong> ").Append(Encode(FormattingValue(first.PropertyKey, first.DominantValue)))
                     .Append(" (" ).Append(first.DominantCount).Append(" of ").Append(first.PeerCount).AppendLine(")</p>");
                 html.Append("            <p><strong>This ").Append(Pluralize(examples.Length, "visual uses", "group uses")).Append(":</strong> ")
                     .Append(Encode(FormattingValue(first.PropertyKey, first.ObservedValue))).AppendLine("</p>");
                 html.AppendLine("            <p class=\"secondary\">Review whether this difference is intentional.</p>");
-                AppendGovernanceExamples(html, examples.Select(value => ContextFor(contexts, value.report, value.item.PageName, value.item.VisualName)));
+                AppendGovernanceExamples(html, affectedVisuals.Select(value => value.Context));
                 html.AppendLine("          </article>");
             }
             html.AppendLine("        </div>");
@@ -203,6 +208,54 @@ public static partial class HtmlReportRenderer
         }
         if (examples.Length > 20) html.Append("              <li>").Append((examples.Length - 20).ToString("N0", CultureInfo.InvariantCulture)).AppendLine(" more affected visuals</li>");
         html.AppendLine("            </ul></details>");
+    }
+
+    private static void AppendAffectedVisuals(StringBuilder html, AffectedVisual[] affectedVisuals)
+    {
+        if (affectedVisuals.Length == 0) return;
+        var duplicateCounts = affectedVisuals
+            .GroupBy(AffectedVisualBaseIdentity, StringComparer.OrdinalIgnoreCase)
+            .ToDictionary(group => group.Key, group => group.Count(), StringComparer.OrdinalIgnoreCase);
+
+        if (affectedVisuals.Length == 1)
+        {
+            html.Append("            <p class=\"theme-affected-visual\"><strong>Affected visual:</strong> ")
+                .Append(Encode(AffectedVisualIdentity(affectedVisuals[0], duplicateCounts))).AppendLine("</p>");
+            return;
+        }
+
+        html.AppendLine("            <div class=\"theme-affected-visual\"><strong>Affected visuals:</strong><ul>");
+        foreach (var affectedVisual in affectedVisuals)
+        {
+            html.Append("              <li>").Append(Encode(AffectedVisualIdentity(affectedVisual, duplicateCounts))).AppendLine("</li>");
+        }
+        html.AppendLine("            </ul></div>");
+    }
+
+    private static string AffectedVisualBaseIdentity(AffectedVisual affectedVisual)
+    {
+        var context = affectedVisual.Context;
+        var visualType = HumanizeVisualType(context?.Visual.VisualType ?? affectedVisual.VisualType);
+        var page = context?.Page.DisplayName ?? affectedVisual.PageDisplayName;
+        var friendlyName = context is null ? null : VisualFriendlyName(context.Visual);
+        return $"{visualType}\u001f{friendlyName}\u001f{page}";
+    }
+
+    private static string AffectedVisualIdentity(AffectedVisual affectedVisual, IReadOnlyDictionary<string, int> duplicateCounts)
+    {
+        var context = affectedVisual.Context;
+        var visualType = HumanizeVisualType(context?.Visual.VisualType ?? affectedVisual.VisualType);
+        var page = context?.Page.DisplayName ?? affectedVisual.PageDisplayName;
+        var friendlyName = context is null ? null : VisualFriendlyName(context.Visual);
+        var identity = friendlyName is null
+            ? $"{visualType} · {page}"
+            : $"{visualType} — {friendlyName} · {page}";
+        var needsPosition = context is not null &&
+            (friendlyName is null || duplicateCounts.GetValueOrDefault(AffectedVisualBaseIdentity(affectedVisual)) > 1);
+        if (!needsPosition) return identity;
+
+        var position = DescribePosition(context!.Page, context.Visual);
+        return position == "Position unavailable" ? identity : $"{identity} · {position}";
     }
 
     private static ThemeVisualContext? ContextFor(ThemeVisualContext[] contexts, ReportInventory report, string pageName, string visualName) =>
@@ -501,4 +554,5 @@ public static partial class HtmlReportRenderer
         string PropertyLabel);
 
     private sealed record ThemeVisualContext(ReportInventory Report, PageInventory Page, VisualInventory Visual);
+    private sealed record AffectedVisual(ThemeVisualContext? Context, string PageDisplayName, string? VisualType);
 }

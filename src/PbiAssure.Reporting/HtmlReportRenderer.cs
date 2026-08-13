@@ -1809,6 +1809,11 @@ public static partial class HtmlReportRenderer
 
     private static string VisualDisplayName(VisualInventory visual)
     {
+        return VisualFriendlyName(visual) ?? HumanizeVisualType(visual.VisualType);
+    }
+
+    private static string? VisualFriendlyName(VisualInventory visual)
+    {
         if (visual.Accessibility.TitleIsVisible != false &&
             !visual.Accessibility.TitleTextIsDynamic &&
             !string.IsNullOrWhiteSpace(visual.Accessibility.TitleText))
@@ -1821,7 +1826,7 @@ public static partial class HtmlReportRenderer
             return $"“{visual.OnCanvasText}”";
         }
 
-        return HumanizeVisualType(visual.VisualType);
+        return null;
     }
 
     private static string DescribeAction(ReportInventory report, VisualActionInventory action)
@@ -2588,6 +2593,9 @@ public static partial class HtmlReportRenderer
     .theme-governance-card { min-width: 0; padding: .9rem 1rem; border: 1px solid #bdc9d5; border-left: .35rem solid var(--warning); border-radius: .35rem; background: #fff; overflow-wrap: anywhere; }
     .theme-governance-card h4 { margin: .25rem 0 .4rem; }
     .theme-governance-card p { margin: .35rem 0; }
+    .theme-affected-visual { margin: .35rem 0 .55rem; color: var(--text); }
+    .theme-affected-visual ul { margin: .3rem 0 0; padding-left: 1.25rem; }
+    .theme-affected-visual li + li { margin-top: .2rem; }
     .theme-review-kind { display: inline-block; color: #675000; font-size: .78rem; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; }
     .theme-example-list { margin: .5rem 0 0; padding-left: 1.25rem; }
     .theme-example-list li + li { margin-top: .35rem; }

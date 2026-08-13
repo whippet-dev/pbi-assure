@@ -173,6 +173,42 @@ public sealed class ThemeReviewTests
     }
 
     [Fact]
+    public void ConsistencyCardsIdentifyAffectedVisualsWithoutExposingInternalNames()
+    {
+        var inventory = ScanVisuals(
+            ConsistencyVisual("internal-titled", "Claims <week> & returns", 100, 32),
+            ConsistencyVisual("internal-left", null, 50, 30),
+            ConsistencyVisual("internal-right", null, 900, 30));
+        var report = Assert.Single(inventory.Reports);
+        var observations = new[]
+        {
+            new ConsistencyObservation("page", "Overview", "internal-titled", "clusteredColumnChart", "title.fontSize", "Title font size", "32", "22", 26, 21),
+            new ConsistencyObservation("page", "Overview", "internal-left", "clusteredColumnChart", "title.fontSize", "Title font size", "30", "22", 26, 21),
+            new ConsistencyObservation("page", "Overview", "internal-right", "clusteredColumnChart", "title.fontSize", "Title font size", "30", "22", 26, 21),
+        };
+        inventory = inventory with
+        {
+            Reports = [report with { ThemeReview = report.ThemeReview with { ConsistencyObservations = observations } }],
+        };
+
+        var html = HtmlReportRenderer.Render(inventory);
+        var consistency = SectionMarkup(html, "theme-consistency-heading", "theme-accessibility-heading");
+
+        Assert.Contains("<strong>Affected visual:</strong>", consistency, StringComparison.Ordinal);
+        Assert.Contains("Clustered Column Chart", consistency, StringComparison.Ordinal);
+        Assert.Contains("Claims &lt;week&gt; &amp; returns", consistency, StringComparison.Ordinal);
+        Assert.Contains("Overview", consistency, StringComparison.Ordinal);
+        Assert.Contains("<strong>Affected visuals:</strong><ul>", consistency, StringComparison.Ordinal);
+        Assert.Contains("Clustered Column Chart &#xB7; Overview &#xB7; Upper-left of page", consistency, StringComparison.Ordinal);
+        Assert.Contains("Clustered Column Chart &#xB7; Overview &#xB7; Upper-right of page", consistency, StringComparison.Ordinal);
+        Assert.DoesNotContain("internal-titled", consistency, StringComparison.Ordinal);
+        Assert.DoesNotContain("internal-left", consistency, StringComparison.Ordinal);
+        Assert.DoesNotContain("internal-right", consistency, StringComparison.Ordinal);
+        Assert.Contains("<summary>Show affected visual</summary>", consistency, StringComparison.Ordinal);
+        Assert.Contains("<summary>Show affected visuals</summary>", consistency, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void RendersAccessibleBoundedPaletteSwatchesAndClearEligibilityExplanation()
     {
         var palette = string.Join(", ", Enumerable.Range(0, 30).Select(index => $"\"#{index:X6}\""));
@@ -219,6 +255,15 @@ public sealed class ThemeReviewTests
         return html[start..(end + "</select>".Length)];
     }
 
+    private static string SectionMarkup(string html, string startId, string endId)
+    {
+        var start = html.IndexOf($"id=\"{startId}\"", StringComparison.Ordinal);
+        Assert.True(start >= 0, $"Section '{startId}' was not rendered.");
+        var end = html.IndexOf($"id=\"{endId}\"", start, StringComparison.Ordinal);
+        Assert.True(end > start, $"Section boundary '{endId}' was not rendered after '{startId}'.");
+        return html[start..end];
+    }
+
     private static ProjectInventory Scan(string reportJson, string baseTheme, string? customTheme, string visualJson)
     {
         var files = StandardFiles(reportJson, visualJson);
@@ -226,6 +271,38 @@ public sealed class ThemeReviewTests
         files.Add(File("Fixture.Report/StaticResources/SharedResources/BaseThemes/CY26SU07.json", baseTheme));
         if (customTheme is not null) files.Add(File("Fixture.Report/StaticResources/RegisteredResources/Custom.json", customTheme));
         return ProjectScanner.Scan(new InMemoryProjectFileSource("fixture", files));
+    }
+
+    private static ProjectInventory ScanVisuals(params (string Name, string Json)[] visuals)
+    {
+        var files = StandardFiles(ReportJson(customName: null), visuals[0].Json);
+        files.RemoveAll(file => file.RelativePath.Contains("/visuals/test/", StringComparison.Ordinal));
+        files.RemoveAll(file => file.RelativePath.EndsWith("/page/page.json", StringComparison.Ordinal));
+        files.Add(File("Fixture.Report/definition/pages/page/page.json", "{\"name\":\"page\",\"displayName\":\"Overview\",\"width\":1200,\"height\":800}"));
+        foreach (var visual in visuals)
+            files.Add(File($"Fixture.Report/definition/pages/page/visuals/{visual.Name}/visual.json", visual.Json));
+        return ProjectScanner.Scan(new InMemoryProjectFileSource("fixture", files));
+    }
+
+    private static (string Name, string Json) ConsistencyVisual(string name, string? title, int x, int fontSize)
+    {
+        var titleText = title is null
+            ? string.Empty
+            : $", \"text\": {{ \"expr\": {{ \"Literal\": {{ \"Value\": \"'{title}'\" }} }} }}";
+        var json = $$"""
+            {
+              "name": "{{name}}",
+              "position": { "x": {{x}}, "y": 50, "width": 200, "height": 100 },
+              "visual": {
+                "visualType": "clusteredColumnChart",
+                "visualContainerObjects": { "title": [{ "properties": {
+                  "show": { "expr": { "Literal": { "Value": "true" } } },
+                  "fontSize": { "expr": { "Literal": { "Value": "{{fontSize}}D" } } }{{titleText}}
+                } }] }
+              }
+            }
+            """;
+        return (name, json);
     }
 
     private static List<ProjectFileContent> StandardFiles(string reportJson, string visualJson) =>
