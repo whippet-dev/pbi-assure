@@ -10,8 +10,11 @@ public sealed class WebSecurityAndPublishTests
         var repositoryRoot = FindRepositoryRoot();
         var headers = File.ReadAllText(
             Path.Combine(repositoryRoot, "src", "PbiAssure.Web", "wwwroot", "_headers"));
-        var viewerRule = headers[headers.IndexOf("/report-viewer.html", StringComparison.Ordinal)..];
-        var applicationRule = headers[..headers.IndexOf("/report-viewer.html", StringComparison.Ordinal)];
+        var htmlViewerRuleStart = headers.IndexOf("/report-viewer.html", StringComparison.Ordinal);
+        var extensionlessViewerRuleStart = headers.IndexOf("/report-viewer\n", StringComparison.Ordinal);
+        var htmlViewerRule = headers[htmlViewerRuleStart..extensionlessViewerRuleStart];
+        var extensionlessViewerRule = headers[extensionlessViewerRuleStart..];
+        var applicationRule = headers[..htmlViewerRuleStart];
 
         Assert.Contains("default-src 'self'", applicationRule, StringComparison.Ordinal);
         Assert.Contains("script-src 'self' 'wasm-unsafe-eval'", applicationRule, StringComparison.Ordinal);
@@ -29,12 +32,17 @@ public sealed class WebSecurityAndPublishTests
             "Permissions-Policy: camera=(), microphone=(), geolocation=()",
             headers,
             StringComparison.Ordinal);
-        Assert.StartsWith("/report-viewer.html", viewerRule, StringComparison.Ordinal);
-        Assert.Contains("! Content-Security-Policy", viewerRule, StringComparison.Ordinal);
-        Assert.Contains("default-src 'none'", viewerRule, StringComparison.Ordinal);
-        Assert.Contains("script-src 'self' 'unsafe-inline'", viewerRule, StringComparison.Ordinal);
-        Assert.Contains("style-src 'unsafe-inline'", viewerRule, StringComparison.Ordinal);
-        Assert.Contains("connect-src 'none'", viewerRule, StringComparison.Ordinal);
+        Assert.StartsWith("/report-viewer.html", htmlViewerRule, StringComparison.Ordinal);
+        Assert.StartsWith("/report-viewer", extensionlessViewerRule, StringComparison.Ordinal);
+        foreach (var viewerRule in new[] { htmlViewerRule, extensionlessViewerRule })
+        {
+            Assert.Contains("! Content-Security-Policy", viewerRule, StringComparison.Ordinal);
+            Assert.Contains("default-src 'none'", viewerRule, StringComparison.Ordinal);
+            Assert.Contains("script-src 'self' 'unsafe-inline'", viewerRule, StringComparison.Ordinal);
+            Assert.Contains("style-src 'unsafe-inline'", viewerRule, StringComparison.Ordinal);
+            Assert.Contains("connect-src 'none'", viewerRule, StringComparison.Ordinal);
+            Assert.Contains("frame-ancestors 'none'", viewerRule, StringComparison.Ordinal);
+        }
         Assert.DoesNotContain("report-uri", headers, StringComparison.OrdinalIgnoreCase);
         Assert.DoesNotContain("report-to", headers, StringComparison.OrdinalIgnoreCase);
     }
@@ -53,24 +61,29 @@ public sealed class WebSecurityAndPublishTests
     {
         var repositoryRoot = FindRepositoryRoot();
         var script = File.ReadAllText(
-            Path.Combine(repositoryRoot, "scripts", "Publish-Web.ps1"));
-        var launcher = File.ReadAllText(
+            Path.Combine(repositoryRoot, "scripts", "Publish-Web.mjs"));
+        var commandLauncher = File.ReadAllText(
             Path.Combine(repositoryRoot, "scripts", "Publish-Web.cmd"));
+        var powerShellLauncher = File.ReadAllText(
+            Path.Combine(repositoryRoot, "scripts", "Publish-Web.ps1"));
 
-        Assert.Contains("\"artifacts\\web\"", script, StringComparison.Ordinal);
-        Assert.Contains("Remove-Item -LiteralPath $outputDirectory", script, StringComparison.Ordinal);
-        Assert.Contains("-p:SourceRevisionId=$buildRevision", script, StringComparison.Ordinal);
+        Assert.Contains("resolve(repositoryRoot, \"artifacts\", \"web\")", script, StringComparison.Ordinal);
+        Assert.Contains("rmSync(outputDirectory, { recursive: true, force: true })", script, StringComparison.Ordinal);
+        Assert.Contains("`-p:SourceRevisionId=${buildRevision}`", script, StringComparison.Ordinal);
         Assert.Contains("report-viewer.html", script, StringComparison.Ordinal);
         Assert.Contains("report-viewer.js", script, StringComparison.Ordinal);
         Assert.Contains("__PBIASSURE_ASSET_VERSION__", script, StringComparison.Ordinal);
         Assert.Contains("Browser asset version", script, StringComparison.Ordinal);
-        Assert.Contains("Tracked changes are present.", script, StringComparison.Ordinal);
-        Assert.Contains("ls-files --others --exclude-standard", script, StringComparison.Ordinal);
-        Assert.Contains("-AllowDirty", script, StringComparison.Ordinal);
+        Assert.Contains("--source-revision", script, StringComparison.Ordinal);
+        Assert.Contains("does not match the checked-out Git revision", script, StringComparison.Ordinal);
+        Assert.Contains("Tracked or untracked build-input changes are present.", script, StringComparison.Ordinal);
+        Assert.Contains("ls-files", script, StringComparison.Ordinal);
+        Assert.Contains("--allow-dirty", script, StringComparison.Ordinal);
         Assert.DoesNotContain("samples-local", script, StringComparison.OrdinalIgnoreCase);
         Assert.DoesNotContain("notes-local", script, StringComparison.OrdinalIgnoreCase);
-        Assert.Contains("-ExecutionPolicy Bypass", launcher, StringComparison.Ordinal);
-        Assert.Contains("Publish-Web.ps1", launcher, StringComparison.Ordinal);
+        Assert.Contains("Publish-Web.mjs", commandLauncher, StringComparison.Ordinal);
+        Assert.Contains("Publish-Web.mjs", powerShellLauncher, StringComparison.Ordinal);
+        Assert.Contains("--source-revision", powerShellLauncher, StringComparison.Ordinal);
     }
 
     private static string FindRepositoryRoot()

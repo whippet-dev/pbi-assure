@@ -64,8 +64,9 @@ PBI Assure instead opens the same-origin `report-viewer.html` shell and transfer
 to it locally with `postMessage`. The selected project and report content are not included in the viewer
 page request.
 
-Cloudflare's `_headers` matching rules are cumulative. The more-specific `/report-viewer.html` rule
-therefore detaches the main Content-Security-Policy before applying this narrow viewer-only policy:
+Cloudflare serves `.html` files at extensionless URLs, so `/report-viewer.html` redirects to
+`/report-viewer`. Cloudflare's `_headers` matching rules are cumulative. Both viewer routes therefore
+detach the main Content-Security-Policy before applying this narrow viewer-only policy:
 
 ```text
 default-src 'none';
@@ -110,14 +111,29 @@ That review build is visibly labelled with the current commit plus `-dirty` and 
 a reproducible production build. Untracked build inputs in the Web, Core or Reporting projects also
 produce a dirty build; unrelated untracked research documents do not affect the compiled application.
 
-The publish also replaces a placeholder in the small browser-helper URLs with a content-derived version.
+The canonical implementation is the cross-platform `scripts/Publish-Web.mjs`; the `.cmd` and
+PowerShell files are thin Windows launchers for the same workflow. The publish replaces a placeholder
+in the small browser-helper URLs with a content-derived version.
 The HTML and non-fingerprinted helper files use `Cache-Control: no-cache`, so browsers revalidate them
 while fingerprinted framework assets retain their normal caching. This prevents a current WebAssembly
 build from being combined with an older folder picker or report-opening script.
 
-Cloudflare builds normally start from a clean checkout. Its build command must pass
-`CF_PAGES_COMMIT_SHA` as `SourceRevisionId`, and its output directory must be
-`artifacts/web/wwwroot`. Confirm the exact command syntax in the active Cloudflare build environment.
+Cloudflare builds normally start from a clean checkout. Configure this exact build command:
+
+```bash
+node ./scripts/Publish-Web.mjs --source-revision "$CF_PAGES_COMMIT_SHA"
+```
+
+Configure the build output directory as:
+
+```text
+artifacts/web/wwwroot
+```
+
+The command verifies that `CF_PAGES_COMMIT_SHA` is a full commit SHA matching the checked-out revision,
+cleans only `artifacts/web`, publishes Release output, embeds that revision, versions the browser helper
+assets and verifies the required output. Cloudflare's current build image provides Node; the Pages
+project must retain the existing .NET SDK setup that already supports its current `dotnet publish` build.
 
 ## Cloudflare dashboard verification
 

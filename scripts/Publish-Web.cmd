@@ -1,4 +1,4 @@
 @echo off
 setlocal
-powershell.exe -NoLogo -NoProfile -NonInteractive -ExecutionPolicy Bypass -File "%~dp0Publish-Web.ps1" %*
+node "%~dp0Publish-Web.mjs" %*
 exit /b %ERRORLEVEL%
