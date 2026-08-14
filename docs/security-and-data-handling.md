@@ -2,7 +2,7 @@
 
 ## Default operating model
 
-PBI Assure runs locally and performs no analysis-time network requests. It reads metadata from a user-selected PBIP directory and does not query model data. The browser host serves static application assets, but selected project files and generated results are not uploaded.
+PBI Assure's project-processing code runs locally and performs no analysis-time network requests. It reads metadata from a user-selected PBIP directory and does not query model data. The browser host serves static application assets, but selected project files and generated results are not uploaded.
 
 ## Data minimisation
 

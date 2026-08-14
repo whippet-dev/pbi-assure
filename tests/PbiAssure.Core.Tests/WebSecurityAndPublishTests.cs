@@ -5,6 +5,26 @@ namespace PbiAssure.Core.Tests;
 public sealed class WebSecurityAndPublishTests
 {
     [Fact]
+    public void PublicPrivacyAndSecurityInformationIsLinkedFromReadmeAndBrowser()
+    {
+        var repositoryRoot = FindRepositoryRoot();
+        var privacy = File.ReadAllText(Path.Combine(repositoryRoot, "PRIVACY.md"));
+        var security = File.ReadAllText(Path.Combine(repositoryRoot, "SECURITY.md"));
+        var readme = File.ReadAllText(Path.Combine(repositoryRoot, "README.md"));
+        var browserMarkup = File.ReadAllText(
+            Path.Combine(repositoryRoot, "src", "PbiAssure.Web", "Pages", "Home.razor"));
+
+        Assert.Contains("processed locally in your browser", privacy, StringComparison.Ordinal);
+        Assert.Contains("does not upload selected project files", privacy, StringComparison.Ordinal);
+        Assert.Contains("Private Vulnerability Reporting", security, StringComparison.Ordinal);
+        Assert.Contains("[Privacy](PRIVACY.md)", readme, StringComparison.Ordinal);
+        Assert.Contains("[Security](SECURITY.md)", readme, StringComparison.Ordinal);
+        Assert.Contains(">How privacy works</a>", browserMarkup, StringComparison.Ordinal);
+        Assert.Contains("/blob/master/PRIVACY.md", browserMarkup, StringComparison.Ordinal);
+        Assert.Contains("target=\"_blank\" rel=\"noopener noreferrer\"", browserMarkup, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void BrowserSurfaceExposesAnExplicitApplicationReadyMarker()
     {
         var repositoryRoot = FindRepositoryRoot();

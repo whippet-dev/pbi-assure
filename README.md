@@ -18,6 +18,15 @@ The same analysis and reporting libraries support three frontends:
 - a command-line tool for developer and automation workflows; and
 - a lightweight Windows desktop application.
 
+## Privacy and security
+
+Your Power BI project is processed locally in your browser. PBI Assure's project-processing code does
+not upload selected project files, their contents or generated results. Loading the browser application
+still creates normal requests for static application files from Cloudflare Pages.
+
+See [Privacy](PRIVACY.md) for the exact boundary and independent verification steps. Report potential
+security or privacy vulnerabilities using the private route described in [Security](SECURITY.md).
+
 ## Prerequisites
 
 - Windows, macOS, or Linux for the command-line scanner and browser application. The desktop application requires Windows.
@@ -94,7 +103,7 @@ The HTML report is organised as expandable review cards rather than long data ta
 
 ## Browser application
 
-`PbiAssure.Web` is a standalone Blazor WebAssembly frontend. It lets a user select one PBIP project folder, runs the shared scanner locally in the browser, shows a concise assurance summary, and creates local downloads of the existing self-contained HTML report and semantic-usage CSV. It has no backend and does not upload selected files or results.
+`PbiAssure.Web` is a standalone Blazor WebAssembly frontend. It lets a user select one PBIP project folder, runs the shared scanner locally in the browser, shows a concise assurance summary, and creates local downloads of the existing self-contained HTML report and semantic-usage CSV. It has no project-processing backend or upload endpoint.
 
 For full assurance, prepare a PBIP using PBIR and TMDL, then select the project root folder containing the `.pbip`, `.Report`, and `.SemanticModel` items. See [Prepare a Power BI project for PBI Assure](docs/preparing-power-bi-project.md) for the PBIX-to-PBIP steps and current Microsoft guidance.
 
