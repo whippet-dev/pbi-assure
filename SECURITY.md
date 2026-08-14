@@ -15,14 +15,12 @@ The preferred reporting route is GitHub Private Vulnerability Reporting:
 2. Select **Advisories** and then **Report a vulnerability**.
 3. Provide the information described below.
 
-If **Report a vulnerability** is unavailable, private vulnerability reporting may not be enabled for the
-repository. Do not post exploit details, project data, credentials or other sensitive evidence in a
-public issue. Instead, open a minimal issue asking the maintainer to provide or enable a private reporting
-route.
+Private Vulnerability Reporting is currently enabled for this repository. If **Report a vulnerability**
+is unavailable, do not post exploit details, project data, credentials or other sensitive evidence in a
+public issue. Instead, open a minimal issue asking the maintainer to provide a private reporting route.
 
-Repository maintainers can enable the preferred route under **Settings → Security → Code security and
-analysis → Private vulnerability reporting**. Enabling that GitHub setting requires separate approval
-and is not performed by this document.
+Repository maintainers can manage this setting under **Settings → Security → Code security and analysis
+→ Private vulnerability reporting**.
 
 ## Useful information
 

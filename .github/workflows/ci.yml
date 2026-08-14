@@ -1,0 +1,22 @@
+name: Build and test
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+    branches: [master]
+
+permissions:
+  contents: read
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+      - run: dotnet restore PbiAssure.slnx
+      - run: dotnet build PbiAssure.slnx -c Release --no-restore
+      - run: dotnet test PbiAssure.slnx -c Release --no-build --logger "console;verbosity=minimal"
