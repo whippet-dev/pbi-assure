@@ -143,4 +143,8 @@ Start with [the architecture overview](docs/architecture.md), [the product roadm
 
 ## Security and licensing
 
-See [security and data handling](docs/security-and-data-handling.md) for the local-processing and output-sensitivity boundaries. The source is publicly visible, but no open-source licence has been selected; see [ownership and licensing](docs/ownership-and-licensing.md) before copying, modifying, or redistributing it.
+See [security and data handling](docs/security-and-data-handling.md) for the local-processing and output-sensitivity boundaries.
+
+## Licence
+
+PBI Assure is open-source software licensed under the [MIT License](LICENSE).

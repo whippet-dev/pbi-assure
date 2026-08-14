@@ -4,5 +4,9 @@
     <Nullable>enable</Nullable>
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
     <AnalysisLevel>latest-recommended</AnalysisLevel>
+    <Authors>Whippet Dev</Authors>
+    <Copyright>Copyright (c) 2026 Whippet Dev</Copyright>
+    <RepositoryUrl>https://github.com/whippet-dev/pbi-assure</RepositoryUrl>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
   </PropertyGroup>
 </Project>
