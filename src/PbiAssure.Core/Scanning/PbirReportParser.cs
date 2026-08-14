@@ -255,7 +255,7 @@ internal static class PbirReportParser
         var name = GetString(pageRoot, "name") ?? ProjectFilePaths.GetFileName(pageDirectory);
         var displayName = GetString(pageRoot, "displayName") ?? name;
         var visualsDirectory = ProjectFilePaths.Combine(pageDirectory, "visuals");
-        var visuals = ParseVisuals(source, visualsDirectory, theme);
+        var containers = ParseContainers(source, visualsDirectory, theme);
 
         return new PageInventory(
             Name: name,
@@ -274,7 +274,8 @@ internal static class PbirReportParser
             Filters: ParseFilters(pageRoot),
             FieldReferences: PbirFieldReferenceExtractor.Extract(pageRoot),
             VisualInteractions: ParseVisualInteractions(pageRoot),
-            Visuals: visuals);
+            VisualGroups: containers.Groups,
+            Visuals: containers.Visuals);
     }
 
     private static PageBindingInventory? ParsePageBinding(JsonElement pageRoot)
@@ -321,17 +322,26 @@ internal static class PbirReportParser
             .ToArray();
     }
 
-    private static VisualInventory[] ParseVisuals(IProjectFileSource source, string visualsDirectory, ThemeInventory theme)
+    private static ContainerParseResult ParseContainers(IProjectFileSource source, string visualsDirectory, ThemeInventory theme)
     {
-        return source
+        var containers = source
             .EnumerateFiles(visualsDirectory)
             .Where(file => string.Equals(ProjectFilePaths.GetFileName(file.RelativePath), "visual.json", StringComparison.OrdinalIgnoreCase))
-            .Select(file => ParseVisual(source, file.RelativePath, theme))
-            .OrderBy(visual => visual.Name, StringComparer.OrdinalIgnoreCase)
+            .Select(file => ParseContainer(source, file.RelativePath, theme))
             .ToArray();
+
+        return new ContainerParseResult(
+            containers.Where(item => item.Visual is not null)
+                .Select(item => item.Visual!)
+                .OrderBy(visual => visual.Name, StringComparer.OrdinalIgnoreCase)
+                .ToArray(),
+            containers.Where(item => item.Group is not null)
+                .Select(item => item.Group!)
+                .OrderBy(group => group.Name, StringComparer.OrdinalIgnoreCase)
+                .ToArray());
     }
 
-    private static VisualInventory ParseVisual(IProjectFileSource source, string visualPath, ThemeInventory theme)
+    private static ParsedContainer ParseContainer(IProjectFileSource source, string visualPath, ThemeInventory theme)
     {
         using var visualDocument = OpenJsonDocument(source, visualPath);
         var visualRoot = visualDocument.RootElement;
@@ -339,6 +349,37 @@ internal static class PbirReportParser
                    ProjectFilePaths.GetFileName(ProjectFilePaths.GetDirectoryName(visualPath)) ??
                    ProjectFilePaths.GetFileNameWithoutExtension(visualPath) ??
                    "unknown";
+        var schemaUri = GetString(visualRoot, "$schema");
+        var parentGroupName = GetString(visualRoot, "parentGroupName");
+        TryGetObject(visualRoot, "position", out var position);
+        var parsedPosition = ParsePosition(position);
+
+        if (TryGetObject(visualRoot, "visualGroup", out var groupElement))
+        {
+            return new ParsedContainer(
+                Visual: null,
+                Group: new VisualGroupInventory(
+                    Name: name,
+                    DisplayName: GetString(groupElement, "displayName"),
+                    GroupMode: GetString(groupElement, "groupMode"),
+                    ParentGroupName: parentGroupName,
+                    RelativePath: visualPath,
+                    SchemaUri: schemaUri,
+                    Position: parsedPosition));
+        }
+
+        return new ParsedContainer(ParseVisual(visualRoot, visualPath, name, schemaUri, parentGroupName, parsedPosition, theme), null);
+    }
+
+    private static VisualInventory ParseVisual(
+        JsonElement visualRoot,
+        string visualPath,
+        string name,
+        string? schemaUri,
+        string? parentGroupName,
+        VisualPosition position,
+        ThemeInventory theme)
+    {
         var visualType = TryGetObject(visualRoot, "visual", out var visualElement)
             ? GetString(visualElement, "visualType")
             : null;
@@ -351,21 +392,14 @@ internal static class PbirReportParser
             PbirVisualFormattingParser.Parse(visualRoot, referenceClassification.Selectors),
             theme.ActiveVisualStyleRules);
 
-        TryGetObject(visualRoot, "position", out var position);
-
         return new VisualInventory(
             Name: name,
             VisualType: visualType,
             RelativePath: visualPath,
-            SchemaUri: GetString(visualRoot, "$schema"),
+            SchemaUri: schemaUri,
             IsHidden: GetBoolean(visualRoot, "isHidden") ?? false,
-            Position: new VisualPosition(
-                X: GetDouble(position, "x"),
-                Y: GetDouble(position, "y"),
-                Z: GetDouble(position, "z"),
-                Width: GetDouble(position, "width"),
-                Height: GetDouble(position, "height"),
-                TabOrder: GetInteger(position, "tabOrder")),
+            ParentGroupName: parentGroupName,
+            Position: position,
             Accessibility: PbirVisualAccessibilityParser.Parse(visualElement),
             OnCanvasText: onCanvasText.Text,
             OnCanvasTextIsDynamic: onCanvasText.IsDynamic,
@@ -377,6 +411,14 @@ internal static class PbirReportParser
             PersistedFormatting = persistedFormatting,
         };
     }
+
+    private static VisualPosition ParsePosition(JsonElement position) => new(
+        X: GetDouble(position, "x"),
+        Y: GetDouble(position, "y"),
+        Z: GetDouble(position, "z"),
+        Width: GetDouble(position, "width"),
+        Height: GetDouble(position, "height"),
+        TabOrder: GetInteger(position, "tabOrder"));
 
     private static VisualInteractionInventory[] ParseVisualInteractions(JsonElement pageRoot)
     {
@@ -502,4 +544,8 @@ internal static class PbirReportParser
         string? Path,
         string? SchemaUri,
         ReportMeasureInventory[] Measures);
+
+    private sealed record ParsedContainer(VisualInventory? Visual, VisualGroupInventory? Group);
+
+    private sealed record ContainerParseResult(VisualInventory[] Visuals, VisualGroupInventory[] Groups);
 }

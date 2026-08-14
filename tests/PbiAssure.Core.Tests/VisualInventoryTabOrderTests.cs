@@ -45,6 +45,7 @@ public sealed class VisualInventoryTabOrderTests
         RelativePath: "visual.json",
         SchemaUri: null,
         IsHidden: false,
+        ParentGroupName: null,
         Position: new VisualPosition(null, null, null, null, null, tabOrder),
         Accessibility: new VisualAccessibilityInventory(false, null, false, null, false, null, false),
         OnCanvasText: null,

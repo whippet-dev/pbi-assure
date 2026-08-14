@@ -17,9 +17,12 @@ public sealed record PageInventory(
     IReadOnlyList<ReportFilterInventory> Filters,
     IReadOnlyList<VisualFieldReference> FieldReferences,
     IReadOnlyList<VisualInteractionInventory> VisualInteractions,
+    IReadOnlyList<VisualGroupInventory> VisualGroups,
     IReadOnlyList<VisualInventory> Visuals)
 {
     public int VisualCount => Visuals.Count;
+
+    public int VisualGroupCount => VisualGroups.Count;
 
     public int FilterCount => Filters.Count;
 
@@ -33,4 +36,9 @@ public sealed record PageInventory(
         .Select(FieldIdentity.Create)
         .Distinct(StringComparer.OrdinalIgnoreCase)
         .Count();
+
+    public bool ContainsContainer(string? name) =>
+        !string.IsNullOrWhiteSpace(name) &&
+        (Visuals.Any(visual => string.Equals(visual.Name, name, StringComparison.Ordinal)) ||
+         VisualGroups.Any(group => string.Equals(group.Name, name, StringComparison.Ordinal)));
 }

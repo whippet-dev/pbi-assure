@@ -13,7 +13,7 @@ public static class AssuranceRuleCatalog
     public static IReadOnlyList<AssuranceRuleMetadata> ActiveRules { get; } =
     [
         new("PBI-ACCESS-001", "Missing alt text", "Checks visuals included in the tab order for configured alt text.", AssuranceCategories.Accessibility),
-        new("PBI-ACCESS-002", "Duplicate tab order", "Checks each report page for visuals assigned the same explicit tab order.", AssuranceCategories.Accessibility),
+        new("PBI-ACCESS-002", "Duplicate tab order", "Checks page items in the same group scope for the same explicit tab order.", AssuranceCategories.Accessibility),
         new("PBI-ACCESS-003", "Visual excluded from tab order", "Checks visible, non-decorative visuals that are explicitly excluded from the tab order.", AssuranceCategories.Accessibility),
         new("PBI-ACCESS-004", "Visual title disabled", "Checks keyboard-reachable visuals whose title is explicitly disabled.", AssuranceCategories.Accessibility),
         new("PBI-ACCESS-005", "Drillthrough page missing Back action", "Checks drillthrough pages for an enabled Back action.", AssuranceCategories.Accessibility),

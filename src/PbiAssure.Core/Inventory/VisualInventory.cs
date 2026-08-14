@@ -8,6 +8,7 @@ public sealed record VisualInventory(
     string RelativePath,
     string? SchemaUri,
     bool IsHidden,
+    string? ParentGroupName,
     VisualPosition Position,
     VisualAccessibilityInventory Accessibility,
     string? OnCanvasText,

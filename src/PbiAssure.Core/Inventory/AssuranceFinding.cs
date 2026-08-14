@@ -17,4 +17,7 @@ public sealed record AssuranceFinding(
     string ArtifactPath,
     IReadOnlyList<string> EvidencePaths,
     string AssessmentType,
-    string? ReferenceUrl);
+    string? ReferenceUrl)
+{
+    public string? VisualGroup { get; init; }
+}

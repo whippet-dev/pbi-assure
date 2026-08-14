@@ -28,20 +28,17 @@ internal sealed class ReportInteractionRule : IAssuranceRule
     {
         foreach (var page in report.Pages)
         {
-            var visualNames = page.Visuals
-                .Select(visual => visual.Name)
-                .ToHashSet(StringComparer.Ordinal);
             foreach (var interaction in page.VisualInteractions)
             {
                 var missingEndpoints = new List<string>();
                 if (string.IsNullOrWhiteSpace(interaction.SourceVisual) ||
-                    !visualNames.Contains(interaction.SourceVisual))
+                    !page.ContainsContainer(interaction.SourceVisual))
                 {
                     missingEndpoints.Add($"source '{interaction.SourceVisual ?? "<missing>"}'");
                 }
 
                 if (string.IsNullOrWhiteSpace(interaction.TargetVisual) ||
-                    !visualNames.Contains(interaction.TargetVisual))
+                    !page.ContainsContainer(interaction.TargetVisual))
                 {
                     missingEndpoints.Add($"target '{interaction.TargetVisual ?? "<missing>"}'");
                 }

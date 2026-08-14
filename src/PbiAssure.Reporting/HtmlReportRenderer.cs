@@ -843,6 +843,7 @@ public static partial class HtmlReportRenderer
         ReportInventory report,
         PageInventory page)
     {
+        var hierarchyContexts = BuildVisualHierarchyContexts(page);
         int? pageNumber = page.Order is null ? null : page.Order.Value + 1;
         var pageFindings = inventory.Findings.Count(finding =>
             string.Equals(finding.Report, report.Name, StringComparison.OrdinalIgnoreCase) &&
@@ -903,7 +904,7 @@ public static partial class HtmlReportRenderer
             html.AppendLine("            <div class=\"visual-list\">");
             foreach (var visual in page.Visuals)
             {
-                AppendVisualCard(html, inventory, report, page, visual);
+                AppendVisualCard(html, inventory, report, page, visual, hierarchyContexts[visual.RelativePath]);
             }
 
             html.AppendLine("            </div>");
@@ -918,7 +919,8 @@ public static partial class HtmlReportRenderer
         ProjectInventory inventory,
         ReportInventory report,
         PageInventory page,
-        VisualInventory visual)
+        VisualInventory visual,
+        VisualHierarchyContext hierarchyContext)
     {
         var relatedFindings = inventory.Findings
             .Select((finding, index) => (Finding: finding, Index: index))
@@ -955,7 +957,11 @@ public static partial class HtmlReportRenderer
         }
 
         AppendVisualBehaviour(html, report, visual);
-        AppendAccessibilitySummary(html, visual);
+        AppendAccessibilitySummary(
+            html,
+            visual,
+            hierarchyContext,
+            $"tab-order-help-{VisualAnchor(report, page, visual)}");
 
         if (relatedFindings.Length > 0)
         {
@@ -980,8 +986,8 @@ public static partial class HtmlReportRenderer
         AppendFact(html, "Position", FormatCoordinates(visual.Position));
         AppendFact(
             html,
-            "Tab order value",
-            visual.Position.TabOrder?.ToString(CultureInfo.InvariantCulture) ?? "Not included");
+            "PBIR position.tabOrder value",
+            visual.Position.TabOrder?.ToString(CultureInfo.InvariantCulture) ?? "Not present");
         html.AppendLine("                    </dl>");
         html.AppendLine("                  </details>");
         html.AppendLine("                </div>");
@@ -1082,7 +1088,11 @@ public static partial class HtmlReportRenderer
         html.AppendLine("                  </ul>");
     }
 
-    private static void AppendAccessibilitySummary(StringBuilder html, VisualInventory visual)
+    private static void AppendAccessibilitySummary(
+        StringBuilder html,
+        VisualInventory visual,
+        VisualHierarchyContext hierarchyContext,
+        string tooltipId)
     {
         html.AppendLine("                  <h4>Accessibility snapshot</h4>");
         html.AppendLine("                  <dl class=\"fact-strip compact\">");
@@ -1092,10 +1102,7 @@ public static partial class HtmlReportRenderer
                 ? visual.Accessibility.AltText ?? "Configured"
                 : "Not configured";
         AppendFact(html, "Alt text", altText);
-        AppendFact(
-            html,
-            "Tab order",
-            visual.Position.TabOrder is null ? "Not included in tab order" : "Included in tab order");
+        AppendTabOrderFact(html, DescribeTabOrder(visual, hierarchyContext), tooltipId);
         AppendFact(
             html,
             "Title",
@@ -1725,6 +1732,23 @@ public static partial class HtmlReportRenderer
         html.AppendLine("</dd></div>");
     }
 
+    private static void AppendTabOrderFact(
+        StringBuilder html,
+        TabOrderPresentation presentation,
+        string tooltipId)
+    {
+        html.Append("              <div><dt><span>Tab order</span><button type=\"button\" class=\"info-tooltip\" aria-label=\"About tab-order positions\" aria-describedby=\"")
+            .Append(Encode(tooltipId)).Append("\">i<span id=\"").Append(Encode(tooltipId))
+            .Append("\" role=\"tooltip\">").Append(Encode(presentation.Tooltip)).Append("</span></button></dt><dd><span class=\"fact-primary\">")
+            .Append(Encode(presentation.State)).Append("</span>");
+        if (!string.IsNullOrWhiteSpace(presentation.Detail))
+        {
+            html.Append("<span class=\"fact-supporting\">").Append(Encode(presentation.Detail)).Append("</span>");
+        }
+
+        html.AppendLine("</dd></div>");
+    }
+
     private static string FindingAnchor(int index)
     {
         return $"finding-{index + 1}";
@@ -1870,6 +1894,89 @@ public static partial class HtmlReportRenderer
     {
         static string Number(double? value) => value?.ToString("0.#", CultureInfo.InvariantCulture) ?? "?";
         return $"x {Number(position.X)}, y {Number(position.Y)}, width {Number(position.Width)}, height {Number(position.Height)}";
+    }
+
+    private static Dictionary<string, VisualHierarchyContext> BuildVisualHierarchyContexts(PageInventory page)
+    {
+        var scopes = VisualGroupHierarchyResolver.Resolve(page)
+            .Where(scope => scope.IsComparable)
+            .ToArray();
+        var friendlyRanks = new Dictionary<string, string>(StringComparer.Ordinal);
+        AssignScopeRanks(parentGroupName: null, prefix: null);
+
+        return page.Visuals.ToDictionary(
+            visual => visual.RelativePath,
+            visual =>
+            {
+                friendlyRanks.TryGetValue(visual.RelativePath, out var friendlyRank);
+                return new VisualHierarchyContext(friendlyRank);
+            },
+            StringComparer.Ordinal);
+
+        void AssignScopeRanks(string? parentGroupName, string? prefix)
+        {
+            var siblings = scopes
+                .Where(scope => string.Equals(scope.ParentGroup?.Name, parentGroupName, StringComparison.Ordinal))
+                .Where(scope => scope.Position.TabOrder is >= 0)
+                .OrderByDescending(scope => scope.Position.TabOrder)
+                .ThenBy(scope => scope.RelativePath, StringComparer.Ordinal)
+                .ToArray();
+
+            for (var index = 0; index < siblings.Length; index++)
+            {
+                var sibling = siblings[index];
+                var rank = prefix is null
+                    ? (index + 1).ToString(CultureInfo.InvariantCulture)
+                    : $"{prefix}.{index + 1}";
+                friendlyRanks[sibling.RelativePath] = rank;
+                if (sibling.IsGroup)
+                {
+                    AssignScopeRanks(sibling.Name, rank);
+                }
+            }
+        }
+    }
+
+    private static TabOrderPresentation DescribeTabOrder(
+        VisualInventory visual,
+        VisualHierarchyContext hierarchyContext)
+    {
+        if (visual.Position.TabOrder is < 0)
+        {
+            return new TabOrderPresentation("Excluded", null, "Excluded from tab order.");
+        }
+
+        if (visual.Position.TabOrder is null)
+        {
+            return new TabOrderPresentation(
+                "Included",
+                "Power BI default order",
+                "Included in tab order using Power BI's default order.");
+        }
+
+        var friendlyPosition = hierarchyContext.FriendlyTabOrder;
+        return new TabOrderPresentation(
+            "Included",
+            friendlyPosition is null
+                ? "Explicit order"
+                : $"Position {friendlyPosition}",
+            friendlyPosition is null
+                ? "Included in tab order with an explicit position."
+                : DescribeTabOrderTooltip(friendlyPosition));
+    }
+
+    private static string DescribeTabOrderTooltip(string friendlyPosition)
+    {
+        var segments = friendlyPosition.Split('.', StringSplitOptions.RemoveEmptyEntries);
+        var introduction = $"Included in tab order at position {friendlyPosition}.";
+        if (segments.Length <= 1)
+        {
+            return introduction;
+        }
+
+        var parentPosition = string.Join('.', segments[..^1]);
+        var groupDescription = segments.Length == 2 ? "group" : "nested group";
+        return $"{introduction} This means it is item {segments[^1]} inside the {groupDescription} at position {parentPosition}.";
     }
 
     private static string HumanizeIdentifier(string value)
@@ -2323,6 +2430,10 @@ public static partial class HtmlReportRenderer
         return $"{char.ToUpperInvariant(description[0])}{description[1..]} of page";
     }
 
+    private sealed record VisualHierarchyContext(string? FriendlyTabOrder);
+
+    private sealed record TabOrderPresentation(string State, string? Detail, string Tooltip);
+
     private static string HumanizeVisualType(string? visualType)
     {
         if (string.IsNullOrWhiteSpace(visualType))
@@ -2712,9 +2823,14 @@ public static partial class HtmlReportRenderer
     .card-body h3, .page-body h3, .visual-body h4 { margin: 1.25rem 0 .4rem; }
     .fact-strip { display: grid; grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr)); gap: .65rem; margin: .25rem 0 1rem; padding: 0; }
     .fact-strip div { padding: .65rem .75rem; border-radius: .3rem; background: #eef2f6; }
-    .fact-strip dt { color: var(--muted); font-size: .83rem; font-weight: 700; }
+    .fact-strip dt { display: flex; align-items: center; gap: .35rem; color: var(--muted); font-size: .83rem; font-weight: 700; }
     .fact-strip dd { margin: .15rem 0 0; font-weight: 650; }
     .fact-strip.compact { grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr)); }
+    .fact-primary, .fact-supporting { display: block; }
+    .fact-supporting { margin-top: .08rem; color: var(--muted); font-size: .78rem; font-weight: 500; }
+    .info-tooltip { position: relative; display: inline-grid; width: 1.15rem; height: 1.15rem; min-width: 1.15rem; min-height: 1.15rem; flex: 0 0 1.15rem; place-items: center; padding: 0; border: 1px solid #74879a; border-radius: 50%; background: transparent; color: #40566c; font: 700 .72rem/1 system-ui, sans-serif; cursor: help; }
+    .info-tooltip [role="tooltip"] { position: absolute; z-index: 5; top: calc(100% + .4rem); left: 0; width: max-content; max-width: min(18rem, 70vw); padding: .45rem .55rem; border: 1px solid #66788a; border-radius: .25rem; background: #182230; color: #fff; font-size: .78rem; font-weight: 500; line-height: 1.35; text-align: left; opacity: 0; pointer-events: none; }
+    .info-tooltip:hover [role="tooltip"], .info-tooltip:focus [role="tooltip"], .info-tooltip:focus-visible [role="tooltip"] { opacity: 1; }
     .semantic-feature { min-width: 0; max-width: 100%; margin: .75rem 1rem; padding: .8rem 1rem; border-left: .3rem solid #6b879d; background: #f5f8fa; overflow-wrap: anywhere; }
     .semantic-feature h4, .semantic-feature p { margin: 0 0 .35rem; }
     .calculation-item { display: block !important; }
@@ -2838,7 +2954,7 @@ public static partial class HtmlReportRenderer
     }
     @media print {
       body { background: #fff; }
-      .skip-link, .section-navigator, .filters, .filter-status, .details-controls, .finding-investigation, .finding-results-row, .filter-chips, .finding-empty-state { display: none; }
+      .skip-link, .section-navigator, .filters, .filter-status, .details-controls, .finding-investigation, .finding-results-row, .filter-chips, .finding-empty-state, .info-tooltip { display: none; }
       .report-section[hidden] { display: block !important; }
       main > section { break-inside: avoid; border-color: #777; }
       details { break-inside: avoid; }

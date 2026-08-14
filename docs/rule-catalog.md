@@ -15,7 +15,7 @@ PBI Assure rules turn parsed facts into reviewable results. Rule identifiers and
 | `PBI-SOURCE-001` | 1.0.0 | Compatibility | Warning | Finding | A Power Query uses an absolute local or network file location that may not be portable to another developer or refresh service. The location value is withheld from the finding. |
 | `PBI-COMPAT-001` | 1.0.0 | Compatibility | Warning | Finding | A visual has type `qnaVisual`. Microsoft has announced full Power BI Q&A retirement in December 2026. |
 | `PBI-ACCESS-001` | 1.0.0 | Accessibility | Warning | Finding | An object included in the tab order has no non-empty literal or dynamic alt-text expression. |
-| `PBI-ACCESS-002` | 1.0.0 | Accessibility | Warning | Finding | Two or more visuals on one page have the same tab-order position. |
+| `PBI-ACCESS-002` | 1.1.0 | Accessibility | Warning | Finding | Two or more page items in the same immediate group scope have the same explicit tab-order position. |
 | `PBI-ACCESS-003` | 1.0.0 | Accessibility | Information | Review required | A visible, non-hidden-page visual that is not an image, shape, or text box is excluded from tab order. Human review determines whether it is meaningful or interactive. |
 | `PBI-ACCESS-004` | 1.0.0 | Accessibility | Information | Review required | A focusable data visual has its title explicitly disabled. Human review determines whether equivalent context and an accessible name remain available. |
 | `PBI-ACCESS-005` | 1.0.0 | Accessibility | Information | Review required | A drillthrough page has no enabled Back action in its static visual metadata. Human review determines whether an equivalent keyboard- and screen-reader-operable return mechanism exists. |

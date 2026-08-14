@@ -190,13 +190,10 @@ internal sealed class NavigationAssuranceRule : IAssuranceRule
                 continue;
             }
 
-            var visualNames = activePage.Visuals
-                .Select(visual => visual.Name)
-                .ToHashSet(StringComparer.Ordinal);
             for (var index = 0; index < bookmark.TargetVisualNames.Count; index++)
             {
                 var visualName = bookmark.TargetVisualNames[index];
-                if (!visualNames.Contains(visualName))
+                if (!activePage.ContainsContainer(visualName))
                 {
                     yield return BookmarkFinding(
                         ruleId: "PBI-NAV-004",

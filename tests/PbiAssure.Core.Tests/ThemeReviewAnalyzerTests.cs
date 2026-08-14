@@ -106,10 +106,10 @@ public sealed class ThemeReviewAnalyzerTests
 
     private static PageInventory Page(params VisualInventory[] visuals) =>
         new("page", "Overview", "report/pages/page", "report/pages/page/page.json", null, null, null,
-            0, true, null, null, 1280, 720, [], [], [], visuals);
+            0, true, null, null, 1280, 720, [], [], [], [], visuals);
 
     private static VisualInventory Visual(string name, string type, IReadOnlyList<PersistedFormattingObservation> formatting) =>
-        new(name, type, $"visuals/{name}/visual.json", null, false,
+        new(name, type, $"visuals/{name}/visual.json", null, false, null,
             new VisualPosition(null, null, null, null, null, null),
             new VisualAccessibilityInventory(false, null, false, true, false, null, false),
             null, false, [], [], [])

@@ -25,7 +25,7 @@ public sealed class ProjectScannerTests : IDisposable
 
         var result = ProjectScanner.Scan(testRoot);
 
-        Assert.Equal("0.20", result.SchemaVersion);
+        Assert.Equal("0.21", result.SchemaVersion);
         Assert.Equal(1, result.ReportCount);
         Assert.Equal(1, result.SemanticModelCount);
         Assert.Contains(result.Artifacts, artifact =>
@@ -964,7 +964,12 @@ public sealed class ProjectScannerTests : IDisposable
         Assert.DoesNotContain(result.Findings, finding =>
             finding.RuleId == "PBI-ACCESS-003" && finding.Visual == "image");
         Assert.Equal(2, result.Findings.Count(finding => finding.RuleId == "PBI-ACCESS-004"));
-        Assert.All(result.Findings, finding => Assert.Equal("1.0.0", finding.RuleVersion));
+        Assert.All(
+            result.Findings.Where(finding => finding.RuleId != "PBI-ACCESS-002"),
+            finding => Assert.Equal("1.0.0", finding.RuleVersion));
+        Assert.All(
+            result.Findings.Where(finding => finding.RuleId == "PBI-ACCESS-002"),
+            finding => Assert.Equal("1.1.0", finding.RuleVersion));
         Assert.All(
             result.Findings.Where(finding => finding.RuleId is "PBI-ACCESS-003" or "PBI-ACCESS-004"),
             finding => Assert.Equal(AssessmentTypes.ReviewRequired, finding.AssessmentType));

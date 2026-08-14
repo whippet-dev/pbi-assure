@@ -1,0 +1,16 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/visualContainer/2.11.0/schema.json",
+  "name": "7747fa9fe85e179bfbe0",
+  "position": {
+    "x": 10,
+    "y": 0,
+    "z": 6001,
+    "height": 900.06079027355622,
+    "width": 599.72644376899689,
+    "tabOrder": 2000
+  },
+  "visualGroup": {
+    "displayName": "Nested Group - Level 1",
+    "groupMode": "ScaleMode"
+  }
+}

@@ -1,0 +1,11 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/gitIntegration/platformProperties/2.0.0/schema.json",
+  "metadata": {
+    "type": "SemanticModel",
+    "displayName": "grouped-tab-order"
+  },
+  "config": {
+    "version": "2.0",
+    "logicalId": "974dc276-c88b-4db5-8491-b1f73b0d173d"
+  }
+}

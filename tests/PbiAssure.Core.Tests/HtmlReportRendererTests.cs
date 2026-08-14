@@ -78,9 +78,8 @@ public sealed class HtmlReportRendererTests : IDisposable
         Assert.Contains("Open this visual under its report page", html, StringComparison.Ordinal);
         Assert.DoesNotContain("<strong>sales-card</strong>", html, StringComparison.Ordinal);
         Assert.Contains("<summary>Technical details</summary>", html, StringComparison.Ordinal);
-        Assert.Contains("<dt>Tab order</dt>", html, StringComparison.Ordinal);
-        Assert.Contains("Included in tab order", html, StringComparison.Ordinal);
-        Assert.Contains("<dt>Tab order value</dt>", html, StringComparison.Ordinal);
+        Assert.Contains("<dt><span>Tab order</span>", html, StringComparison.Ordinal);
+        Assert.Contains("<dt>PBIR position.tabOrder value</dt>", html, StringComparison.Ordinal);
         Assert.DoesNotContain("Keyboard order", html, StringComparison.Ordinal);
         Assert.Contains("sales-card", html, StringComparison.Ordinal);
         Assert.DoesNotContain("<table", html, StringComparison.OrdinalIgnoreCase);

@@ -55,6 +55,7 @@ public sealed class ProjectFileSourceTests
             Write(root, "Sales.Report/definition/pages/pages.json", "{ \"pageOrder\": [\"page-a\"] }");
             Write(root, "Sales.Report/definition/pages/page-a/page.json", "{ \"name\": \"page-a\", \"displayName\": \"Overview\" }");
             Write(root, "Sales.Report/definition/pages/page-a/visuals/one/visual.json", "{ \"name\": \"one\" }");
+            Write(root, "Sales.Report/definition/pages/page-a/visuals/group/visual.json", "{ \"name\": \"group\", \"visualGroup\": { \"displayName\": \"Group\" }, \"position\": { \"tabOrder\": 0 } }");
             Write(root, "Sales.Report/definition/bookmarks/bookmarks.json", "{ \"items\": [{ \"name\": \"bookmark-a\" }] }");
             Write(root, "Sales.Report/definition/bookmarks/bookmark-a.bookmark.json", "{ \"name\": \"bookmark-a\", \"displayName\": \"Bookmark A\" }");
             Write(root, "Sales.SemanticModel/definition/tables/Sales.tmdl", "table Sales\n    column Amount\n        dataType: int64");
@@ -73,6 +74,8 @@ public sealed class ProjectFileSourceTests
             Assert.Equal(physical.ReportCount, inMemory.ReportCount);
             Assert.Equal(physical.PageCount, inMemory.PageCount);
             Assert.Equal(physical.VisualCount, inMemory.VisualCount);
+            Assert.Equal(1, Assert.Single(Assert.Single(physical.Reports).Pages).VisualGroupCount);
+            Assert.Equal(1, Assert.Single(Assert.Single(inMemory.Reports).Pages).VisualGroupCount);
             Assert.Equal(physical.BookmarkCount, inMemory.BookmarkCount);
             Assert.Equal(physical.SemanticModelCount, inMemory.SemanticModelCount);
             Assert.Equal(physical.SemanticModels.Sum(model => model.Tables.Count), inMemory.SemanticModels.Sum(model => model.Tables.Count));
