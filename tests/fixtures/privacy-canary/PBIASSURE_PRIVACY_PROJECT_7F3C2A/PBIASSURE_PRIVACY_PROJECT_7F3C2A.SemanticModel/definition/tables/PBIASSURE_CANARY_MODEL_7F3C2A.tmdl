@@ -1,0 +1,9 @@
+table PBIASSURE_CANARY_MODEL_7F3C2A
+    column CanaryValue
+        dataType: string
+
+    measure 'Canary Measure 7F3C2A' = COUNTROWS(PBIASSURE_CANARY_MODEL_7F3C2A)
+
+    partition PBIASSURE_CANARY_MODEL_7F3C2A = m
+        mode: import
+        source = CanaryQuery_7F3C2A

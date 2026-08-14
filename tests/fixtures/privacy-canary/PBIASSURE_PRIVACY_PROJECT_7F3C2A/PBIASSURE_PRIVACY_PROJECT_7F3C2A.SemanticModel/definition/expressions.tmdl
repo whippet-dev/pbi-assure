@@ -1,0 +1,5 @@
+expression CanaryQuery_7F3C2A =
+        let
+            Source = #table(type table [CanaryValue = text], {{"PBIASSURE_CANARY_M_7F3C2A"}})
+        in
+            Source

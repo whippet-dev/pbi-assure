@@ -1,0 +1,43 @@
+{
+  "name": "privacy-canary-card",
+  "position": {
+    "x": 40,
+    "y": 40,
+    "height": 120,
+    "width": 260,
+    "tabOrder": 0
+  },
+  "visual": {
+    "visualType": "card",
+    "query": {
+      "queryState": {
+        "values": {
+          "projections": [
+            {
+              "field": {
+                "Measure": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "PBIASSURE_CANARY_MODEL_7F3C2A"
+                    }
+                  },
+                  "Property": "Canary Measure 7F3C2A"
+                }
+              }
+            }
+          ]
+        }
+      }
+    },
+    "visualContainerObjects": {
+      "title": [
+        {
+          "properties": {
+            "show": { "expr": { "Literal": { "Value": "true" } } },
+            "text": { "expr": { "Literal": { "Value": "'PBIASSURE_CANARY_VISUAL_7F3C2A'" } } }
+          }
+        }
+      ]
+    }
+  }
+}

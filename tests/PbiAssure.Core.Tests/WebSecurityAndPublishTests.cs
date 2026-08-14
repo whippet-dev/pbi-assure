@@ -5,6 +5,16 @@ namespace PbiAssure.Core.Tests;
 public sealed class WebSecurityAndPublishTests
 {
     [Fact]
+    public void BrowserSurfaceExposesAnExplicitApplicationReadyMarker()
+    {
+        var repositoryRoot = FindRepositoryRoot();
+        var markup = File.ReadAllText(
+            Path.Combine(repositoryRoot, "src", "PbiAssure.Web", "Pages", "Home.razor"));
+
+        Assert.Contains("data-pbiassure-app-ready=\"true\"", markup, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void CloudflareHeadersRestrictUnusedBrowserCapabilities()
     {
         var repositoryRoot = FindRepositoryRoot();
