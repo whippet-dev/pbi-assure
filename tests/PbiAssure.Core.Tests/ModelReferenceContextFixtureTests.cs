@@ -65,6 +65,10 @@ public sealed class ModelReferenceContextFixtureTests
     {
         var inventory = ScanFixture("model-reference-context-broken-2visualfilter");
         var finding = Assert.Single(ModelReferenceFindings(inventory), finding => finding.ObjectName == "VisualFilter");
+        var visual = Assert.Single(inventory.Reports
+            .SelectMany(report => report.Pages)
+            .SelectMany(page => page.Visuals),
+            candidate => candidate.FieldReferences.Any(reference => reference.ObjectName == "VisualFilter"));
 
         Assert.Equal(2, finding.ReferenceContexts.Count);
         Assert.Contains(finding.ReferenceContexts, context =>
@@ -76,11 +80,58 @@ public sealed class ModelReferenceContextFixtureTests
         Assert.Contains("$.filterConfig.filters[3].filter.Where[0].Condition.In.Expressions[0].Column", finding.EvidencePaths, StringComparer.Ordinal);
         Assert.Contains("$.filterConfig.filters[4].field.Aggregation.Expression.Column", finding.EvidencePaths, StringComparer.Ordinal);
         Assert.Contains("$.visual.query.queryState.Tooltips.projections[1].field.Aggregation.Expression.Column", finding.EvidencePaths, StringComparer.Ordinal);
+        Assert.Equal(4, visual.DistinctFieldCount);
 
         var html = HtmlReportRenderer.Render(inventory);
         Assert.Contains("<dt>Reference context</dt><dd>Visual filter &#xB7; Tooltips</dd>", html, StringComparison.Ordinal);
+        Assert.Equal(1, CountOccurrences(
+            html,
+            "<li><code>ReferenceTest[VisualFilter]</code><span>Column — <span class=\"usage-label\">Used as:</span> Visual filter &#xB7; Tooltips</span></li>"));
+        Assert.DoesNotContain("Visual filter &#xB7; Visual filter", html, StringComparison.Ordinal);
         Assert.Contains("Technical details and evidence (4)", html, StringComparison.Ordinal);
         Assert.Contains("$.visual.query.queryState.Tooltips.projections[1].field.Aggregation.Expression.Column", html, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void ResolvedDesktopFixturePresentsAllUsesOncePerObjectAndReportLocation()
+    {
+        var inventory = ScanFixture("model-reference-context");
+        var visual = Assert.Single(inventory.Reports
+            .SelectMany(report => report.Pages)
+            .SelectMany(page => page.Visuals),
+            candidate => candidate.FieldReferences.Any(reference => reference.ObjectName == "VisualFilter"));
+        var references = visual.FieldReferences
+            .Where(reference => reference.ObjectName == "VisualFilter")
+            .ToArray();
+        var usage = Assert.Single(inventory.SemanticObjectUsages, candidate =>
+            candidate.Table == "ReferenceTest" && candidate.ObjectName == "VisualFilter");
+
+        Assert.Equal(4, visual.DistinctFieldCount);
+        Assert.Equal(4, references.Length);
+        Assert.Equal(3, references.Count(reference => reference.UsageContext == UsageContexts.Filter));
+        Assert.Single(references, reference =>
+            reference.UsageContext == UsageContexts.Projection && reference.Role == "tooltips");
+        Assert.Equal(4, usage.DirectReportReferenceCount);
+        Assert.Equal(1, usage.DirectReportLocationCount);
+
+        var html = HtmlReportRenderer.Render(inventory);
+        const string visualObjectRow =
+            "<li><code>ReferenceTest[VisualFilter]</code><span>Column — <span class=\"usage-label\">Used as:</span> Visual filter &#xB7; Tooltips</span></li>";
+        Assert.Equal(1, CountOccurrences(html, visualObjectRow));
+        Assert.Equal(2, CountOccurrences(html, "Visual filter &#xB7; Tooltips"));
+        Assert.Contains(
+            "<span class=\"usage-role\"><span class=\"usage-label\">Used as:</span> Visual filter &#xB7; Tooltips</span>",
+            html,
+            StringComparison.Ordinal);
+        Assert.Contains(
+            "<li><code>ReferenceTest[Category]</code><span>Column — <span class=\"usage-label\">Used as:</span> Category</span></li>",
+            html,
+            StringComparison.Ordinal);
+        Assert.Contains(
+            "<li><code>ReferenceTest[TooltipField]</code><span>Column — <span class=\"usage-label\">Used as:</span> Tooltips</span></li>",
+            html,
+            StringComparison.Ordinal);
+        Assert.DoesNotContain("Visual filter &#xB7; Visual filter", html, StringComparison.Ordinal);
     }
 
     private static void AssertContext(AssuranceFinding finding, string usageContext, string role)
@@ -99,6 +150,17 @@ public sealed class ModelReferenceContextFixtureTests
     private static AssuranceFinding[] ModelReferenceFindings(ProjectInventory inventory) => inventory.Findings
         .Where(finding => finding.RuleId == "PBI-MODEL-001")
         .ToArray();
+
+    private static int CountOccurrences(string value, string expected)
+    {
+        var count = 0;
+        for (var index = 0; (index = value.IndexOf(expected, index, StringComparison.Ordinal)) >= 0; index += expected.Length)
+        {
+            count++;
+        }
+
+        return count;
+    }
 
     private static string FindRepositoryRoot()
     {

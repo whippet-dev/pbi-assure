@@ -1028,10 +1028,7 @@ public static partial class HtmlReportRenderer
             .Select(group => new
             {
                 Reference = group.First(),
-                Roles = group.Select(reference => reference.Role)
-                    .Where(role => !string.IsNullOrWhiteSpace(role))
-                    .Distinct(StringComparer.OrdinalIgnoreCase)
-                    .ToArray(),
+                References = group.ToArray(),
             })
             .OrderBy(item => item.Reference.Table, StringComparer.OrdinalIgnoreCase)
             .ThenBy(item => item.Reference.ObjectName, StringComparer.OrdinalIgnoreCase)
@@ -1040,20 +1037,20 @@ public static partial class HtmlReportRenderer
         html.AppendLine("                  <ul class=\"object-list\">");
         foreach (var item in objects)
         {
-            var roles = item.Roles;
-            if (roles.Any(role => !string.Equals(role, "filter", StringComparison.OrdinalIgnoreCase)))
-            {
-                roles = roles.Where(role => !string.Equals(role, "filter", StringComparison.OrdinalIgnoreCase)).ToArray();
-            }
-
             var reference = item.Reference;
+            var roleLabels = MeaningfulUsageRoleLabels(
+                item.References.Select(candidate => new UsagePresentationReference(
+                    candidate.UsageContext,
+                    candidate.Role,
+                    candidate.EvidencePath)),
+                visualScope,
+                pageScope: !visualScope);
             html.Append("                    <li><code>").Append(Encode($"{reference.Table}[{reference.ObjectName}]")).Append("</code><span>")
                 .Append(Encode(HumanizeIdentifier(reference.ObjectType)));
-            if (roles.Length > 0)
+            if (roleLabels.Length > 0)
             {
-                var roleLabel = string.Join(", ", roles.Select(role =>
-                    FieldRoleLabel(role!, visualScope, pageScope: !visualScope)));
-                html.Append(" · ").Append(Encode(roleLabel));
+                html.Append(" — <span class=\"usage-label\">Used as:</span> ")
+                    .Append(Encode(string.Join(" · ", roleLabels)));
             }
 
             html.AppendLine("</span></li>");
@@ -1370,21 +1367,71 @@ public static partial class HtmlReportRenderer
 
     private static string UsageRoleLabel(SemanticObjectUsage usage, SemanticUsageLocation location, bool hasVisual)
     {
-        var roles = usage.DirectReportReferences
+        var references = usage.DirectReportReferences
             .Where(evidence => string.Equals(evidence.Report, location.Report, StringComparison.OrdinalIgnoreCase) &&
                 string.Equals(evidence.Page, location.Page, StringComparison.OrdinalIgnoreCase) &&
-                string.Equals(evidence.Visual, location.Visual, StringComparison.OrdinalIgnoreCase))
-            .Select(evidence => evidence.Role)
-            .Where(role => !string.IsNullOrWhiteSpace(role))
+                string.Equals(evidence.Visual, location.Visual, StringComparison.OrdinalIgnoreCase) &&
+                (hasVisual || string.Equals(
+                    evidence.UsageContext,
+                    location.UsageContext,
+                    StringComparison.OrdinalIgnoreCase)))
+            .Select(evidence => new UsagePresentationReference(
+                evidence.UsageContext,
+                evidence.Role,
+                evidence.EvidencePath))
+            .ToArray();
+
+        return string.Join(" · ", MeaningfulUsageRoleLabels(
+            references,
+            hasVisual,
+            pageScope: !string.IsNullOrWhiteSpace(location.Page)));
+    }
+
+    private static string[] MeaningfulUsageRoleLabels(
+        IEnumerable<UsagePresentationReference> references,
+        bool visualScope,
+        bool pageScope)
+    {
+        var instances = references.ToArray();
+        var hasNonFilterContext = instances.Any(instance =>
+            !string.Equals(instance.UsageContext, UsageContexts.Filter, StringComparison.OrdinalIgnoreCase));
+        var hasDrillthroughContext = !visualScope && instances.Any(instance =>
+            string.Equals(instance.UsageContext, UsageContexts.Drillthrough, StringComparison.OrdinalIgnoreCase));
+        // Desktop PBIR also stores field-only filterConfig entries for ordinary projections.
+        // Keep a filter label beside another visual use only when an actual filter condition is present.
+        var hasConfiguredFilterCondition = instances.Any(instance =>
+            string.Equals(instance.UsageContext, UsageContexts.Filter, StringComparison.OrdinalIgnoreCase) &&
+            instance.EvidencePath.Contains(".filter.", StringComparison.OrdinalIgnoreCase));
+
+        return instances
+            .Where(instance =>
+                !string.Equals(instance.UsageContext, UsageContexts.Filter, StringComparison.OrdinalIgnoreCase) ||
+                (!hasDrillthroughContext && (!hasNonFilterContext || hasConfiguredFilterCondition)))
+            .GroupBy(
+                instance => $"{instance.UsageContext}\u001f{instance.Role ?? string.Empty}",
+                StringComparer.OrdinalIgnoreCase)
+            .Select(group => UsageRoleLabel(group.First(), visualScope, pageScope))
+            .Where(label => !string.IsNullOrWhiteSpace(label))
             .Distinct(StringComparer.OrdinalIgnoreCase)
             .ToArray();
-        if (roles.Any(role => !string.Equals(role, "filter", StringComparison.OrdinalIgnoreCase)))
+    }
+
+    private static string UsageRoleLabel(
+        UsagePresentationReference reference,
+        bool visualScope,
+        bool pageScope)
+    {
+        if (!string.IsNullOrWhiteSpace(reference.Role))
         {
-            roles = roles.Where(role => !string.Equals(role, "filter", StringComparison.OrdinalIgnoreCase)).ToArray();
+            return FieldRoleLabel(reference.Role, visualScope, pageScope);
         }
 
-        return string.Join(", ", roles.Select(role =>
-            FieldRoleLabel(role!, hasVisual, pageScope: !string.IsNullOrWhiteSpace(location.Page))));
+        return reference.UsageContext switch
+        {
+            UsageContexts.Filter => FieldRoleLabel("filter", visualScope, pageScope),
+            UsageContexts.Drillthrough => "Drillthrough field",
+            _ => HumanizeIdentifier(reference.UsageContext),
+        };
     }
 
     private static string FieldRoleLabel(string role, bool visualScope, bool pageScope)
@@ -2556,6 +2603,8 @@ public static partial class HtmlReportRenderer
     }
 
     private sealed record VisualContext(ReportInventory Report, PageInventory Page, VisualInventory Visual);
+
+    private sealed record UsagePresentationReference(string UsageContext, string? Role, string EvidencePath);
 
     private sealed record FindingFacetOption(string Value, string Label);
 

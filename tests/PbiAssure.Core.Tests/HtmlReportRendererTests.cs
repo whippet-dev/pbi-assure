@@ -649,7 +649,10 @@ public sealed class HtmlReportRendererTests : IDisposable
         Assert.Contains("<h5>Customer detail</h5>", html, StringComparison.Ordinal);
         Assert.Contains("<p class=\"usage-page-kind\">Drillthrough page</p>", html, StringComparison.Ordinal);
         Assert.Contains("<span class=\"usage-label\">Used in:</span> Drillthrough field", html, StringComparison.Ordinal);
-        Assert.Contains("<code>Customer[CustomerName]</code><span>Column · Drillthrough field</span>", html, StringComparison.Ordinal);
+        Assert.Contains(
+            "<code>Customer[CustomerName]</code><span>Column — <span class=\"usage-label\">Used as:</span> Drillthrough field</span>",
+            html,
+            StringComparison.Ordinal);
     }
 
     public void Dispose()
