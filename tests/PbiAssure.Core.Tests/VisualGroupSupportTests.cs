@@ -287,7 +287,7 @@ public sealed class VisualGroupSupportTests
         Assert.Contains("<dt>PBIR position.tabOrder value</dt><dd>Not present</dd>", html, StringComparison.Ordinal);
         Assert.Contains("Included in tab order at position 1.", html, StringComparison.Ordinal);
         Assert.Contains("Excluded from tab order.", html, StringComparison.Ordinal);
-        Assert.Contains("Included in tab order using Power BI&#x27;s default order.", html, StringComparison.Ordinal);
+        Assert.Contains("Included in tab order using Power BI&#x27;s default order. No explicit tab-order position is stored in PBIR.", html, StringComparison.Ordinal);
         Assert.DoesNotContain("How grouped tab order works", html, StringComparison.Ordinal);
     }
 

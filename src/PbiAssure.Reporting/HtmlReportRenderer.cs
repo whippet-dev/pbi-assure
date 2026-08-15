@@ -1951,7 +1951,7 @@ public static partial class HtmlReportRenderer
             return new TabOrderPresentation(
                 "Included",
                 "Power BI default order",
-                "Included in tab order using Power BI's default order.");
+                "Included in tab order using Power BI's default order. No explicit tab-order position is stored in PBIR.");
         }
 
         var friendlyPosition = hierarchyContext.FriendlyTabOrder;
