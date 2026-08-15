@@ -2150,6 +2150,7 @@ public static partial class HtmlReportRenderer
     private static void AppendFindingLocation(StringBuilder html, ProjectInventory inventory, AssuranceFinding finding)
     {
         var visualContext = ResolveVisualContext(inventory, finding);
+        var referenceContext = FindingReferenceContextLabel(finding, visualContext is not null);
         html.AppendLine("                <dl class=\"finding-location\">");
         if (inventory.ReportCount > 1 && !string.IsNullOrWhiteSpace(finding.Report))
         {
@@ -2177,6 +2178,8 @@ public static partial class HtmlReportRenderer
                 html.AppendLine("                  </dd></div>");
             }
 
+            AppendLocationItem(html, "Reference context", referenceContext);
+
             html.AppendLine("                </dl>");
             html.Append("                <a class=\"inventory-link\" href=\"#")
                 .Append(Encode(VisualAnchor(visualContext.Report, visualContext.Page, visualContext.Visual)))
@@ -2193,6 +2196,7 @@ public static partial class HtmlReportRenderer
         AppendLocationItem(html, "Semantic model", finding.SemanticModel);
         AppendLocationItem(html, "Table", finding.Table);
         AppendLocationItem(html, "Object", finding.ObjectName);
+        AppendLocationItem(html, "Reference context", referenceContext);
         if (string.IsNullOrWhiteSpace(finding.PageDisplayName) &&
             string.IsNullOrWhiteSpace(finding.Page) &&
             string.IsNullOrWhiteSpace(finding.SemanticModel) &&
@@ -2203,6 +2207,23 @@ public static partial class HtmlReportRenderer
         }
 
         html.AppendLine("                </dl>");
+    }
+
+    private static string? FindingReferenceContextLabel(AssuranceFinding finding, bool visualScope)
+    {
+        if (finding.ReferenceContexts.Count == 0)
+        {
+            return null;
+        }
+
+        var pageScope = !string.IsNullOrWhiteSpace(finding.Page);
+        return string.Join(" · ", finding.ReferenceContexts
+            .Select(context => !string.IsNullOrWhiteSpace(context.Role)
+                ? FieldRoleLabel(context.Role, visualScope, pageScope)
+                : context.UsageContext == UsageContexts.Drillthrough
+                    ? "Drillthrough field"
+                    : HumanizeIdentifier(context.UsageContext))
+            .Distinct(StringComparer.OrdinalIgnoreCase));
     }
 
     private static void AppendLocationItem(StringBuilder html, string label, string? value, bool emphasize = false)

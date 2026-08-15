@@ -1,3 +1,5 @@
+using System.Text.Json.Serialization;
+
 namespace PbiAssure.Core.Inventory;
 
 public sealed record AssuranceFinding(
@@ -20,4 +22,11 @@ public sealed record AssuranceFinding(
     string? ReferenceUrl)
 {
     public string? VisualGroup { get; init; }
+
+    [JsonIgnore]
+    public IReadOnlyList<FindingReferenceContext> ReferenceContexts { get; init; } = [];
 }
+
+public sealed record FindingReferenceContext(
+    string UsageContext,
+    string? Role);

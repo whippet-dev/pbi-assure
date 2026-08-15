@@ -1,0 +1,81 @@
+table ReferenceTest
+	lineageTag: b2b6e46c-06a4-4e19-a8c3-42b4dfe9a73d
+
+	column Category
+		dataType: string
+		lineageTag: 967eb47d-9a9f-49dd-8c8a-5bd9bf33a9ed
+		summarizeBy: none
+		sourceColumn: Category
+
+		annotation SummarizationSetBy = Automatic
+
+	column Value
+		dataType: int64
+		formatString: 0
+		lineageTag: e63457f3-da25-43eb-bd3f-69c61422aaa5
+		summarizeBy: sum
+		sourceColumn: Value
+
+		annotation SummarizationSetBy = Automatic
+
+	column VisualFilter_BROKEN
+		dataType: string
+		lineageTag: 50eece46-28ca-48a5-88ca-dd4734505104
+		summarizeBy: none
+		sourceColumn: VisualFilter
+
+		annotation SummarizationSetBy = Automatic
+
+	column TooltipField_BROKEN
+		dataType: string
+		lineageTag: 0a76b9ca-372c-41dc-88a5-1832fa1942f1
+		summarizeBy: none
+		sourceColumn: TooltipField
+
+		annotation SummarizationSetBy = Automatic
+
+	column PageFilter_BROKEN
+		dataType: string
+		lineageTag: c2cb515d-2e9f-4bb0-8b87-934bb3e1b942
+		summarizeBy: none
+		sourceColumn: PageFilter
+
+		annotation SummarizationSetBy = Automatic
+
+	column ReportFilter_BROKEN
+		dataType: string
+		lineageTag: 5fb73c3c-7079-4ff4-9fa1-f839a4cc4838
+		summarizeBy: none
+		sourceColumn: ReportFilter
+
+		annotation SummarizationSetBy = Automatic
+
+	column DrillthroughField_BROKEN
+		dataType: string
+		lineageTag: 22900c6b-93d0-432b-aa20-ef1caf919d64
+		summarizeBy: none
+		sourceColumn: DrillthroughField
+
+		annotation SummarizationSetBy = Automatic
+
+	column SortField
+		dataType: int64
+		formatString: 0
+		lineageTag: 48485967-38a7-4ec3-909e-b6c9e034879e
+		summarizeBy: sum
+		sourceColumn: SortField
+
+		annotation SummarizationSetBy = Automatic
+
+	partition ReferenceTest = m
+		mode: import
+		source =
+				let
+				  Source = Table.FromRows(Json.Document(Binary.Decompress(Binary.FromText("i45WcswpyEhU0lEyNAASnnnJOaUpqUBWSH5+TklmgYIjkO2XX1SSAaR9MstAUu5F+aUFCoZAlrFSrE60klNRYlk+kGeE3QQnfCYYgk1wzkgsyskEyRiDzHCtQDfDGcgOzi/FNMMIZK9SbCwA", BinaryEncoding.Base64), Compression.Deflate)), let _t = ((type nullable text) meta [Serialized.Text = true]) in type table [Category = _t, Value = _t, VisualFilter = _t, TooltipField = _t, PageFilter = _t, ReportFilter = _t, DrillthroughField = _t, SortField = _t]),
+				  #"Changed column type" = Table.TransformColumnTypes(Source, {{"Category", type text}, {"Value", Int64.Type}, {"VisualFilter", type text}, {"TooltipField", type text}, {"PageFilter", type text}, {"ReportFilter", type text}, {"DrillthroughField", type text}, {"SortField", Int64.Type}}, "en-US")
+				in
+				  #"Changed column type"
+
+	annotation PBI_NavigationStepName = Navigation
+
+	annotation PBI_ResultType = Table

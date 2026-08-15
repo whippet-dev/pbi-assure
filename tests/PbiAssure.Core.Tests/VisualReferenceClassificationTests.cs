@@ -380,6 +380,7 @@ public sealed class VisualReferenceClassificationTests
 
         Assert.DoesNotContain("ReferenceOrigin", json, StringComparison.Ordinal);
         Assert.DoesNotContain("ReferenceRelevance", json, StringComparison.Ordinal);
+        Assert.DoesNotContain("ReferenceContexts", json, StringComparison.Ordinal);
         Assert.DoesNotContain("FormattingSelectors", json, StringComparison.Ordinal);
         Assert.DoesNotContain("MatchedProjectionQueryRef", json, StringComparison.Ordinal);
     }

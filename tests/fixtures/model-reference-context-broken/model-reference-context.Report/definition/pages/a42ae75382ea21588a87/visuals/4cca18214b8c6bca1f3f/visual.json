@@ -1,0 +1,84 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/visualContainer/2.11.0/schema.json",
+  "name": "4cca18214b8c6bca1f3f",
+  "position": {
+    "x": 10,
+    "y": 420,
+    "z": 1,
+    "height": 410,
+    "width": 655,
+    "tabOrder": 1
+  },
+  "visual": {
+    "visualType": "tableEx",
+    "query": {
+      "queryState": {
+        "Values": {
+          "projections": [
+            {
+              "field": {
+                "Column": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "ReferenceTest"
+                    }
+                  },
+                  "Property": "DrillthroughField"
+                }
+              },
+              "queryRef": "ReferenceTest.DrillthroughField",
+              "nativeQueryRef": "DrillthroughField"
+            },
+            {
+              "field": {
+                "Column": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "ReferenceTest"
+                    }
+                  },
+                  "Property": "Category"
+                }
+              },
+              "queryRef": "ReferenceTest.Category",
+              "nativeQueryRef": "Category"
+            }
+          ]
+        }
+      }
+    },
+    "drillFilterOtherVisuals": true
+  },
+  "filterConfig": {
+    "filters": [
+      {
+        "name": "d34ff428d09e4739d37c",
+        "field": {
+          "Column": {
+            "Expression": {
+              "SourceRef": {
+                "Entity": "ReferenceTest"
+              }
+            },
+            "Property": "DrillthroughField"
+          }
+        },
+        "type": "Categorical"
+      },
+      {
+        "name": "8ebe34bab537e1387732",
+        "field": {
+          "Column": {
+            "Expression": {
+              "SourceRef": {
+                "Entity": "ReferenceTest"
+              }
+            },
+            "Property": "Category"
+          }
+        },
+        "type": "Categorical"
+      }
+    ]
+  }
+}

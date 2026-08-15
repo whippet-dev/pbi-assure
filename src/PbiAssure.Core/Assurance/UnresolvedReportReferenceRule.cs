@@ -5,7 +5,7 @@ namespace PbiAssure.Core.Assurance;
 internal sealed class UnresolvedReportReferenceRule : IAssuranceRule
 {
     private const string RuleId = "PBI-MODEL-001";
-    private const string RuleVersion = "1.0.0";
+    private const string RuleVersion = "1.1.0";
 
     public IEnumerable<AssuranceFinding> Evaluate(ProjectInventory inventory)
     {
@@ -46,6 +46,28 @@ internal sealed class UnresolvedReportReferenceRule : IAssuranceRule
                     : reference.Page is not null
                         ? "page"
                         : "report";
+                var actionableReferences = group
+                    .Where(item => item.ReferenceRelevance != VisualReferenceRelevance.HighConfidencePersisted)
+                    .ToArray();
+                var hasNonFilterContext = actionableReferences.Any(item => item.UsageContext != UsageContexts.Filter);
+                var hasDrillthroughContext = reference.Visual is null &&
+                                             actionableReferences.Any(item => item.UsageContext == UsageContexts.Drillthrough);
+                // Desktop PBIR also stores field-only filterConfig entries for ordinary projections.
+                // Keep a Filter context alongside another visual context only when an actual filter condition is present.
+                var hasConfiguredFilterCondition = actionableReferences.Any(item =>
+                    item.UsageContext == UsageContexts.Filter &&
+                    item.EvidencePath.Contains(".filter.", StringComparison.OrdinalIgnoreCase));
+                var referenceContexts = actionableReferences
+                    .Where(item => item.UsageContext != UsageContexts.Filter ||
+                        (!hasDrillthroughContext && (!hasNonFilterContext || hasConfiguredFilterCondition)))
+                    .GroupBy(
+                        item => string.Join('\u001f', item.UsageContext, item.Role ?? string.Empty),
+                        StringComparer.OrdinalIgnoreCase)
+                    .Select(contextGroup => new FindingReferenceContext(
+                        contextGroup.First().UsageContext,
+                        contextGroup.First().Role))
+                    .ToArray();
+
                 return new AssuranceFinding(
                     RuleId,
                     RuleVersion,
@@ -63,7 +85,10 @@ internal sealed class UnresolvedReportReferenceRule : IAssuranceRule
                     reference.ArtifactPath,
                     group.Select(item => item.EvidencePath).Distinct(StringComparer.Ordinal).ToArray(),
                     AssessmentTypes.Finding,
-                    ReferenceUrl: null);
+                    ReferenceUrl: null)
+                {
+                    ReferenceContexts = referenceContexts,
+                };
             });
     }
 }
