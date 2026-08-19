@@ -38,16 +38,58 @@ public sealed class AnalysisLimitationTests
         }
     }
 
+    /// <summary>
+    /// Proves match unambiguity rather than pattern-string distinctness. A directory rule and an exact
+    /// rule can overlap without their pattern strings being equal — for example "definition/tables" and
+    /// "definition/tables/Sales.tmdl" — in which case classification would silently depend on
+    /// declaration order. This exercises the real matcher against each rule's own representative path.
+    /// </summary>
     [Fact]
-    public void NoTwoRegistryRulesShareAPattern()
+    public void NoPathMatchesMoreThanOneRegistryRule()
     {
-        var duplicates = SemanticDefinitionFileRegistry.Rules
-            .GroupBy(rule => $"{rule.MatchKind}|{rule.Pattern}", StringComparer.OrdinalIgnoreCase)
-            .Where(group => group.Count() > 1)
-            .Select(group => group.Key)
-            .ToArray();
+        foreach (var rule in SemanticDefinitionFileRegistry.Rules)
+        {
+            var path = RepresentativePath(rule);
+            var match = Assert.Single(SemanticDefinitionFileRegistry.MatchingRules(path));
 
-        Assert.Empty(duplicates);
+            Assert.Equal(rule.LimitationId, match.LimitationId);
+        }
+    }
+
+    /// <summary>
+    /// The representative paths above are generated from the rules themselves, so they cannot detect an
+    /// overlap that only a differently shaped path would expose. This adds paths chosen to sit on the
+    /// boundaries between rules.
+    /// </summary>
+    [Fact]
+    public void NoBoundaryPathMatchesMoreThanOneRegistryRule()
+    {
+        string[] boundaryPaths =
+        [
+            "definition/tables/Sales.tmdl",
+            "definition/tables/nested/Sales.tmdl",
+            "definition/roles/Role1.tmdl",
+            "definition/roles.tmdl",
+            "definition/perspectives/P1.tmdl",
+            "definition/cultures/en-US.tmdl",
+            "definition/model.tmdl",
+            "definition/database.tmdl",
+            "definition/relationships.tmdl",
+            "definition/expressions.tmdl",
+            "definition/dataSources.tmdl",
+            "definition/functions.tmdl",
+            "definition.pbism",
+            "model.bim",
+            "TMDLScripts/Script1.tmdl",
+            "definition/unknown.tmdl",
+        ];
+
+        foreach (var path in boundaryPaths)
+        {
+            Assert.True(
+                SemanticDefinitionFileRegistry.MatchingRules(path).Count <= 1,
+                $"More than one registry rule matched '{path}'.");
+        }
     }
 
     [Fact]
@@ -112,16 +154,20 @@ public sealed class AnalysisLimitationTests
     [Fact]
     public void EveryDefinitionArtifactIsClassifiedByTheConstructRegistry()
     {
+        // The documented TMDL folder shape, plus an editor script and an unrecognised file.
         var source = BuildModelSource(
             "Sales",
             ("definition/tables/Sales.tmdl", "table Sales"),
             ("definition/relationships.tmdl", string.Empty),
             ("definition/expressions.tmdl", string.Empty),
-            ("definition/roles.tmdl", "role Reader"),
-            ("definition/model.tmdl", "model Model"),
-            ("definition/perspectives.tmdl", "perspective P"),
+            ("definition/dataSources.tmdl", string.Empty),
+            ("definition/functions.tmdl", string.Empty),
+            ("definition/roles/Role1.tmdl", "role Role1"),
+            ("definition/perspectives/Perspective1.tmdl", "perspective Perspective1"),
             ("definition/cultures/en-US.tmdl", "cultureInfo en-US"),
+            ("definition/model.tmdl", "model Model"),
             ("definition/database.tmdl", "database Sales"),
+            ("TMDLScripts/Untitled 1.tmdl", "table Scratch"),
             ("definition/who-knows.tmdl", "surprise"));
 
         var inventory = ProjectScanner.Scan(source);
@@ -152,17 +198,21 @@ public sealed class AnalysisLimitationTests
 
     // ---- Integration through ProjectScanner -------------------------------------------------
 
+    /// <summary>
+    /// Uses the documented role-per-file shape: Microsoft documents roles as one file per role inside a
+    /// roles/ sub-folder, not a single definition/roles.tmdl.
+    /// </summary>
     [Fact]
     public void RoleMetadataIsReportedAsALimitationAgainstItsOwnFile()
     {
         var inventory = ProjectScanner.Scan(BuildModelSource(
             "Sales",
             ("definition/tables/Sales.tmdl", "table Sales"),
-            ("definition/roles.tmdl", "role Reader")));
+            ("definition/roles/RegionalManager.tmdl", "role RegionalManager")));
 
         var limitation = Assert.Single(inventory.AnalysisLimitations);
         Assert.Equal("PBI-LIMIT-MODEL-ROLE", limitation.LimitationId);
-        Assert.Equal("Sales.SemanticModel/definition/roles.tmdl", limitation.ArtifactPath);
+        Assert.Equal("Sales.SemanticModel/definition/roles/RegionalManager.tmdl", limitation.ArtifactPath);
         Assert.Equal("Sales", limitation.SemanticModel);
         Assert.Equal(AnalysisLimitationScopes.SemanticModel, limitation.Scope);
         Assert.Equal(AnalysisLimitationCauses.ConstructNotSupported, limitation.Cause);
@@ -173,14 +223,89 @@ public sealed class AnalysisLimitationTests
     }
 
     [Fact]
+    public void EachRoleFileIsReportedSeparately()
+    {
+        var inventory = ProjectScanner.Scan(BuildModelSource(
+            "Sales",
+            ("definition/tables/Sales.tmdl", "table Sales"),
+            ("definition/roles/Role1.tmdl", "role Role1"),
+            ("definition/roles/Role2.tmdl", "role Role2")));
+
+        Assert.Equal(2, inventory.AnalysisLimitations.Count);
+        Assert.All(
+            inventory.AnalysisLimitations,
+            limitation => Assert.Equal("PBI-LIMIT-MODEL-ROLE", limitation.LimitationId));
+    }
+
+    /// <summary>
+    /// A semantic model stored in TMSL rather than TMDL is not read at all, so the limitation must say
+    /// so rather than leaving the model silently empty.
+    /// </summary>
+    [Fact]
+    public void ATmslModelDefinitionIsReportedAsALimitation()
+    {
+        var inventory = ProjectScanner.Scan(BuildModelSource("Sales", ("model.bim", "{}")));
+
+        var limitation = Assert.Single(inventory.AnalysisLimitations);
+        Assert.Equal("PBI-LIMIT-MODEL-TMSL", limitation.LimitationId);
+        Assert.Equal(ConstructDependencyImpacts.MayCreateDependencies, limitation.DependencyImpact);
+    }
+
+    /// <summary>
+    /// TMDL view editor scripts live inside the semantic-model folder and carry the .tmdl extension, so
+    /// they are enumerated as definition artifacts, but they are not model definition and must not be
+    /// reported as unanalysed semantic constructs.
+    /// </summary>
+    [Fact]
+    public void EditorScriptsDoNotProduceLimitations()
+    {
+        var inventory = ProjectScanner.Scan(BuildModelSource(
+            "Sales",
+            ("definition/tables/Sales.tmdl", "table Sales"),
+            ("TMDLScripts/Untitled 1.tmdl", "table Scratch")));
+
+        Assert.Empty(inventory.AnalysisLimitations);
+    }
+
+    [Fact]
     public void PackagingArtifactsDoNotProduceLimitations()
+    {
+        // definition.pbism is contributed by the shared model-source helper.
+        var inventory = ProjectScanner.Scan(BuildModelSource(
+            "Sales",
+            ("definition/tables/Sales.tmdl", "table Sales")));
+
+        Assert.Empty(inventory.AnalysisLimitations);
+    }
+
+    [Fact]
+    public void TheDatabaseDefinitionIsRecordedRatherThanTreatedAsPackaging()
     {
         var inventory = ProjectScanner.Scan(BuildModelSource(
             "Sales",
             ("definition/tables/Sales.tmdl", "table Sales"),
             ("definition/database.tmdl", "database Sales")));
 
-        Assert.Empty(inventory.AnalysisLimitations);
+        var limitation = Assert.Single(inventory.AnalysisLimitations);
+        Assert.Equal("PBI-LIMIT-MODEL-DATABASE", limitation.LimitationId);
+        Assert.Equal(ConstructDependencyImpacts.DependencyEffectUnknown, limitation.DependencyImpact);
+    }
+
+    [Fact]
+    public void DocumentedRootDefinitionFilesAreRecognizedRatherThanUnknown()
+    {
+        var inventory = ProjectScanner.Scan(BuildModelSource(
+            "Sales",
+            ("definition/tables/Sales.tmdl", "table Sales"),
+            ("definition/dataSources.tmdl", string.Empty),
+            ("definition/functions.tmdl", string.Empty)));
+
+        Assert.Equal(2, inventory.AnalysisLimitations.Count);
+        Assert.DoesNotContain(
+            inventory.AnalysisLimitations,
+            limitation => limitation.SupportState == ConstructSupportStates.Unrecognized);
+        Assert.Contains(inventory.AnalysisLimitations, limitation => limitation.ConstructType == "dataSource");
+        Assert.Contains(inventory.AnalysisLimitations, limitation => limitation.ConstructType == "function");
     }
 
     [Fact]

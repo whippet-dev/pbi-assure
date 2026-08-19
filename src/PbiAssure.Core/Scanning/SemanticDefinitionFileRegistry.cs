@@ -30,24 +30,30 @@ internal sealed record SemanticDefinitionFileRule(
 /// that adding support for a construct is a change to one rule rather than a change plus a matching
 /// deletion somewhere else.
 ///
-/// Evidence status of the classifications below:
+/// Evidence status of the classifications below. Three levels are distinguished deliberately, because
+/// primary documentation and observed Power BI Desktop output are not the same kind of evidence:
 ///
-/// [verified] Which files the parser actually opens. <see cref="TmdlSemanticModelParser.Parse"/> reads
-///            only definition/tables/*.tmdl, definition/relationships.tmdl and
-///            definition/expressions.tmdl. roles.tmdl, model.tmdl, database.tmdl, cultures/ and
-///            perspectives.tmdl have no references anywhere in PbiAssure.Core.
+/// [verified in this repository]
+///     Which files the parser actually opens. <see cref="TmdlSemanticModelParser.Parse"/> reads only
+///     definition/tables/*.tmdl, definition/relationships.tmdl and definition/expressions.tmdl.
+///     No other definition path is referenced anywhere in PbiAssure.Core.
 ///
-/// [verified] That a table permission in roles.tmdl can reference a column which then receives no
-///            dependency evidence. Demonstrated by scanning a project whose only reference to a column
-///            was an RLS filter.
+/// [verified by Microsoft primary documentation]
+///     The TMDL folder shape: cultures/, perspectives/, roles/ and tables/ are sub-folders holding one
+///     file per object, and database, model, relationships, expressions, dataSources and functions are
+///     root files. Also that definition.pbism holds semantic-model settings and format version, that
+///     model.bim is the TMSL alternative to the definition/ folder, and that TMDLScripts/ holds TMDL
+///     view editor scripts rather than model definition.
+///     Sources: learn.microsoft.com/analysis-services/tmdl/tmdl-overview and
+///     learn.microsoft.com/power-bi/developer/projects/projects-dataset.
 ///
-/// [inferred] The classification of model.tmdl, database.tmdl, cultures/ and perspectives.tmdl, and the
-///            dependency impact assigned to each. These rest on reading about TMDL rather than on
-///            Power BI Desktop-authored fixtures, and are expected to change. In particular it is not
-///            established whether model.tmdl or database.tmdl carry dependency-bearing content, nor
-///            whether cultures/ and perspectives.tmdl are purely presentational.
+/// [not verified by Desktop serialization]
+///     No Power BI Desktop-authored fixture containing roles, perspectives, cultures, dataSources or
+///     functions exists in this repository. Every path rule below is therefore matched against the
+///     documented shape, not against observed Desktop output. The dependency impact of cultures/,
+///     dataSources.tmdl, model.tmdl and database.tmdl in particular remains undetermined.
 ///
-/// Changing any [inferred] rule below is a one-line change here, which is the point of the registry.
+/// Changing any rule below is a one-line change here, which is the point of the registry.
 /// </summary>
 internal static class SemanticDefinitionFileRegistry
 {
@@ -91,10 +97,12 @@ internal static class SemanticDefinitionFileRegistry
             Concerns: [],
             Reason: "Named expressions are parsed into the semantic-model inventory."),
         new(
+            // Documented as one file per role under roles/. TablePermission.FilterExpression is DAX,
+            // so a role file can reference model objects.
             LimitationId: "PBI-LIMIT-MODEL-ROLE",
             ConstructType: "role",
-            Pattern: "definition/roles.tmdl",
-            MatchKind: SemanticDefinitionFileMatch.ExactPath,
+            Pattern: "definition/roles",
+            MatchKind: SemanticDefinitionFileMatch.DirectoryContents,
             Classification: ConstructClassifications.SemanticNotYetAnalyzed,
             SupportState: ConstructSupportStates.NotYetAnalyzed,
             DependencyImpact: ConstructDependencyImpacts.MayCreateDependencies,
@@ -102,31 +110,21 @@ internal static class SemanticDefinitionFileRegistry
             Reason: "Row-level security role definitions are not analysed by this version. Security " +
                     "filters can reference model objects that no report or measure uses."),
         new(
-            // [inferred] classification and impact. Needs a Desktop-authored fixture.
-            LimitationId: "PBI-LIMIT-MODEL-SETTINGS",
-            ConstructType: "modelSettings",
-            Pattern: "definition/model.tmdl",
-            MatchKind: SemanticDefinitionFileMatch.ExactPath,
-            Classification: ConstructClassifications.SemanticNotYetAnalyzed,
-            SupportState: ConstructSupportStates.NotYetAnalyzed,
-            DependencyImpact: ConstructDependencyImpacts.DependencyEffectUnknown,
-            Concerns: [AnalysisConcerns.Dependency],
-            Reason: "Model-level settings are not analysed by this version. Whether they affect object " +
-                    "dependencies has not been determined."),
-        new(
-            // [inferred] classification and impact. Needs a Desktop-authored fixture.
+            // Documented as one file per perspective under perspectives/. Perspectives hold table,
+            // column and measure references, so they can reference model objects. Whether such a
+            // reference should count as usage is a separate question and is not decided here.
             LimitationId: "PBI-LIMIT-MODEL-PERSPECTIVE",
             ConstructType: "perspective",
-            Pattern: "definition/perspectives.tmdl",
-            MatchKind: SemanticDefinitionFileMatch.ExactPath,
+            Pattern: "definition/perspectives",
+            MatchKind: SemanticDefinitionFileMatch.DirectoryContents,
             Classification: ConstructClassifications.SemanticNotYetAnalyzed,
             SupportState: ConstructSupportStates.NotYetAnalyzed,
-            DependencyImpact: ConstructDependencyImpacts.DependencyEffectUnknown,
-            Concerns: [AnalysisConcerns.Presentation],
-            Reason: "Perspectives are not analysed by this version. Whether they affect object " +
-                    "dependencies has not been determined."),
+            DependencyImpact: ConstructDependencyImpacts.MayCreateDependencies,
+            Concerns: [AnalysisConcerns.Dependency, AnalysisConcerns.Presentation],
+            Reason: "Perspectives are not analysed by this version. They can reference tables, columns " +
+                    "and measures."),
         new(
-            // [inferred] classification and impact. Needs a Desktop-authored fixture.
+            // Documented as one file per culture under cultures/. Dependency effect not established.
             LimitationId: "PBI-LIMIT-MODEL-CULTURE",
             ConstructType: "culture",
             Pattern: "definition/cultures",
@@ -138,26 +136,94 @@ internal static class SemanticDefinitionFileRegistry
             Reason: "Cultures and translations are not analysed by this version. Whether they affect " +
                     "object dependencies has not been determined."),
         new(
-            // [inferred] classification. Needs a Desktop-authored fixture.
+            // Documented root file holding DAX user-defined functions, whose expressions are DAX.
+            LimitationId: "PBI-LIMIT-MODEL-FUNCTION",
+            ConstructType: "function",
+            Pattern: "definition/functions.tmdl",
+            MatchKind: SemanticDefinitionFileMatch.ExactPath,
+            Classification: ConstructClassifications.SemanticNotYetAnalyzed,
+            SupportState: ConstructSupportStates.NotYetAnalyzed,
+            DependencyImpact: ConstructDependencyImpacts.MayCreateDependencies,
+            Concerns: [AnalysisConcerns.Dependency],
+            Reason: "DAX user-defined functions are not analysed by this version. Their expressions " +
+                    "can reference model objects."),
+        new(
+            // Documented root file holding all data sources. Dependency effect not established.
+            LimitationId: "PBI-LIMIT-MODEL-DATASOURCE",
+            ConstructType: "dataSource",
+            Pattern: "definition/dataSources.tmdl",
+            MatchKind: SemanticDefinitionFileMatch.ExactPath,
+            Classification: ConstructClassifications.SemanticNotYetAnalyzed,
+            SupportState: ConstructSupportStates.NotYetAnalyzed,
+            DependencyImpact: ConstructDependencyImpacts.DependencyEffectUnknown,
+            Concerns: [AnalysisConcerns.Dependency],
+            Reason: "Data-source definitions are not analysed by this version. Whether they affect " +
+                    "object dependencies has not been determined."),
+        new(
+            // Documented root file holding model-level definition, including ref declarations that
+            // order tables, roles, cultures and perspectives. Dependency effect not established.
+            LimitationId: "PBI-LIMIT-MODEL-SETTINGS",
+            ConstructType: "modelDefinition",
+            Pattern: "definition/model.tmdl",
+            MatchKind: SemanticDefinitionFileMatch.ExactPath,
+            Classification: ConstructClassifications.SemanticNotYetAnalyzed,
+            SupportState: ConstructSupportStates.NotYetAnalyzed,
+            DependencyImpact: ConstructDependencyImpacts.DependencyEffectUnknown,
+            Concerns: [AnalysisConcerns.Dependency],
+            Reason: "The model-level definition is not analysed by this version. Whether it affects " +
+                    "object dependencies has not been determined."),
+        new(
+            // Documented as part of the TMDL database definition, not as PBIP packaging. Classified as
+            // semantic content rather than packaging so that not reading it is recorded rather than
+            // silent. No claim is made that it creates dependencies.
             LimitationId: "PBI-LIMIT-MODEL-DATABASE",
             ConstructType: "database",
             Pattern: "definition/database.tmdl",
             MatchKind: SemanticDefinitionFileMatch.ExactPath,
+            Classification: ConstructClassifications.SemanticNotYetAnalyzed,
+            SupportState: ConstructSupportStates.NotYetAnalyzed,
+            DependencyImpact: ConstructDependencyImpacts.DependencyEffectUnknown,
+            Concerns: [AnalysisConcerns.Dependency],
+            Reason: "The database-level definition is not analysed by this version. Whether it affects " +
+                    "object dependencies has not been determined."),
+        new(
+            // The TMSL alternative to the definition/ folder: the whole model in one JSON document.
+            // Matched at its documented exact path only, so that an unrelated .bim file elsewhere is
+            // not assumed to be a semantic model.
+            LimitationId: "PBI-LIMIT-MODEL-TMSL",
+            ConstructType: "tmslModelDefinition",
+            Pattern: "model.bim",
+            MatchKind: SemanticDefinitionFileMatch.ExactPath,
+            Classification: ConstructClassifications.SemanticNotYetAnalyzed,
+            SupportState: ConstructSupportStates.NotYetAnalyzed,
+            DependencyImpact: ConstructDependencyImpacts.MayCreateDependencies,
+            Concerns: [AnalysisConcerns.Dependency],
+            Reason: "This semantic model is stored in TMSL format, which is not analysed by this " +
+                    "version. The entire model definition was not read."),
+        new(
+            // TMDL view editor scripts, not part of the model definition. Correctly not parsed, so not
+            // a limitation, but classified explicitly so it cannot reach the unrecognised fallback.
+            LimitationId: "PBI-LIMIT-MODEL-EDITOR-SCRIPT",
+            ConstructType: "tmdlEditorScript",
+            Pattern: "TMDLScripts",
+            MatchKind: SemanticDefinitionFileMatch.DirectoryContents,
             Classification: ConstructClassifications.Packaging,
             SupportState: ConstructSupportStates.NotYetAnalyzed,
             DependencyImpact: ConstructDependencyImpacts.NoKnownDependencyEffect,
             Concerns: [],
-            Reason: "Database-level packaging metadata. Not parsed, and not treated as a limitation."),
+            Reason: "TMDL view editor script. Not part of the semantic-model definition, and not " +
+                    "treated as a limitation."),
         new(
             LimitationId: "PBI-LIMIT-MODEL-MANIFEST",
-            ConstructType: "semanticModelManifest",
+            ConstructType: "semanticModelSettings",
             Pattern: "definition.pbism",
             MatchKind: SemanticDefinitionFileMatch.ExactPath,
             Classification: ConstructClassifications.Packaging,
             SupportState: ConstructSupportStates.NotYetAnalyzed,
             DependencyImpact: ConstructDependencyImpacts.NoKnownDependencyEffect,
             Concerns: [],
-            Reason: "Semantic-model manifest. Not parsed, and not treated as a limitation."),
+            Reason: "Semantic-model settings and definition-format version. Not parsed, and not " +
+                    "treated as a limitation."),
     ];
 
     /// <summary>
@@ -181,13 +247,23 @@ internal static class SemanticDefinitionFileRegistry
     /// </summary>
     public static SemanticDefinitionFileRule Classify(string modelRelativePath)
     {
+        var matches = MatchingRules(modelRelativePath);
+        return matches.Count > 0 ? matches[0] : Fallback;
+    }
+
+    /// <summary>
+    /// Every rule that matches a path. A well-formed registry returns at most one; more than one means
+    /// two rules overlap and classification would depend on declaration order.
+    /// </summary>
+    public static IReadOnlyList<SemanticDefinitionFileRule> MatchingRules(string modelRelativePath)
+    {
         if (string.IsNullOrWhiteSpace(modelRelativePath))
         {
-            return Fallback;
+            return [];
         }
 
         var normalized = ProjectFilePaths.Normalize(modelRelativePath);
-        return Rules.FirstOrDefault(rule => Matches(rule, normalized)) ?? Fallback;
+        return Rules.Where(rule => Matches(rule, normalized)).ToArray();
     }
 
     public static bool IsDefinitionArtifact(string relativePath) =>
