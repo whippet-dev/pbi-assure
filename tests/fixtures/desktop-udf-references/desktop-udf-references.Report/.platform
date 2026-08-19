@@ -1,0 +1,11 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/gitIntegration/platformProperties/2.0.0/schema.json",
+  "metadata": {
+    "type": "Report",
+    "displayName": "desktop-udf-references"
+  },
+  "config": {
+    "version": "2.0",
+    "logicalId": "2c3b15d5-bfa6-406c-bc71-327afa62ee1a"
+  }
+}

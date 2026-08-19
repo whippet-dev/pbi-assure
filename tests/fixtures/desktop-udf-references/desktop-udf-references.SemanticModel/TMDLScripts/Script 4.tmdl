@@ -1,0 +1,2 @@
+createOrReplace
+    function ShadowAmount = (Amount : NUMERIC) => Amount * 2

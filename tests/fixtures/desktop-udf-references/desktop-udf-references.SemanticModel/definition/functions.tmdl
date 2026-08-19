@@ -1,0 +1,15 @@
+function TotalOf = () => SUM(Sales[Amount])
+	lineageTag: 6a4797bc-df7d-436a-b429-c185ad039f1c
+
+function Doubled = () => [Total Amount] * 2
+	lineageTag: 0c9c168e-815c-4245-b154-3a9155efb9fe
+
+function RowCount = () => COUNTROWS(Sales)
+	lineageTag: 1e26aedc-b2ed-4a0c-b548-0e598735f34f
+
+function ShadowAmount = (Amount : NUMERIC) => Amount * 2
+	lineageTag: 0aafd538-75de-4400-9cea-684b91a82d3a
+
+function Quadrupled = () => Doubled() * 2
+	lineageTag: 0c7ea8c5-524e-493f-a163-00e5f8772010
+
