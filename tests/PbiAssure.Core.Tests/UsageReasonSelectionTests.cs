@@ -215,6 +215,14 @@ public sealed class UsageReasonSelectionTests
         // Both Alpha and Beta are live; the stable rule takes the first by qualified name.
         Assert.Equal("Why: Referenced by Sales[Alpha]", reason);
         Assert.DoesNotContain("only", reason, StringComparison.OrdinalIgnoreCase);
+
+        // With two candidates genuinely competing, perturbing the edge order must not change the
+        // answer. Reversing is the case the original defect would have failed.
+        var reversed = inventory with
+        {
+            SemanticDependencies = inventory.SemanticDependencies.Reverse().ToArray(),
+        };
+        Assert.Equal(reason, ReasonFor(HtmlReportRenderer.Render(reversed), "Amount"));
     }
 
     // ---- 5. Model isolation ---------------------------------------------------------------------
