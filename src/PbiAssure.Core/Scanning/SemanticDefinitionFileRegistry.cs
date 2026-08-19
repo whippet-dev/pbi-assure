@@ -47,11 +47,21 @@ internal sealed record SemanticDefinitionFileRule(
 ///     Sources: learn.microsoft.com/analysis-services/tmdl/tmdl-overview and
 ///     learn.microsoft.com/power-bi/developer/projects/projects-dataset.
 ///
+/// [verified by Power BI Desktop-authored fixture]
+///     tests/fixtures/desktop-semantic-constructs is a Desktop-authored project containing roles, a
+///     perspective, a culture, functions, model.tmdl, database.tmdl, relationships and TMDL view editor
+///     scripts. Every path rule below that it exercises is confirmed against real Desktop output by
+///     DesktopSemanticConstructsFixtureTests. Also confirmed there: model.tmdl names objects only
+///     through collection-ordering ref declarations, database.tmdl contains only a compatibility level,
+///     and the default culture file is empty.
+///
 /// [not verified by Desktop serialization]
-///     No Power BI Desktop-authored fixture containing roles, perspectives, cultures, dataSources or
-///     functions exists in this repository. Every path rule below is therefore matched against the
-///     documented shape, not against observed Desktop output. The dependency impact of cultures/,
-///     dataSources.tmdl, model.tmdl and database.tmdl in particular remains undetermined.
+///     dataSources.tmdl has never been observed and its dependency impact remains undetermined.
+///     model.bim has not been observed either. No culture containing actual translations has been
+///     observed, so the culture rule's impact rests on a design decision rather than on evidence:
+///     a translation describes an object rather than consuming it. The open sub-case is Q&A linguistic
+///     metadata, which also lives in culture files and is closer to a consumer than a caption is;
+///     settling it needs a Desktop-authored fixture containing translations and synonyms.
 ///
 /// Changing any rule below is a one-line change here, which is the point of the registry.
 /// </summary>
@@ -125,16 +135,22 @@ internal static class SemanticDefinitionFileRegistry
                     "and measures."),
         new(
             // Documented as one file per culture under cultures/. Dependency effect not established.
+            // Desktop emits an empty "cultureInfo en-US" for every model, so this rule fires on every
+            // real project. A culture may name model objects once translations exist, but naming an
+            // object and consuming it are different propositions: a translation supplies a caption for
+            // an object and is deleted with it, so it cannot keep an otherwise-unused object alive.
+            // Treated as presentation metadata rather than a usage dependency. Still recorded as
+            // unanalysed. See the note on Q&A linguistic metadata in the class comment.
             LimitationId: "PBI-LIMIT-MODEL-CULTURE",
             ConstructType: "culture",
             Pattern: "definition/cultures",
             MatchKind: SemanticDefinitionFileMatch.DirectoryContents,
             Classification: ConstructClassifications.SemanticNotYetAnalyzed,
             SupportState: ConstructSupportStates.NotYetAnalyzed,
-            DependencyImpact: ConstructDependencyImpacts.DependencyEffectUnknown,
+            DependencyImpact: ConstructDependencyImpacts.NoKnownDependencyEffect,
             Concerns: [AnalysisConcerns.Presentation],
-            Reason: "Cultures and translations are not analysed by this version. Whether they affect " +
-                    "object dependencies has not been determined."),
+            Reason: "Cultures and translations are not analysed by this version. Translations describe " +
+                    "model objects rather than consuming them, so they are not treated as usage."),
         new(
             // Documented root file holding DAX user-defined functions, whose expressions are DAX.
             LimitationId: "PBI-LIMIT-MODEL-FUNCTION",
@@ -162,30 +178,37 @@ internal static class SemanticDefinitionFileRegistry
         new(
             // Documented root file holding model-level definition, including ref declarations that
             // order tables, roles, cultures and perspectives. Dependency effect not established.
+            // Emitted for every model. It names objects through ref declarations — ref table, ref role,
+            // ref perspective, ref cultureInfo — but those list every member of a collection regardless
+            // of use, and exist to preserve ordering on round-trip. Treating them as usage would mark
+            // every object in every model as used, so reading this file could not correct a usage
+            // conclusion. Still recorded as unanalysed.
             LimitationId: "PBI-LIMIT-MODEL-SETTINGS",
             ConstructType: "modelDefinition",
             Pattern: "definition/model.tmdl",
             MatchKind: SemanticDefinitionFileMatch.ExactPath,
             Classification: ConstructClassifications.SemanticNotYetAnalyzed,
             SupportState: ConstructSupportStates.NotYetAnalyzed,
-            DependencyImpact: ConstructDependencyImpacts.DependencyEffectUnknown,
+            DependencyImpact: ConstructDependencyImpacts.NoKnownDependencyEffect,
             Concerns: [AnalysisConcerns.Dependency],
-            Reason: "The model-level definition is not analysed by this version. Whether it affects " +
-                    "object dependencies has not been determined."),
+            Reason: "The model-level definition is not analysed by this version. Its object references " +
+                    "are collection-ordering declarations rather than usage evidence."),
         new(
             // Documented as part of the TMDL database definition, not as PBIP packaging. Classified as
             // semantic content rather than packaging so that not reading it is recorded rather than
             // silent. No claim is made that it creates dependencies.
+            // Emitted for every model. Every Desktop-authored fixture in this repository contains only a
+            // compatibilityLevel, with no object reference of any kind. Still recorded as unanalysed.
             LimitationId: "PBI-LIMIT-MODEL-DATABASE",
             ConstructType: "database",
             Pattern: "definition/database.tmdl",
             MatchKind: SemanticDefinitionFileMatch.ExactPath,
             Classification: ConstructClassifications.SemanticNotYetAnalyzed,
             SupportState: ConstructSupportStates.NotYetAnalyzed,
-            DependencyImpact: ConstructDependencyImpacts.DependencyEffectUnknown,
+            DependencyImpact: ConstructDependencyImpacts.NoKnownDependencyEffect,
             Concerns: [AnalysisConcerns.Dependency],
-            Reason: "The database-level definition is not analysed by this version. Whether it affects " +
-                    "object dependencies has not been determined."),
+            Reason: "The database-level definition is not analysed by this version. Every observed " +
+                    "instance contains only a compatibility level, with no object references."),
         new(
             // The TMSL alternative to the definition/ folder: the whole model in one JSON document.
             // Matched at its documented exact path only, so that an unrelated .bim file elsewhere is

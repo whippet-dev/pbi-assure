@@ -113,6 +113,49 @@ public sealed class DesktopSemanticConstructsFixtureTests
     }
 
     /// <summary>
+    /// Power BI Desktop emits model.tmdl, database.tmdl and a culture file for every model, so if any of
+    /// them could invalidate a usage conclusion then every model would have to be caveated and the
+    /// signal would be worthless. Each is still reported as unanalysed; none of them qualifies anything.
+    /// </summary>
+    [Fact]
+    public void TheFilesEmittedForEveryModelAreRecordedButCarryNoDependencyImpact()
+    {
+        var alwaysPresent = new[] { "modelDefinition", "database", "culture" };
+
+        var limitations = ScanFixture().AnalysisLimitations
+            .Where(limitation => alwaysPresent.Contains(limitation.ConstructType, StringComparer.Ordinal))
+            .ToArray();
+
+        Assert.Equal(alwaysPresent.Length, limitations.Length);
+        Assert.All(limitations, limitation =>
+        {
+            // Still visible to the user as metadata that was not analysed.
+            Assert.Equal(ConstructClassifications.SemanticNotYetAnalyzed, SemanticDefinitionFileRegistry
+                .Classify(ModelRelative(limitation.ArtifactPath)).Classification);
+            // But unable to caveat a usage conclusion.
+            Assert.Equal(ConstructDependencyImpacts.NoKnownDependencyEffect, limitation.DependencyImpact);
+        });
+    }
+
+    /// <summary>
+    /// The constructs that genuinely can reference model objects must keep saying so, otherwise the
+    /// previous assertion would be trivially satisfiable by neutering every impact value.
+    /// </summary>
+    [Fact]
+    public void ConstructsThatCanReferenceModelObjectsStillCarryDependencyImpact()
+    {
+        var limitations = ScanFixture().AnalysisLimitations
+            .Where(limitation => limitation.ConstructType is "role" or "perspective" or "function")
+            .ToArray();
+
+        Assert.Equal(4, limitations.Length);
+        Assert.All(
+            limitations,
+            limitation => Assert.Equal(
+                ConstructDependencyImpacts.MayCreateDependencies, limitation.DependencyImpact));
+    }
+
+    /// <summary>
     /// The auto date-table relationship Desktop generated makes the Date column structurally required.
     /// This pins the established generated-artefact semantics against real Desktop output rather than a
     /// hand-built model.
@@ -156,6 +199,9 @@ public sealed class DesktopSemanticConstructsFixtureTests
     }
 
     private static ProjectInventory ScanFixture() => ProjectScanner.Scan(FixturePath());
+
+    private static string ModelRelative(string artifactPath) =>
+        artifactPath["desktop-semantic-constructs.SemanticModel/".Length..];
 
     private static string FixturePath() => Path.Combine(
         FindRepositoryRoot(),

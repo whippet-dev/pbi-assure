@@ -288,7 +288,10 @@ public sealed class AnalysisLimitationTests
 
         var limitation = Assert.Single(inventory.AnalysisLimitations);
         Assert.Equal("PBI-LIMIT-MODEL-DATABASE", limitation.LimitationId);
-        Assert.Equal(ConstructDependencyImpacts.DependencyEffectUnknown, limitation.DependencyImpact);
+        // Recorded as unanalysed, but every observed instance holds only a compatibility level, so it
+        // cannot invalidate a usage conclusion.
+        Assert.Equal(ConstructSupportStates.NotYetAnalyzed, limitation.SupportState);
+        Assert.Equal(ConstructDependencyImpacts.NoKnownDependencyEffect, limitation.DependencyImpact);
     }
 
     [Fact]
