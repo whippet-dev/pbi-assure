@@ -32,27 +32,51 @@ roots and from model-structure roots, assigns states from them, then discarded b
 published as `SemanticNodeReachability` and the reason is filtered by them. Classifications and the
 dependency edge set are byte-identical before and after — only the shown evidence changed.
 
+A closeout pass then audited every reason kind against that invariant. The one remaining case —
+a relationship endpoint that a report also reaches — was confirmed by synthetic model and fixed: the
+relationship explains `StructurallyRequired` only, and every other kind is gated by the same
+reachability check. Wording and precedence order are unchanged.
+
 The confidence and coverage presentation reads `ClassificationConfidence` and never re-derives it; the
 reason selection reads published reachability and traverses nothing. Neither reimplements
 classification.
 
+## This workstream is complete
+
+**The semantic-usage / analysis-confidence sequence is stable and closed.** Everything below is
+implemented, fixture-backed where evidence was needed, and verified:
+
+| | |
+|---|---|
+| `AnalysisLimitation` detection and the construct registry | done |
+| `ClassificationConfidence` propagation | done |
+| RLS table-permission dependencies | done |
+| Artifact-sensitive role limitation precision | done |
+| Perspective member dependencies | done |
+| DAX user-defined function dependencies | done |
+| UDF model-measure consumer fixture | done |
+| User-facing **Analysis coverage** section | done |
+| Plain-language confidence terminology | done |
+| Classification-compatible usage reasons | done |
+| Final reason-precedence consistency | done |
+
+Do not reopen any of it without new evidence. The invariants that hold it together are in
+[DECISIONS.md](DECISIONS.md) — read them before changing presentation of usage, confidence or reasons.
+
 ## State
 
-- **Last verified product state:** `fd33ea5` on `master`. Later commits may be documentation-only; run
+- **Last verified product state:** `ae6be56` on `master`. Later commits may be documentation-only; run
   `git log --oneline` to see whether anything after it touched behaviour.
 - **Working tree:** expected clean apart from untracked local review documents; no tracked modifications
-- **Verified at that commit:** build succeeded with 0 warnings; **399 core + 2 privacy tests passed**; CI green
+- **Verified at that commit:** build succeeded with 0 warnings; **400 core + 2 privacy tests passed**; CI green
 - **Known exception:** `dotnet format --verify-no-changes` fails with 24 pre-existing whitespace errors
   in two Theme Review files. Unrelated to current work, deliberately not fixed. See
   [CURRENT_STATE.md](CURRENT_STATE.md).
 
 ## Immediate next task
 
-**Not obvious — pick deliberately rather than continuing the last thread.**
-
-The analysis side is complete for every construct currently supported, and it now has a user-facing
-surface. That means the next task should be chosen on user impact, not on what was touched last.
-Ranked. Reason selection, which topped this list, is done.
+**Start a new workstream — the previous one is closed (see above).** Choose on user impact, not on what
+was touched last. Ranked:
 
 1. **Surface unresolved semantic dependencies.** `UnresolvedSemanticDependency` is retained as evidence
    and reaches the JSON inventory only. It is a *bounded* uncertainty — source, kind and reference text
@@ -70,10 +94,10 @@ The remaining UDF-consumer gap is **narrower than it looks**: an ordinary semant
 a UDF is already followed correctly, now proven by `tests/fixtures/desktop-udf-measure-consumer`. Only
 report-level measures and visual calculations remain unread.
 
-**Noticed while fixing reason selection, not acted on:** when an object is `IndirectlyUsed` *and* is a
-relationship endpoint, the relationship explanation wins on precedence, so the "Why" line describes the
-structural fact rather than the report path. That never contradicts the state beside it, so it was left
-alone rather than broadened into a rewrite of structural wording. Revisit only with a concrete complaint.
+**Known presentation gap, deliberately not filled:** an object that is structurally required only by a
+perspective or a role filter gets no "Why" line, because no reason wording exists for those kinds. That
+is silence rather than a wrong statement, and adding copy was out of scope. Worth a small slice if a
+user asks why those objects are unexplained.
 
 Deliberately *not* ranked first: visual-calculation parsing. It is the other unread UDF consumer, but
 it is the largest of the three and only moves a caveat that the report now explains honestly.

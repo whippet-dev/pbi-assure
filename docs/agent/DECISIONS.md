@@ -143,6 +143,12 @@ Not every report merits committing; only those carrying durable project state.
   standing beside it. Both facts are preserved: the edge stays in the graph, and the explanation comes
   from a predecessor whose own reachability matches the state. Never repair a mismatch by changing the
   classification to fit the reason.
+- **Other true facts do not take presentation precedence when they explain a state the object did not
+  get.** A relationship endpoint that a report also reaches displays `IndirectlyUsed`; the relationship
+  is real, and it explains `StructurallyRequired`, so the live dependency is shown instead. The test is
+  whether the cited evidence supports the *displayed* state — not whether the reason's wording sounds
+  structural. "Available through field parameter X" is a live explanation whenever the report uses that
+  field parameter.
 - **Reachability is published by the classifier, not re-derived downstream.** The scanner already
   computes which nodes are reachable from report roots and from model-structure roots on its way to
   assigning a state; that is what presentation consumes. It covers nodes with no usage row — report

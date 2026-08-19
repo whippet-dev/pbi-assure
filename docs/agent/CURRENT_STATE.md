@@ -12,7 +12,7 @@ evidenced · **[design decision]** a choice, not a fact.
 |---|---|
 | Remote | `whippet-dev/pbi-assure` |
 | Branch | `master` (also the default branch) |
-| Last verified product state | `fd33ea5` — *Explain a usage state with evidence that actually supports it* |
+| Last verified product state | `ae6be56` — *Match every usage reason to the state it explains* |
 | Working tree | Expected clean of tracked modifications. Untracked local review documents may be present |
 
 `master` may have moved past that commit for documentation-only changes. Re-verify and update this
@@ -22,7 +22,7 @@ section whenever a commit changes build, test or behaviour — not for every com
 
 - `dotnet build PbiAssure.slnx` — **succeeded, 0 warnings, 0 errors** [verified]. `TreatWarningsAsErrors`
   is on, so warnings fail the build.
-- `dotnet test PbiAssure.slnx` — **399 core + 2 privacy end-to-end tests passed**, 0 failed [verified].
+- `dotnet test PbiAssure.slnx` — **400 core + 2 privacy end-to-end tests passed**, 0 failed [verified].
 - CI (`.github/workflows/ci.yml`) — **green** [verified]. Runs restore, build, a Playwright Chromium
   install, then the whole solution test suite on `windows-latest`.
 - The privacy end-to-end tests are part of the normal solution test run; they need Node.js and a
@@ -120,6 +120,20 @@ unused with no indication that security metadata had been skipped.
   report locations and `ApparentlyUnused` still gets no reason. Where several are eligible, the one with
   the alphabetically first qualified name is shown, so parse order cannot change the explanation.
   Reporting reads the published flags and traverses nothing.
+- **Reason precedence matches the displayed state.** A relationship endpoint is the one reason kind
+  whose edge *creates* the requirement instead of carrying reachability, and whose source is a
+  relationship rather than a model object, so it explains `StructurallyRequired` and nothing else. Every
+  other kind cites a real predecessor and is gated by the same reachability check, with wording and
+  precedence order unchanged. A column that is both a relationship endpoint and report-reachable
+  displays "Indirectly used" and is explained by the live dependency; the relationship edge is untouched
+  and explains it again if its state is ever `StructurallyRequired`.
+
+  Two findings from that audit are worth not rediscovering. **"Available through field parameter X" is a
+  live explanation, not a structural one** — when the report uses the field parameter, its choices are
+  report-reachable, so an early attempt to gate all structurally-worded reasons on
+  `StructurallyRequired` wrongly deleted it. And the four **"Sorts X" reasons on unused-branch objects in
+  `desktop-semantic-constructs` are compatible evidence**, not mismatches: they cite a predecessor that
+  is itself unreachable, which is what that state means.
 
 Limitation **detection** is file level only. Confidence is an orthogonal additive field. HTML consumes
 both; **CSV and the browser app do not** — see the gaps table.
