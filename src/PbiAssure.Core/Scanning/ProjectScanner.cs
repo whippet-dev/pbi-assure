@@ -69,6 +69,7 @@ public static class ProjectScanner
             Findings: [])
         {
             AnalysisLimitations = analysisLimitations,
+            SemanticNodeReachability = dependencyAnalysis.NodeReachability,
         };
 
         return inventory with { Findings = AssuranceRuleEngine.Evaluate(inventory) };

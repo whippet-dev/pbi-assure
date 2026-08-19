@@ -25,6 +25,13 @@ public sealed record ProjectInventory(
     /// </summary>
     public IReadOnlyList<AnalysisLimitation> AnalysisLimitations { get; init; } = [];
 
+    /// <summary>
+    /// Which dependency-graph nodes are reachable from a report root and from a model-structure root.
+    /// Published so an explanation can name a predecessor that actually supports an object's usage
+    /// state, rather than any predecessor that happens to reference it.
+    /// </summary>
+    public IReadOnlyList<SemanticNodeReachability> SemanticNodeReachability { get; init; } = [];
+
     public int ReportCount => Artifacts.Count(artifact => artifact.Kind == ArtifactKinds.Report);
 
     public int SemanticModelCount => Artifacts.Count(artifact => artifact.Kind == ArtifactKinds.SemanticModel);

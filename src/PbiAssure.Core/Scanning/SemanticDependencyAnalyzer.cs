@@ -30,7 +30,8 @@ internal static class SemanticDependencyAnalyzer
 
         var distinctDependencies = dependencies.Distinct().ToArray();
         var classifiedUsages = ClassifyObjects(
-            initialUsages, distinctDependencies, structuralRoots, reportMeasureNodes, reportMeasureRoots, functionNodes);
+            initialUsages, distinctDependencies, structuralRoots, reportMeasureNodes, reportMeasureRoots,
+            functionNodes, out var reachability);
         var tableUsages = ClassifyTables(
             semanticModels, classifiedUsages, distinctDependencies, structuralRoots,
             reportMeasureNodes, reportMeasureRoots, functionNodes);
@@ -46,7 +47,8 @@ internal static class SemanticDependencyAnalyzer
                 .ThenBy(edge => edge.ToTable, StringComparer.OrdinalIgnoreCase)
                 .ThenBy(edge => edge.ToObjectName, StringComparer.OrdinalIgnoreCase)
                 .ToArray(),
-            UnresolvedDependencies: unresolved.Distinct().ToArray());
+            UnresolvedDependencies: unresolved.Distinct().ToArray(),
+            NodeReachability: reachability);
     }
 
     private static void AnalyzeReportMeasures(
@@ -812,7 +814,8 @@ internal static class SemanticDependencyAnalyzer
         IReadOnlySet<string> structuralRoots,
         IReadOnlySet<string> reportMeasureNodes,
         IReadOnlySet<string> reportMeasureRoots,
-        IReadOnlySet<string> functionNodes)
+        IReadOnlySet<string> functionNodes,
+        out SemanticNodeReachability[] reachability)
     {
         var knownNodes = usages
             .Select(usage => NodeKey(usage.SemanticModel, Source(usage)))
@@ -839,6 +842,10 @@ internal static class SemanticDependencyAnalyzer
             .Select(edge => NodeKey(edge.SemanticModel, Target(edge)))
             .ToHashSet(StringComparer.OrdinalIgnoreCase);
 
+        // The two reachable sets are what separates "something references this" from "this is reached
+        // by something live", so they are published rather than discarded once the states are assigned.
+        reachability = DescribeReachability(usages, dependencies, directlyReachable, structurallyReachable);
+
         return usages
             .Select(usage =>
             {
@@ -854,6 +861,47 @@ internal static class SemanticDependencyAnalyzer
                                 : SemanticUsageStates.ApparentlyUnused;
                 return usage with { UsageState = state };
             })
+            .ToArray();
+    }
+
+    /// <summary>
+    /// States, for every node the graph touches, whether it is reachable from a report root or from a
+    /// model-structure root. Both endpoints of every edge are included, which is how nodes without a
+    /// usage row of their own — report measures and DAX user-defined functions — get an entry.
+    /// </summary>
+    private static SemanticNodeReachability[] DescribeReachability(
+        IReadOnlyList<SemanticObjectUsage> usages,
+        IReadOnlyList<SemanticDependencyEdge> dependencies,
+        HashSet<string> directlyReachable,
+        HashSet<string> structurallyReachable)
+    {
+        var nodes = new Dictionary<string, (string Model, SemanticNode Node)>(StringComparer.OrdinalIgnoreCase);
+        void Record(string model, SemanticNode node) => nodes.TryAdd(NodeKey(model, node), (model, node));
+
+        foreach (var usage in usages)
+        {
+            Record(usage.SemanticModel, Source(usage));
+        }
+
+        foreach (var edge in dependencies)
+        {
+            Record(edge.SemanticModel, Source(edge));
+            Record(edge.SemanticModel, Target(edge));
+        }
+
+        return nodes
+            .Select(entry => new SemanticNodeReachability(
+                SemanticModel: entry.Value.Model,
+                Table: entry.Value.Node.Table,
+                ObjectName: entry.Value.Node.ObjectName,
+                ObjectType: entry.Value.Node.ObjectType,
+                HierarchyName: entry.Value.Node.HierarchyName,
+                ReachableFromReport: directlyReachable.Contains(entry.Key),
+                ReachableFromModelStructure: structurallyReachable.Contains(entry.Key)))
+            .OrderBy(node => node.SemanticModel, StringComparer.OrdinalIgnoreCase)
+            .ThenBy(node => node.Table, StringComparer.OrdinalIgnoreCase)
+            .ThenBy(node => node.ObjectName, StringComparer.OrdinalIgnoreCase)
+            .ThenBy(node => node.ObjectType, StringComparer.Ordinal)
             .ToArray();
     }
 
@@ -1164,4 +1212,5 @@ internal sealed record SemanticDependencyAnalysis(
     SemanticObjectUsage[] ObjectUsages,
     SemanticTableUsage[] TableUsages,
     SemanticDependencyEdge[] Dependencies,
-    UnresolvedSemanticDependency[] UnresolvedDependencies);
+    UnresolvedSemanticDependency[] UnresolvedDependencies,
+    SemanticNodeReachability[] NodeReachability);
