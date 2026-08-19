@@ -9,6 +9,13 @@ public sealed record SemanticObjectUsage(
     IReadOnlyList<SemanticUsageEvidence> DirectReportReferences,
     string UsageState)
 {
+    /// <summary>
+    /// Whether metadata this scan did not analyse could bear on <see cref="UsageState"/>. Additive and
+    /// orthogonal: the state is computed exactly as before, and consumers that ignore this field behave
+    /// exactly as they did before it existed.
+    /// </summary>
+    public string ClassificationConfidence { get; init; } = ClassificationConfidences.Established;
+
     public bool IsDirectlyReferencedByReport => DirectReportReferences.Count > 0;
 
     public int DirectReportReferenceCount => DirectReportReferences.Count;

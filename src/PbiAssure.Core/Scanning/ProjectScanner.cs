@@ -38,6 +38,12 @@ public static class ProjectScanner
         var powerQueryColumnUsages = PowerQueryColumnLineageAnalyzer.Analyze(
             semanticModels, powerQueryAnalysis.Usages);
         var semanticTablePowerQueryContexts = SemanticTablePowerQueryEnricher.Build(powerQueryAnalysis.Usages);
+        var analysisLimitations = AnalysisLimitationDetector.Detect(source, artifacts);
+
+        // Applied once, after usage states are final and the limitations are known. Usage states are not
+        // changed here; only the orthogonal confidence marker is set.
+        var semanticObjectUsagesWithConfidence = SemanticUsageConfidenceQualifier.Apply(
+            dependencyAnalysis.ObjectUsages, analysisLimitations);
 
         var inventory = new ProjectInventory(
             SchemaVersion: "0.21",
@@ -49,7 +55,7 @@ public static class ProjectScanner
                 .ToArray(),
             Reports: reports,
             SemanticModels: semanticModels,
-            SemanticObjectUsages: dependencyAnalysis.ObjectUsages,
+            SemanticObjectUsages: semanticObjectUsagesWithConfidence,
             SemanticTableUsages: dependencyAnalysis.TableUsages,
             SemanticDependencies: dependencyAnalysis.Dependencies,
             PowerQueryUsages: powerQueryAnalysis.Usages,
@@ -61,7 +67,7 @@ public static class ProjectScanner
             UnresolvedSemanticDependencies: dependencyAnalysis.UnresolvedDependencies,
             Findings: [])
         {
-            AnalysisLimitations = AnalysisLimitationDetector.Detect(source, artifacts),
+            AnalysisLimitations = analysisLimitations,
         };
 
         return inventory with { Findings = AssuranceRuleEngine.Evaluate(inventory) };
