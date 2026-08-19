@@ -178,6 +178,7 @@ internal static class SemanticDependencyAnalyzer
         }
 
         AnalyzeRoles(model, lookup, dependencies, unresolved, structuralRoots);
+        AnalyzePerspectives(model, lookup, dependencies, unresolved, structuralRoots);
     }
 
     private static void AddFieldParameterMetadataRoots(
@@ -485,6 +486,131 @@ internal static class SemanticDependencyAnalyzer
                     evidencePath));
             }
         }
+    }
+
+    /// <summary>
+    /// A perspective is a curated subset of the model that an author deliberately exposed, and which
+    /// drives the Personalize visuals experience: a report reader may add any of its members to a visual
+    /// at run time. Saved report metadata cannot prove which members a reader picks, so each exposed
+    /// object becomes a model-structure root — the same treatment field-parameter choices already
+    /// receive, and for the same reason.
+    ///
+    /// Membership is exactly what the perspective lists. Naming a table does not expose its fields
+    /// unless includeAll is set, which Microsoft documents as including every column, hierarchy and
+    /// measure of that table.
+    /// </summary>
+    private static void AnalyzePerspectives(
+        SemanticModelInventory model,
+        ModelLookup lookup,
+        List<SemanticDependencyEdge> dependencies,
+        List<UnresolvedSemanticDependency> unresolved,
+        ISet<string> structuralRoots)
+    {
+        foreach (var perspective in model.Perspectives)
+        {
+            var source = Target(string.Empty, perspective.Name, SemanticObjectTypes.Perspective);
+            foreach (var perspectiveTable in perspective.Tables)
+            {
+                var table = model.Tables.FirstOrDefault(item => string.Equals(
+                    item.Name, perspectiveTable.Table, StringComparison.OrdinalIgnoreCase));
+                if (table is null)
+                {
+                    unresolved.Add(CreateUnresolved(
+                        model.Name,
+                        source,
+                        SemanticDependencyKinds.PerspectiveMember,
+                        perspectiveTable.Table,
+                        $"Perspective '{perspective.Name}': table '{perspectiveTable.Table}' was not found.",
+                        perspective.RelativePath));
+                    continue;
+                }
+
+                // The table itself is exposed. Containing-table edges point from objects to their table,
+                // so rooting the table cannot reach its fields — exposure stays as narrow as declared.
+                AddPerspectiveMember(
+                    model, source, Target(table.Name, table.Name, SemanticObjectTypes.Table),
+                    perspective.RelativePath, table.Name, dependencies, structuralRoots);
+
+                foreach (var member in PerspectiveMembers(table, perspectiveTable))
+                {
+                    if (lookup.TryResolveQualified(table.Name, member, out var target, out var reason))
+                    {
+                        AddPerspectiveMember(
+                            model, source, target, perspective.RelativePath,
+                            $"{table.Name}[{member}]", dependencies, structuralRoots);
+                    }
+                    else
+                    {
+                        unresolved.Add(CreateUnresolved(
+                            model.Name,
+                            source,
+                            SemanticDependencyKinds.PerspectiveMember,
+                            $"{table.Name}[{member}]",
+                            $"Perspective '{perspective.Name}': {reason}",
+                            perspective.RelativePath));
+                    }
+                }
+
+                foreach (var level in PerspectiveHierarchyLevels(table, perspectiveTable))
+                {
+                    AddPerspectiveMember(
+                        model, source, level.Node, perspective.RelativePath, level.Text,
+                        dependencies, structuralRoots);
+                }
+            }
+        }
+    }
+
+    /// <summary>
+    /// Column and measure names a perspective exposes for one table. includeAll widens this to every
+    /// column and measure the table declares; otherwise only what is listed.
+    /// </summary>
+    private static IEnumerable<string> PerspectiveMembers(
+        SemanticTableInventory table,
+        SemanticPerspectiveTableInventory perspectiveTable)
+    {
+        if (!perspectiveTable.IncludeAll)
+        {
+            return perspectiveTable.Columns.Concat(perspectiveTable.Measures);
+        }
+
+        return table.Columns.Select(column => column.Name)
+            .Concat(table.Measures.Select(measure => measure.Name));
+    }
+
+    private static IEnumerable<(SemanticNode Node, string Text)> PerspectiveHierarchyLevels(
+        SemanticTableInventory table,
+        SemanticPerspectiveTableInventory perspectiveTable)
+    {
+        var hierarchies = perspectiveTable.IncludeAll
+            ? table.Hierarchies
+            : table.Hierarchies.Where(hierarchy => perspectiveTable.Hierarchies.Contains(
+                hierarchy.Name, StringComparer.OrdinalIgnoreCase));
+
+        foreach (var hierarchy in hierarchies)
+        {
+            foreach (var level in hierarchy.Levels)
+            {
+                yield return (
+                    Target(table.Name, level.Name, SemanticObjectTypes.HierarchyLevel, hierarchy.Name),
+                    $"{table.Name}[{hierarchy.Name}]");
+            }
+        }
+    }
+
+    private static void AddPerspectiveMember(
+        SemanticModelInventory model,
+        SemanticNode source,
+        SemanticNode target,
+        string evidencePath,
+        string evidenceText,
+        List<SemanticDependencyEdge> dependencies,
+        ISet<string> structuralRoots)
+    {
+        dependencies.Add(CreateEdge(
+            model.Name, source, target, SemanticDependencyKinds.PerspectiveMember,
+            evidencePath, evidenceText));
+        structuralRoots.Add(NodeKey(model.Name, target));
     }
 
     /// <summary>

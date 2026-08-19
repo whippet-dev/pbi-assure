@@ -9,6 +9,9 @@ public static class SemanticObjectTypes
     /// <summary>A security role. Like Relationship, it appears as a dependency source, never as a usage record.</summary>
     public const string Role = "Role";
 
+    /// <summary>A perspective. Like Role, it appears as a dependency source, never as a usage record.</summary>
+    public const string Perspective = "Perspective";
+
     public const string Column = "Column";
     public const string Measure = "Measure";
     public const string ReportMeasure = "ReportMeasure";

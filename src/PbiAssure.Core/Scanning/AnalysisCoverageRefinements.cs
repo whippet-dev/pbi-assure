@@ -28,6 +28,14 @@ internal static class AnalysisCoverageRefinements
             }
         }
 
+        foreach (var perspective in semanticModels.SelectMany(model => model.Perspectives))
+        {
+            if (perspective.DependencyContentFullyAccountedFor)
+            {
+                refinements[perspective.RelativePath] = ConstructDependencyImpacts.NoKnownDependencyEffect;
+            }
+        }
+
         return refinements;
     }
 }

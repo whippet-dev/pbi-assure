@@ -68,12 +68,12 @@ public sealed class RoleLimitationPrecisionTests
     // ---- 4. What still qualifies in the fixture ---------------------------------------------
 
     /// <summary>
-    /// Absence states in the fixture are still qualified — but by perspective and function metadata, not
-    /// by roles. The refinement removes two false causes without changing the final answer, which is why
-    /// the overall qualified count is expected to stay the same until those constructs are parsed too.
+    /// Absence states in the fixture are still qualified, but roles are not among the causes. Which
+    /// constructs remain qualifying changes as parsing advances — perspectives left the list once their
+    /// members were analysed — so this asserts only that roles are absent from it.
     /// </summary>
     [Fact]
-    public void RemainingQualificationComesFromPerspectiveAndFunctionRatherThanRoles()
+    public void RolesAreNotAmongTheRemainingQualifyingCauses()
     {
         var inventory = ScanDesktopFixture();
 
@@ -82,10 +82,10 @@ public sealed class RoleLimitationPrecisionTests
                 is ConstructDependencyImpacts.MayCreateDependencies
                 or ConstructDependencyImpacts.DependencyEffectUnknown)
             .Select(item => item.ConstructType)
-            .OrderBy(type => type, StringComparer.Ordinal)
             .ToArray();
 
-        Assert.Equal(["function", "perspective"], qualifying);
+        Assert.NotEmpty(qualifying);
+        Assert.DoesNotContain("role", qualifying);
         Assert.Contains(
             inventory.SemanticObjectUsages,
             usage => usage.ClassificationConfidence == ClassificationConfidences.QualifiedByLimitation);

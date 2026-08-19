@@ -20,4 +20,7 @@ public static class SemanticDependencyKinds
 
     /// <summary>A reference from a role table permission filter expression.</summary>
     public const string TablePermission = "TablePermission";
+
+    /// <summary>A reference from a perspective to a model object it exposes.</summary>
+    public const string PerspectiveMember = "PerspectiveMember";
 }

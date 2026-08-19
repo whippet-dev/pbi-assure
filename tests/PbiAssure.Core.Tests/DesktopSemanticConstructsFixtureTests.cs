@@ -142,23 +142,20 @@ public sealed class DesktopSemanticConstructsFixtureTests
     /// previous assertion would be trivially satisfiable by neutering every impact value.
     /// </summary>
     /// <summary>
-    /// Roles are deliberately absent here: their table permission filters are analysed and the fixture's
-    /// role files contain nothing else that could reference an object, so their impact is narrowed by
-    /// artifact evidence. Perspective and function metadata is still unread, so those must keep saying
-    /// so — otherwise the previous assertion would be satisfiable by neutering every impact value.
+    /// Roles and perspectives are absent here: their object-naming content is analysed and the fixture's
+    /// files contain nothing else that could reference an object, so their impact is narrowed by artifact
+    /// evidence. Function metadata is still unread, so it must keep saying so — otherwise the previous
+    /// assertion would be satisfiable by neutering every impact value.
     /// </summary>
     [Fact]
     public void ConstructsThatCanReferenceModelObjectsStillCarryDependencyImpact()
     {
-        var limitations = ScanFixture().AnalysisLimitations
-            .Where(limitation => limitation.ConstructType is "perspective" or "function")
-            .ToArray();
+        var limitation = Assert.Single(
+            ScanFixture().AnalysisLimitations,
+            item => item.ConstructType == "function");
 
-        Assert.Equal(2, limitations.Length);
-        Assert.All(
-            limitations,
-            limitation => Assert.Equal(
-                ConstructDependencyImpacts.MayCreateDependencies, limitation.DependencyImpact));
+        Assert.Equal(
+            ConstructDependencyImpacts.MayCreateDependencies, limitation.DependencyImpact);
     }
 
     /// <summary>

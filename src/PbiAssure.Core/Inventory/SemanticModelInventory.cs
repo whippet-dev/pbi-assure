@@ -13,7 +13,14 @@ public sealed record SemanticModelInventory(
     /// </summary>
     public IReadOnlyList<SemanticRoleInventory> Roles { get; init; } = [];
 
+    /// <summary>
+    /// Perspectives. Additive; consumers that ignore this behave as they did before it existed.
+    /// </summary>
+    public IReadOnlyList<SemanticPerspectiveInventory> Perspectives { get; init; } = [];
+
     public int RoleCount => Roles.Count;
+
+    public int PerspectiveCount => Perspectives.Count;
 
     public int TablePermissionCount => Roles.Sum(role => role.TablePermissionCount);
 

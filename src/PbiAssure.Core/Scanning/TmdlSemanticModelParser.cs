@@ -37,6 +37,15 @@ internal static class TmdlSemanticModelParser
             .Select(role => role!)
             .OrderBy(role => role.Name, StringComparer.OrdinalIgnoreCase)
             .ToArray();
+        var perspectivesDirectory = ProjectFilePaths.Combine(definitionDirectory, "perspectives");
+        var perspectives = source
+            .EnumerateFiles(perspectivesDirectory, recursive: false)
+            .Where(file => file.RelativePath.EndsWith(".tmdl", StringComparison.OrdinalIgnoreCase))
+            .Select(file => ParsePerspective(source, file.RelativePath))
+            .Where(perspective => perspective is not null)
+            .Select(perspective => perspective!)
+            .OrderBy(perspective => perspective.Name, StringComparer.OrdinalIgnoreCase)
+            .ToArray();
         var expressionsPath = ProjectFilePaths.Combine(definitionDirectory, "expressions.tmdl");
         var namedExpressions = source.FileExists(expressionsPath)
             ? ParseNamedExpressions(source, expressionsPath)
@@ -50,6 +59,7 @@ internal static class TmdlSemanticModelParser
             NamedExpressions: namedExpressions)
         {
             Roles = roles,
+            Perspectives = perspectives,
         };
     }
 
@@ -302,6 +312,112 @@ internal static class TmdlSemanticModelParser
             "annotation",
             "extendedProperty",
         };
+
+    /// <summary>
+    /// Perspective-level constructs that name no model object. A perspective carries annotations and
+    /// extended properties; everything that names an object is a perspectiveTable and its members.
+    /// </summary>
+    private static readonly HashSet<string> PerspectiveConstructsWithoutObjectReferences =
+        new(StringComparer.OrdinalIgnoreCase) { "annotation", "extendedProperty", "description" };
+
+    /// <summary>
+    /// Members of a perspectiveTable that are analysed, plus its documented reference-free properties.
+    /// Anything else — perspectiveSet, or a construct this version has not seen — is left conservative.
+    /// </summary>
+    private static readonly HashSet<string> PerspectiveTableConstructsAccountedFor =
+        new(StringComparer.OrdinalIgnoreCase)
+        {
+            "perspectiveColumn",
+            "perspectiveMeasure",
+            "perspectiveHierarchy",
+            "includeAll",
+            "annotation",
+            "extendedProperty",
+        };
+
+    /// <summary>
+    /// Reads the model objects a perspective exposes. Membership is explicit per object unless
+    /// includeAll is set, which Microsoft documents as including every column, hierarchy and measure of
+    /// the table. Presentation meaning beyond that is not interpreted.
+    /// </summary>
+    private static SemanticPerspectiveInventory? ParsePerspective(IProjectFileSource source, string path)
+    {
+        var lines = ReadLines(source, path);
+        var declarationIndex = FindDeclaration(lines, "perspective", startIndex: 0, requiredIndent: null);
+        if (declarationIndex < 0 ||
+            !TryParseDeclaration(lines[declarationIndex].Trimmed, "perspective", out var name, out _))
+        {
+            return null;
+        }
+
+        var perspectiveEnd = FindBlockEnd(lines, declarationIndex);
+        var tables = new List<SemanticPerspectiveTableInventory>();
+        var unaccounted = new List<string>();
+        var childIndent = ChildIndent(lines, declarationIndex, perspectiveEnd);
+
+        for (var index = declarationIndex + 1; index < perspectiveEnd; index++)
+        {
+            if (string.IsNullOrWhiteSpace(lines[index].Text) || lines[index].Indent != childIndent)
+            {
+                continue;
+            }
+
+            if (TryParseDeclaration(lines[index].Trimmed, "perspectiveTable", out var table, out _))
+            {
+                var tableEnd = FindBlockEnd(lines, index, perspectiveEnd);
+                tables.Add(ReadPerspectiveTable(lines, index, tableEnd, table));
+                unaccounted.AddRange(UnaccountedChildren(
+                    lines, index, tableEnd, PerspectiveTableConstructsAccountedFor));
+                index = tableEnd - 1;
+                continue;
+            }
+
+            var keyword = LeadingKeyword(lines[index].Trimmed);
+            if (!PerspectiveConstructsWithoutObjectReferences.Contains(keyword))
+            {
+                unaccounted.Add(keyword);
+            }
+        }
+
+        return new SemanticPerspectiveInventory(name, tables, path)
+        {
+            UnanalyzedConstructs = unaccounted.Distinct(StringComparer.OrdinalIgnoreCase).ToArray(),
+        };
+    }
+
+    private static SemanticPerspectiveTableInventory ReadPerspectiveTable(
+        IReadOnlyList<TmdlLine> lines,
+        int declarationIndex,
+        int endIndex,
+        string table)
+    {
+        var columns = new List<string>();
+        var measures = new List<string>();
+        var hierarchies = new List<string>();
+        var includeAll = string.Equals(
+            FindProperty(lines, declarationIndex, endIndex, "includeAll"),
+            "true",
+            StringComparison.OrdinalIgnoreCase);
+
+        for (var index = declarationIndex + 1; index < endIndex; index++)
+        {
+            var trimmed = lines[index].Trimmed;
+            if (TryParseDeclaration(trimmed, "perspectiveColumn", out var column, out _))
+            {
+                columns.Add(column);
+            }
+            else if (TryParseDeclaration(trimmed, "perspectiveMeasure", out var measure, out _))
+            {
+                measures.Add(measure);
+            }
+            else if (TryParseDeclaration(trimmed, "perspectiveHierarchy", out var hierarchy, out _))
+            {
+                hierarchies.Add(hierarchy);
+            }
+        }
+
+        return new SemanticPerspectiveTableInventory(table, includeAll, columns, measures, hierarchies);
+    }
 
     /// <summary>
     /// Reads a role's table permissions. Only the dependency-bearing parts are read: the owning table

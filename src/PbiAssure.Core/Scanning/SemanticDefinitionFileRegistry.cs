@@ -126,19 +126,23 @@ internal static class SemanticDefinitionFileRegistry
                     "are treated as required. Other role content, including column permissions, is not " +
                     "analysed and can also reference model objects."),
         new(
-            // Documented as one file per perspective under perspectives/. Perspectives hold table,
-            // column and measure references, so they can reference model objects. Whether such a
-            // reference should count as usage is a separate question and is not decided here.
+            // Partially analysed. The documented members that name model objects — perspectiveTable,
+            // perspectiveColumn, perspectiveMeasure, perspectiveHierarchy and includeAll — are parsed and
+            // become model-structure roots. Not analysed: perspective sets, and the presentation meaning
+            // of a perspective. The construct-type default stays conservative because a perspective may
+            // carry content this version does not recognise; an individual file whose content is fully
+            // accounted for is narrowed by artifact evidence instead.
             LimitationId: "PBI-LIMIT-MODEL-PERSPECTIVE",
             ConstructType: "perspective",
             Pattern: "definition/perspectives",
             MatchKind: SemanticDefinitionFileMatch.DirectoryContents,
             Classification: ConstructClassifications.SemanticNotYetAnalyzed,
-            SupportState: ConstructSupportStates.NotYetAnalyzed,
+            SupportState: ConstructSupportStates.PartiallyAnalyzed,
             DependencyImpact: ConstructDependencyImpacts.MayCreateDependencies,
             Concerns: [AnalysisConcerns.Dependency, AnalysisConcerns.Presentation],
-            Reason: "Perspectives are not analysed by this version. They can reference tables, columns " +
-                    "and measures."),
+            Reason: "Perspective members that name model objects are analysed, so objects a perspective " +
+                    "exposes are treated as required. The presentation meaning of a perspective is not " +
+                    "analysed."),
         new(
             // Documented as one file per culture under cultures/. Dependency effect not established.
             // Desktop emits an empty "cultureInfo en-US" for every model, so this rule fires on every
