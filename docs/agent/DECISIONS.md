@@ -149,6 +149,20 @@ Established by `tests/fixtures/desktop-semantic-constructs`.
   analysed scope, not an unanalysed construct, and PBI Assure must never imply it can assess deployed
   security.
 
+### Perspectives
+
+- **Perspective membership is affirmative model-usage evidence.** A perspective is a curated subset an
+  author deliberately exposed, and it drives Personalize visuals, so a report reader may add any member
+  to a visual at run time. Saved report metadata cannot prove which members they pick — the same
+  reasoning already applied to field-parameter choices.
+- **An object a perspective exposes is `StructurallyRequired`**, via the shared model-structure root
+  mechanism. Not `DirectlyUsed`: that means *report* metadata references the object.
+- **Membership is exactly what is listed.** Naming a table does not expose its fields. Microsoft
+  documents that each column, hierarchy and measure must be added individually unless `includeAll` is
+  set. Widening a listed table to all its fields would be a large source of false "used" conclusions.
+- This records **intent present in the model**, not evidence that any consumer used the perspective.
+  PBI Assure cannot observe that, and must not imply otherwise.
+
 ### Generated model objects
 
 - Power BI-generated Auto Date/Time tables are identified **only** by the explicit TMDL annotations

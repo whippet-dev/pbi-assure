@@ -5,39 +5,36 @@ Tactical entry point for an incoming coding agent. Read this first, then
 
 ## What just happened
 
-Role limitations now report dependency impact from what a role file actually contains rather than from
-what roles can contain in general. The Desktop fixture's two roles hold only analysed or
-reference-free content, so they report `NoKnownDependencyEffect` while remaining `PartiallyAnalyzed`
-and still emitting a limitation. A role with unrecognised content stays conservative.
+Perspective member dependencies are analysed. An object a perspective exposes is now
+`StructurallyRequired`, on the reasoning that a perspective is a curated surface a report reader can draw
+from at run time — the same argument already applied to field-parameter choices. Membership is narrow:
+naming a table does not expose its fields unless `includeAll` is set.
 
-This changed no usage state and no confidence value. It removed two false *causes* of qualification; the
-fixture's absence states are still qualified, by perspective and function metadata.
+On the Desktop fixture this moved `Sales[Total Amount]` and, through ordinary traversal, `Sales[Amount]`
+into positive states, taking the qualified count from 23 to 21. **Functions are now the only qualifying
+cause left.**
 
 ## State
 
-- **Last verified product state:** `fdab39b` on `master`. Later commits may be documentation-only; run
+- **Last verified product state:** `4c5a8b8` on `master`. Later commits may be documentation-only; run
   `git log --oneline` to see whether anything after it touched behaviour.
 - **Working tree:** expected clean apart from untracked local review documents; no tracked modifications
-- **Verified at that commit:** build succeeded with 0 warnings; **306 core + 2 privacy tests passed**; CI green
+- **Verified at that commit:** build succeeded with 0 warnings; **326 core + 2 privacy tests passed**; CI green
 - **Known exception:** `dotnet format --verify-no-changes` fails with 24 pre-existing whitespace errors
   in two Theme Review files. Unrelated to current work, deliberately not fixed. See
   [CURRENT_STATE.md](CURRENT_STATE.md).
 
 ## Immediate next task
 
-**Design how limitations and qualified confidence should appear to a user.**
+**Gather Desktop evidence for DAX user-defined function references, then parse them.**
 
-Detection, qualification and RLS dependency analysis all work, but nothing reaches HTML, CSV or the
-browser app, so a user cannot yet tell that a conclusion was qualified. The design document proposes a
-shape in its user-facing section; that predates the implementation and should be reviewed against it
-rather than followed blindly.
+The function limitation is now the only qualifying cause on the Desktop fixture. Its UDF uses only its
+parameter, so it proves serialization but not how a reference to a table, column or measure is written.
+Author a Desktop function whose body references model objects, and the fixture's qualified count should
+reach zero.
 
-Worth settling in the same pass: whether an object marked `QualifiedByLimitation` should read differently
-from one that is plainly `ApparentlyUnused`, and how to avoid making every report look alarming.
-
-The stronger candidate is perspective and function dependency parsing. Those are now the *only* two
-qualifying limitations left on the Desktop fixture, so parsing them would take its qualified count from
-23 of 27 to zero and make presentation design realistic rather than uniformly alarming.
+Only then is presentation design worth doing: designing it while most objects are caveated would
+optimise for a problem that is about to disappear.
 
 ## Do not do yet
 
@@ -61,8 +58,8 @@ blocking rather than merely sequenced:
 ## Missing evidence
 
 - RLS forms beyond the two the Desktop fixture proves — cross-table filters, column permissions (OLS)
+- **How a UDF body references a table, column or measure in Desktop-emitted TMDL** — the last qualifying cause
 - Whether a *translated* culture file names model objects, and whether Q&A synonyms constitute usage
-- How a DAX user-defined function that references a model object serialises
 - Whether `dataSources.tmdl` is ever emitted by current Desktop
 - Real-report measurement of `PBI-ACCESS-001` finding volume
 

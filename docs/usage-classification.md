@@ -12,6 +12,7 @@ PBI Assure classifies semantic-model objects by traversing an evidence-backed de
 - Hierarchy levels and their backing columns.
 - Active and inactive relationship endpoint columns.
 - Row-level security table permission filter expressions. References inside a filter resolve against the table named by the permission, because Power BI Desktop serialises same-table column references unqualified.
+- Perspective members: the tables, columns, measures and hierarchies a perspective exposes.
 - The table containing each column, measure, or hierarchy level.
 
 Every edge records its source and target identities, dependency kind, source file, and the relevant expression or reference text.
@@ -32,7 +33,7 @@ An object receives the first applicable state in this order:
 
 1. `DirectlyUsed`: referenced directly by report-, page-, or visual-level PBIR metadata.
 2. `IndirectlyUsed`: reachable from a directly used object through one or more dependency edges.
-3. `StructurallyRequired`: reachable from a model-structure root but not from a direct report root. Model-structure roots are the parts of the model that require an object regardless of any report: relationship endpoint columns, field-parameter metadata columns, and objects referenced by row-level security table permission filters.
+3. `StructurallyRequired`: reachable from a model-structure root but not from a direct report root. Model-structure roots are the parts of the model that require an object regardless of any report: relationship endpoint columns, field-parameter metadata columns, objects referenced by row-level security table permission filters, and objects exposed by a perspective.
 4. `UsedOnlyByUnusedBranch`: referenced by an object that is itself outside all direct and structural paths.
 5. `ApparentlyUnused`: not reached or referenced by any dependency represented in the graph.
 
@@ -49,6 +50,14 @@ When a report uses a calculation-group table, every calculation item is treated 
 A column referenced only by a role's table permission filter is required to enforce that filter, so it is not a deletion candidate. Such objects are `StructurallyRequired`: the model requires them, but no report references them, which is exactly what that state means. They are deliberately not `DirectlyUsed`, because that state means report metadata references the object.
 
 Only table permission filters are analysed. A role also carries column permissions, which name columns for object-level security and are not read, so roles remain a partially analysed construct and continue to record an analysis limitation. Role membership is held in the Power BI service and never appears in a project, so it is outside the analysed scope entirely rather than an unanalysed construct.
+
+## Perspectives
+
+A perspective is a curated subset of the model that an author deliberately exposed, and it drives the Personalize visuals experience: a report reader can add any of its members to a visual at run time. Saved report metadata cannot prove which members a reader picks, so every exposed object is treated as reachable — the same reasoning already applied to field-parameter choices. An object a perspective exposes is `StructurallyRequired`: the model exposes it regardless of what any saved visual references.
+
+Membership is exactly what the perspective lists. Naming a table does not expose its columns or measures; Microsoft documents that each member must be added individually unless `includeAll` is set, which includes every column, hierarchy and measure of that table. Treating a listed table as exposing all its fields would be a large source of false "used" conclusions.
+
+This is a statement about intent recorded in the model, not a claim that any consumer has used the perspective. PBI Assure cannot observe that.
 
 ## Unresolved evidence
 
