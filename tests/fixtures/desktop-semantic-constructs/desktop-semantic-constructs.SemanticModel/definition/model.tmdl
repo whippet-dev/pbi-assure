@@ -1,0 +1,26 @@
+model Model
+	culture: en-US
+	defaultPowerBIDataSourceVersion: powerBI_V3
+	sourceQueryCulture: en-GB
+	valueFilterBehavior: independent
+	dataAccessOptions
+		legacyRedirects
+		returnErrorValuesAsNull
+
+annotation __PBI_TimeIntelligenceEnabled = 1
+
+annotation PBI_QueryOrder = ["Sales"]
+
+annotation PBI_ProTooling = ["DevMode","TMDLView_Desktop"]
+
+ref table Sales
+ref table DateTableTemplate_c184ab56-f593-459e-b52f-b71fbc0c8705
+ref table LocalDateTable_98928d87-792b-4767-bd98-019e93b0a083
+
+ref role RegionalManager
+ref role DynamicUser
+
+ref perspective SalesView
+
+ref cultureInfo en-US
+

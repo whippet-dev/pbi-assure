@@ -1,0 +1,11 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/gitIntegration/platformProperties/2.0.0/schema.json",
+  "metadata": {
+    "type": "Report",
+    "displayName": "desktop-semantic-constructs"
+  },
+  "config": {
+    "version": "2.0",
+    "logicalId": "b6a270e4-1c7b-4f22-9d5b-cee9f713eb6e"
+  }
+}

@@ -1,0 +1,7 @@
+role RegionalManager
+	modelPermission: read
+
+	tablePermission Sales = [Region] = "West"
+
+	annotation PBI_Id = 9949dfdbc56843c186a081639d68d821
+

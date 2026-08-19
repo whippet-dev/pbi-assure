@@ -1,0 +1,62 @@
+table Sales
+	lineageTag: a6185ce0-696e-4c63-9bc4-bdee782d7b73
+
+	measure 'Total Amount' = SUM(Sales[Amount])
+		formatString: 0
+		lineageTag: 0c67718f-dd94-4c3c-865d-1096ef423de2
+
+	column Region
+		dataType: string
+		lineageTag: 1578fe99-f00c-4c5d-8644-ec82c4c923f3
+		summarizeBy: none
+		sourceColumn: Region
+
+		annotation SummarizationSetBy = Automatic
+
+	column UserEmail
+		dataType: string
+		lineageTag: b9a0f03b-3131-474f-bab5-7076df806925
+		summarizeBy: none
+		sourceColumn: UserEmail
+
+		annotation SummarizationSetBy = Automatic
+
+	column Amount
+		dataType: int64
+		formatString: 0
+		lineageTag: 5cf526d6-7aaa-4d54-98f4-17ff814ebd4e
+		summarizeBy: sum
+		sourceColumn: Amount
+
+		annotation SummarizationSetBy = Automatic
+
+	column Date
+		dataType: dateTime
+		formatString: Long Date
+		lineageTag: d5500c39-21a9-4e84-a775-b75ae09c5700
+		summarizeBy: none
+		sourceColumn: Date
+
+		variation Variation
+			isDefault
+			relationship: e3dd0bea-f87d-4bdf-9e0d-b178ef404114
+			defaultHierarchy: LocalDateTable_98928d87-792b-4767-bd98-019e93b0a083.'Date Hierarchy'
+
+		annotation SummarizationSetBy = Automatic
+
+		annotation UnderlyingDateTimeDataType = Date
+
+	partition Sales = m
+		mode: import
+		source =
+				let
+				  Source = Table.FromRows(Json.Document(Binary.Decompress(Binary.FromText("i45WCk8tLlHSUSoHUg6pFYm5BTmpeiUQMVMDAyBpaKpvYKhvZGBkphSrE63kmgiWS03EVG8MVm9koG9ghFCPx3wTU7D5QPXGUPWxAA==", BinaryEncoding.Base64), Compression.Deflate)), let _t = ((type nullable text) meta [Serialized.Text = true]) in type table [Region = _t, UserEmail = _t, Amount = _t, Date = _t]),
+				  #"Changed column type" = Table.TransformColumnTypes(Source, {{"Region", type text}, {"UserEmail", type text}, {"Amount", Int64.Type}, {"Date", type text}}, "en-US"),
+				    #"Changed Type" = Table.TransformColumnTypes(#"Changed column type",{{"Region", type text}, {"UserEmail", type text}, {"Amount", Int64.Type}, {"Date", type date}})
+				in
+				  #"Changed Type"
+
+	annotation PBI_NavigationStepName = Navigation
+
+	annotation PBI_ResultType = Table
+

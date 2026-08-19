@@ -1,0 +1,8 @@
+perspective SalesView
+
+	perspectiveTable Sales
+
+		perspectiveMeasure 'Total Amount'
+
+		perspectiveColumn Region
+

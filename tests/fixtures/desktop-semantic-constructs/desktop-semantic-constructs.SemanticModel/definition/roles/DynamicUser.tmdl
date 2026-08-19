@@ -1,0 +1,7 @@
+role DynamicUser
+	modelPermission: read
+
+	tablePermission Sales = [UserEmail] = USERPRINCIPALNAME()
+
+	annotation PBI_Id = 174dc7c840d94300ac49ccfd98b41bd1
+

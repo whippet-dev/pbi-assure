@@ -1,0 +1,4 @@
+/// AddTax takes in amount and returns amount including tax
+function AddTax = (amount : NUMERIC) => amount * 1.1
+	lineageTag: f18f288f-7652-462a-8ee5-2023b5592778
+

@@ -1,0 +1,3 @@
+createOrReplace
+    /// AddTax takes in amount and returns amount including tax
+    function AddTax = (amount : NUMERIC) => amount * 1.1
