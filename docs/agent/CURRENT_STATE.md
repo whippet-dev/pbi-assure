@@ -12,7 +12,7 @@ evidenced · **[design decision]** a choice, not a fact.
 |---|---|
 | Remote | `whippet-dev/pbi-assure` |
 | Branch | `master` (also the default branch) |
-| Last verified product state | `bd19501` — *Qualify absence-state classifications when metadata was skipped* |
+| Last verified product state | `97c0902` — *Analyse row-level security table permission dependencies* |
 | Working tree | Expected clean of tracked modifications. Untracked local review documents may be present |
 
 `master` may have moved past that commit for documentation-only changes. Re-verify and update this
@@ -22,7 +22,7 @@ section whenever a commit changes build, test or behaviour — not for every com
 
 - `dotnet build PbiAssure.slnx` — **succeeded, 0 warnings, 0 errors** [verified]. `TreatWarningsAsErrors`
   is on, so warnings fail the build.
-- `dotnet test PbiAssure.slnx` — **268 core + 2 privacy end-to-end tests passed**, 0 failed [verified].
+- `dotnet test PbiAssure.slnx` — **290 core + 2 privacy end-to-end tests passed**, 0 failed [verified].
 - CI (`.github/workflows/ci.yml`) — **green** [verified]. Runs restore, build, a Playwright Chromium
   install, then the whole solution test suite on `windows-latest`.
 - The privacy end-to-end tests are part of the normal solution test run; they need Node.js and a
@@ -62,13 +62,21 @@ unused with no indication that security metadata had been skipped.
 - **`ClassificationConfidence`** on `SemanticObjectUsage` — `Established` or
   `QualifiedByLimitation`. `SemanticUsageConfidenceQualifier` marks absence-state objects in a model
   that holds a limitation whose impact is `MayCreateDependencies` or `DependencyEffectUnknown`.
+- **Row-level security table permission dependencies.** `definition/roles/<role>.tmdl` is parsed;
+  each `tablePermission` filter's references resolve against the table the permission names — Desktop
+  serialises them unqualified, `[Region]` not `Sales[Region]` — and become model-structure roots. An
+  object required by a role filter is therefore `StructurallyRequired`, via ordinary traversal rather
+  than any RLS-specific rule. Column permissions are **not** parsed, so roles are `PartiallyAnalyzed`
+  and keep a qualifying impact.
 
-Detection is **file level only**. Usage states themselves are never changed; confidence is an orthogonal
-additive field, and no user-facing surface consumes it yet.
+Limitation **detection** is file level only. Confidence is an orthogonal additive field, and no
+user-facing surface consumes limitations or confidence yet.
+
+Usage states change only through real dependency evidence entering the graph — as RLS parsing now does.
+Nothing derives a usage state from the presence of a limitation.
 
 ### Not implemented — do not assume otherwise
 
-- Row-level security / `tablePermission` parsing
 - Block-level detection (`kpi`, `detailRows`, `alternateOf`, model-side `variation`)
 - Property-level detection
 - Malformed-TMDL recovery
@@ -106,6 +114,7 @@ unanalysed files are the always-present three — verified against three Desktop
 | Whether a *translated* culture file names model objects, and whether Q&A synonyms constitute usage | **Open.** Needs a Desktop fixture containing translations and synonyms |
 | How a DAX user-defined function that references a model object serialises | **Open.** The fixture's function uses only its parameter |
 | Whether current Desktop can still produce TMSL `model.bim` | Unknown |
+| RLS forms beyond the two the fixture proves — cross-table filters, OLS column permissions, DirectQuery/Direct Lake roles | **Open.** Parser tests cover more shapes synthetically; only the two static/dynamic same-table forms are Desktop-verified |
 | `PBI-ACCESS-001` real-world finding volume | **[inferred], never measured.** Do not change the rule on this inference alone |
 
 ### Settled, so it does not need re-investigating
@@ -125,11 +134,15 @@ unanalysed files are the always-present three — verified against three Desktop
 
 **Design how limitations and qualified confidence should appear to a user.**
 
-The analysis side is complete: limitations are detected and absence-state classifications are qualified.
-Nothing surfaces either in HTML, CSV or the browser app, so a user still cannot see that a conclusion was
-qualified. That presentation deserves its own design pass rather than an ad-hoc badge — see
+The analysis side is complete for the constructs supported so far: limitations are detected, RLS
+dependencies are analysed, and absence-state classifications are qualified. Nothing surfaces in HTML, CSV
+or the browser app, so a user still cannot see that a conclusion was qualified. That presentation
+deserves its own design pass rather than an ad-hoc badge — see
 [../design/unsupported-construct-design.md](../design/unsupported-construct-design.md) §5 for the shape
 already proposed, which has not been reviewed against the implemented behaviour.
+
+The alternative candidate is perspective and function dependency parsing, which would shrink the
+remaining caveat on the Desktop fixture the way RLS parsing just did.
 
 ## Reference documents
 

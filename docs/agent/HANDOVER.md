@@ -5,16 +5,17 @@ Tactical entry point for an incoming coding agent. Read this first, then
 
 ## What just happened
 
-The propagation slice landed. `SemanticObjectUsage` now carries `ClassificationConfidence`, and an object
-in a model holding unanalysed metadata that could bear on usage is marked `QualifiedByLimitation` while
-keeping its usage state unchanged. Nothing surfaces to a user yet.
+Row-level security dependency analysis landed. Role table permission filters are parsed and their
+references become model-structure roots, so a column used only by a security filter is now
+`StructurallyRequired` instead of a deletion candidate. Roles are recorded as `PartiallyAnalyzed`, not
+supported: column permissions are still unread, so the role limitation keeps a qualifying impact.
 
 ## State
 
-- **Last verified product state:** `bd19501` on `master`. Later commits may be documentation-only; run
+- **Last verified product state:** `97c0902` on `master`. Later commits may be documentation-only; run
   `git log --oneline` to see whether anything after it touched behaviour.
 - **Working tree:** expected clean apart from untracked local review documents; no tracked modifications
-- **Verified at that commit:** build succeeded with 0 warnings; **268 core + 2 privacy tests passed**; CI green
+- **Verified at that commit:** build succeeded with 0 warnings; **290 core + 2 privacy tests passed**; CI green
 - **Known exception:** `dotnet format --verify-no-changes` fails with 24 pre-existing whitespace errors
   in two Theme Review files. Unrelated to current work, deliberately not fixed. See
   [CURRENT_STATE.md](CURRENT_STATE.md).
@@ -23,16 +24,20 @@ keeping its usage state unchanged. Nothing surfaces to a user yet.
 
 **Design how limitations and qualified confidence should appear to a user.**
 
-Detection and qualification both work, but nothing reaches HTML, CSV or the browser app, so a user cannot
-yet tell that a conclusion was qualified. The design document proposes a shape in its user-facing
-section; that predates the implementation and should be reviewed against it rather than followed blindly.
+Detection, qualification and RLS dependency analysis all work, but nothing reaches HTML, CSV or the
+browser app, so a user cannot yet tell that a conclusion was qualified. The design document proposes a
+shape in its user-facing section; that predates the implementation and should be reviewed against it
+rather than followed blindly.
 
 Worth settling in the same pass: whether an object marked `QualifiedByLimitation` should read differently
 from one that is plainly `ApparentlyUnused`, and how to avoid making every report look alarming.
 
+The alternative candidate is perspective and function dependency parsing. Those are the two remaining
+qualifying limitations on the Desktop fixture, and parsing them would shrink the caveat the way RLS
+parsing just did — 23 of 27 objects there are still qualified.
+
 ## Do not do yet
 
-- Row-level security / `tablePermission` parsing
 - Block-level or property-level limitation detection
 - Further registry classification or impact changes without new evidence — the always-present files were
   corrected on the evidence recorded in `SemanticDefinitionFileRegistry`; `dataSources.tmdl` stays
@@ -52,6 +57,7 @@ blocking rather than merely sequenced:
 
 ## Missing evidence
 
+- RLS forms beyond the two the Desktop fixture proves — cross-table filters, column permissions (OLS)
 - Whether a *translated* culture file names model objects, and whether Q&A synonyms constitute usage
 - How a DAX user-defined function that references a model object serialises
 - Whether `dataSources.tmdl` is ever emitted by current Desktop

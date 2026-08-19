@@ -11,6 +11,7 @@ PBI Assure classifies semantic-model objects by traversing an evidence-backed de
 - Sort-by column links.
 - Hierarchy levels and their backing columns.
 - Active and inactive relationship endpoint columns.
+- Row-level security table permission filter expressions. References inside a filter resolve against the table named by the permission, because Power BI Desktop serialises same-table column references unqualified.
 - The table containing each column, measure, or hierarchy level.
 
 Every edge records its source and target identities, dependency kind, source file, and the relevant expression or reference text.
@@ -31,7 +32,7 @@ An object receives the first applicable state in this order:
 
 1. `DirectlyUsed`: referenced directly by report-, page-, or visual-level PBIR metadata.
 2. `IndirectlyUsed`: reachable from a directly used object through one or more dependency edges.
-3. `StructurallyRequired`: reachable from a relationship endpoint but not from a direct report root.
+3. `StructurallyRequired`: reachable from a model-structure root but not from a direct report root. Model-structure roots are the parts of the model that require an object regardless of any report: relationship endpoint columns, field-parameter metadata columns, and objects referenced by row-level security table permission filters.
 4. `UsedOnlyByUnusedBranch`: referenced by an object that is itself outside all direct and structural paths.
 5. `ApparentlyUnused`: not reached or referenced by any dependency represented in the graph.
 
@@ -42,6 +43,12 @@ When a report uses a field-parameter table, every statically declared `NAMEOF(..
 Report-level measures are kept separate from semantic-model measures. A visual that uses a report measure makes that report measure a dependency root; PBI Assure then follows the structured measure references stored in `reportExtensions.json`. Referenced model measures are classified as indirectly used, and references to other report measures are followed transitively. If Power BI marks a report measure as containing unrecognized references, the inventory preserves that warning for manual review.
 
 When a report uses a calculation-group table, every calculation item is treated as reachable. Explicit object references in calculation-item DAX and format-string expressions then participate in normal dependency traversal. Functions such as `SELECTEDMEASURE()` are contextual and do not create an invented dependency to every measure in the model; the report's explicit measure references remain the evidence for those base measures.
+
+## Security metadata
+
+A column referenced only by a role's table permission filter is required to enforce that filter, so it is not a deletion candidate. Such objects are `StructurallyRequired`: the model requires them, but no report references them, which is exactly what that state means. They are deliberately not `DirectlyUsed`, because that state means report metadata references the object.
+
+Only table permission filters are analysed. A role also carries column permissions, which name columns for object-level security and are not read, so roles remain a partially analysed construct and continue to record an analysis limitation. Role membership is held in the Power BI service and never appears in a project, so it is outside the analysed scope entirely rather than an unanalysed construct.
 
 ## Unresolved evidence
 

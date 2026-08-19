@@ -114,17 +114,30 @@ Confirmed experimentally in Power BI Desktop and pinned by tests and fixtures.
 Do not "simplify" these three rules. See `tests/fixtures/tab-order-states/README.md`, which also warns
 against re-saving that fixture, since saving destroys the pre-save state it exists to preserve.
 
-### Row-level security serialization
+### Row-level security serialization and classification
 
 - Desktop emits **one file per role** under `definition/roles/`.
 - Inside a `tablePermission`, the owning table is named once on the `tablePermission` line and the
-  filter expression uses **unqualified** column references — `[Region]`, not `Sales[Region]`. Future RLS
-  dependency parsing must resolve unqualified references against the table named by the
-  `tablePermission` rather than assuming a qualified `Table[Column]` form.
+  filter expression uses **unqualified** column references — `[Region]`, not `Sales[Region]`. References
+  resolve against the table named by the `tablePermission`; never assume a qualified `Table[Column]` form.
 
-Established by `tests/fixtures/desktop-semantic-constructs`. RLS is **not** parsed yet; a column
-referenced only by a security filter still classifies as `ApparentlyUnused`. That is a known deficiency
-and must never be encoded in a test as desired behaviour.
+Established by `tests/fixtures/desktop-semantic-constructs`.
+
+- **An object referenced by a role's table permission filter is `StructurallyRequired`.** The model
+  requires it regardless of any report, which is precisely what that state means. It is deliberately not
+  `DirectlyUsed`, because that state means *report* metadata references the object, and importance is not
+  the same as report usage.
+- Role filters are implemented as **model-structure roots**, the mechanism relationship endpoints and
+  field-parameter metadata already use, so ordinary graph traversal produces the classification and the
+  filter's transitive dependencies come along. There is no RLS-specific classification rule, and there
+  must not be one.
+- **Parsing part of a construct is not supporting it.** Table permission filters are analysed; column
+  permissions, which `TablePermission` also carries and which name columns for object-level security, are
+  not. Roles are therefore `PartiallyAnalyzed` and keep a qualifying dependency impact. Do not lower that
+  impact to reduce caveat counts.
+- Role membership lives in the Power BI service and never appears in a project. It is outside the
+  analysed scope, not an unanalysed construct, and PBI Assure must never imply it can assess deployed
+  security.
 
 ### Generated model objects
 

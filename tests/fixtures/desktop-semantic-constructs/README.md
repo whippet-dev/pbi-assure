@@ -144,8 +144,8 @@ role DynamicUser
 
 **Desktop serialises the column reference as `[Region]`, not `Sales[Region]`.** The owning table appears
 once, on the `tablePermission` line, and the filter expression itself uses an unqualified reference.
-Any future RLS dependency parsing must resolve unqualified references against the table named by the
-`tablePermission`, not assume a qualified `Table[Column]` form.
+RLS dependency parsing resolves unqualified references against the table named by the `tablePermission`
+rather than assuming a qualified `Table[Column]` form — this fixture is what established that.
 
 ### Perspective — names model objects
 
@@ -259,9 +259,10 @@ in Desktop is not known to be destructive. Even so, prefer working on a copy.
 - **Whether `model.bim` (TMSL) can still be produced** by this Desktop version
 - **Anything about other Desktop versions, locales, or DirectQuery/Direct Lake models.** Import only,
   one version, one machine
-- **That RLS-only columns are handled correctly.** They are not. `Sales[Region]` and `Sales[UserEmail]`
-  currently classify as `ApparentlyUnused` because role files are not parsed. That is a known
-  deficiency, deliberately **not** encoded as expected behaviour in any test
+- **That role support is complete.** Table permission *filters* are now parsed, so `Sales[Region]` and
+  `Sales[UserEmail]` are correctly `StructurallyRequired` rather than deletion candidates. Column
+  permissions — object-level security, which `TablePermission` also carries — are still not read, so
+  roles remain a partially analysed construct and still record a limitation
 
 ## Do not regenerate this fixture from hand-written TMDL
 
