@@ -142,6 +142,8 @@ samples-local/            Ignored local PBIP/PBIR projects and scan outputs
 
 Start with [the architecture overview](docs/architecture.md), [the product roadmap](docs/roadmap.md), [the rule catalog](docs/rule-catalog.md), and [the contributor guide](CONTRIBUTING.md).
 
+Working on this repository with a coding agent? Start instead at [the agent handover](docs/agent/HANDOVER.md), which records the current state, the immediate next task, and the decisions not to reopen.
+
 ## Current boundaries
 
 - PBIP/PBIR and TMDL are the initial supported input formats.
