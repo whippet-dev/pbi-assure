@@ -59,7 +59,10 @@ public static class ProjectScanner
             DataSources: powerQueryAnalysis.DataSources,
             UnresolvedSemanticReferences: unresolvedSemanticReferences,
             UnresolvedSemanticDependencies: dependencyAnalysis.UnresolvedDependencies,
-            Findings: []);
+            Findings: [])
+        {
+            AnalysisLimitations = AnalysisLimitationDetector.Detect(source, artifacts),
+        };
 
         return inventory with { Findings = AssuranceRuleEngine.Evaluate(inventory) };
     }
@@ -112,9 +115,11 @@ public static class ProjectScanner
 
     private static int CountDefinitionFiles(IProjectFileSource source, string directory, string kind)
     {
+        // The semantic-model set is shared with SemanticDefinitionFileRegistry so that the artifacts
+        // counted here and the artifacts classified there cannot drift apart.
         var supportedExtensions = kind == ArtifactKinds.Report
             ? new HashSet<string>(StringComparer.OrdinalIgnoreCase) { ".json", ".pbir" }
-            : new HashSet<string>(StringComparer.OrdinalIgnoreCase) { ".tmdl", ".bim", ".pbism" };
+            : SemanticDefinitionFileRegistry.DefinitionExtensions;
 
         return source
             .EnumerateFiles(directory)

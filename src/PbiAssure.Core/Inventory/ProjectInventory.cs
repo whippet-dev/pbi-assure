@@ -19,6 +19,12 @@ public sealed record ProjectInventory(
     IReadOnlyList<UnresolvedSemanticDependency> UnresolvedSemanticDependencies,
     IReadOnlyList<AssuranceFinding> Findings)
 {
+    /// <summary>
+    /// Metadata that was encountered in the analysed project but not fully analysed. Empty when every
+    /// definition artifact was either parsed or is packaging content that is correctly not parsed.
+    /// </summary>
+    public IReadOnlyList<AnalysisLimitation> AnalysisLimitations { get; init; } = [];
+
     public int ReportCount => Artifacts.Count(artifact => artifact.Kind == ArtifactKinds.Report);
 
     public int SemanticModelCount => Artifacts.Count(artifact => artifact.Kind == ArtifactKinds.SemanticModel);
