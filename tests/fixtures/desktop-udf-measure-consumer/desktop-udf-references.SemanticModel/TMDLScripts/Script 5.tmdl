@@ -1,0 +1,2 @@
+createOrReplace
+    function Quadrupled = () => Doubled() * 2

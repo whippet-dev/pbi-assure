@@ -1,0 +1,2 @@
+createOrReplace
+    function TotalOf = () => SUM(Sales[Amount])

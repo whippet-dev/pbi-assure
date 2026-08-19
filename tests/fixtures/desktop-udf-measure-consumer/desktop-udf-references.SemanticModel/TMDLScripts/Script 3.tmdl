@@ -1,0 +1,2 @@
+createOrReplace
+    function RowCount = () => COUNTROWS(Sales)
