@@ -84,6 +84,11 @@ Not every report merits committing; only those carrying durable project state.
 - **A mechanism that caveats essentially every model is worse than silence.** Property-level detection in
   particular must not ship if it would qualify every model for harmless descriptive metadata. The same
   test applies to any future limitation source.
+- **Naming an object and consuming it are different propositions.** A construct that mentions a model
+  object does not necessarily create usage. Collection-ordering declarations list every member
+  regardless of use; a translation supplies a caption and is deleted along with the object it describes.
+  Neither can keep an otherwise-unused object alive, so neither may caveat a usage conclusion. Ask what
+  would break if the object were removed, not whether its name appears somewhere.
 
 ## Established Power BI semantics — verified, do not re-derive
 
@@ -108,6 +113,18 @@ Confirmed experimentally in Power BI Desktop and pinned by tests and fixtures.
 
 Do not "simplify" these three rules. See `tests/fixtures/tab-order-states/README.md`, which also warns
 against re-saving that fixture, since saving destroys the pre-save state it exists to preserve.
+
+### Row-level security serialization
+
+- Desktop emits **one file per role** under `definition/roles/`.
+- Inside a `tablePermission`, the owning table is named once on the `tablePermission` line and the
+  filter expression uses **unqualified** column references — `[Region]`, not `Sales[Region]`. Future RLS
+  dependency parsing must resolve unqualified references against the table named by the
+  `tablePermission` rather than assuming a qualified `Table[Column]` form.
+
+Established by `tests/fixtures/desktop-semantic-constructs`. RLS is **not** parsed yet; a column
+referenced only by a security filter still classifies as `ApparentlyUnused`. That is a known deficiency
+and must never be encoded in a test as desired behaviour.
 
 ### Generated model objects
 
