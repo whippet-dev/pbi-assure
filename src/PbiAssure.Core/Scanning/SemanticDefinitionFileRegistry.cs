@@ -107,18 +107,24 @@ internal static class SemanticDefinitionFileRegistry
             Concerns: [],
             Reason: "Named expressions are parsed into the semantic-model inventory."),
         new(
-            // Documented as one file per role under roles/. TablePermission.FilterExpression is DAX,
-            // so a role file can reference model objects.
+            // Partially analysed. Table permission filter expressions are parsed and their references
+            // become model-structure roots, so a column used only by a row filter is no longer reported
+            // as unused. Not parsed: column permissions, which TablePermission also carries and which
+            // name columns for object-level security. Because that unread content is dependency-bearing,
+            // the impact stays qualifying — this value is not lowered to reduce caveat counts.
+            // Role membership lives in the Power BI service, never in the project, so it is a permanent
+            // scope boundary rather than something this construct could ever supply.
             LimitationId: "PBI-LIMIT-MODEL-ROLE",
             ConstructType: "role",
             Pattern: "definition/roles",
             MatchKind: SemanticDefinitionFileMatch.DirectoryContents,
             Classification: ConstructClassifications.SemanticNotYetAnalyzed,
-            SupportState: ConstructSupportStates.NotYetAnalyzed,
+            SupportState: ConstructSupportStates.PartiallyAnalyzed,
             DependencyImpact: ConstructDependencyImpacts.MayCreateDependencies,
             Concerns: [AnalysisConcerns.Dependency, AnalysisConcerns.Security],
-            Reason: "Row-level security role definitions are not analysed by this version. Security " +
-                    "filters can reference model objects that no report or measure uses."),
+            Reason: "Row-level security table permission filters are analysed, so objects they reference " +
+                    "are treated as required. Other role content, including column permissions, is not " +
+                    "analysed and can also reference model objects."),
         new(
             // Documented as one file per perspective under perspectives/. Perspectives hold table,
             // column and measure references, so they can reference model objects. Whether such a
