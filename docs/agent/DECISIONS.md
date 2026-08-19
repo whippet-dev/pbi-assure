@@ -29,8 +29,17 @@ distinction matters if Desktop later gains a GUI for the same object.
 ## The repository is the project memory
 
 Chat history is disposable. Any decision that outlives a single task belongs in the repository — here, in
-an ADR, in a fixture README, or in a commit message. An incoming agent should be able to work from a
-clone plus the documents named in [CURRENT_STATE.md](CURRENT_STATE.md).
+an ADR, in a fixture README, in [`docs/design/`](../design/), in [`docs/reviews/`](../reviews/), or in a
+commit message. An incoming agent must be able to work from a clone alone.
+
+**The repository copy is authoritative.** Documents are often drafted or shared through an external
+review folder first. That copy is for exchange and review only. Once a document is accepted it is
+committed here, and from then on **the repository version wins if the two ever differ**. Do not maintain
+two equal sources of truth, and do not treat an external copy as current state.
+
+The normal flow for a task report is: draft it externally for review → once accepted, commit the
+authoritative copy under `docs/design/` (forward-looking) or `docs/reviews/` (point-in-time record).
+Not every report merits committing; only those carrying durable project state.
 
 ## Analysis honesty
 

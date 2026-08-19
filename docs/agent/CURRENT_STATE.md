@@ -83,7 +83,7 @@ so propagating today would caveat **every object in every model**, destroying th
 
 Resolve first, by giving those three `NoKnownDependencyEffect` while keeping them classified
 `SemanticNotYetAnalyzed`: still recorded and visible, but no longer qualifying anything. Evidence and
-reasoning are in `DESKTOP_SEMANTIC_FIXTURE_PLAN.md` §6.
+reasoning are in [../design/desktop-semantic-fixture-plan.md](../design/desktop-semantic-fixture-plan.md) §6.
 
 ## Current evidence gaps
 
@@ -105,7 +105,7 @@ documentation]. The open sub-case is two semantic models in one project bound co
 
 ## Immediate task — Desktop-authored fixture
 
-A person must author a fixture in Power BI Desktop following `DESKTOP_SEMANTIC_FIXTURE_PLAN.md`: a
+A person must author a fixture in Power BI Desktop following [../design/desktop-semantic-fixture-plan.md](../design/desktop-semantic-fixture-plan.md): a
 minimal model with two RLS roles, a perspective, and a DAX user-defined function, saved as a PBIP.
 
 An agent must **not** hand-write these files. A hand-written PBIP proves nothing about what Desktop
@@ -117,22 +117,15 @@ gitignored.
 
 ## Reference documents
 
-**In this repository:**
+Everything referenced here is in this repository. No external document is required.
 
 - [Architecture overview](../architecture.md) · [Usage classification](../usage-classification.md) ·
   [Rule catalog](../rule-catalog.md) · [Roadmap](../roadmap.md)
+- [Design documents](../design/) — the current task plan and the unsupported-construct design
+- [Reviews and evidence](../reviews/) — audits, verification passes and implementation handovers
 - [Decision records](../decisions/) — architectural ADRs
 - `tests/fixtures/tab-order-states/README.md` — the model for how a Desktop-authored fixture is
   documented
 
-**Supplied separately — not stored in this repository:**
-
-- `DESKTOP_SEMANTIC_FIXTURE_PLAN.md` — the current task
-- `UNSUPPORTED_CONSTRUCT_SLICE1_REGISTRY_CORRECTION.md` — what slice 1 does and why
-- `UNSUPPORTED_CONSTRUCT_DESIGN_V2.md` — the full design
-- `UNSUPPORTED_CONSTRUCT_SLICE1_IMPLEMENTATION.md`, `AUDIT_VERIFICATION_2026-08-19.md`,
-  `PBI_ASSURE_ARCHITECTURE_REVIEW.md`, `OBJECT_COVERAGE_REVIEW.md`, `PROPOSED_RULES.md` — history
-
-If you are working without these, request them before making design-level changes. Committing them into
-the repository would remove this dependency; see the note in [DECISIONS.md](DECISIONS.md) on the
-repository being the project memory.
+Read [../reviews/README.md](../reviews/README.md) before acting on any single review: later documents
+correct earlier ones rather than the earlier ones being edited.

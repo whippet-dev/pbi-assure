@@ -22,7 +22,8 @@ because of them.
 
 ## Immediate next task — not a coding task
 
-**Create the Power BI Desktop-authored semantic fixture defined in `DESKTOP_SEMANTIC_FIXTURE_PLAN.md`.**
+**Create the Power BI Desktop-authored semantic fixture defined in
+[../design/desktop-semantic-fixture-plan.md](../design/desktop-semantic-fixture-plan.md).**
 
 This is a manual authoring task performed by a person in Power BI Desktop. It is currently in progress.
 An agent cannot complete it, and **must not substitute hand-written TMDL for it** — the entire point is
@@ -63,14 +64,15 @@ blocking rather than merely sequenced:
 1. This file
 2. [CURRENT_STATE.md](CURRENT_STATE.md) — what is true now
 3. [DECISIONS.md](DECISIONS.md) — what not to reopen
-4. `DESKTOP_SEMANTIC_FIXTURE_PLAN.md` — the current task
-5. `UNSUPPORTED_CONSTRUCT_SLICE1_REGISTRY_CORRECTION.md` — what slice 1 does and why the registry looks
-   as it does
-6. `UNSUPPORTED_CONSTRUCT_DESIGN_V2.md` — only if deeper architectural context is needed
+4. [../design/desktop-semantic-fixture-plan.md](../design/desktop-semantic-fixture-plan.md) — the current
+   task
+5. [../reviews/unsupported-construct-slice1-registry-correction.md](../reviews/unsupported-construct-slice1-registry-correction.md)
+   — what slice 1 does and why the registry looks as it does
+6. [../design/unsupported-construct-design.md](../design/unsupported-construct-design.md) — only if
+   deeper architectural context is needed
 
-Items 4–6 are **supplied separately and are not stored in this repository**; see
-[CURRENT_STATE.md](CURRENT_STATE.md) → *Reference documents*. Do not read every historical audit before
-starting a small task.
+Everything needed is in this repository; no external document is required. Do not read every historical
+audit before starting a small task — [../reviews/](../reviews/) is there when you need it, not before.
 
 ## Before you finish a task
 
