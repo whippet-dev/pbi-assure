@@ -5,37 +5,33 @@ Tactical entry point for an incoming coding agent. Read this first, then
 
 ## What just happened
 
-A Power BI Desktop-authored fixture was added at `tests/fixtures/desktop-semantic-constructs/`,
-confirming that the definition-file registry's paths match what Desktop actually emits. No path needed
-correcting. The always-present `model.tmdl`, `database.tmdl` and culture files were then changed from
-`DependencyEffectUnknown` to `NoKnownDependencyEffect`, which clears the blocker that would have made
-propagation caveat every model.
+The propagation slice landed. `SemanticObjectUsage` now carries `ClassificationConfidence`, and an object
+in a model holding unanalysed metadata that could bear on usage is marked `QualifiedByLimitation` while
+keeping its usage state unchanged. Nothing surfaces to a user yet.
 
 ## State
 
-- **Last verified product state:** `d2ecbcf` on `master`. Later commits may be documentation-only; run
+- **Last verified product state:** `bd19501` on `master`. Later commits may be documentation-only; run
   `git log --oneline` to see whether anything after it touched behaviour.
 - **Working tree:** expected clean apart from untracked local review documents; no tracked modifications
-- **Verified at that commit:** build succeeded with 0 warnings; **245 core + 2 privacy tests passed**; CI green
+- **Verified at that commit:** build succeeded with 0 warnings; **268 core + 2 privacy tests passed**; CI green
 - **Known exception:** `dotnet format --verify-no-changes` fails with 24 pre-existing whitespace errors
   in two Theme Review files. Unrelated to current work, deliberately not fixed. See
   [CURRENT_STATE.md](CURRENT_STATE.md).
 
 ## Immediate next task
 
-**Review the fixture evidence and the dependency-impact corrections before propagation is built.**
+**Design how limitations and qualified confidence should appear to a user.**
 
-Start with `tests/fixtures/desktop-semantic-constructs/README.md`, which is the authoritative record of
-what the fixture proves and — importantly — what it does not. Then read the impact reasoning in
-`SemanticDefinitionFileRegistry`, particularly the culture rule, which rests on a design decision rather
-than an observation.
+Detection and qualification both work, but nothing reaches HTML, CSV or the browser app, so a user cannot
+yet tell that a conclusion was qualified. The design document proposes a shape in its user-facing
+section; that predates the implementation and should be reviewed against it rather than followed blindly.
 
-Propagation (`ClassificationConfidence` and the qualification rule) is now unblocked but deliberately
-still unimplemented, pending that review.
+Worth settling in the same pass: whether an object marked `QualifiedByLimitation` should read differently
+from one that is plainly `ApparentlyUnused`, and how to avoid making every report look alarming.
 
 ## Do not do yet
 
-- Uncertainty propagation or `ClassificationConfidence`
 - Row-level security / `tablePermission` parsing
 - Block-level or property-level limitation detection
 - Further registry classification or impact changes without new evidence — the always-present files were
@@ -49,8 +45,8 @@ still unimplemented, pending that review.
 Reasons are recorded in [CURRENT_STATE.md](CURRENT_STATE.md) and [DECISIONS.md](DECISIONS.md). Two are
 blocking rather than merely sequenced:
 
-1. **Propagation is unblocked but unreviewed.** The always-present-file problem is fixed, but the
-   culture impact value rests on a design decision. Review it before building on it.
+1. **The culture impact value rests on a design decision**, not an observation — translations are treated
+   as describing objects rather than consuming them. Everything built on qualification inherits that.
 2. **`PBI-ACCESS-001` volume is unmeasured.** The false-positive concern is inferred, never measured
    against a real report. Do not change the rule on that inference alone.
 

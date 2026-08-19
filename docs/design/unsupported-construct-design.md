@@ -1,7 +1,12 @@
 # Unsupported and unknown construct handling — design proposal, revision 2
 
 **Date:** 2026-08-19 · **Against commit:** `b84d487` (`master`) · **Supersedes:** an earlier revision not retained in this repository (see `../reviews/README.md`)
-**Status: design only. No production code, tests, rules, HTML or RLS implementation.**
+**Status when written: design only. No production code, tests, rules, HTML or RLS implementation.**
+
+> **Implementation status, added later.** Slice 1 (file-level detection, §10.4) shipped, and the
+> uncertainty-propagation rule (§4.4) shipped as `ClassificationConfidence` at `bd19501`. The user-facing
+> behaviour in §5 has **not** been implemented and predates the working code, so review it against actual
+> behaviour rather than following it directly. Everything below is the original reasoning, unedited.
 
 Fifth document in the series, after `../reviews/architecture-review.md`, `../reviews/object-coverage-review.md`,
 `proposed-rules.md` and `../reviews/audit-verification.md`. It answers one question:

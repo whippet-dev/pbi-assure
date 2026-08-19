@@ -12,7 +12,7 @@ evidenced · **[design decision]** a choice, not a fact.
 |---|---|
 | Remote | `whippet-dev/pbi-assure` |
 | Branch | `master` (also the default branch) |
-| Last verified product state | `d2ecbcf` — *Stop always-present model files caveating every usage conclusion* |
+| Last verified product state | `bd19501` — *Qualify absence-state classifications when metadata was skipped* |
 | Working tree | Expected clean of tracked modifications. Untracked local review documents may be present |
 
 `master` may have moved past that commit for documentation-only changes. Re-verify and update this
@@ -22,7 +22,7 @@ section whenever a commit changes build, test or behaviour — not for every com
 
 - `dotnet build PbiAssure.slnx` — **succeeded, 0 warnings, 0 errors** [verified]. `TreatWarningsAsErrors`
   is on, so warnings fail the build.
-- `dotnet test PbiAssure.slnx` — **245 core + 2 privacy end-to-end tests passed**, 0 failed [verified].
+- `dotnet test PbiAssure.slnx` — **268 core + 2 privacy end-to-end tests passed**, 0 failed [verified].
 - CI (`.github/workflows/ci.yml`) — **green** [verified]. Runs restore, build, a Playwright Chromium
   install, then the whole solution test suite on `windows-latest`.
 - The privacy end-to-end tests are part of the normal solution test run; they need Node.js and a
@@ -59,12 +59,15 @@ unused with no indication that security metadata had been skipped.
   recognised; `TMDLScripts/` editor scripts are excluded so they do not become false limitations.
 - Those paths are now confirmed against real Power BI Desktop output by the
   `desktop-semantic-constructs` fixture. No path needed correcting.
+- **`ClassificationConfidence`** on `SemanticObjectUsage` — `Established` or
+  `QualifiedByLimitation`. `SemanticUsageConfidenceQualifier` marks absence-state objects in a model
+  that holds a limitation whose impact is `MayCreateDependencies` or `DependencyEffectUnknown`.
 
-Detection is **file level only** and changes **no** usage classification.
+Detection is **file level only**. Usage states themselves are never changed; confidence is an orthogonal
+additive field, and no user-facing surface consumes it yet.
 
 ### Not implemented — do not assume otherwise
 
-- `ClassificationConfidence` and uncertainty propagation
 - Row-level security / `tablePermission` parsing
 - Block-level detection (`kpi`, `detailRows`, `alternateOf`, model-side `variation`)
 - Property-level detection
@@ -92,8 +95,8 @@ reported as unanalysed, but unable to caveat a usage conclusion [verified].
   unused object alive [design decision]. **Open sub-case:** Q&A linguistic metadata also lives in culture
   files and is closer to a consumer; settling it needs a fixture containing translations and synonyms
 
-Propagation is now unblocked on this point, but is **still not implemented** and should be reviewed
-before it is.
+Propagation is implemented and, because of this correction, does not fire on a model whose only
+unanalysed files are the always-present three — verified against three Desktop-authored fixtures.
 
 ## Current evidence gaps
 
@@ -120,12 +123,13 @@ before it is.
 
 ## Immediate task
 
-**Review the fixture evidence and the dependency-impact corrections**, then decide whether to proceed to
-the propagation slice.
+**Design how limitations and qualified confidence should appear to a user.**
 
-The Desktop-authored fixture now exists at `tests/fixtures/desktop-semantic-constructs/`; its README is
-the authoritative evidence record. Propagation (`ClassificationConfidence` and the qualification rule)
-remains deliberately unimplemented pending that review.
+The analysis side is complete: limitations are detected and absence-state classifications are qualified.
+Nothing surfaces either in HTML, CSV or the browser app, so a user still cannot see that a conclusion was
+qualified. That presentation deserves its own design pass rather than an ad-hoc badge — see
+[../design/unsupported-construct-design.md](../design/unsupported-construct-design.md) §5 for the shape
+already proposed, which has not been reviewed against the implemented behaviour.
 
 ## Reference documents
 
