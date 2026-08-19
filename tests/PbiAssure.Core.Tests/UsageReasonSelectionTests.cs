@@ -134,6 +134,38 @@ public sealed class UsageReasonSelectionTests
         Assert.Contains("relationship", reason, StringComparison.OrdinalIgnoreCase);
     }
 
+    /// <summary>
+    /// A column can be a relationship endpoint — which makes it structurally required — and also be
+    /// reached from a report, which outranks that and displays "Indirectly used". The relationship is
+    /// still true, but it explains the state the object did *not* get, so the live dependency is shown
+    /// instead. No repository fixture contains this combination, hence the synthetic model.
+    ///
+    /// The same project covers the other half: Dim[Key] is a relationship endpoint that no report
+    /// reaches, so it keeps the relationship explanation.
+    /// </summary>
+    [Fact]
+    public void ARelationshipEndpointReachedByAReportIsExplainedByTheLivePath()
+    {
+        var inventory = ScanRelatedModel();
+
+        var salesKey = Assert.Single(inventory.SemanticObjectUsages,
+            usage => usage.Table == "Sales" && usage.ObjectName == "Key");
+        var dimKey = Assert.Single(inventory.SemanticObjectUsages,
+            usage => usage.Table == "Dim" && usage.ObjectName == "Key");
+        Assert.Equal(SemanticUsageStates.IndirectlyUsed, salesKey.UsageState);
+        Assert.Equal(SemanticUsageStates.StructurallyRequired, dimKey.UsageState);
+
+        var html = HtmlReportRenderer.Render(inventory);
+
+        // The state that is displayed is the one that gets explained.
+        Assert.Equal("Why: Referenced by Sales[Shown]", ReasonForIn(html, "Sales", "Key"));
+        Assert.StartsWith("Why: Relationship key between", ReasonForIn(html, "Dim", "Key"), StringComparison.Ordinal);
+
+        // The relationship evidence itself is untouched.
+        Assert.Equal(2, inventory.SemanticDependencies.Count(edge =>
+            edge.DependencyKind == SemanticDependencyKinds.RelationshipEndpoint));
+    }
+
     // ---- 4. Determinism ------------------------------------------------------------------------
 
     /// <summary>
@@ -287,6 +319,28 @@ public sealed class UsageReasonSelectionTests
         var textStart = reasonStart + marker.Length;
         var textEnd = card.IndexOf('<', textStart);
         return System.Net.WebUtility.HtmlDecode(card[textStart..textEnd]);
+    }
+
+    /// <summary>
+    /// Two tables joined by a relationship, with a report using a measure over the fact-side key. That
+    /// makes Sales[Key] both a relationship endpoint and report-reachable, while Dim[Key] is only the
+    /// former.
+    /// </summary>
+    private static ProjectInventory ScanRelatedModel()
+    {
+        var files = new List<ProjectFileContent> { File("Related.pbip", "{}") };
+        files.Add(File("Related.SemanticModel/definition.pbism", "{}"));
+        files.Add(File("Related.SemanticModel/definition/tables/Sales.tmdl",
+            "table Sales\n" +
+            "\n\tcolumn Key\n\t\tdataType: int64\n\t\tsourceColumn: Key\n" +
+            "\n\tmeasure Shown = SUM(Sales[Key])\n"));
+        files.Add(File("Related.SemanticModel/definition/tables/Dim.tmdl",
+            "table Dim\n\n\tcolumn Key\n\t\tdataType: int64\n\t\tsourceColumn: Key\n"));
+        files.Add(File("Related.SemanticModel/definition/relationships.tmdl",
+            "relationship SalesToDim\n\tfromColumn: Sales.Key\n\ttoColumn: Dim.Key\n"));
+        files.AddRange(ReportFiles("Related", "Shown"));
+
+        return ProjectScanner.Scan(new InMemoryProjectFileSource("Related", files));
     }
 
     private static ProjectInventory ScanSynthetic(string table, string directlyUsedMeasure)
