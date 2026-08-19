@@ -64,7 +64,7 @@ public static partial class HtmlReportRenderer
         AppendSectionNavigationItem(html, "summary", "Summary", "Overview and key counts");
         if (coverage.HasLimitations)
         {
-            AppendSectionNavigationItem(html, "analysis-coverage", "Analysis coverage", "What was and was not analysed");
+            AppendSectionNavigationItem(html, "analysis-coverage", "Analysis coverage", "What was and was not checked");
         }
 
         AppendSectionNavigationItem(html, "findings", "Findings", "Issues and review items");
@@ -162,10 +162,10 @@ public static partial class HtmlReportRenderer
         html.AppendLine("          <p class=\"summary-caution\"><strong>Check apparently unused objects before removing them:</strong> PBI Assure could not find anything in this project that uses them. External reports, other models or dynamic behaviour may still depend on them.</p>");
         if (coverage.QualifiedObjectCount > 0)
         {
-            html.Append("          <p class=\"summary-coverage-note\">")
-                .Append(coverage.QualifiedObjectCount.ToString(CultureInfo.InvariantCulture)).Append(" of these ")
-                .Append(Pluralize(coverage.QualifiedObjectCount, "classification is", "classifications are"))
-                .AppendLine(" qualified, because this project contains metadata PBI Assure does not fully analyse yet. <a href=\"#analysis-coverage\">Review analysis coverage</a>.</p>");
+            html.Append("          <p class=\"summary-coverage-note\">PBI Assure could not check every source of usage in this project, so ")
+                .Append(coverage.QualifiedObjectCount.ToString(CultureInfo.InvariantCulture)).Append(' ')
+                .Append(Pluralize(coverage.QualifiedObjectCount, "of these results is", "of these results are"))
+                .AppendLine(" marked <span class=\"confidence-flag confidence-flag-sample\">Usage check incomplete</span>. <a href=\"#analysis-coverage\">Review analysis coverage</a>.</p>");
         }
         AppendSummaryDefinitions(html, "What these usage states mean", [
             ("Directly used", "Used somewhere in the report, such as a visual, filter, tooltip or drillthrough setting."),
@@ -205,7 +205,7 @@ public static partial class HtmlReportRenderer
 
         html.AppendLine("    <section id=\"analysis-coverage\" class=\"report-section\" data-report-section=\"analysis-coverage\" aria-labelledby=\"analysis-coverage-heading\">");
         html.AppendLine("      <h2 id=\"analysis-coverage-heading\" tabindex=\"-1\">Analysis coverage</h2>");
-        html.AppendLine("      <p class=\"section-intro\">PBI Assure read most of each semantic model but not all of it. This is what it did not fully analyse, and whether that could affect the usage classifications shown elsewhere in this report.</p>");
+        html.AppendLine("      <p class=\"section-intro\">PBI Assure reads most of each semantic model, but not all of it. This is what it could not fully check, and whether that could change any used or unused result in this report.</p>");
 
         foreach (var model in coverage.Models)
         {
@@ -237,12 +237,13 @@ public static partial class HtmlReportRenderer
                     // "Other" only makes sense next to something; when nothing qualifies, the headline
                     // has already given the count and the disclosure just needs a reason to open it.
                     html.Append(artifacts.ToString(CultureInfo.InvariantCulture)).Append(' ')
-                        .Append(Pluralize(artifacts, "other file", "other files"))
-                        .Append(" not fully analysed, with no known effect on usage classification");
+                        .Append(Pluralize(artifacts, "more file", "more files"))
+                        .Append(Pluralize(artifacts, " was", " were"))
+                        .Append(" not fully checked, and cannot change a used or unused result");
                 }
                 else
                 {
-                    html.Append("What was not fully analysed");
+                    html.Append("What PBI Assure could not fully check");
                 }
 
                 html.AppendLine("</summary>");
@@ -259,7 +260,7 @@ public static partial class HtmlReportRenderer
             html.AppendLine("      </section>");
         }
 
-        html.AppendLine("      <p class=\"coverage-footnote\">PBI Assure gains coverage for more Power BI metadata over time. A limitation here describes what this version reads, not a problem with your project.</p>");
+        html.AppendLine("      <p class=\"coverage-footnote\">PBI Assure covers more Power BI metadata with each release. Anything listed here describes what this version can read — it is not a problem with your project.</p>");
         html.AppendLine("    </section>");
     }
 
@@ -272,27 +273,29 @@ public static partial class HtmlReportRenderer
         html.Append("        <p class=\"coverage-headline\">");
         if (model.QualifyingGroups.Count == 0)
         {
-            html.Append(model.ArtifactCount.ToString(CultureInfo.InvariantCulture)).Append(' ')
-                .Append(Pluralize(model.ArtifactCount, "file was", "files were"))
-                .Append(" not fully analysed. <strong>None of them affect usage classification.</strong>");
+            html.Append("PBI Assure could not fully check ")
+                .Append(model.ArtifactCount.ToString(CultureInfo.InvariantCulture)).Append(' ')
+                .Append(Pluralize(model.ArtifactCount, "file", "files"))
+                .Append(" in this model. <strong>None of them can change a used or unused result.</strong>");
             html.AppendLine("</p>");
             return;
         }
 
-        html.Append("<strong>").Append(model.QualifyingGroups.Count.ToString(CultureInfo.InvariantCulture))
-            .Append(' ').Append(Pluralize(model.QualifyingGroups.Count, "analysis limitation", "analysis limitations"))
-            .Append(model.QualifyingGroups.Count == 1 ? " may affect usage classification." : " may affect usage classification.")
-            .Append("</strong> ");
+        html.Append("<strong>PBI Assure could not fully check ")
+            .Append(model.QualifyingGroups.Count.ToString(CultureInfo.InvariantCulture))
+            .Append(' ').Append(Pluralize(model.QualifyingGroups.Count, "source", "sources"))
+            .Append(" of usage in this model.</strong> ");
         if (model.QualifiedObjectCount > 0)
         {
-            html.Append(model.QualifiedObjectCount.ToString(CultureInfo.InvariantCulture)).Append(" of ")
+            html.Append("That could change the used or unused result for ")
+                .Append(model.QualifiedObjectCount.ToString(CultureInfo.InvariantCulture)).Append(" of ")
                 .Append(model.ObjectCount.ToString(CultureInfo.InvariantCulture)).Append(' ')
-                .Append(Pluralize(model.ObjectCount, "object classification is", "object classifications are"))
-                .Append(" qualified as a result, each marked <span class=\"confidence-flag confidence-flag-sample\">Qualified</span> beside its status. A qualified classification is still the best available answer; it means something PBI Assure did not read could add usage it cannot currently see.");
+                .Append(Pluralize(model.ObjectCount, "model object", "model objects"))
+                .Append(", so each is marked <span class=\"confidence-flag confidence-flag-sample\">Usage check incomplete</span>. Those results are still the best answer available — they simply may miss usage PBI Assure cannot yet see.");
         }
         else
         {
-            html.Append("No object classification in this model is affected.");
+            html.Append("No used or unused result in this model is affected.");
         }
 
         html.AppendLine("</p>");
@@ -344,17 +347,17 @@ public static partial class HtmlReportRenderer
 
         if (coverageAnchor is null)
         {
-            html.Append("<span class=\"confidence-flag\">Qualified<span class=\"visually-hidden\"> — classification qualified by analysis limitations in this model</span></span>");
+            html.Append("<span class=\"confidence-flag\">Usage check incomplete<span class=\"visually-hidden\"> — PBI Assure could not check every source of usage in this model</span></span>");
             return;
         }
 
         html.Append("<a class=\"confidence-flag\" href=\"#").Append(Encode(coverageAnchor))
-            .Append("\">Qualified<span class=\"visually-hidden\"> — classification qualified by analysis limitations in this model. See analysis coverage.</span></a>");
+            .Append("\">Usage check incomplete<span class=\"visually-hidden\"> — PBI Assure could not check every source of usage in this model. See analysis coverage.</span></a>");
     }
 
     private static string ConfidenceSearchText(SemanticObjectUsage usage) =>
         usage.ClassificationConfidence == ClassificationConfidences.QualifiedByLimitation
-            ? "Qualified classification confidence "
+            ? "Usage check incomplete "
             : string.Empty;
 
     private static void AppendScope(StringBuilder html)
@@ -1476,7 +1479,7 @@ public static partial class HtmlReportRenderer
         html.AppendLine("        </dl>");
         if (coverage.QualifiedObjectCount > 0)
         {
-            html.AppendLine("        <p class=\"usage-guide-note\">A status can also be marked <span class=\"confidence-flag confidence-flag-sample\">Qualified</span>. That is <strong>not a sixth status</strong>: the status is unchanged and remains the best available answer. It means this model contains metadata PBI Assure does not fully analyse yet, which could add usage it cannot currently see. See <a href=\"#analysis-coverage\">Analysis coverage</a>.</p>");
+            html.AppendLine("        <p class=\"usage-guide-note\">A result can also be marked <span class=\"confidence-flag confidence-flag-sample\">Usage check incomplete</span>. <strong>That is not another status.</strong> The status above is unchanged and remains the best answer available; the marker means PBI Assure could not check every possible source of usage in this model. See <a href=\"#analysis-coverage\">Analysis coverage</a>.</p>");
         }
 
         html.AppendLine("        </div>");
@@ -2998,7 +3001,10 @@ public static partial class HtmlReportRenderer
     .coverage-reason { margin-top: .4rem !important; max-width: 62rem; }
     .coverage-artifacts { margin-top: .45rem !important; color: var(--muted); font-size: .88rem; }
     .coverage-other { margin: 0; }
-    .coverage-other > summary { padding: .45rem .2rem; color: var(--muted); cursor: pointer; font-weight: 700; }
+    .coverage-other > summary { display: flex; align-items: center; gap: .5rem; padding: .5rem .65rem; border: 1px solid #d7dee5; border-radius: .3rem; background: #f7f9fb; color: var(--link); cursor: pointer; font-weight: 700; }
+    .coverage-other > summary::after { margin-left: auto; content: "+"; font-size: 1.25rem; font-weight: 800; line-height: 1; }
+    .coverage-other[open] > summary::after { content: "−"; }
+    .coverage-other > summary:hover { background: #eef4f8; }
     .coverage-other[open] > summary { margin-bottom: .5rem; }
     .coverage-footnote { max-width: 68rem; margin: .5rem 0 0; color: var(--muted); font-size: .9rem; }
     .usage-guide-note { max-width: 66rem; margin: .8rem 0 0; padding-top: .7rem; border-top: 1px solid #d7dee5; color: var(--muted); font-size: .93rem; }
@@ -3236,6 +3242,11 @@ public static partial class HtmlReportRenderer
     .technical-details { min-width: 0; max-width: 100%; overflow-wrap: anywhere; }
     .technical-details pre { max-width: 100%; overflow-x: auto; }
     .site-footer { padding: 1.5rem 0; color: var(--muted); }
+    @media (min-width: 64rem) {
+      /* Eight tiles never fit one row inside the 82rem content width without cramping them, so wrap
+         deliberately into balanced rows instead of leaving one tile orphaned. */
+      .section-nav { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+    }
     @media (max-width: 45rem) {
       .content { width: min(100% - 1rem, 82rem); }
       main > section { padding: 1rem .65rem; }

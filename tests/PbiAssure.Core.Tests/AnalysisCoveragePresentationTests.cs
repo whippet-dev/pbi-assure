@@ -39,7 +39,7 @@ public sealed class AnalysisCoveragePresentationTests
             limitations: [QualifyingLimitation()]);
 
         Assert.Contains("class=\"confidence-flag\"", html, StringComparison.Ordinal);
-        Assert.Contains(">Qualified<", html, StringComparison.Ordinal);
+        Assert.Contains(">Usage check incomplete<", html, StringComparison.Ordinal);
         // Discoverable rather than tooltip-only: the marker navigates to the explanation.
         Assert.Contains("href=\"#analysis-coverage-model-1\"", html, StringComparison.Ordinal);
     }
@@ -64,8 +64,8 @@ public sealed class AnalysisCoveragePresentationTests
             Assert.Contains("<span class=\"badge badge-unused\">Apparently unused</span>", html, StringComparison.Ordinal);
         }
 
-        Assert.DoesNotContain("Qualified apparently unused", qualified, StringComparison.Ordinal);
-        Assert.DoesNotContain("Apparently unused (qualified)", qualified, StringComparison.Ordinal);
+        Assert.DoesNotContain("Apparently unused — usage check incomplete", qualified, StringComparison.Ordinal);
+        Assert.DoesNotContain("Apparently unused (incomplete)", qualified, StringComparison.Ordinal);
     }
 
     // ---- 4. The other absence state ----------------------------------------------------------
@@ -115,12 +115,10 @@ public sealed class AnalysisCoveragePresentationTests
         Assert.Contains("id=\"analysis-coverage\"", html, StringComparison.Ordinal);
         Assert.Contains("Analysis coverage", html, StringComparison.Ordinal);
         // Support state and dependency implication in product language, not enum names.
-        Assert.Contains("Partially analysed", html, StringComparison.Ordinal);
-        Assert.Contains("May affect usage classification", html, StringComparison.Ordinal);
-        Assert.DoesNotContain("PartiallyAnalyzed", html, StringComparison.Ordinal);
-        Assert.DoesNotContain("MayCreateDependencies", html, StringComparison.Ordinal);
-        // The count of affected classifications, as a count and not as a score.
-        Assert.Contains("1 of 1 object classification", html, StringComparison.Ordinal);
+        Assert.Contains("Partially checked", html, StringComparison.Ordinal);
+        Assert.Contains("Could hide extra usage", html, StringComparison.Ordinal);
+        // The count of affected results, as a count and not as a score.
+        Assert.Contains("could change the used or unused result for 1 of 1 model object", html, StringComparison.Ordinal);
         Assert.DoesNotContain("%", html.AsSpan(
             html.IndexOf("id=\"analysis-coverage\"", StringComparison.Ordinal),
             html.IndexOf("</section>", html.IndexOf("id=\"analysis-coverage\"", StringComparison.Ordinal), StringComparison.Ordinal) -
@@ -165,7 +163,7 @@ public sealed class AnalysisCoveragePresentationTests
         Assert.Contains("Unknown thing", qualifyingBlock, StringComparison.Ordinal);
         Assert.DoesNotContain("Cultures and translations", qualifyingBlock, StringComparison.Ordinal);
         Assert.Contains("Cultures and translations", html, StringComparison.Ordinal);
-        Assert.Contains("2 analysis limitations may affect usage classification", html, StringComparison.Ordinal);
+        Assert.Contains("could not fully check 2 sources of usage", html, StringComparison.Ordinal);
     }
 
     // ---- 9. No limitations ----------------------------------------------------------------------
@@ -201,13 +199,16 @@ public sealed class AnalysisCoveragePresentationTests
             ]);
 
         Assert.Contains("id=\"analysis-coverage\"", html, StringComparison.Ordinal);
-        Assert.Contains("None of them affect usage classification", html, StringComparison.Ordinal);
-        Assert.Contains("No known effect on usage classification", html, StringComparison.Ordinal);
+        Assert.Contains("None of them can change a used or unused result", html, StringComparison.Ordinal);
+        // Distinct from "fully checked": the construct is still only partly read, and only its effect on
+        // used/unused results is established.
+        Assert.Contains("Does not change any used or unused result", html, StringComparison.Ordinal);
+        Assert.Contains("Not checked yet", html, StringComparison.Ordinal);
         Assert.DoesNotContain("class=\"confidence-flag\"", html, StringComparison.Ordinal);
-        Assert.DoesNotContain("may affect usage classification", html, StringComparison.Ordinal);
-        // Nothing is "other" when nothing qualifies, and the marker is not explained where none appears.
-        Assert.Contains("<summary>What was not fully analysed</summary>", html, StringComparison.Ordinal);
-        Assert.DoesNotContain("other files not fully analysed", html, StringComparison.Ordinal);
+        Assert.DoesNotContain("Could hide extra usage", html, StringComparison.Ordinal);
+        // Nothing is "more" when nothing qualifies, and the marker is not explained where none appears.
+        Assert.Contains("<summary>What PBI Assure could not fully check</summary>", html, StringComparison.Ordinal);
+        Assert.DoesNotContain("more files were not fully checked", html, StringComparison.Ordinal);
         Assert.DoesNotContain("class=\"usage-guide-note\"", html, StringComparison.Ordinal);
     }
 
@@ -283,9 +284,13 @@ public sealed class AnalysisCoveragePresentationTests
         Assert.Contains("<h2 id=\"analysis-coverage-heading\" tabindex=\"-1\">Analysis coverage</h2>", html, StringComparison.Ordinal);
         // The disclosure for harmless limitations is a native details element, so it is keyboard operable.
         Assert.Contains("<details class=\"coverage-other\"><summary>", html, StringComparison.Ordinal);
+        // …and it carries the report's existing +/− disclosure affordance rather than looking like a
+        // bold line of text.
+        Assert.Contains(".coverage-other > summary::after { margin-left: auto; content: \"+\";", html, StringComparison.Ordinal);
+        Assert.Contains(".coverage-other[open] > summary::after { content: \"−\"; }", html, StringComparison.Ordinal);
         // The marker's meaning does not depend on colour or on hovering.
         Assert.Contains("<span class=\"visually-hidden\">", html, StringComparison.Ordinal);
-        Assert.Contains("classification qualified by analysis limitations in this model", html, StringComparison.Ordinal);
+        Assert.Contains("PBI Assure could not check every source of usage in this model", html, StringComparison.Ordinal);
     }
 
     /// <summary>
@@ -304,6 +309,91 @@ public sealed class AnalysisCoveragePresentationTests
         {
             Assert.DoesNotContain(alarm, section, StringComparison.Ordinal);
         }
+    }
+
+    // ---- Plain-language vocabulary -----------------------------------------------------------------
+
+    /// <summary>
+    /// The domain's enum names are engineering vocabulary. A reader of the report should never have to
+    /// learn them, so none may reach the rendered page — including the earlier user-facing wording that
+    /// simply echoed the taxonomy.
+    /// </summary>
+    [Fact]
+    public void NoInternalVocabularyReachesTheRenderedReport()
+    {
+        var html = RenderWithUsages(
+            [Usage("Sales", "Amount", SemanticUsageStates.ApparentlyUnused, ClassificationConfidences.QualifiedByLimitation)],
+            [
+                QualifyingLimitation(),
+                Limitation("culture", ConstructSupportStates.NotYetAnalyzed, ConstructDependencyImpacts.NoKnownDependencyEffect,
+                    "definition/cultures/en-US.tmdl", "Cultures are not analysed."),
+                Limitation("unknownThing", ConstructSupportStates.Unrecognized, ConstructDependencyImpacts.DependencyEffectUnknown,
+                    "definition/unknownThing.tmdl", "This file is not recognised."),
+            ]);
+
+        var text = RenderedText(html);
+        foreach (var enumName in new[]
+                 {
+                     "QualifiedByLimitation", "ClassificationConfidence", "MayCreateDependencies",
+                     "NoKnownDependencyEffect", "DependencyEffectUnknown", "MayInvalidateExistingEvidence",
+                     "PartiallyAnalyzed", "NotYetAnalyzed", "DependencyImpact", "SupportState",
+                     "AnalysisLimitation",
+                 })
+        {
+            Assert.DoesNotContain(enumName, text, StringComparison.Ordinal);
+        }
+
+        // Taxonomy phrasing is checked against the coverage surface this slice owns. "How usage
+        // classification works" is the semantic-model guide's own long-standing heading and is not in
+        // scope here.
+        var coverageText = RenderedText(Between(html, "id=\"analysis-coverage\"", "</section>"));
+        foreach (var taxonomy in new[]
+                 {
+                     "classification confidence", "usage classification", "dependency impact",
+                     "dependency analysis", "may create dependencies", "qualified",
+                 })
+        {
+            Assert.DoesNotContain(taxonomy, coverageText, StringComparison.OrdinalIgnoreCase);
+        }
+    }
+
+    /// <summary>
+    /// The vocabulary must be one system, not several. Whatever word marks an affected object has to be
+    /// the same word the coverage section uses to explain it, or the marker leads nowhere conceptually.
+    /// </summary>
+    [Fact]
+    public void TheObjectMarkerUsesTheSameWordsAsItsExplanation()
+    {
+        var html = RenderWithUsages(
+            Usage("Sales", "Amount", SemanticUsageStates.ApparentlyUnused, ClassificationConfidences.QualifiedByLimitation),
+            limitations: [QualifyingLimitation()]);
+
+        Assert.Contains(">Usage check incomplete<", html, StringComparison.Ordinal);
+        // The same phrase appears in the model headline and in the usage guide, so a reader who follows
+        // the marker finds the words they clicked.
+        Assert.True(Occurrences(html, "Usage check incomplete") >= 3);
+        Assert.Contains("could not fully check", html, StringComparison.Ordinal);
+        // Wording that would blame the object or overstate what is known.
+        foreach (var forbidden in new[] { "Possibly used", "Maybe used", "Low confidence", "Needs review", "Uncertain" })
+        {
+            Assert.DoesNotContain(forbidden, RenderedText(html), StringComparison.OrdinalIgnoreCase);
+        }
+    }
+
+    /// <summary>
+    /// Eight navigation tiles do not fit one row inside the report's content width without cramping, so
+    /// desktop wrapping is made deliberate and balanced rather than leaving a single orphaned tile.
+    /// </summary>
+    [Fact]
+    public void NavigationWrapsIntoBalancedRowsAtDesktopWidths()
+    {
+        var html = RenderFixture("desktop-semantic-constructs");
+
+        Assert.Contains("@media (min-width: 64rem) {", html, StringComparison.Ordinal);
+        Assert.Contains(".section-nav { grid-template-columns: repeat(4, minmax(0, 1fr)); }", html, StringComparison.Ordinal);
+        // Narrower widths keep the existing auto-fit behaviour.
+        Assert.Contains(".section-nav { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 11rem), 1fr));",
+            html, StringComparison.Ordinal);
     }
 
     // ---- 14. No regression to existing report content ---------------------------------------------
@@ -330,7 +420,16 @@ public sealed class AnalysisCoveragePresentationTests
         var html = RenderFixture("desktop-semantic-constructs");
 
         Assert.Contains("5 statuses explained", html, StringComparison.Ordinal);
-        Assert.Contains("not a sixth status", html, StringComparison.Ordinal);
+        Assert.Contains("That is not another status.", html, StringComparison.Ordinal);
+        // The five state labels are untouched by the confidence vocabulary.
+        foreach (var label in new[]
+                 {
+                     "Directly used", "Indirectly used", "Structurally required",
+                     "Only used by unused items", "Apparently unused",
+                 })
+        {
+            Assert.Contains($">{label}</span>", html, StringComparison.Ordinal);
+        }
     }
 
     // ---- Real Desktop fixtures ---------------------------------------------------------------------
@@ -358,10 +457,10 @@ public sealed class AnalysisCoveragePresentationTests
         var soleCause = Assert.Single(qualifying);
         Assert.Equal("function", soleCause.ConstructType);
 
-        Assert.Contains("1 analysis limitation may affect usage classification", html, StringComparison.Ordinal);
-        Assert.Contains($"{qualifiedCount} of {objectCount} object classifications are qualified", html, StringComparison.Ordinal);
+        Assert.Contains("could not fully check 1 source of usage", html, StringComparison.Ordinal);
+        Assert.Contains($"used or unused result for {qualifiedCount} of {objectCount} model objects", html, StringComparison.Ordinal);
         Assert.Contains("DAX user-defined functions", html, StringComparison.Ordinal);
-        Assert.Contains("Partially analysed", html, StringComparison.Ordinal);
+        Assert.Contains("Partially checked", html, StringComparison.Ordinal);
         Assert.Equal(qualifiedCount, Occurrences(html, "class=\"confidence-flag\""));
         // The explanation appears once, not once per affected object.
         Assert.Equal(1, Occurrences(html, soleCause.Reason));
@@ -384,7 +483,7 @@ public sealed class AnalysisCoveragePresentationTests
         Assert.Contains(qualified, usage => usage.UsageState == SemanticUsageStates.UsedOnlyByUnusedBranch);
 
         Assert.Equal(qualified.Length, Occurrences(html, "class=\"confidence-flag\""));
-        Assert.Contains("3 of 3 object classifications are qualified", html, StringComparison.Ordinal);
+        Assert.Contains("used or unused result for 3 of 3 model objects", html, StringComparison.Ordinal);
     }
 
     /// <summary>
@@ -403,7 +502,7 @@ public sealed class AnalysisCoveragePresentationTests
             usage.ClassificationConfidence == ClassificationConfidences.QualifiedByLimitation);
 
         Assert.Contains("id=\"analysis-coverage\"", html, StringComparison.Ordinal);
-        Assert.Contains("None of them affect usage classification", html, StringComparison.Ordinal);
+        Assert.Contains("None of them can change a used or unused result", html, StringComparison.Ordinal);
         Assert.DoesNotContain("class=\"confidence-flag\"", html, StringComparison.Ordinal);
         Assert.DoesNotContain("class=\"usage-guide-note\"", html, StringComparison.Ordinal);
     }
@@ -501,6 +600,51 @@ public sealed class AnalysisCoveragePresentationTests
 
     private static ProjectFileContent InMemoryFile(string relativePath, string content) =>
         new(relativePath, System.Text.Encoding.UTF8.GetBytes(content));
+
+    /// <summary>
+    /// Only the text a reader encounters: stylesheet, script and all markup removed. Class names and
+    /// data attributes legitimately carry internal values — `data-classification-confidence` is a
+    /// machine hook — and must not be mistaken for words on the page. Text inside `visually-hidden`
+    /// deliberately survives, because a screen-reader user does encounter it.
+    /// </summary>
+    private static string RenderedText(string html)
+    {
+        var withoutStyle = RemoveBlock(html, "<style>", "</style>");
+        var withoutScript = RemoveBlock(withoutStyle, "<script>", "</script>");
+
+        var text = new System.Text.StringBuilder(withoutScript.Length);
+        var insideTag = false;
+        foreach (var character in withoutScript)
+        {
+            if (character == '<')
+            {
+                insideTag = true;
+            }
+            else if (character == '>')
+            {
+                insideTag = false;
+                text.Append(' ');
+            }
+            else if (!insideTag)
+            {
+                text.Append(character);
+            }
+        }
+
+        return text.ToString();
+    }
+
+    private static string RemoveBlock(string html, string open, string close)
+    {
+        var start = html.IndexOf(open, StringComparison.Ordinal);
+        if (start < 0)
+        {
+            return html;
+        }
+
+        var end = html.IndexOf(close, start, StringComparison.Ordinal);
+        return end < 0 ? html[..start] : html[..start] + html[(end + close.Length)..];
+    }
 
     private static int Occurrences(string haystack, string needle)
     {

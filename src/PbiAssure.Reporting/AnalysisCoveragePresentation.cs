@@ -94,34 +94,38 @@ internal static class AnalysisCoveragePresentation
     }
 
     /// <summary>
-    /// What an unanalysed construct means for the conclusions in this report, in the report's own terms.
-    /// The internal names describe the construct ("may create dependencies"); a reader needs the
-    /// consequence ("may affect usage classification").
+    /// What unchecked metadata means for the results in this report, said as a consequence rather than
+    /// as a taxonomy. The internal names describe the construct ("may create dependencies"); a reader
+    /// needs to know what it does to their answers ("could hide extra usage").
+    ///
+    /// Note that "does not change any used/unused result" is not the same as "fully checked". The
+    /// construct is still only partly read; what is established is that the unread part cannot add
+    /// usage. The support state beside it carries the other half of that distinction.
     ///
     /// <see cref="MayAffectClassification"/> drives ordering and the model headline only. It never
-    /// decides whether an object is marked qualified — that comes from the scanner.
+    /// decides whether an object is marked — that comes from the scanner.
     /// </summary>
     private static (string Label, bool MayAffectClassification) DescribeImpact(string dependencyImpact) =>
         dependencyImpact switch
         {
             ConstructDependencyImpacts.MayCreateDependencies =>
-                ("May affect usage classification", true),
+                ("Could hide extra usage", true),
             ConstructDependencyImpacts.DependencyEffectUnknown =>
-                ("Effect on usage classification not established", true),
+                ("Not known whether it hides extra usage", true),
             ConstructDependencyImpacts.MayInvalidateExistingEvidence =>
-                ("May change how existing evidence should be read", true),
+                ("Could change how other results should be read", true),
             ConstructDependencyImpacts.NoKnownDependencyEffect =>
-                ("No known effect on usage classification", false),
+                ("Does not change any used or unused result", false),
             // An impact this version of the report does not recognise is described plainly rather than
             // assumed harmless or alarming.
-            _ => ("Effect on usage classification not established", true),
+            _ => ("Not known whether it hides extra usage", true),
         };
 
     private static string SupportStateLabel(string supportState) => supportState switch
     {
-        ConstructSupportStates.Analyzed => "Analysed",
-        ConstructSupportStates.PartiallyAnalyzed => "Partially analysed",
-        ConstructSupportStates.NotYetAnalyzed => "Not yet analysed",
+        ConstructSupportStates.Analyzed => "Checked",
+        ConstructSupportStates.PartiallyAnalyzed => "Partially checked",
+        ConstructSupportStates.NotYetAnalyzed => "Not checked yet",
         ConstructSupportStates.Unrecognized => "Not recognised",
         _ => HumanReadable(supportState),
     };
