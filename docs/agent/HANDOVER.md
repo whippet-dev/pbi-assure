@@ -15,7 +15,7 @@ fixture's absence states are still qualified, by perspective and function metada
 
 ## State
 
-- **Last verified product state:** `PRECCOMMIT` on `master`. Later commits may be documentation-only; run
+- **Last verified product state:** `fdab39b` on `master`. Later commits may be documentation-only; run
   `git log --oneline` to see whether anything after it touched behaviour.
 - **Working tree:** expected clean apart from untracked local review documents; no tracked modifications
 - **Verified at that commit:** build succeeded with 0 warnings; **306 core + 2 privacy tests passed**; CI green
