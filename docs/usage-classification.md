@@ -67,12 +67,12 @@ sixth state. The state says what PBI Assure found. The confidence says how compl
 that answer is.
 
 - **Established**: nothing PBI Assure skipped in this model could change the object's state.
-- **Qualified**: this model contains metadata that was not fully analysed and that could bear on the
-  object's state. The state itself is unchanged and remains the best available answer.
+- **Usage check incomplete**: this model contains metadata PBI Assure did not fully check, and it could
+  bear on the object's state. The state itself is unchanged and remains the best answer available.
 
-A qualified classification is not a low-confidence one. PBI Assure may hold strong positive evidence and
-simply not have read one more possible source of references. Qualification is context about the
-analysis, not a defect in the object, and it never means the object is definitely used — that is not
+An incomplete usage check is not the same as low confidence. PBI Assure may hold strong positive
+evidence and simply not have read one more possible source of references. The marker is context about
+the check, not a defect in the object, and it never means the object is definitely used — that is not
 known either.
 
 Because an unanalysed construct can only *add* references, it cannot retract evidence already collected.
@@ -83,10 +83,10 @@ construct that changes how existing evidence should be *read*, rather than only 
 qualify positive states too.
 
 The HTML report shows this in two places. An **Analysis coverage** section states, per semantic model,
-what was not fully analysed and whether it can affect usage classification. Each affected object then
-carries a small **Qualified** marker beside its status, linking to that model's entry. The cause is
-explained once at model scope rather than repeated beside every affected object, because one unanalysed
-construct can qualify most of a model.
+what PBI Assure could not fully check and whether that could change any used or unused result. Each
+affected object then carries a small **Usage check incomplete** marker beside its status, linking to
+that model's entry. The cause is explained once at model scope rather than repeated beside every
+affected object, because one unchecked construct can affect most of a model.
 
 PBI Assure gains coverage for more Power BI metadata over time, so a limitation describes what the
 current version reads rather than a problem with the analysed project.

@@ -12,7 +12,7 @@ evidenced · **[design decision]** a choice, not a fact.
 |---|---|
 | Remote | `whippet-dev/pbi-assure` |
 | Branch | `master` (also the default branch) |
-| Last verified product state | `ec6a3d0` — *Show analysis limitations and classification confidence in the HTML report* |
+| Last verified product state | `3a53df6` — *Single-source the coverage marker vocabulary* |
 | Working tree | Expected clean of tracked modifications. Untracked local review documents may be present |
 
 `master` may have moved past that commit for documentation-only changes. Re-verify and update this
@@ -22,7 +22,7 @@ section whenever a commit changes build, test or behaviour — not for every com
 
 - `dotnet build PbiAssure.slnx` — **succeeded, 0 warnings, 0 errors** [verified]. `TreatWarningsAsErrors`
   is on, so warnings fail the build.
-- `dotnet test PbiAssure.slnx` — **381 core + 2 privacy end-to-end tests passed**, 0 failed [verified].
+- `dotnet test PbiAssure.slnx` — **384 core + 2 privacy end-to-end tests passed**, 0 failed [verified].
 - CI (`.github/workflows/ci.yml`) — **green** [verified]. Runs restore, build, a Playwright Chromium
   install, then the whole solution test suite on `windows-latest`.
 - The privacy end-to-end tests are part of the normal solution test run; they need Node.js and a
@@ -90,10 +90,26 @@ unused with no indication that security metadata had been skipped.
   scope. An **Analysis coverage** section states per model what was not fully analysed, grouping
   limitations by construct rather than by file, showing the ones that can affect classification and
   disclosing the ones that cannot inside a `details` element. Each affected object then carries a small
-  **Qualified** link beside its status, pointing at that model's coverage block. Terminology:
-  `QualifiedByLimitation` is shown as **Qualified**, support states as *Partially analysed* / *Not yet
-  analysed*, and `DependencyImpact` as its consequence — *May affect usage classification* rather than
-  *May create dependencies*. Counts only; there is no score, percentage or severity.
+  **Usage check incomplete** link beside its status, pointing at that model's coverage block. Counts
+  only; there is no score, percentage or severity.
+- **Plain-language vocabulary for that surface.** Domain enum names are engineering terms and are not
+  automatically user-facing words. One vocabulary runs through the whole surface, built on the verb
+  *check* and the phrase *used or unused result*:
+
+  | Domain | Shown |
+  |---|---|
+  | `QualifiedByLimitation` | **Usage check incomplete** |
+  | `MayCreateDependencies` | Could hide extra usage |
+  | `NoKnownDependencyEffect` | Does not change any used or unused result |
+  | `DependencyEffectUnknown` | Not known whether it hides extra usage |
+  | `MayInvalidateExistingEvidence` | Could change how other results should be read |
+  | `PartiallyAnalyzed` / `NotYetAnalyzed` / `Unrecognized` | Partially checked / Not checked yet / Not recognised |
+
+  `NoKnownDependencyEffect` is deliberately **not** rendered as "fully checked": the construct is still
+  only partly read, and what is established is narrower — that the unread part cannot add usage. The
+  support state beside it carries the other half of that distinction, and a test pins both halves.
+  The marker phrase is a single constant in the renderer, so the marker, the model headline, the summary
+  sentence and the usage guide cannot drift apart.
 
 Limitation **detection** is file level only. Confidence is an orthogonal additive field. HTML consumes
 both; **CSV and the browser app do not** — see the gaps table.
@@ -139,7 +155,7 @@ unanalysed files are the always-present three — verified against three Desktop
 |---|---|
 | Whether `dataSources.tmdl` is ever emitted by current Desktop | Not observed in any fixture [verified]. Impact left `DependencyEffectUnknown`; costs nothing while absent |
 | Whether a *translated* culture file names model objects, and whether Q&A synonyms constitute usage | **Open.** Needs a Desktop fixture containing translations and synonyms |
-| **Where a UDF is called from outside the model definition** | **Open, and the reason functions still qualify.** Microsoft documents that visual calculations and report-level measures can call a user-defined function. PBI Assure parses neither — visual calculations not at all, and a report measure's expression is never DAX-extracted. A function that looks uncalled may be called from metadata nobody reads, and missing a consumer under-reports usage |
+| **Where a UDF is called from outside the model definition** | **Narrowed.** An ordinary semantic-model measure calling a UDF is **already followed correctly** — see the manual Desktop test below — so the remaining gap is only **report-level measures** and **visual calculations**. PBI Assure parses neither: visual calculations not at all, and a report measure's expression is never DAX-extracted. That is still why functions qualify |
 | Whether a UDF name can be namespaced with dots | Not observed. `DaxReferenceExtractor` does not treat `.` as an identifier character, so a dotted name would not tokenise as one identifier |
 | Multi-parameter UDFs, other parameter type hints, `VAR`/`RETURN` or multi-line bodies | Not observed. Every function in `desktop-udf-references` is one line, and only one takes a parameter at all |
 | Perspective `includeAll`, `perspectiveHierarchy` and perspective sets in real Desktop output | Implemented from Microsoft-documented syntax for the first two; no fixture emits any of them |
@@ -152,6 +168,14 @@ unanalysed files are the always-present three — verified against three Desktop
 - **Emitted paths for roles, perspectives, cultures and functions** — confirmed against real Desktop
   output by `DesktopSemanticConstructsFixtureTests`, and again by `DesktopUdfReferencesFixtureTests`. No
   registry path needed correcting.
+- **A semantic-model measure can call a UDF, and PBI Assure already follows it**
+  [verified by Power BI Desktop-authored manual test, 2026-08-19]. Desktop accepted
+  `UDF Result = Doubled()` and emitted `measure 'UDF Result' = Doubled()` in the table's TMDL. With a Card
+  visual bound to it, PBI Assure produced `UDF Result` → DirectlyUsed, `Total Amount` → IndirectlyUsed,
+  `Sales[Amount]` → IndirectlyUsed, `Region` → ApparentlyUnused with the coverage marker. **This was a
+  manual test on a copied project outside the repository; it is not a committed fixture**, so treat it as
+  evidence for scoping the remaining gap, not as a regression guard. Committing a fixture would close
+  that.
 - **How a UDF body writes a reference** — a qualified column as `Table[Column]`, an unqualified `[Name]`
   as a measure, a bare identifier as a table, and a call to another function as `Name()`. All five
   functions serialise into one `definition/functions.tmdl` and `model.tmdl` carries **no `ref function`
@@ -212,8 +236,13 @@ Behaviour worth knowing before changing this surface [verified by rendered HTML]
   attributes a specific file.
 - **Accessibility:** the marker is an `<a>`, so it is keyboard operable with no scripting; its meaning is
   visible text plus a `visually-hidden` expansion, never colour or hover alone; the harmless-limitation
-  disclosure is a native `<details>`. Muted marker text measures 6.46:1 against the card background, and
-  at a 375px viewport the section fits with no horizontal overflow.
+  disclosure is a native `<details>` carrying the report's existing `+`/`−` affordance. Muted marker text
+  measures 6.46:1 against the card background and the disclosure summary 8.44:1, and at a 375px viewport
+  the section fits with no horizontal overflow.
+- **Navigation wraps deliberately.** Eight tiles never fit one row inside the 82rem content width without
+  cramping — they measure ~146px and their subtitles wrap — so four explicit columns from 64rem give a
+  balanced 4+4 at every desktop width. Below 64rem the original auto-fit rule is untouched. Verified live
+  at 1440, 1280, 900 and 375px [verified by rendered HTML].
 - **Rendered results:** `desktop-semantic-constructs` 21 markers / 1 qualifying cause / 6 disclosed;
   `desktop-udf-references` 3 markers, both absence states represented; `grouped-tab-order` 0 markers,
   3 disclosed; `privacy-canary` no section at all.

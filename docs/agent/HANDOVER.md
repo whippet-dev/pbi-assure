@@ -15,15 +15,23 @@ section states the cause once per model, and each affected object carries only a
 link back to it. Limitations are grouped by construct rather than by file, since a model emits one file
 per role.
 
-No domain, scanner or classification logic changed. The renderer reads `ClassificationConfidence` and
-never re-derives it.
+Human review of the rendered output then found the architecture sound but the wording still written in
+PBI Assure's own vocabulary, so a follow-up slice translated it. The object marker changed from
+**Qualified** — precise, but it made readers ask "qualified how? is my column the problem?" — to
+**Usage check incomplete**, which names what is incomplete and attributes it to PBI Assure rather than
+to the user's object. One vocabulary now runs through the surface; see [CURRENT_STATE.md](CURRENT_STATE.md)
+for the full mapping. Two visual defects were fixed with it: navigation wrapped 8 tiles into an orphaned
+row, and the coverage disclosure lacked the report's standard `+`/`−` affordance.
+
+No domain, scanner or classification logic changed in either slice. The renderer reads
+`ClassificationConfidence` and never re-derives it.
 
 ## State
 
-- **Last verified product state:** `ec6a3d0` on `master`. Later commits may be documentation-only; run
+- **Last verified product state:** `3a53df6` on `master`. Later commits may be documentation-only; run
   `git log --oneline` to see whether anything after it touched behaviour.
 - **Working tree:** expected clean apart from untracked local review documents; no tracked modifications
-- **Verified at that commit:** build succeeded with 0 warnings; **381 core + 2 privacy tests passed**; CI green
+- **Verified at that commit:** build succeeded with 0 warnings; **384 core + 2 privacy tests passed**; CI green
 - **Known exception:** `dotnet format --verify-no-changes` fails with 24 pre-existing whitespace errors
   in two Theme Review files. Unrelated to current work, deliberately not fixed. See
   [CURRENT_STATE.md](CURRENT_STATE.md).
@@ -34,22 +42,49 @@ never re-derives it.
 
 The analysis side is complete for every construct currently supported, and it now has a user-facing
 surface. That means the next task should be chosen on user impact, not on what was touched last.
-Ranked:
+Ranked — note the order changed when manual Desktop testing produced new evidence, not because of what
+was touched last:
 
-1. **Surface unresolved semantic dependencies.** `UnresolvedSemanticDependency` is retained as evidence
+1. **Fix usage-reason selection** (see *Verified follow-up* below). A reason that names an uncalled
+   branch as the explanation for a correct classification is user-visible and undermines trust in the
+   answer beside it. It is bounded, it now has concrete Desktop evidence, and the surface it appears in
+   was just polished — leaving a misleading sentence there would waste that.
+2. **Surface unresolved semantic dependencies.** `UnresolvedSemanticDependency` is retained as evidence
    and reaches the JSON inventory only. It is a *bounded* uncertainty — source, kind and reference text
    are all known — which makes it more actionable than a limitation, and a broken reference in a report
    is a real defect rather than a coverage gap. The architecture is ready and no new evidence is needed.
-2. **Measure `PBI-ACCESS-001` against real reports.** Its false-positive concern is [inferred] and has
+3. **Measure `PBI-ACCESS-001` against real reports.** Its false-positive concern is [inferred] and has
    never been measured. That inference currently blocks changing an accessibility rule that fires on
    every report, so the measurement unblocks a decision rather than adding a feature.
-3. **Read report-level measure expressions as DAX.** A report measure's dependencies come from the
+4. **Read report-level measure expressions as DAX.** A report measure's dependencies come from the
    structured `references.measures` list Power BI writes beside it; its `Expression` is never parsed, so
    a UDF call or a column reference in one is invisible. This narrows but does not retire the function
    limitation, and needs a Desktop fixture with a report measure calling a UDF.
 
+Manual Desktop testing has since **narrowed the remaining UDF-consumer gap**: an ordinary semantic-model
+measure calling a UDF is already followed correctly, so only report-level measures and visual
+calculations remain unread. That evidence is not yet a committed fixture — see
+[CURRENT_STATE.md](CURRENT_STATE.md).
+
 Deliberately *not* ranked first: visual-calculation parsing. It is the other unread UDF consumer, but
 it is the largest of the three and only moves a caveat that the report now explains honestly.
+
+## Verified follow-up, deliberately not fixed
+
+**An incoming dependency is not necessarily the evidence path that produced a classification.**
+
+Found during a manual Desktop test [verified by Power BI Desktop-authored manual test, 2026-08-19]:
+`Sales[Amount]` rendered as *Indirectly used* with the reason **"Referenced by [TotalOf]"**. The
+classification is right, but `TotalOf` is an **uncalled** UDF — it is not what makes `Amount` reachable.
+The live path was Card → `UDF Result` → `Doubled()` → `Total Amount` → `Sales[Amount]`.
+
+`SemanticUsagePresentation.DescribeReason` picks the *first* matching incoming edge, which answers
+"what points at this object?" rather than "what keeps this object alive?". Those are different
+questions, and a reason naming a dead branch undermines trust in a correct answer.
+
+This was left alone on purpose: it is a real defect in reason selection, not a copy problem, and it
+deserves its own bounded investigation with a committed fixture. Do not fold it into a presentation
+slice.
 
 ## Do not do yet
 

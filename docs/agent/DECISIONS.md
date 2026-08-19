@@ -124,6 +124,19 @@ Not every report merits committing; only those carrying durable project state.
 - **Nothing is shown when nothing was left unanalysed.** A panel announcing that there is nothing to
   report is reassurance nobody asked for; the standing caveats already have a home in the scope section.
   A limitation that cannot affect a conclusion is still disclosed, but must not imply qualification.
+- **Domain enum names are not automatically user-facing vocabulary.** The report explains consequences,
+  not the taxonomy that produced them: what an unread construct does to someone's used/unused answers,
+  rather than what the construct is called internally. `ClassificationConfidence`, `DependencyImpact`,
+  `MayCreateDependencies` and the rest belong in the domain, the JSON and engineering documents. A term
+  is only good product copy if a competent Power BI developer understands it without reading this
+  repository — precision that has to be looked up is not clarity.
+- **Translation must not blur a distinction the domain draws.** `NoKnownDependencyEffect` is rendered as
+  "does not change any used or unused result", never as "fully checked": the construct is still only
+  partly read, and only its effect on usage is established. Where plain language would collapse two
+  domain concepts into one, keep two phrases.
+- **One vocabulary, single-sourced.** The word on an object marker must be the same word its explanation
+  uses, or the marker leads nowhere. Render such a phrase from one constant rather than repeating the
+  literal at each site.
 
 ## Established Power BI semantics — verified, do not re-derive
 
