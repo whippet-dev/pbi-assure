@@ -46,6 +46,10 @@ internal static class TmdlSemanticModelParser
             .Select(perspective => perspective!)
             .OrderBy(perspective => perspective.Name, StringComparer.OrdinalIgnoreCase)
             .ToArray();
+        var functionsPath = ProjectFilePaths.Combine(definitionDirectory, "functions.tmdl");
+        var functions = source.FileExists(functionsPath)
+            ? ParseFunctions(source, functionsPath)
+            : [];
         var expressionsPath = ProjectFilePaths.Combine(definitionDirectory, "expressions.tmdl");
         var namedExpressions = source.FileExists(expressionsPath)
             ? ParseNamedExpressions(source, expressionsPath)
@@ -60,6 +64,7 @@ internal static class TmdlSemanticModelParser
         {
             Roles = roles,
             Perspectives = perspectives,
+            Functions = functions,
         };
     }
 
@@ -312,6 +317,81 @@ internal static class TmdlSemanticModelParser
             "annotation",
             "extendedProperty",
         };
+
+    /// <summary>
+    /// Reads DAX user-defined functions. All functions live in one file and are model-scoped; Microsoft
+    /// documents that a function name is unique within the model and is never owned by a table.
+    /// </summary>
+    private static SemanticFunctionInventory[] ParseFunctions(IProjectFileSource source, string path)
+    {
+        var lines = ReadLines(source, path);
+        var functions = new List<SemanticFunctionInventory>();
+
+        for (var index = 0; index < lines.Length; index++)
+        {
+            if (!TryParseDeclaration(lines[index].Trimmed, "function", out var declaration, out var inlineBody))
+            {
+                continue;
+            }
+
+            var endIndex = FindBlockEnd(lines, index);
+            var body = ReadExpression(lines, index, endIndex, inlineBody) ?? string.Empty;
+            var (name, parameters) = ReadFunctionSignature(declaration, ref body);
+            functions.Add(new SemanticFunctionInventory(name, parameters, body, path));
+            index = endIndex - 1;
+        }
+
+        return functions.ToArray();
+    }
+
+    /// <summary>
+    /// Splits a function declaration into its name and parameter list.
+    ///
+    /// TMDL puts the parameter list on the right of the equals sign, as <c>(p : TYPE) =&gt; body</c>, so
+    /// the declared identifier is the name and the parameters are read from the front of the body.
+    /// </summary>
+    private static (string Name, SemanticFunctionParameterInventory[] Parameters) ReadFunctionSignature(
+        string declaration,
+        ref string body)
+    {
+        var parameters = Array.Empty<SemanticFunctionParameterInventory>();
+        var trimmed = body.TrimStart();
+        if (!trimmed.StartsWith('('))
+        {
+            return (declaration, parameters);
+        }
+
+        var close = trimmed.IndexOf(')');
+        var arrow = trimmed.IndexOf("=>", StringComparison.Ordinal);
+        if (close < 0 || arrow < close)
+        {
+            return (declaration, parameters);
+        }
+
+        parameters = ReadFunctionParameters(trimmed[1..close]);
+        body = trimmed[(arrow + 2)..].Trim();
+        return (declaration, parameters);
+    }
+
+    private static SemanticFunctionParameterInventory[] ReadFunctionParameters(string parameterList)
+    {
+        if (string.IsNullOrWhiteSpace(parameterList))
+        {
+            return [];
+        }
+
+        return parameterList
+            .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .Select(parameter =>
+            {
+                var separator = parameter.IndexOf(':');
+                var name = (separator < 0 ? parameter : parameter[..separator]).Trim();
+                var hint = separator < 0 ? null : parameter[(separator + 1)..].Trim();
+                return new SemanticFunctionParameterInventory(name, string.IsNullOrWhiteSpace(hint) ? null : hint);
+            })
+            .Where(parameter => parameter.Name.Length > 0)
+            .ToArray();
+    }
 
     /// <summary>
     /// Perspective-level constructs that name no model object. A perspective carries annotations and

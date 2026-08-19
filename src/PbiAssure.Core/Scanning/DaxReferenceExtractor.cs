@@ -2,7 +2,22 @@ namespace PbiAssure.Core.Scanning;
 
 internal static class DaxReferenceExtractor
 {
-    public static DaxReference[] Extract(string expression, IReadOnlySet<string> knownTables)
+    public static DaxReference[] Extract(string expression, IReadOnlySet<string> knownTables) =>
+        Extract(expression, knownTables, NoKnownFunctions);
+
+    private static readonly HashSet<string> NoKnownFunctions = new(StringComparer.OrdinalIgnoreCase);
+
+    /// <summary>
+    /// Extracts model references, and calls to declared user-defined functions.
+    ///
+    /// An identifier followed by "(" is normally a built-in DAX call and is ignored. A call is only
+    /// recorded when its name matches a declared function: Microsoft documents that a user-defined
+    /// function name cannot conflict with a built-in, so a match cannot capture SUM or COUNTROWS.
+    /// </summary>
+    public static DaxReference[] Extract(
+        string expression,
+        IReadOnlySet<string> knownTables,
+        IReadOnlySet<string> knownFunctions)
     {
         var references = new List<DaxReference>();
         var index = 0;
@@ -44,7 +59,7 @@ internal static class DaxReferenceExtractor
 
             if (IsUnquotedIdentifierStart(expression[index]))
             {
-                ReadUnquotedIdentifierReference(expression, knownTables, references, ref index);
+                ReadUnquotedIdentifierReference(expression, knownTables, knownFunctions, references, ref index);
                 continue;
             }
 
@@ -97,6 +112,7 @@ internal static class DaxReferenceExtractor
     private static void ReadUnquotedIdentifierReference(
         string expression,
         IReadOnlySet<string> knownTables,
+        IReadOnlySet<string> knownFunctions,
         List<DaxReference> references,
         ref int index)
     {
@@ -125,8 +141,25 @@ internal static class DaxReferenceExtractor
             return;
         }
 
-        if (knownTables.Contains(identifier) &&
-            (nextIndex >= expression.Length || expression[nextIndex] != '('))
+        var isCall = nextIndex < expression.Length && expression[nextIndex] == '(';
+        if (isCall)
+        {
+            if (knownFunctions.Contains(identifier))
+            {
+                references.Add(new DaxReference(
+                    Table: null,
+                    ObjectName: identifier,
+                    IsTableReference: false,
+                    Text: expression[startIndex..index])
+                {
+                    IsFunctionReference = true,
+                });
+            }
+
+            return;
+        }
+
+        if (knownTables.Contains(identifier))
         {
             references.Add(new DaxReference(
                 Table: identifier,
@@ -316,5 +349,9 @@ internal static class DaxReferenceExtractor
         string? Table,
         string ObjectName,
         bool IsTableReference,
-        string Text);
+        string Text)
+    {
+        /// <summary>A call to a declared user-defined function rather than a model object reference.</summary>
+        public bool IsFunctionReference { get; init; }
+    }
 }

@@ -15,9 +15,13 @@ internal static class SemanticDependencyAnalyzer
         var reportMeasureNodes = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         var reportMeasureRoots = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
+        // A DAX user-defined function is a graph node without a usage row, exactly like a report-level
+        // measure, so it needs the same treatment: known to traversal, absent from the reported results.
+        var functionNodes = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
         foreach (var model in semanticModels)
         {
-            AnalyzeModel(model, initialUsages, dependencies, unresolved, structuralRoots);
+            AnalyzeModel(model, initialUsages, dependencies, unresolved, structuralRoots, functionNodes);
         }
 
         AnalyzeReportMeasures(
@@ -26,10 +30,10 @@ internal static class SemanticDependencyAnalyzer
 
         var distinctDependencies = dependencies.Distinct().ToArray();
         var classifiedUsages = ClassifyObjects(
-            initialUsages, distinctDependencies, structuralRoots, reportMeasureNodes, reportMeasureRoots);
+            initialUsages, distinctDependencies, structuralRoots, reportMeasureNodes, reportMeasureRoots, functionNodes);
         var tableUsages = ClassifyTables(
             semanticModels, classifiedUsages, distinctDependencies, structuralRoots,
-            reportMeasureNodes, reportMeasureRoots);
+            reportMeasureNodes, reportMeasureRoots, functionNodes);
 
         return new SemanticDependencyAnalysis(
             ObjectUsages: classifiedUsages,
@@ -125,7 +129,8 @@ internal static class SemanticDependencyAnalyzer
         IReadOnlyList<SemanticObjectUsage> allUsages,
         List<SemanticDependencyEdge> dependencies,
         List<UnresolvedSemanticDependency> unresolved,
-        ISet<string> structuralRoots)
+        ISet<string> structuralRoots,
+        ISet<string> functionNodes)
     {
         var usages = allUsages
             .Where(usage => string.Equals(usage.SemanticModel, model.Name, StringComparison.OrdinalIgnoreCase))
@@ -179,6 +184,7 @@ internal static class SemanticDependencyAnalyzer
 
         AnalyzeRoles(model, lookup, dependencies, unresolved, structuralRoots);
         AnalyzePerspectives(model, lookup, dependencies, unresolved, structuralRoots);
+        AnalyzeFunctions(model, lookup, dependencies, unresolved, functionNodes);
     }
 
     private static void AddFieldParameterMetadataRoots(
@@ -462,8 +468,26 @@ internal static class SemanticDependencyAnalyzer
         List<UnresolvedSemanticDependency> unresolved,
         ISet<string>? structuralRoots)
     {
-        foreach (var reference in DaxReferenceExtractor.Extract(expression, lookup.TableNames))
+        foreach (var reference in DaxReferenceExtractor.Extract(
+                     expression, lookup.TableNames, lookup.FunctionNames))
         {
+            // A call to a user-defined function reaches everything that function's body references, so
+            // the edge is recorded and — where the caller itself is a root-producing context — the
+            // function becomes a root too, otherwise nothing beyond it would be reachable.
+            if (reference.IsFunctionReference)
+            {
+                var function = Target(string.Empty, reference.ObjectName, SemanticObjectTypes.Function);
+                dependencies.Add(CreateEdge(
+                    model.Name,
+                    source,
+                    function,
+                    SemanticDependencyKinds.FunctionCall,
+                    evidencePath,
+                    reference.Text));
+                structuralRoots?.Add(NodeKey(model.Name, function));
+                continue;
+            }
+
             if (lookup.TryResolveDax(reference, contextTableName, out var target, out var reason))
             {
                 dependencies.Add(CreateEdge(
@@ -484,6 +508,92 @@ internal static class SemanticDependencyAnalyzer
                     reference.Text,
                     reason,
                     evidencePath));
+            }
+        }
+    }
+
+    /// <summary>
+    /// A DAX user-defined function is a **definition**, not active model behaviour: nothing in the model
+    /// requires it to exist. That is what separates it from a role filter or a perspective member, both
+    /// of which are model-structure roots. A function is therefore a dependency **node** — what it
+    /// references becomes reachable only when something reachable calls it, which means an uncalled
+    /// function's references correctly land on an unused branch.
+    ///
+    /// Two things about the reference context differ from a measure's:
+    ///
+    /// - A function has **no owning table**, so an unqualified name has no local column to resolve
+    ///   against. Microsoft documents that an unqualified name inside a function body is interpreted as a
+    ///   measure reference, so no table context is invented here.
+    /// - **Parameters are local symbols and shadow model objects.** A parameter named the same as a table
+    ///   must not produce a table reference, so parameter names are removed from the visible table set
+    ///   before the body is read.
+    /// </summary>
+    private static void AnalyzeFunctions(
+        SemanticModelInventory model,
+        ModelLookup lookup,
+        List<SemanticDependencyEdge> dependencies,
+        List<UnresolvedSemanticDependency> unresolved,
+        ISet<string> functionNodes)
+    {
+        if (model.Functions.Count == 0)
+        {
+            return;
+        }
+
+        var declaredFunctions = model.Functions
+            .Select(function => function.Name)
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+        // Every name is registered before any body is read, so a call to a function declared later in
+        // the file resolves the same as a call to one declared earlier.
+        foreach (var function in model.Functions)
+        {
+            functionNodes.Add(NodeKey(
+                model.Name, Target(string.Empty, function.Name, SemanticObjectTypes.Function)));
+        }
+
+        foreach (var function in model.Functions)
+        {
+            var source = Target(string.Empty, function.Name, SemanticObjectTypes.Function);
+            var localSymbols = function.Parameters
+                .Select(parameter => parameter.Name)
+                .ToHashSet(StringComparer.OrdinalIgnoreCase);
+            var visibleTables = lookup.TableNames
+                .Where(table => !localSymbols.Contains(table))
+                .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+            foreach (var reference in DaxReferenceExtractor.Extract(
+                         function.Expression, visibleTables, declaredFunctions))
+            {
+                if (reference.IsFunctionReference)
+                {
+                    dependencies.Add(CreateEdge(
+                        model.Name,
+                        source,
+                        Target(string.Empty, reference.ObjectName, SemanticObjectTypes.Function),
+                        SemanticDependencyKinds.FunctionCall,
+                        function.RelativePath,
+                        reference.Text));
+                    continue;
+                }
+
+                if (reference.Table is null && localSymbols.Contains(reference.ObjectName))
+                {
+                    continue;
+                }
+
+                if (lookup.TryResolveDax(reference, string.Empty, out var target, out var reason))
+                {
+                    dependencies.Add(CreateEdge(
+                        model.Name, source, target, SemanticDependencyKinds.Dax,
+                        function.RelativePath, reference.Text));
+                }
+                else
+                {
+                    unresolved.Add(CreateUnresolved(
+                        model.Name, source, SemanticDependencyKinds.Dax, reference.Text,
+                        $"Function '{function.Name}': {reason}", function.RelativePath));
+                }
             }
         }
     }
@@ -701,7 +811,8 @@ internal static class SemanticDependencyAnalyzer
         IReadOnlyList<SemanticDependencyEdge> dependencies,
         IReadOnlySet<string> structuralRoots,
         IReadOnlySet<string> reportMeasureNodes,
-        IReadOnlySet<string> reportMeasureRoots)
+        IReadOnlySet<string> reportMeasureRoots,
+        IReadOnlySet<string> functionNodes)
     {
         var knownNodes = usages
             .Select(usage => NodeKey(usage.SemanticModel, Source(usage)))
@@ -713,6 +824,7 @@ internal static class SemanticDependencyAnalyzer
                 Target(usage.Table, usage.Table, SemanticObjectTypes.Table)));
         }
         knownNodes.UnionWith(reportMeasureNodes);
+        knownNodes.UnionWith(functionNodes);
 
         var adjacency = BuildAdjacency(dependencies, knownNodes);
         var directRoots = usages
@@ -751,7 +863,8 @@ internal static class SemanticDependencyAnalyzer
         IReadOnlyList<SemanticDependencyEdge> dependencies,
         IReadOnlySet<string> structuralRoots,
         IReadOnlySet<string> reportMeasureNodes,
-        IReadOnlySet<string> reportMeasureRoots)
+        IReadOnlySet<string> reportMeasureRoots,
+        IReadOnlySet<string> functionNodes)
     {
         var knownNodes = semanticModels
             .SelectMany(model => model.Tables.Select(table => NodeKey(
@@ -760,6 +873,7 @@ internal static class SemanticDependencyAnalyzer
             .Concat(usages.Select(usage => NodeKey(usage.SemanticModel, Source(usage))))
             .ToHashSet(StringComparer.OrdinalIgnoreCase);
         knownNodes.UnionWith(reportMeasureNodes);
+        knownNodes.UnionWith(functionNodes);
         var adjacency = BuildAdjacency(dependencies, knownNodes);
         var directRoots = usages
             .Where(usage => usage.IsDirectlyReferencedByReport)
@@ -938,6 +1052,9 @@ internal static class SemanticDependencyAnalyzer
             TableNames = model.Tables
                 .Select(table => table.Name)
                 .ToHashSet(StringComparer.OrdinalIgnoreCase);
+            FunctionNames = model.Functions
+                .Select(function => function.Name)
+                .ToHashSet(StringComparer.OrdinalIgnoreCase);
             TablePaths = model.Tables.ToDictionary(
                 table => table.Name,
                 table => table.RelativePath,
@@ -964,6 +1081,8 @@ internal static class SemanticDependencyAnalyzer
         }
 
         public HashSet<string> TableNames { get; }
+
+        public HashSet<string> FunctionNames { get; }
 
         public Dictionary<string, string> TablePaths { get; }
 

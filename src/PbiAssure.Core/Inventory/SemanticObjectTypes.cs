@@ -12,6 +12,9 @@ public static class SemanticObjectTypes
     /// <summary>A perspective. Like Role, it appears as a dependency source, never as a usage record.</summary>
     public const string Perspective = "Perspective";
 
+    /// <summary>A DAX user-defined function. A graph node, never a usage record and never a root.</summary>
+    public const string Function = "Function";
+
     public const string Column = "Column";
     public const string Measure = "Measure";
     public const string ReportMeasure = "ReportMeasure";

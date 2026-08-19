@@ -168,11 +168,14 @@ internal static class SemanticDefinitionFileRegistry
             Pattern: "definition/functions.tmdl",
             MatchKind: SemanticDefinitionFileMatch.ExactPath,
             Classification: ConstructClassifications.SemanticNotYetAnalyzed,
-            SupportState: ConstructSupportStates.NotYetAnalyzed,
+            SupportState: ConstructSupportStates.PartiallyAnalyzed,
             DependencyImpact: ConstructDependencyImpacts.MayCreateDependencies,
             Concerns: [AnalysisConcerns.Dependency],
-            Reason: "DAX user-defined functions are not analysed by this version. Their expressions " +
-                    "can reference model objects."),
+            Reason: "DAX user-defined function definitions are analysed, including what their bodies " +
+                    "reference and which functions call one another. What is not analysed is where a " +
+                    "function is called from outside the model definition: visual calculations and " +
+                    "report-level measures can call one, and neither is read, so a function may be " +
+                    "used more than the analysed evidence shows."),
         new(
             // Documented root file holding all data sources. Dependency effect not established.
             LimitationId: "PBI-LIMIT-MODEL-DATASOURCE",

@@ -22,6 +22,11 @@ public sealed record SemanticModelInventory(
 
     public int PerspectiveCount => Perspectives.Count;
 
+    /// <summary>DAX user-defined functions. Additive; ignoring it preserves previous behaviour.</summary>
+    public IReadOnlyList<SemanticFunctionInventory> Functions { get; init; } = [];
+
+    public int FunctionCount => Functions.Count;
+
     public int TablePermissionCount => Roles.Sum(role => role.TablePermissionCount);
 
     public int TableCount => Tables.Count;

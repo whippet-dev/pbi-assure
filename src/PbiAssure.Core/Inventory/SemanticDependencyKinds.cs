@@ -23,4 +23,7 @@ public static class SemanticDependencyKinds
 
     /// <summary>A reference from a perspective to a model object it exposes.</summary>
     public const string PerspectiveMember = "PerspectiveMember";
+
+    /// <summary>A call to a DAX user-defined function.</summary>
+    public const string FunctionCall = "FunctionCall";
 }
