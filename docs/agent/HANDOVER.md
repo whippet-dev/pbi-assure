@@ -63,6 +63,15 @@ implemented, fixture-backed where evidence was needed, and verified:
 Do not reopen any of it without new evidence. The invariants that hold it together are in
 [DECISIONS.md](DECISIONS.md) — read them before changing presentation of usage, confidence or reasons.
 
+A remedial consistency pass audited the finished sequence — CI bookkeeping, domain comments, fixture
+provenance, the new JSON field, terminology, reason invariants and fixture hygiene. It found three stale
+documentation items and no correctness defect, so **the workstream stays closed**. Details in
+[CURRENT_STATE.md](CURRENT_STATE.md); the notable one is that
+`tests/fixtures/desktop-udf-references/README.md` had claimed its model was written at compatibility
+level 1702 with no upgrade. That was inferred from a snapshot taken *after* the functions were authored
+and could not have shown the starting level. Corrected to the 1606 → 1702 upgrade the sibling fixture
+records.
+
 ## State
 
 - **Last verified product state:** `ae6be56` on `master`. Later commits may be documentation-only; run

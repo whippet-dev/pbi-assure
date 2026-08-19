@@ -16,11 +16,23 @@ qualifying cause on its usage classifications.
 | Product version | `2.156.951.0 (26.07)` — the same release and machine as `desktop-semantic-constructs`; both carry the `Fluent2-CY26SU07` base theme |
 | Date authored | 2026-08-19 |
 | Model mode | Import |
-| Compatibility level | 1702, as first written — no upgrade occurred here |
+| Compatibility level | 1702 [verified by Power BI Desktop-authored fixture] — reached by the same 1606 → 1702 upgrade the sibling fixture records; see below |
 | Data | **Synthetic.** Created with **Home → Enter data**; no external source, no credentials, no gateway |
 
 The embedded partition decodes to three rows of region/amount pairs (`West/500`, `East/300`,
 `West/450`). Nothing here is real organisation data.
+
+### A note on the compatibility level
+
+`database.tmdl` records `compatibilityLevel: 1702` [verified by Power BI Desktop-authored fixture], and
+DAX user-defined functions require 1702 or higher. A Desktop model of this shape starts at 1606, so
+applying the first function prompted the same **1606 → 1702** upgrade that
+`desktop-semantic-constructs` records for `AddTax`; the prompt was accepted.
+
+An earlier version of this README said the model was "1702 as first written, no upgrade occurred here".
+That was wrong. It was inferred from the `before-reopen` snapshot already reading 1702 — but that
+snapshot was taken *after* the functions were authored, so it cannot show the level the model started
+at. The committed bytes prove the final level and nothing about how it was reached.
 
 ## Model
 

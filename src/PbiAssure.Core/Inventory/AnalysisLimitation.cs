@@ -22,7 +22,11 @@ public static class ConstructSupportStates
 
     public const string NotYetAnalyzed = "NotYetAnalyzed";
 
-    /// <summary>Some aspects understood, others not. Not yet emitted at file level.</summary>
+    /// <summary>
+    /// Some aspects understood, others not. Emitted for roles (table permission filters are parsed,
+    /// column permissions are not), perspectives (membership is parsed, presentation meaning is not) and
+    /// DAX user-defined functions (definitions are parsed, some call sites are not).
+    /// </summary>
     public const string PartiallyAnalyzed = "PartiallyAnalyzed";
 
     public const string Unrecognized = "Unrecognized";

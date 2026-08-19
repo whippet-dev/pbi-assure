@@ -23,8 +23,9 @@ section whenever a commit changes build, test or behaviour — not for every com
 - `dotnet build PbiAssure.slnx` — **succeeded, 0 warnings, 0 errors** [verified]. `TreatWarningsAsErrors`
   is on, so warnings fail the build.
 - `dotnet test PbiAssure.slnx` — **400 core + 2 privacy end-to-end tests passed**, 0 failed [verified].
-- CI (`.github/workflows/ci.yml`) — **green** [verified]. Runs restore, build, a Playwright Chromium
-  install, then the whole solution test suite on `windows-latest`.
+- CI (`.github/workflows/ci.yml`) — **green** [verified], confirmed complete (not queued) for `feb72b0`,
+  the tip of the closed workstream. Runs restore, build, a Playwright Chromium install, then the whole
+  solution test suite on `windows-latest`.
 - The privacy end-to-end tests are part of the normal solution test run; they need Node.js and a
   Playwright Chromium build. See [Build and test](../../README.md#build-and-test).
 
@@ -120,6 +121,17 @@ unused with no indication that security metadata had been skipped.
   report locations and `ApparentlyUnused` still gets no reason. Where several are eligible, the one with
   the alphabetically first qualified name is shown, so parse order cannot change the explanation.
   Reporting reads the published flags and traverses nothing.
+
+  **`SemanticNodeReachability` is part of the JSON inventory contract** [verified in repository]. The CLI
+  serialises `ProjectInventory` wholesale, so every public property on it is emitted — the same route by
+  which `AnalysisLimitations` became public. Audited and deliberately left exposed: all 34 rows on the
+  Desktop fixture name identities **already published elsewhere** in the same document (tables, columns,
+  measures, roles, relationships, functions, report measures — 0 novel names), it carries no data values
+  or machine paths, and the two booleans are derivable from the edge list and roots that are already
+  emitted. It is not *required* in JSON — Reporting receives the in-process object — but it answers "why
+  does this object have this state?" for a JSON consumer, which is the same question the HTML answers.
+  Hiding it would need `[JsonIgnore]`, a pattern this inventory does not otherwise use. **[design
+  decision]**
 - **Reason precedence matches the displayed state.** A relationship endpoint is the one reason kind
   whose edge *creates* the requirement instead of carrying reachability, and whose source is a
   relationship rather than a model object, so it explains `StructurallyRequired` and nothing else. Every
