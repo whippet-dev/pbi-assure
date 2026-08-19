@@ -13,20 +13,27 @@ public static partial class HtmlReportRenderer
         ArgumentNullException.ThrowIfNull(inventory);
 
         var html = new StringBuilder(capacity: 256_000);
-        AppendDocumentStart(html, inventory);
-        AppendSummary(html, inventory);
+        // Built once and threaded through: the model summary, the navigation entry and every
+        // object-level marker all read from the same result.
+        var coverage = AnalysisCoveragePresentation.Build(inventory);
+        AppendDocumentStart(html, inventory, coverage);
+        AppendSummary(html, inventory, coverage);
+        AppendAnalysisCoverage(html, coverage);
         AppendScope(html);
         AppendFindings(html, inventory);
         AppendReportInventory(html, inventory);
         AppendPowerQueryLineage(html, inventory);
         AppendRelationships(html, inventory);
-        AppendSemanticUsage(html, inventory);
+        AppendSemanticUsage(html, inventory, coverage);
         AppendThemeReview(html, inventory);
         AppendDocumentEnd(html, inventory);
         return html.ToString();
     }
 
-    private static void AppendDocumentStart(StringBuilder html, ProjectInventory inventory)
+    private static void AppendDocumentStart(
+        StringBuilder html,
+        ProjectInventory inventory,
+        AnalysisCoverage coverage)
     {
         var projectName = ProjectName(inventory);
 
@@ -55,6 +62,11 @@ public static partial class HtmlReportRenderer
         html.AppendLine("      <nav class=\"section-navigator\" aria-label=\"Report sections\">");
         html.AppendLine("        <ul class=\"section-nav\">");
         AppendSectionNavigationItem(html, "summary", "Summary", "Overview and key counts");
+        if (coverage.HasLimitations)
+        {
+            AppendSectionNavigationItem(html, "analysis-coverage", "Analysis coverage", "What was and was not analysed");
+        }
+
         AppendSectionNavigationItem(html, "findings", "Findings", "Issues and review items");
         AppendSectionNavigationItem(html, "reports", "Report pages", "Pages, visuals and fields");
         AppendSectionNavigationItem(html, "power-query", "Power Query", "Queries, sources and dependencies");
@@ -68,7 +80,10 @@ public static partial class HtmlReportRenderer
         html.AppendLine("  <main id=\"main-content\" class=\"content\" tabindex=\"-1\">");
     }
 
-    private static void AppendSummary(StringBuilder html, ProjectInventory inventory)
+    private static void AppendSummary(
+        StringBuilder html,
+        ProjectInventory inventory,
+        AnalysisCoverage coverage)
     {
         html.AppendLine("    <section id=\"summary\" class=\"report-section\" data-report-section=\"summary\" aria-labelledby=\"summary-heading\">");
         html.AppendLine("      <h2 id=\"summary-heading\" tabindex=\"-1\">Assurance summary</h2>");
@@ -145,6 +160,13 @@ public static partial class HtmlReportRenderer
         AppendMetric(html, "Apparently unused", inventory.DeveloperApparentlyUnusedSemanticObjectCount, "metric-unused");
         html.AppendLine("      </dl>");
         html.AppendLine("          <p class=\"summary-caution\"><strong>Check apparently unused objects before removing them:</strong> PBI Assure could not find anything in this project that uses them. External reports, other models or dynamic behaviour may still depend on them.</p>");
+        if (coverage.QualifiedObjectCount > 0)
+        {
+            html.Append("          <p class=\"summary-coverage-note\">")
+                .Append(coverage.QualifiedObjectCount.ToString(CultureInfo.InvariantCulture)).Append(" of these ")
+                .Append(Pluralize(coverage.QualifiedObjectCount, "classification is", "classifications are"))
+                .AppendLine(" qualified, because this project contains metadata PBI Assure does not fully analyse yet. <a href=\"#analysis-coverage\">Review analysis coverage</a>.</p>");
+        }
         AppendSummaryDefinitions(html, "What these usage states mean", [
             ("Directly used", "Used somewhere in the report, such as a visual, filter, tooltip or drillthrough setting."),
             ("Indirectly used", "Not used directly in the report, but needed by something that is."),
@@ -163,6 +185,177 @@ public static partial class HtmlReportRenderer
         html.AppendLine("      <p><a href=\"#semantic-usage\">Review semantic-model candidates</a></p>");
         html.AppendLine("    </section>");
     }
+
+    /// <summary>
+    /// What PBI Assure read in this project's semantic models, and what it did not.
+    ///
+    /// Two decisions shape this section. First, it is only rendered when something was actually left
+    /// unanalysed: a panel announcing that there is nothing to report would be reassurance nobody asked
+    /// for, and the standing caveats already live in the scope section below it. Second, the
+    /// limitations that cannot affect a usage conclusion are disclosed but tucked into a details
+    /// element, because a real Desktop model records six of those and one that matters — showing all
+    /// seven with equal weight would bury the one worth reading.
+    /// </summary>
+    private static void AppendAnalysisCoverage(StringBuilder html, AnalysisCoverage coverage)
+    {
+        if (!coverage.HasLimitations)
+        {
+            return;
+        }
+
+        html.AppendLine("    <section id=\"analysis-coverage\" class=\"report-section\" data-report-section=\"analysis-coverage\" aria-labelledby=\"analysis-coverage-heading\">");
+        html.AppendLine("      <h2 id=\"analysis-coverage-heading\" tabindex=\"-1\">Analysis coverage</h2>");
+        html.AppendLine("      <p class=\"section-intro\">PBI Assure read most of each semantic model but not all of it. This is what it did not fully analyse, and whether that could affect the usage classifications shown elsewhere in this report.</p>");
+
+        foreach (var model in coverage.Models)
+        {
+            html.Append("      <section class=\"coverage-model\" id=\"").Append(Encode(model.AnchorId)).AppendLine("\">");
+            if (!string.IsNullOrWhiteSpace(model.ModelName))
+            {
+                html.Append("        <h3>").Append(Encode(model.ModelName)).AppendLine("</h3>");
+            }
+
+            AppendCoverageHeadline(html, model);
+
+            if (model.QualifyingGroups.Count > 0)
+            {
+                html.AppendLine("        <ul class=\"coverage-list coverage-qualifying\">");
+                foreach (var group in model.QualifyingGroups)
+                {
+                    AppendCoverageGroup(html, group);
+                }
+
+                html.AppendLine("        </ul>");
+            }
+
+            if (model.OtherGroups.Count > 0)
+            {
+                var artifacts = model.OtherGroups.Sum(group => group.ArtifactPaths.Count);
+                html.Append("        <details class=\"coverage-other\"><summary>");
+                if (model.QualifyingGroups.Count > 0)
+                {
+                    // "Other" only makes sense next to something; when nothing qualifies, the headline
+                    // has already given the count and the disclosure just needs a reason to open it.
+                    html.Append(artifacts.ToString(CultureInfo.InvariantCulture)).Append(' ')
+                        .Append(Pluralize(artifacts, "other file", "other files"))
+                        .Append(" not fully analysed, with no known effect on usage classification");
+                }
+                else
+                {
+                    html.Append("What was not fully analysed");
+                }
+
+                html.AppendLine("</summary>");
+                html.AppendLine("          <ul class=\"coverage-list\">");
+                foreach (var group in model.OtherGroups)
+                {
+                    AppendCoverageGroup(html, group);
+                }
+
+                html.AppendLine("          </ul>");
+                html.AppendLine("        </details>");
+            }
+
+            html.AppendLine("      </section>");
+        }
+
+        html.AppendLine("      <p class=\"coverage-footnote\">PBI Assure gains coverage for more Power BI metadata over time. A limitation here describes what this version reads, not a problem with your project.</p>");
+        html.AppendLine("    </section>");
+    }
+
+    /// <summary>
+    /// The one sentence a reader needs. Counts only: there is no evidence basis for scoring how accurate
+    /// an analysis was, and a percentage would invite exactly that reading.
+    /// </summary>
+    private static void AppendCoverageHeadline(StringBuilder html, AnalysisCoverageModel model)
+    {
+        html.Append("        <p class=\"coverage-headline\">");
+        if (model.QualifyingGroups.Count == 0)
+        {
+            html.Append(model.ArtifactCount.ToString(CultureInfo.InvariantCulture)).Append(' ')
+                .Append(Pluralize(model.ArtifactCount, "file was", "files were"))
+                .Append(" not fully analysed. <strong>None of them affect usage classification.</strong>");
+            html.AppendLine("</p>");
+            return;
+        }
+
+        html.Append("<strong>").Append(model.QualifyingGroups.Count.ToString(CultureInfo.InvariantCulture))
+            .Append(' ').Append(Pluralize(model.QualifyingGroups.Count, "analysis limitation", "analysis limitations"))
+            .Append(model.QualifyingGroups.Count == 1 ? " may affect usage classification." : " may affect usage classification.")
+            .Append("</strong> ");
+        if (model.QualifiedObjectCount > 0)
+        {
+            html.Append(model.QualifiedObjectCount.ToString(CultureInfo.InvariantCulture)).Append(" of ")
+                .Append(model.ObjectCount.ToString(CultureInfo.InvariantCulture)).Append(' ')
+                .Append(Pluralize(model.ObjectCount, "object classification is", "object classifications are"))
+                .Append(" qualified as a result, each marked <span class=\"confidence-flag confidence-flag-sample\">Qualified</span> beside its status. A qualified classification is still the best available answer; it means something PBI Assure did not read could add usage it cannot currently see.");
+        }
+        else
+        {
+            html.Append("No object classification in this model is affected.");
+        }
+
+        html.AppendLine("</p>");
+    }
+
+    private static void AppendCoverageGroup(StringBuilder html, AnalysisCoverageGroup group)
+    {
+        html.Append("            <li class=\"coverage-item")
+            .Append(group.MayAffectClassification ? " coverage-item-qualifying" : string.Empty)
+            .Append("\"><p class=\"coverage-item-head\"><strong>").Append(Encode(group.Label))
+            .Append("</strong> <span class=\"badge badge-neutral\">").Append(Encode(group.SupportStateLabel))
+            .Append("</span> <span class=\"coverage-impact\">").Append(Encode(group.ImpactLabel))
+            .AppendLine("</span></p>");
+        html.Append("              <p class=\"coverage-reason\">").Append(Encode(group.Reason)).AppendLine("</p>");
+        html.Append("              <p class=\"coverage-artifacts\">")
+            .Append(Pluralize(group.ArtifactPaths.Count, "File", "Files")).Append(": ");
+        for (var index = 0; index < group.ArtifactPaths.Count; index++)
+        {
+            if (index > 0)
+            {
+                html.Append(", ");
+            }
+
+            html.Append("<code>").Append(Encode(DisplayPath(group.ArtifactPaths[index]))).Append("</code>");
+        }
+
+        html.AppendLine("</p>");
+        html.AppendLine("            </li>");
+    }
+
+    /// <summary>
+    /// The object-level half of the design: restrained, because one limitation can qualify most of a
+    /// model and a warning on every affected object would train readers to ignore warnings.
+    ///
+    /// It is a link rather than a badge or a tooltip. A link is keyboard operable without extra
+    /// scripting, carries its meaning as visible text, and takes the reader to the explanation instead
+    /// of restating it here. The confidence value is read straight from the domain object, so a future
+    /// impact that qualifies a positive state renders without a renderer change.
+    /// </summary>
+    private static void AppendClassificationConfidence(
+        StringBuilder html,
+        SemanticObjectUsage usage,
+        string? coverageAnchor)
+    {
+        if (usage.ClassificationConfidence != ClassificationConfidences.QualifiedByLimitation)
+        {
+            return;
+        }
+
+        if (coverageAnchor is null)
+        {
+            html.Append("<span class=\"confidence-flag\">Qualified<span class=\"visually-hidden\"> — classification qualified by analysis limitations in this model</span></span>");
+            return;
+        }
+
+        html.Append("<a class=\"confidence-flag\" href=\"#").Append(Encode(coverageAnchor))
+            .Append("\">Qualified<span class=\"visually-hidden\"> — classification qualified by analysis limitations in this model. See analysis coverage.</span></a>");
+    }
+
+    private static string ConfidenceSearchText(SemanticObjectUsage usage) =>
+        usage.ClassificationConfidence == ClassificationConfidences.QualifiedByLimitation
+            ? "Qualified classification confidence "
+            : string.Empty;
 
     private static void AppendScope(StringBuilder html)
     {
@@ -799,12 +992,15 @@ public static partial class HtmlReportRenderer
         _ => HumanizeIdentifier(direction),
     };
 
-    private static void AppendSemanticUsage(StringBuilder html, ProjectInventory inventory)
+    private static void AppendSemanticUsage(
+        StringBuilder html,
+        ProjectInventory inventory,
+        AnalysisCoverage coverage)
     {
         html.AppendLine("    <section id=\"semantic-usage\" class=\"report-section\" data-report-section=\"semantic-usage\" aria-labelledby=\"semantic-usage-heading\">");
         html.AppendLine("      <h2 id=\"semantic-usage-heading\" tabindex=\"-1\">Semantic model</h2>");
         html.AppendLine("      <p class=\"section-intro\">Review tables, columns, measures and other model objects. Expand an object to see why it has its status, where it is used and, where available, its DAX expression.</p>");
-        AppendUsageGuide(html);
+        AppendUsageGuide(html, coverage);
         if (inventory.SemanticModels.Count == 0)
         {
             AppendSectionEmptyState(html, "No semantic model available", "No supported local semantic-model definition was found in the selected project.", "unavailable");
@@ -822,7 +1018,7 @@ public static partial class HtmlReportRenderer
         html.AppendLine("      <div id=\"semantic-table-list\" class=\"semantic-table-list\">");
         foreach (var model in inventory.SemanticModels)
         {
-            AppendSemanticModel(html, inventory, model);
+            AppendSemanticModel(html, inventory, model, coverage);
         }
 
         html.AppendLine("      </div>");
@@ -1110,8 +1306,12 @@ public static partial class HtmlReportRenderer
     private static void AppendSemanticModel(
         StringBuilder html,
         ProjectInventory inventory,
-        SemanticModelInventory model)
+        SemanticModelInventory model,
+        AnalysisCoverage coverage)
     {
+        var coverageAnchor = coverage.Models
+            .FirstOrDefault(item => string.Equals(item.ModelName, model.Name, StringComparison.OrdinalIgnoreCase))
+            ?.AnchorId;
         html.AppendLine("        <section class=\"model-block\">");
         html.Append("          <h3>").Append(Encode(model.Name)).AppendLine("</h3>");
         html.AppendLine("          <dl class=\"fact-strip\">");
@@ -1209,7 +1409,12 @@ public static partial class HtmlReportRenderer
                     .Append("\" data-filter-origin=\"").Append(table.IsSystemGenerated ? "system" : "developer").Append("\" data-usage-state=\"").Append(Encode(usage.UsageState))
                     .Append("\" data-object-type=\"").Append(Encode(usage.ObjectType))
                     .Append("\" data-object-origin=\"").Append(table.IsSystemGenerated ? "system" : "developer")
-                    .Append("\" data-search-text=\"").Append(Encode($"{table.Name} {usage.ObjectName} {HumanizeIdentifier(usage.ObjectType)} {UsageLabel(usage.UsageState)} {usageReason}"))
+                    .Append("\" data-classification-confidence=\"").Append(Encode(usage.ClassificationConfidence))
+                    // Typing "qualified" into the existing search finds every qualified classification,
+                    // so discoverability does not depend on spotting the marker.
+                    .Append("\" data-search-text=\"").Append(Encode(
+                        $"{table.Name} {usage.ObjectName} {HumanizeIdentifier(usage.ObjectType)} {UsageLabel(usage.UsageState)} " +
+                        $"{ConfidenceSearchText(usage)}{usageReason}"))
                     .Append("\"><div class=\"semantic-object-header\"><span class=\"object-name\"><strong>").Append(Encode(usage.ObjectName))
                     .Append("</strong><span>").Append(Encode(HumanizeIdentifier(usage.ObjectType)));
                 if (usage.DirectReportLocationCount > 0)
@@ -1219,7 +1424,9 @@ public static partial class HtmlReportRenderer
                 }
 
                 html.Append("</span></span><span class=\"badge ").Append(UsageClass(usage.UsageState)).Append("\">")
-                    .Append(Encode(UsageLabel(usage.UsageState))).AppendLine("</span></div>");
+                    .Append(Encode(UsageLabel(usage.UsageState))).Append("</span>");
+                AppendClassificationConfidence(html, usage, coverageAnchor);
+                html.AppendLine("</div>");
                 if (usageReason is not null)
                 {
                     html.Append("                <p class=\"usage-reason\">").Append(Encode(usageReason)).AppendLine("</p>");
@@ -1257,7 +1464,7 @@ public static partial class HtmlReportRenderer
         return "Model table";
     }
 
-    private static void AppendUsageGuide(StringBuilder html)
+    private static void AppendUsageGuide(StringBuilder html, AnalysisCoverage coverage)
     {
         html.AppendLine("      <details class=\"usage-guide\"><summary><span>How usage classification works</span><span class=\"usage-guide-hint\">5 statuses explained</span></summary>");
         html.AppendLine("        <div class=\"usage-guide-body\"><dl class=\"usage-classification-list\">");
@@ -1266,7 +1473,13 @@ public static partial class HtmlReportRenderer
         AppendUsageGuideItem(html, "Structurally required", "Needed for the model to work, for example in a relationship, hierarchy or sort-by setting.", SemanticUsageStates.StructurallyRequired);
         AppendUsageGuideItem(html, "Only used by unused items", "Only used by other model items that themselves have no detected report usage.", SemanticUsageStates.UsedOnlyByUnusedBranch);
         AppendUsageGuideItem(html, "Apparently unused", "PBI Assure could not find anything in this project that uses it. Check before removing it because external reports and dynamic behaviour may not be visible here.", SemanticUsageStates.ApparentlyUnused);
-        html.AppendLine("        </dl></div>");
+        html.AppendLine("        </dl>");
+        if (coverage.QualifiedObjectCount > 0)
+        {
+            html.AppendLine("        <p class=\"usage-guide-note\">A status can also be marked <span class=\"confidence-flag confidence-flag-sample\">Qualified</span>. That is <strong>not a sixth status</strong>: the status is unchanged and remains the best available answer. It means this model contains metadata PBI Assure does not fully analyse yet, which could add usage it cannot currently see. See <a href=\"#analysis-coverage\">Analysis coverage</a>.</p>");
+        }
+
+        html.AppendLine("        </div>");
         html.AppendLine("      </details>");
     }
 
@@ -2770,6 +2983,28 @@ public static partial class HtmlReportRenderer
     .metric-review { border-left-color: var(--info); }
     .metric-unused { border-left-color: #5b3f88; }
     .summary-note, .secondary, .filter-status { color: var(--muted); }
+    .summary-coverage-note { max-width: 64rem; margin: .55rem 0 0; color: var(--muted); font-size: .93rem; }
+    .coverage-model { min-width: 0; margin: 0 0 1.25rem; }
+    .coverage-model + .coverage-model { padding-top: 1rem; border-top: 1px solid #d7dee5; }
+    .coverage-model h3 { margin: .5rem 0 .35rem; font-size: 1.05rem; }
+    .coverage-headline { max-width: 68rem; margin: .35rem 0 .8rem; overflow-wrap: anywhere; }
+    .coverage-list { display: grid; min-width: 0; gap: .6rem; margin: 0 0 .8rem; padding: 0; list-style: none; }
+    .coverage-item { min-width: 0; padding: .75rem .85rem; border: 1px solid #d7dee5; border-left: .35rem solid #66788a; border-radius: .35rem; background: #f7f9fb; overflow-wrap: anywhere; }
+    .coverage-item-qualifying { border-left-color: var(--info); background: var(--info-bg); }
+    .coverage-item p { margin: 0; }
+    .coverage-item-head { display: flex; flex-wrap: wrap; align-items: center; gap: .4rem .6rem; }
+    .coverage-impact { color: var(--muted); font-size: .88rem; font-weight: 700; }
+    .coverage-item-qualifying .coverage-impact { color: var(--info); }
+    .coverage-reason { margin-top: .4rem !important; max-width: 62rem; }
+    .coverage-artifacts { margin-top: .45rem !important; color: var(--muted); font-size: .88rem; }
+    .coverage-other { margin: 0; }
+    .coverage-other > summary { padding: .45rem .2rem; color: var(--muted); cursor: pointer; font-weight: 700; }
+    .coverage-other[open] > summary { margin-bottom: .5rem; }
+    .coverage-footnote { max-width: 68rem; margin: .5rem 0 0; color: var(--muted); font-size: .9rem; }
+    .usage-guide-note { max-width: 66rem; margin: .8rem 0 0; padding-top: .7rem; border-top: 1px solid #d7dee5; color: var(--muted); font-size: .93rem; }
+    .confidence-flag { align-self: center; padding: .12rem .45rem; border: 1px dashed #7a8894; border-radius: .2rem; color: var(--muted); font-size: .84rem; font-weight: 700; text-decoration: none; white-space: nowrap; }
+    a.confidence-flag:hover { border-style: solid; border-color: var(--link); color: var(--link); }
+    .confidence-flag-sample { display: inline-block; vertical-align: baseline; }
     .summary-caution { max-width: 64rem; margin: .7rem 0 0; padding: .65rem .75rem; border-left: .3rem solid #5b3f88; background: #f6f2fb; color: #3f2c5b; overflow-wrap: anywhere; }
     .theme-early-access { max-width: 68rem; margin: 0 0 .75rem; padding: .75rem .85rem; border: 1px solid #9bbbd3; border-left: .35rem solid var(--info); border-radius: .25rem; background: var(--info-bg); color: var(--text); }
     .theme-early-access p { margin: .25rem 0 0; }
