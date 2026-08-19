@@ -17,4 +17,7 @@ public static class SemanticDependencyKinds
     public const string CalculationGroupItem = "CalculationGroupItem";
 
     public const string ReportMeasure = "ReportMeasure";
+
+    /// <summary>A reference from a role table permission filter expression.</summary>
+    public const string TablePermission = "TablePermission";
 }

@@ -7,6 +7,16 @@ public sealed record SemanticModelInventory(
     IReadOnlyList<SemanticRelationshipInventory> Relationships,
     IReadOnlyList<SemanticNamedExpressionInventory> NamedExpressions)
 {
+    /// <summary>
+    /// Row-level security roles. Additive: consumers that ignore this behave as they did before it
+    /// existed. Only dependency-bearing parts of a role are modelled; see SemanticRoleInventory.
+    /// </summary>
+    public IReadOnlyList<SemanticRoleInventory> Roles { get; init; } = [];
+
+    public int RoleCount => Roles.Count;
+
+    public int TablePermissionCount => Roles.Sum(role => role.TablePermissionCount);
+
     public int TableCount => Tables.Count;
 
     public int ColumnCount => Tables.Sum(table => table.ColumnCount);

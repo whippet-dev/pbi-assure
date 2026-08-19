@@ -28,6 +28,15 @@ internal static class TmdlSemanticModelParser
         var relationships = source.FileExists(relationshipsPath)
             ? ParseRelationships(source, relationshipsPath)
             : [];
+        var rolesDirectory = ProjectFilePaths.Combine(definitionDirectory, "roles");
+        var roles = source
+            .EnumerateFiles(rolesDirectory, recursive: false)
+            .Where(file => file.RelativePath.EndsWith(".tmdl", StringComparison.OrdinalIgnoreCase))
+            .Select(file => ParseRole(source, file.RelativePath))
+            .Where(role => role is not null)
+            .Select(role => role!)
+            .OrderBy(role => role.Name, StringComparer.OrdinalIgnoreCase)
+            .ToArray();
         var expressionsPath = ProjectFilePaths.Combine(definitionDirectory, "expressions.tmdl");
         var namedExpressions = source.FileExists(expressionsPath)
             ? ParseNamedExpressions(source, expressionsPath)
@@ -38,7 +47,10 @@ internal static class TmdlSemanticModelParser
             RelativePath: semanticModelDirectory,
             Tables: tables,
             Relationships: relationships,
-            NamedExpressions: namedExpressions);
+            NamedExpressions: namedExpressions)
+        {
+            Roles = roles,
+        };
     }
 
     private static SemanticTableInventory ParseTable(IProjectFileSource source, string path)
@@ -262,6 +274,47 @@ internal static class TmdlSemanticModelParser
             Name: name,
             IsHidden: HasFlag(lines, declarationIndex, endIndex, "isHidden"),
             Levels: levels);
+    }
+
+    /// <summary>
+    /// Reads a role's table permissions. Only the dependency-bearing parts are read: the owning table
+    /// and the filter expression. Other role content, including column permissions, is not interpreted,
+    /// which is why roles remain a partially analysed construct.
+    /// </summary>
+    private static SemanticRoleInventory? ParseRole(IProjectFileSource source, string path)
+    {
+        var lines = ReadLines(source, path);
+        var declarationIndex = FindDeclaration(lines, "role", startIndex: 0, requiredIndent: null);
+        if (declarationIndex < 0 ||
+            !TryParseDeclaration(lines[declarationIndex].Trimmed, "role", out var roleName, out _))
+        {
+            return null;
+        }
+
+        var roleEnd = FindBlockEnd(lines, declarationIndex);
+        var permissions = new List<SemanticTablePermissionInventory>();
+        for (var index = declarationIndex + 1; index < roleEnd; index++)
+        {
+            if (!TryParseDeclaration(lines[index].Trimmed, "tablePermission", out var table, out var inlineFilter))
+            {
+                continue;
+            }
+
+            var permissionEnd = FindBlockEnd(lines, index, roleEnd);
+            var filter = ReadExpression(lines, index, permissionEnd, inlineFilter);
+            if (!string.IsNullOrWhiteSpace(filter))
+            {
+                permissions.Add(new SemanticTablePermissionInventory(table, filter));
+            }
+
+            index = permissionEnd - 1;
+        }
+
+        return new SemanticRoleInventory(
+            Name: roleName,
+            ModelPermission: FindProperty(lines, declarationIndex, roleEnd, "modelPermission"),
+            TablePermissions: permissions,
+            RelativePath: path);
     }
 
     private static SemanticRelationshipInventory[] ParseRelationships(IProjectFileSource source, string path)

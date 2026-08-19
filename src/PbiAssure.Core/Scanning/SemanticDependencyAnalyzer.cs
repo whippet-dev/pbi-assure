@@ -176,6 +176,8 @@ internal static class SemanticDependencyAnalyzer
                 unresolved,
                 structuralRoots);
         }
+
+        AnalyzeRoles(model, lookup, dependencies, unresolved, structuralRoots);
     }
 
     private static void AddFieldParameterMetadataRoots(
@@ -422,27 +424,113 @@ internal static class SemanticDependencyAnalyzer
         List<SemanticDependencyEdge> dependencies,
         List<UnresolvedSemanticDependency> unresolved)
     {
+        AddDaxDependencies(
+            model,
+            currentTable.Name,
+            currentTable.RelativePath,
+            source,
+            expression,
+            SemanticDependencyKinds.Dax,
+            lookup,
+            dependencies,
+            unresolved,
+            structuralRoots: null);
+    }
+
+    /// <summary>
+    /// Extracts model references from a DAX expression and records them as dependency edges.
+    ///
+    /// The resolution context and the evidence path are separate, because a role filter is written in the
+    /// context of the table its permission names while living in a different file. Unqualified references
+    /// such as <c>[Region]</c> resolve against <paramref name="contextTableName"/>, which is how Power BI
+    /// Desktop's role serialization is read without rewriting the expression text.
+    ///
+    /// When <paramref name="structuralRoots"/> is supplied, every resolved target also becomes a
+    /// model-structure root, so traversal continues from it exactly as it does from a relationship
+    /// endpoint.
+    /// </summary>
+    private static void AddDaxDependencies(
+        SemanticModelInventory model,
+        string contextTableName,
+        string evidencePath,
+        SemanticNode source,
+        string expression,
+        string dependencyKind,
+        ModelLookup lookup,
+        List<SemanticDependencyEdge> dependencies,
+        List<UnresolvedSemanticDependency> unresolved,
+        ISet<string>? structuralRoots)
+    {
         foreach (var reference in DaxReferenceExtractor.Extract(expression, lookup.TableNames))
         {
-            if (lookup.TryResolveDax(reference, currentTable.Name, out var target, out var reason))
+            if (lookup.TryResolveDax(reference, contextTableName, out var target, out var reason))
             {
                 dependencies.Add(CreateEdge(
                     model.Name,
                     source,
                     target,
-                    SemanticDependencyKinds.Dax,
-                    currentTable.RelativePath,
+                    dependencyKind,
+                    evidencePath,
                     reference.Text));
+                structuralRoots?.Add(NodeKey(model.Name, target));
             }
             else
             {
                 unresolved.Add(CreateUnresolved(
                     model.Name,
                     source,
-                    SemanticDependencyKinds.Dax,
+                    dependencyKind,
                     reference.Text,
                     reason,
-                    currentTable.RelativePath));
+                    evidencePath));
+            }
+        }
+    }
+
+    /// <summary>
+    /// Role table permissions are active model behaviour: an object needed to evaluate a security filter
+    /// cannot be removed safely. Each resolved reference becomes a model-structure root, the same
+    /// mechanism relationship endpoints use, so ordinary traversal produces the classification rather
+    /// than any RLS-specific rule.
+    ///
+    /// Only table permissions are interpreted. Other role content is not, which is why roles remain a
+    /// partially analysed construct in the definition-file registry.
+    /// </summary>
+    private static void AnalyzeRoles(
+        SemanticModelInventory model,
+        ModelLookup lookup,
+        List<SemanticDependencyEdge> dependencies,
+        List<UnresolvedSemanticDependency> unresolved,
+        ISet<string> structuralRoots)
+    {
+        foreach (var role in model.Roles)
+        {
+            var source = Target(string.Empty, role.Name, SemanticObjectTypes.Role);
+            foreach (var permission in role.TablePermissions)
+            {
+                if (!lookup.TableNames.Contains(permission.Table))
+                {
+                    unresolved.Add(CreateUnresolved(
+                        model.Name,
+                        source,
+                        SemanticDependencyKinds.TablePermission,
+                        permission.Table,
+                        $"Role '{role.Name}': table '{permission.Table}' was not found.",
+                        role.RelativePath));
+                    continue;
+                }
+
+                AddDaxDependencies(
+                    model,
+                    permission.Table,
+                    role.RelativePath,
+                    source,
+                    permission.FilterExpression,
+                    SemanticDependencyKinds.TablePermission,
+                    lookup,
+                    dependencies,
+                    unresolved,
+                    structuralRoots);
             }
         }
     }
