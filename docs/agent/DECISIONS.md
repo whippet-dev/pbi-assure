@@ -163,6 +163,29 @@ Established by `tests/fixtures/desktop-semantic-constructs`.
 - This records **intent present in the model**, not evidence that any consumer used the perspective.
   PBI Assure cannot observe that, and must not imply otherwise.
 
+### DAX user-defined functions
+
+- **A function is a dependency node, not a model-structure root.** A function is a *definition*, and
+  nothing in the model requires a definition to exist. What it references becomes reachable only when
+  something reachable calls it, so an uncalled function's references correctly land on
+  `UsedOnlyByUnusedBranch`. This is the line between a function and a role filter or perspective member:
+  those are roots because the model, or a report reader, genuinely requires them.
+- **A function has no owning table.** Microsoft documents that an unqualified name inside a function
+  body is interpreted as a measure reference. Do not invent a table context for it the way a measure's
+  own table supplies one.
+- **Parameters are local symbols and shadow model objects.** A parameter named the same as a table or
+  column must not resolve to it. `desktop-udf-references` contains exactly this case.
+- **A UDF name cannot conflict with a built-in DAX function name** [verified by Microsoft primary
+  documentation]. That is what makes it safe to identify a call by matching the callee against declared
+  function names: the match cannot capture `SUM` or `COUNTROWS`.
+- **Reading function definitions does not retire the function limitation.** The unread part is where a
+  function is *called from* — visual calculations and report-level measures can both call one and
+  neither is parsed. `functions.tmdl` therefore stays `PartiallyAnalyzed` with `MayCreateDependencies`.
+  Missing a consumer under-reports usage, which is the dangerous direction. Do not lower this impact to
+  reduce caveat volume.
+
+Established by `tests/fixtures/desktop-udf-references`, which also records what it does not prove.
+
 ### Generated model objects
 
 - Power BI-generated Auto Date/Time tables are identified **only** by the explicit TMDL annotations

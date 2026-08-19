@@ -12,7 +12,7 @@ evidenced · **[design decision]** a choice, not a fact.
 |---|---|
 | Remote | `whippet-dev/pbi-assure` |
 | Branch | `master` (also the default branch) |
-| Last verified product state | `4c5a8b8` — *Analyse perspective member dependencies* |
+| Last verified product state | `659b895` — *Analyse DAX user-defined function dependencies* |
 | Working tree | Expected clean of tracked modifications. Untracked local review documents may be present |
 
 `master` may have moved past that commit for documentation-only changes. Re-verify and update this
@@ -22,7 +22,7 @@ section whenever a commit changes build, test or behaviour — not for every com
 
 - `dotnet build PbiAssure.slnx` — **succeeded, 0 warnings, 0 errors** [verified]. `TreatWarningsAsErrors`
   is on, so warnings fail the build.
-- `dotnet test PbiAssure.slnx` — **326 core + 2 privacy end-to-end tests passed**, 0 failed [verified].
+- `dotnet test PbiAssure.slnx` — **361 core + 2 privacy end-to-end tests passed**, 0 failed [verified].
 - CI (`.github/workflows/ci.yml`) — **green** [verified]. Runs restore, build, a Playwright Chromium
   install, then the whole solution test suite on `windows-latest`.
 - The privacy end-to-end tests are part of the normal solution test run; they need Node.js and a
@@ -73,6 +73,14 @@ unused with no indication that security metadata had been skipped.
   `StructurallyRequired`. Membership is narrow: naming a table does not expose its fields unless
   `includeAll` is set. Perspectives are `PartiallyAnalyzed` — presentation meaning and perspective sets
   are not analysed.
+- **DAX user-defined function dependencies.** `definition/functions.tmdl` is parsed; each function's
+  name, parameter list and body are read, and the body's references become dependency edges. A function
+  is a graph **node, not a root** — nothing in the model requires a definition to exist — so an uncalled
+  function's references land on `UsedOnlyByUnusedBranch` rather than being kept alive. Functions join
+  `knownNodes` the way report-level measures do: visible to traversal, absent from the usage rows.
+  Parameters are local symbols that shadow model objects, and an unqualified name resolves as a measure
+  because a function has no owning table. Functions remain `PartiallyAnalyzed` with
+  `MayCreateDependencies` — see the gaps table.
 - **Artifact-sensitive limitation impact.** The registry gives the conservative construct-type default;
   where the scanner proves a *particular* role file contains nothing unanalysed that could reference a
   model object, the emitted limitation is narrowed to `NoKnownDependencyEffect`. The limitation is still
@@ -122,7 +130,9 @@ unanalysed files are the always-present three — verified against three Desktop
 |---|---|
 | Whether `dataSources.tmdl` is ever emitted by current Desktop | Not observed in any fixture [verified]. Impact left `DependencyEffectUnknown`; costs nothing while absent |
 | Whether a *translated* culture file names model objects, and whether Q&A synonyms constitute usage | **Open.** Needs a Desktop fixture containing translations and synonyms |
-| **How a DAX user-defined function that references a model object serialises** | **Open — now the only qualifying cause on the Desktop fixture.** The fixture's UDF uses only its parameter, so it proves serialization but not reference resolution. Needs a Desktop-authored UDF whose body references a table, column and measure |
+| **Where a UDF is called from outside the model definition** | **Open, and the reason functions still qualify.** Microsoft documents that visual calculations and report-level measures can call a user-defined function. PBI Assure parses neither — visual calculations not at all, and a report measure's expression is never DAX-extracted. A function that looks uncalled may be called from metadata nobody reads, and missing a consumer under-reports usage |
+| Whether a UDF name can be namespaced with dots | Not observed. `DaxReferenceExtractor` does not treat `.` as an identifier character, so a dotted name would not tokenise as one identifier |
+| Multi-parameter UDFs, other parameter type hints, `VAR`/`RETURN` or multi-line bodies | Not observed. Every function in `desktop-udf-references` is one line, and only one takes a parameter at all |
 | Perspective `includeAll`, `perspectiveHierarchy` and perspective sets in real Desktop output | Implemented from Microsoft-documented syntax for the first two; no fixture emits any of them |
 | Whether current Desktop can still produce TMSL `model.bim` | Unknown |
 | RLS forms beyond the two the fixture proves — cross-table filters, OLS column permissions, DirectQuery/Direct Lake roles | **Open.** Parser tests cover more shapes synthetically; only the two static/dynamic same-table forms are Desktop-verified |
@@ -131,7 +141,12 @@ unanalysed files are the always-present three — verified against three Desktop
 ### Settled, so it does not need re-investigating
 
 - **Emitted paths for roles, perspectives, cultures and functions** — confirmed against real Desktop
-  output by `DesktopSemanticConstructsFixtureTests`. No registry path needed correcting.
+  output by `DesktopSemanticConstructsFixtureTests`, and again by `DesktopUdfReferencesFixtureTests`. No
+  registry path needed correcting.
+- **How a UDF body writes a reference** — a qualified column as `Table[Column]`, an unqualified `[Name]`
+  as a measure, a bare identifier as a table, and a call to another function as `Name()`. All five
+  functions serialise into one `definition/functions.tmdl` and `model.tmdl` carries **no `ref function`
+  line** [verified by Power BI Desktop-authored fixture].
 - **Re-saving does not normalise semantic-model files** — every definition file is byte-identical across
   a close/reopen/save round trip at Desktop 2.156.951.0 [verified by fixture].
 - **Property-level precondition is cleared for four properties.** `summarizeBy` (enum), `isKey`
@@ -143,26 +158,30 @@ unanalysed files are the always-present three — verified against three Desktop
 
 ## Immediate task
 
-**Gather Desktop evidence for DAX user-defined function references, then parse them.**
-
-The function limitation is now the *only* qualifying cause on the Desktop fixture. The existing UDF uses
-only its parameter, so it establishes serialization but not how a reference to a table, column or measure
-is written. A Desktop-authored function containing such references would settle it, after which the
-fixture's qualified count should reach zero and presentation design becomes realistic.
-
-Alternative, if that evidence is not convenient to gather:
-
 **Design how limitations and qualified confidence should appear to a user.**
 
-The analysis side is complete for the constructs supported so far: limitations are detected, RLS
-dependencies are analysed, and absence-state classifications are qualified. Nothing surfaces in HTML, CSV
-or the browser app, so a user still cannot see that a conclusion was qualified. That presentation
-deserves its own design pass rather than an ad-hoc badge — see
+The expectation recorded here previously — that parsing UDF references would take the Desktop fixture's
+qualified count to zero — turned out to be **wrong, and the measurement is what settled it**. Reading
+function definitions does not retire the function limitation, because the unread part was never the
+definitions: it is where a function is *called from*. Visual calculations and report-level measures can
+call one and neither is parsed, so the impact stays `MayCreateDependencies` and
+`desktop-semantic-constructs` still shows 21 of 27 objects `QualifiedByLimitation`, unchanged.
+
+That is the correct outcome, not a shortfall. It also means waiting for zero qualification before
+designing presentation would be waiting for something that is not close, so presentation is now the
+task.
+
+Nothing surfaces in HTML, CSV or the browser app, so a user still cannot see that a conclusion was
+qualified. That presentation deserves its own design pass rather than an ad-hoc badge — see
 [../design/unsupported-construct-design.md](../design/unsupported-construct-design.md) §5 for the shape
 already proposed, which has not been reviewed against the implemented behaviour.
 
-The alternative candidate is perspective and function dependency parsing, which would shrink the
-remaining caveat on the Desktop fixture the way RLS parsing just did.
+Alternative, if presentation is not the preferred next step: **read report-level measure expressions as
+DAX.** A report measure's dependencies come today from the structured `references.measures` list Power
+BI writes beside it, and its `Expression` is never parsed — so a call to a user-defined function from a
+report measure, and any column reference, is invisible. Closing that would narrow, though not retire,
+the function limitation. It needs a Desktop fixture containing a report-level measure that calls a UDF;
+none exists.
 
 ## Reference documents
 

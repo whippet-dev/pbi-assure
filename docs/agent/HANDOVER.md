@@ -5,36 +5,47 @@ Tactical entry point for an incoming coding agent. Read this first, then
 
 ## What just happened
 
-Perspective member dependencies are analysed. An object a perspective exposes is now
-`StructurallyRequired`, on the reasoning that a perspective is a curated surface a report reader can draw
-from at run time — the same argument already applied to field-parameter choices. Membership is narrow:
-naming a table does not expose its fields unless `includeAll` is set.
+DAX user-defined function dependencies are analysed, backed by a second Desktop-authored fixture,
+`desktop-udf-references`, authored specifically to show how a function body writes a reference.
 
-On the Desktop fixture this moved `Sales[Total Amount]` and, through ordinary traversal, `Sales[Amount]`
-into positive states, taking the qualified count from 23 to 21. **Functions are now the only qualifying
-cause left.**
+A function is a **dependency node, not a root**. Nothing in the model requires a definition to exist, so
+what a function references becomes reachable only when something reachable calls it, and an uncalled
+function's references land on `UsedOnlyByUnusedBranch`. That is what separates a function from a role
+filter or a perspective member, both of which are roots.
+
+**The expected result did not happen, and that is the important finding.** The previous handover
+predicted this would take the Desktop fixture's qualified count to zero. It did not move at all:
+`desktop-semantic-constructs` is still 21 of 27 objects `QualifiedByLimitation`, before and after. The
+unread part of `functions.tmdl` was never the definitions — it is where a function is *called from*.
+Microsoft documents that visual calculations and report-level measures can call one, and PBI Assure
+parses neither, so the impact stays `MayCreateDependencies`. Do not treat that as unfinished work to be
+tidied away; it is the honest state.
 
 ## State
 
-- **Last verified product state:** `4c5a8b8` on `master`. Later commits may be documentation-only; run
+- **Last verified product state:** `659b895` on `master`. Later commits may be documentation-only; run
   `git log --oneline` to see whether anything after it touched behaviour.
 - **Working tree:** expected clean apart from untracked local review documents; no tracked modifications
-- **Verified at that commit:** build succeeded with 0 warnings; **326 core + 2 privacy tests passed**; CI green
+- **Verified at that commit:** build succeeded with 0 warnings; **361 core + 2 privacy tests passed**; CI green
 - **Known exception:** `dotnet format --verify-no-changes` fails with 24 pre-existing whitespace errors
   in two Theme Review files. Unrelated to current work, deliberately not fixed. See
   [CURRENT_STATE.md](CURRENT_STATE.md).
 
 ## Immediate next task
 
-**Gather Desktop evidence for DAX user-defined function references, then parse them.**
+**Design how limitations and qualified confidence should appear to a user.**
 
-The function limitation is now the only qualifying cause on the Desktop fixture. Its UDF uses only its
-parameter, so it proves serialization but not how a reference to a table, column or measure is written.
-Author a Desktop function whose body references model objects, and the fixture's qualified count should
-reach zero.
+The previous handover deferred this on the grounds that most objects were about to stop being caveated.
+That reasoning is now measured and wrong — the caveat is not about to disappear, because the unread UDF
+consumers are report-side metadata that is a separate piece of work. Designing presentation while
+objects are qualified is therefore designing for the real situation, not a transitional one.
 
-Only then is presentation design worth doing: designing it while most objects are caveated would
-optimise for a problem that is about to disappear.
+Nothing surfaces in HTML, CSV or the browser app today, so a user cannot see that a conclusion was
+qualified. See [../design/unsupported-construct-design.md](../design/unsupported-construct-design.md) §5
+for the shape already proposed, which has not been reviewed against the implemented behaviour.
+
+The alternative is to read report-level measure expressions as DAX, which would close one of the two
+unread UDF consumers. That needs a Desktop fixture with a report-level measure calling a UDF.
 
 ## Do not do yet
 
@@ -58,7 +69,8 @@ blocking rather than merely sequenced:
 ## Missing evidence
 
 - RLS forms beyond the two the Desktop fixture proves — cross-table filters, column permissions (OLS)
-- **How a UDF body references a table, column or measure in Desktop-emitted TMDL** — the last qualifying cause
+- **Where a UDF is called from outside the model definition** — visual calculations and report-level
+  measures, neither parsed. This is now the reason functions still qualify
 - Whether a *translated* culture file names model objects, and whether Q&A synonyms constitute usage
 - Whether `dataSources.tmdl` is ever emitted by current Desktop
 - Real-report measurement of `PBI-ACCESS-001` finding volume
@@ -68,7 +80,8 @@ blocking rather than merely sequenced:
 1. This file
 2. [CURRENT_STATE.md](CURRENT_STATE.md) — what is true now
 3. [DECISIONS.md](DECISIONS.md) — what not to reopen
-4. `../../tests/fixtures/desktop-semantic-constructs/README.md` — the Desktop evidence, and its limits
+4. `../../tests/fixtures/desktop-semantic-constructs/README.md` and
+   `../../tests/fixtures/desktop-udf-references/README.md` — the Desktop evidence, and its limits
 5. [../reviews/unsupported-construct-slice1-registry-correction.md](../reviews/unsupported-construct-slice1-registry-correction.md)
    — what slice 1 does and why the registry looks as it does
 6. [../design/unsupported-construct-design.md](../design/unsupported-construct-design.md) — only if
