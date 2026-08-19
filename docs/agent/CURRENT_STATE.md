@@ -12,10 +12,13 @@ evidenced · **[design decision]** a choice, not a fact.
 |---|---|
 | Remote | `whippet-dev/pbi-assure` |
 | Branch | `master` (also the default branch) |
-| HEAD | `dcbde4a` — *Align the definition-file registry with documented TMDL structure* |
+| Last verified product state | `dcbde4a` — *Align the definition-file registry with documented TMDL structure* |
 | Working tree | Expected clean of tracked modifications. Untracked local review documents may be present |
 
-## Verified at this HEAD
+`master` may have moved past that commit for documentation-only changes. Re-verify and update this
+section whenever a commit changes build, test or behaviour — not for every commit.
+
+## Verified at that commit
 
 - `dotnet build PbiAssure.slnx` — **succeeded, 0 warnings, 0 errors** [verified]. `TreatWarningsAsErrors`
   is on, so warnings fail the build.

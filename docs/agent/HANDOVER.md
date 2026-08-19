@@ -12,9 +12,10 @@ because of them.
 
 ## State
 
-- **HEAD:** `dcbde4a` on `master`
+- **Last verified product state:** `dcbde4a` on `master`. Later commits may be documentation-only; run
+  `git log --oneline` to see whether anything after it touched behaviour.
 - **Working tree:** expected clean apart from untracked local review documents; no tracked modifications
-- **Verified at this HEAD:** build succeeded with 0 warnings; **227 core + 2 privacy tests passed**; CI green
+- **Verified at that commit:** build succeeded with 0 warnings; **227 core + 2 privacy tests passed**; CI green
 - **Known exception:** `dotnet format --verify-no-changes` fails with 24 pre-existing whitespace errors
   in two Theme Review files. Unrelated to current work, deliberately not fixed. See
   [CURRENT_STATE.md](CURRENT_STATE.md).
@@ -76,7 +77,8 @@ starting a small task.
 1. Run the build and the tests appropriate to the change; for anything touching scanning or output, run
    the whole suite including the privacy end-to-end tests.
 2. Commit logical changes separately, with a message explaining the reasoning, not just the diff.
-3. Update [CURRENT_STATE.md](CURRENT_STATE.md) if the factual state changed.
+3. Update [CURRENT_STATE.md](CURRENT_STATE.md) if the factual state changed — build, tests, CI, what is
+   implemented, or an evidence gap. A documentation-only commit does not require an update.
 4. Update this file with the next task.
 5. Update [DECISIONS.md](DECISIONS.md) **only** when a durable decision or established semantic actually
    changed — not for transient observations.
