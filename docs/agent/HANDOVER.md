@@ -23,15 +23,25 @@ to the user's object. One vocabulary now runs through the surface; see [CURRENT_
 for the full mapping. Two visual defects were fixed with it: navigation wrapped 8 tiles into an orphaned
 row, and the coverage disclosure lacked the report's standard `+`/`−` affordance.
 
-No domain, scanner or classification logic changed in either slice. The renderer reads
-`ClassificationConfidence` and never re-derives it.
+Then the "Why" line was fixed. `Sales[Amount]` read *Indirectly used* with **"Referenced by [TotalOf]"**,
+naming an uncalled function. The edge was real; the explanation was not. `DescribeReason` took the first
+matching incoming edge, which answers "what references this?" rather than "what supports this state?".
+
+The classifier already computed the answer and threw it away: it builds the sets reachable from report
+roots and from model-structure roots, assigns states from them, then discarded both. They are now
+published as `SemanticNodeReachability` and the reason is filtered by them. Classifications and the
+dependency edge set are byte-identical before and after — only the shown evidence changed.
+
+The confidence and coverage presentation reads `ClassificationConfidence` and never re-derives it; the
+reason selection reads published reachability and traverses nothing. Neither reimplements
+classification.
 
 ## State
 
-- **Last verified product state:** `3a53df6` on `master`. Later commits may be documentation-only; run
+- **Last verified product state:** `fd33ea5` on `master`. Later commits may be documentation-only; run
   `git log --oneline` to see whether anything after it touched behaviour.
 - **Working tree:** expected clean apart from untracked local review documents; no tracked modifications
-- **Verified at that commit:** build succeeded with 0 warnings; **384 core + 2 privacy tests passed**; CI green
+- **Verified at that commit:** build succeeded with 0 warnings; **399 core + 2 privacy tests passed**; CI green
 - **Known exception:** `dotnet format --verify-no-changes` fails with 24 pre-existing whitespace errors
   in two Theme Review files. Unrelated to current work, deliberately not fixed. See
   [CURRENT_STATE.md](CURRENT_STATE.md).
@@ -42,49 +52,31 @@ No domain, scanner or classification logic changed in either slice. The renderer
 
 The analysis side is complete for every construct currently supported, and it now has a user-facing
 surface. That means the next task should be chosen on user impact, not on what was touched last.
-Ranked — note the order changed when manual Desktop testing produced new evidence, not because of what
-was touched last:
+Ranked. Reason selection, which topped this list, is done.
 
-1. **Fix usage-reason selection** (see *Verified follow-up* below). A reason that names an uncalled
-   branch as the explanation for a correct classification is user-visible and undermines trust in the
-   answer beside it. It is bounded, it now has concrete Desktop evidence, and the surface it appears in
-   was just polished — leaving a misleading sentence there would waste that.
-2. **Surface unresolved semantic dependencies.** `UnresolvedSemanticDependency` is retained as evidence
+1. **Surface unresolved semantic dependencies.** `UnresolvedSemanticDependency` is retained as evidence
    and reaches the JSON inventory only. It is a *bounded* uncertainty — source, kind and reference text
    are all known — which makes it more actionable than a limitation, and a broken reference in a report
    is a real defect rather than a coverage gap. The architecture is ready and no new evidence is needed.
-3. **Measure `PBI-ACCESS-001` against real reports.** Its false-positive concern is [inferred] and has
+2. **Measure `PBI-ACCESS-001` against real reports.** Its false-positive concern is [inferred] and has
    never been measured. That inference currently blocks changing an accessibility rule that fires on
    every report, so the measurement unblocks a decision rather than adding a feature.
-4. **Read report-level measure expressions as DAX.** A report measure's dependencies come from the
+3. **Read report-level measure expressions as DAX.** A report measure's dependencies come from the
    structured `references.measures` list Power BI writes beside it; its `Expression` is never parsed, so
    a UDF call or a column reference in one is invisible. This narrows but does not retire the function
    limitation, and needs a Desktop fixture with a report measure calling a UDF.
 
-Manual Desktop testing has since **narrowed the remaining UDF-consumer gap**: an ordinary semantic-model
-measure calling a UDF is already followed correctly, so only report-level measures and visual
-calculations remain unread. That evidence is not yet a committed fixture — see
-[CURRENT_STATE.md](CURRENT_STATE.md).
+The remaining UDF-consumer gap is **narrower than it looks**: an ordinary semantic-model measure calling
+a UDF is already followed correctly, now proven by `tests/fixtures/desktop-udf-measure-consumer`. Only
+report-level measures and visual calculations remain unread.
+
+**Noticed while fixing reason selection, not acted on:** when an object is `IndirectlyUsed` *and* is a
+relationship endpoint, the relationship explanation wins on precedence, so the "Why" line describes the
+structural fact rather than the report path. That never contradicts the state beside it, so it was left
+alone rather than broadened into a rewrite of structural wording. Revisit only with a concrete complaint.
 
 Deliberately *not* ranked first: visual-calculation parsing. It is the other unread UDF consumer, but
 it is the largest of the three and only moves a caveat that the report now explains honestly.
-
-## Verified follow-up, deliberately not fixed
-
-**An incoming dependency is not necessarily the evidence path that produced a classification.**
-
-Found during a manual Desktop test [verified by Power BI Desktop-authored manual test, 2026-08-19]:
-`Sales[Amount]` rendered as *Indirectly used* with the reason **"Referenced by [TotalOf]"**. The
-classification is right, but `TotalOf` is an **uncalled** UDF — it is not what makes `Amount` reachable.
-The live path was Card → `UDF Result` → `Doubled()` → `Total Amount` → `Sales[Amount]`.
-
-`SemanticUsagePresentation.DescribeReason` picks the *first* matching incoming edge, which answers
-"what points at this object?" rather than "what keeps this object alive?". Those are different
-questions, and a reason naming a dead branch undermines trust in a correct answer.
-
-This was left alone on purpose: it is a real defect in reason selection, not a copy problem, and it
-deserves its own bounded investigation with a committed fixture. Do not fold it into a presentation
-slice.
 
 ## Do not do yet
 

@@ -91,6 +91,21 @@ affected object, because one unchecked construct can affect most of a model.
 PBI Assure gains coverage for more Power BI metadata over time, so a limitation describes what the
 current version reads rather than a problem with the analysed project.
 
+## Why an object has its state
+
+Each classification is shown with a short explanation of the evidence behind it. That explanation is
+chosen to be **compatible with the state it sits beside**: an object that is indirectly used is
+explained by a predecessor that is itself reached from a report, and an object referenced only by an
+unused branch is explained by one of those unused referrers.
+
+This matters because an incoming reference and the evidence for a classification are not the same thing.
+An uncalled DAX function may genuinely reference a column without being the reason that column is in
+use. Both facts are kept: the reference stays in the dependency graph, and the explanation names
+something that actually supports the answer.
+
+Where several predecessors would each be a valid explanation, one is shown. The wording names a
+reference rather than claiming to be the only one.
+
 ## Unresolved evidence
 
 An unresolved report reference or semantic dependency is retained as a separate record. PBI Assure does not silently correct names or invent a target because doing so would make removal recommendations unsafe. For example, a visual reference to `Sales[Dates]` remains unresolved when the model contains only `Sales[Date]`. Each report reference records its report, optional page and visual, artifact path, JSON evidence path, and usage context.

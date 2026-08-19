@@ -137,6 +137,20 @@ Not every report merits committing; only those carrying durable project state.
 - **One vocabulary, single-sourced.** The word on an object marker must be the same word its explanation
   uses, or the marker leads nowhere. Render such a phrase from one constant rather than repeating the
   literal at each site.
+- **A usage reason must explain evidence compatible with the object's current usage state.** An arbitrary
+  incoming dependency is not sufficient. An uncalled function genuinely references a column, but it is
+  not why that column is `IndirectlyUsed`, and a reason naming a dead branch undermines a correct answer
+  standing beside it. Both facts are preserved: the edge stays in the graph, and the explanation comes
+  from a predecessor whose own reachability matches the state. Never repair a mismatch by changing the
+  classification to fit the reason.
+- **Reachability is published by the classifier, not re-derived downstream.** The scanner already
+  computes which nodes are reachable from report roots and from model-structure roots on its way to
+  assigning a state; that is what presentation consumes. It covers nodes with no usage row — report
+  measures and DAX user-defined functions — because a live path can run through one, so a rule based on
+  the usage states of public objects cannot follow it. Reporting must not traverse the dependency graph.
+- **When several reasons are equally valid, one is chosen deterministically.** Ordering of parsed
+  dependency edges must never change an explanation. The original defect was exactly that: "first
+  incoming edge" meant "first in sort order".
 
 ## Established Power BI semantics — verified, do not re-derive
 

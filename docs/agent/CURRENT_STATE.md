@@ -12,7 +12,7 @@ evidenced · **[design decision]** a choice, not a fact.
 |---|---|
 | Remote | `whippet-dev/pbi-assure` |
 | Branch | `master` (also the default branch) |
-| Last verified product state | `3a53df6` — *Single-source the coverage marker vocabulary* |
+| Last verified product state | `fd33ea5` — *Explain a usage state with evidence that actually supports it* |
 | Working tree | Expected clean of tracked modifications. Untracked local review documents may be present |
 
 `master` may have moved past that commit for documentation-only changes. Re-verify and update this
@@ -22,7 +22,7 @@ section whenever a commit changes build, test or behaviour — not for every com
 
 - `dotnet build PbiAssure.slnx` — **succeeded, 0 warnings, 0 errors** [verified]. `TreatWarningsAsErrors`
   is on, so warnings fail the build.
-- `dotnet test PbiAssure.slnx` — **384 core + 2 privacy end-to-end tests passed**, 0 failed [verified].
+- `dotnet test PbiAssure.slnx` — **399 core + 2 privacy end-to-end tests passed**, 0 failed [verified].
 - CI (`.github/workflows/ci.yml`) — **green** [verified]. Runs restore, build, a Playwright Chromium
   install, then the whole solution test suite on `windows-latest`.
 - The privacy end-to-end tests are part of the normal solution test run; they need Node.js and a
@@ -110,6 +110,16 @@ unused with no indication that security metadata had been skipped.
   support state beside it carries the other half of that distinction, and a test pins both halves.
   The marker phrase is a single constant in the renderer, so the marker, the model headline, the summary
   sentence and the usage guide cannot drift apart.
+- **Classification-compatible usage reasons.** The "Why" line under an object now names a predecessor
+  whose own reachability matches the state being explained, not whichever incoming edge came first.
+  `SemanticNodeReachability` on `ProjectInventory` publishes what the classifier already computed —
+  which nodes are reachable from a report root and which from a model-structure root — for **every** node
+  the graph touches, including report measures and DAX functions that have no usage row. Selection by
+  state: `IndirectlyUsed` needs a report-reachable predecessor, `StructurallyRequired` a
+  structure-reachable one, `UsedOnlyByUnusedBranch` one reachable from neither; `DirectlyUsed` keeps its
+  report locations and `ApparentlyUnused` still gets no reason. Where several are eligible, the one with
+  the alphabetically first qualified name is shown, so parse order cannot change the explanation.
+  Reporting reads the published flags and traverses nothing.
 
 Limitation **detection** is file level only. Confidence is an orthogonal additive field. HTML consumes
 both; **CSV and the browser app do not** — see the gaps table.
@@ -169,13 +179,16 @@ unanalysed files are the always-present three — verified against three Desktop
   output by `DesktopSemanticConstructsFixtureTests`, and again by `DesktopUdfReferencesFixtureTests`. No
   registry path needed correcting.
 - **A semantic-model measure can call a UDF, and PBI Assure already follows it**
-  [verified by Power BI Desktop-authored manual test, 2026-08-19]. Desktop accepted
-  `UDF Result = Doubled()` and emitted `measure 'UDF Result' = Doubled()` in the table's TMDL. With a Card
-  visual bound to it, PBI Assure produced `UDF Result` → DirectlyUsed, `Total Amount` → IndirectlyUsed,
-  `Sales[Amount]` → IndirectlyUsed, `Region` → ApparentlyUnused with the coverage marker. **This was a
-  manual test on a copied project outside the repository; it is not a committed fixture**, so treat it as
-  evidence for scoping the remaining gap, not as a regression guard. Committing a fixture would close
-  that.
+  [verified by Power BI Desktop-authored fixture]. Desktop accepted `UDF Result = Doubled()` and emitted
+  it as an ordinary measure expression. With a Card bound to it, PBI Assure produces
+  `UDF Result` → DirectlyUsed, `Total Amount` → IndirectlyUsed, `Sales[Amount]` → IndirectlyUsed,
+  `Region` → ApparentlyUnused with the coverage marker. Previously recorded as manual-only evidence; it
+  is now the committed `tests/fixtures/desktop-udf-measure-consumer` fixture and guards against
+  regression.
+- **A model object can be reached by a live and a dead branch at once**
+  [verified by Power BI Desktop-authored fixture]. In that fixture `Sales[Amount]` is reached both by
+  `Total Amount` (live, through `Doubled()`) and by the uncalled `TotalOf()`. That is what makes an
+  explanation chosen from "any incoming edge" wrong, and it is the reason-selection regression guard.
 - **How a UDF body writes a reference** — a qualified column as `Table[Column]`, an unqualified `[Name]`
   as a measure, a bare identifier as a table, and a call to another function as `Name()`. All five
   functions serialise into one `definition/functions.tmdl` and `model.tmdl` carries **no `ref function`
