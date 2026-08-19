@@ -165,7 +165,9 @@ public static partial class HtmlReportRenderer
             html.Append("          <p class=\"summary-coverage-note\">PBI Assure could not check every source of usage in this project, so ")
                 .Append(coverage.QualifiedObjectCount.ToString(CultureInfo.InvariantCulture)).Append(' ')
                 .Append(Pluralize(coverage.QualifiedObjectCount, "of these results is", "of these results are"))
-                .AppendLine(" marked <span class=\"confidence-flag confidence-flag-sample\">Usage check incomplete</span>. <a href=\"#analysis-coverage\">Review analysis coverage</a>.</p>");
+                .Append(" marked <span class=\"confidence-flag confidence-flag-sample\">")
+                .Append(CoverageMarkerLabel)
+                .AppendLine("</span>. <a href=\"#analysis-coverage\">Review analysis coverage</a>.</p>");
         }
         AppendSummaryDefinitions(html, "What these usage states mean", [
             ("Directly used", "Used somewhere in the report, such as a visual, filter, tooltip or drillthrough setting."),
@@ -291,7 +293,9 @@ public static partial class HtmlReportRenderer
                 .Append(model.QualifiedObjectCount.ToString(CultureInfo.InvariantCulture)).Append(" of ")
                 .Append(model.ObjectCount.ToString(CultureInfo.InvariantCulture)).Append(' ')
                 .Append(Pluralize(model.ObjectCount, "model object", "model objects"))
-                .Append(", so each is marked <span class=\"confidence-flag confidence-flag-sample\">Usage check incomplete</span>. Those results are still the best answer available — they simply may miss usage PBI Assure cannot yet see.");
+                .Append(", so each is marked <span class=\"confidence-flag confidence-flag-sample\">")
+                .Append(CoverageMarkerLabel)
+                .Append("</span>. Those results are still the best answer available — they simply may miss usage PBI Assure cannot yet see.");
         }
         else
         {
@@ -335,6 +339,16 @@ public static partial class HtmlReportRenderer
     /// of restating it here. The confidence value is read straight from the domain object, so a future
     /// impact that qualifies a positive state renders without a renderer change.
     /// </summary>
+    /// <summary>
+    /// The single source of the coverage vocabulary. The marker, the model headline, the summary
+    /// sentence and the usage guide all render this same phrase, so they cannot drift apart and leave a
+    /// reader following a word that appears nowhere in its own explanation.
+    /// </summary>
+    private const string CoverageMarkerLabel = "Usage check incomplete";
+
+    private const string CoverageMarkerDescription =
+        " — PBI Assure could not check every source of usage in this model.";
+
     private static void AppendClassificationConfidence(
         StringBuilder html,
         SemanticObjectUsage usage,
@@ -345,19 +359,26 @@ public static partial class HtmlReportRenderer
             return;
         }
 
+        // An object is only ever qualified by a limitation in its own model, and a model with a
+        // limitation always has a coverage block, so the anchor is expected. The unlinked form exists so
+        // that a future qualifier which broke that assumption would still explain itself.
         if (coverageAnchor is null)
         {
-            html.Append("<span class=\"confidence-flag\">Usage check incomplete<span class=\"visually-hidden\"> — PBI Assure could not check every source of usage in this model</span></span>");
+            html.Append("<span class=\"confidence-flag\">").Append(CoverageMarkerLabel)
+                .Append("<span class=\"visually-hidden\">").Append(CoverageMarkerDescription)
+                .Append("</span></span>");
             return;
         }
 
         html.Append("<a class=\"confidence-flag\" href=\"#").Append(Encode(coverageAnchor))
-            .Append("\">Usage check incomplete<span class=\"visually-hidden\"> — PBI Assure could not check every source of usage in this model. See analysis coverage.</span></a>");
+            .Append("\">").Append(CoverageMarkerLabel)
+            .Append("<span class=\"visually-hidden\">").Append(CoverageMarkerDescription)
+            .Append(" See analysis coverage.</span></a>");
     }
 
     private static string ConfidenceSearchText(SemanticObjectUsage usage) =>
         usage.ClassificationConfidence == ClassificationConfidences.QualifiedByLimitation
-            ? "Usage check incomplete "
+            ? CoverageMarkerLabel + " "
             : string.Empty;
 
     private static void AppendScope(StringBuilder html)
@@ -1479,7 +1500,9 @@ public static partial class HtmlReportRenderer
         html.AppendLine("        </dl>");
         if (coverage.QualifiedObjectCount > 0)
         {
-            html.AppendLine("        <p class=\"usage-guide-note\">A result can also be marked <span class=\"confidence-flag confidence-flag-sample\">Usage check incomplete</span>. <strong>That is not another status.</strong> The status above is unchanged and remains the best answer available; the marker means PBI Assure could not check every possible source of usage in this model. See <a href=\"#analysis-coverage\">Analysis coverage</a>.</p>");
+            html.Append("        <p class=\"usage-guide-note\">A result can also be marked <span class=\"confidence-flag confidence-flag-sample\">")
+                .Append(CoverageMarkerLabel)
+                .AppendLine("</span>. <strong>That is not another status.</strong> The status above is unchanged and remains the best answer available; the marker means PBI Assure could not check every possible source of usage in this model. See <a href=\"#analysis-coverage\">Analysis coverage</a>.</p>");
         }
 
         html.AppendLine("        </div>");
