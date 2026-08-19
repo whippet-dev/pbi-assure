@@ -281,19 +281,20 @@ public sealed class RoleDependencyTests
     // ---- H. Revised role limitation semantics -----------------------------------------------
 
     /// <summary>
-    /// Roles are now partially analysed, not fully supported. Table permission filters are read, but
-    /// TablePermission also carries column permissions — object-level security naming columns — which
-    /// this version does not read. Because that unread content is dependency-bearing, the impact stays
-    /// qualifying. It is not lowered to reduce caveat counts.
+    /// Roles are partially analysed, not fully supported. Table permission filters are read; column
+    /// permissions and other role semantics are not, so the limitation is still emitted and the support
+    /// state stays partial.
+    ///
+    /// The dependency impact is decided per artifact rather than by construct type — see
+    /// <see cref="RoleLimitationPrecisionTests"/> — so it is asserted there rather than here.
     /// </summary>
     [Fact]
-    public void TheRoleLimitationReportsPartialSupportAndKeepsAQualifyingImpact()
+    public void TheRoleLimitationReportsPartialSupport()
     {
         var limitation = ScanDesktopFixture().AnalysisLimitations
             .First(item => item.ConstructType == "role");
 
         Assert.Equal(ConstructSupportStates.PartiallyAnalyzed, limitation.SupportState);
-        Assert.Equal(ConstructDependencyImpacts.MayCreateDependencies, limitation.DependencyImpact);
         Assert.Contains(AnalysisConcerns.Security, limitation.Concerns);
     }
 

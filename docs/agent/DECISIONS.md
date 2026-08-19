@@ -69,6 +69,16 @@ Not every report merits committing; only those carrying durable project state.
   unanalysed semantic construct.
 - **An unrecognised construct is assumed capable of creating dependencies.** An unnecessary caveat is
   recoverable; a confident deletion recommendation for an object something uses is not.
+- **The registry states the construct-type default; an emitted limitation describes the artifact.** The
+  registry must stay conservative about what a construct *can* contain. Where the scanner has affirmative
+  evidence that a *particular file* holds nothing unanalysed capable of referencing a model object, the
+  emitted limitation's dependency impact may be narrowed to `NoKnownDependencyEffect`. The limitation is
+  still emitted and the support state is unchanged — only the claim about skipped dependency evidence is
+  made precise. `AnalysisLimitation` describes metadata actually encountered, not a catalogue of what the
+  construct type could theoretically hold.
+- **Narrowing requires affirmative coverage, never silence.** A construct is treated as harmless only
+  when it is known to carry no model-object reference. Anything unrecognised keeps the conservative
+  impact, so absence of evidence is never read as evidence of absence.
 
 ## Usage classification
 

@@ -180,7 +180,9 @@ public sealed class SemanticUsageConfidenceTests
             File("Sales.pbip", "{}"),
             File("Sales.SemanticModel/definition.pbism", "{}"),
             File("Sales.SemanticModel/definition/tables/Sales.tmdl", "table Sales\n\n\tcolumn Region\n\t\tdataType: string\n\t\tsourceColumn: Region\n"),
-            File("Sales.SemanticModel/definition/roles/Reader.tmdl", "role Reader"),
+            // Contains a construct this version does not recognise, so its dependency-bearing content
+            // cannot be shown to be fully accounted for and the limitation stays qualifying.
+            File("Sales.SemanticModel/definition/roles/Reader.tmdl", "role Reader\n\tmysteryBlock Thing\n"),
         ]));
 
         var usage = Assert.Single(inventory.SemanticObjectUsages);

@@ -277,6 +277,33 @@ internal static class TmdlSemanticModelParser
     }
 
     /// <summary>
+    /// Role-level constructs that cannot reference a model object, so leaving them unread cannot hide a
+    /// dependency. ModelRole exposes annotations, description, extended properties, members and a model
+    /// permission; members name user principals rather than model objects. Anything not listed here is
+    /// treated conservatively, including constructs this version has never seen.
+    /// </summary>
+    private static readonly HashSet<string> RoleConstructsWithoutObjectReferences =
+        new(StringComparer.OrdinalIgnoreCase)
+        {
+            "modelPermission",
+            "description",
+            "annotation",
+            "extendedProperty",
+        };
+
+    /// <summary>
+    /// Table-permission constructs that cannot reference a model object. Deliberately excludes
+    /// columnPermission, which names a column for object-level security and is not analysed.
+    /// </summary>
+    private static readonly HashSet<string> TablePermissionConstructsWithoutObjectReferences =
+        new(StringComparer.OrdinalIgnoreCase)
+        {
+            "metadataPermission",
+            "annotation",
+            "extendedProperty",
+        };
+
+    /// <summary>
     /// Reads a role's table permissions. Only the dependency-bearing parts are read: the owning table
     /// and the filter expression. Other role content, including column permissions, is not interpreted,
     /// which is why roles remain a partially analysed construct.
@@ -293,28 +320,108 @@ internal static class TmdlSemanticModelParser
 
         var roleEnd = FindBlockEnd(lines, declarationIndex);
         var permissions = new List<SemanticTablePermissionInventory>();
+        var unaccounted = new List<string>();
+        var roleChildIndent = ChildIndent(lines, declarationIndex, roleEnd);
+
         for (var index = declarationIndex + 1; index < roleEnd; index++)
         {
-            if (!TryParseDeclaration(lines[index].Trimmed, "tablePermission", out var table, out var inlineFilter))
+            if (string.IsNullOrWhiteSpace(lines[index].Text) || lines[index].Indent != roleChildIndent)
             {
                 continue;
             }
 
-            var permissionEnd = FindBlockEnd(lines, index, roleEnd);
-            var filter = ReadExpression(lines, index, permissionEnd, inlineFilter);
-            if (!string.IsNullOrWhiteSpace(filter))
+            if (TryParseDeclaration(lines[index].Trimmed, "tablePermission", out var table, out var inlineFilter))
             {
-                permissions.Add(new SemanticTablePermissionInventory(table, filter));
+                var permissionEnd = FindBlockEnd(lines, index, roleEnd);
+                var filter = ReadExpression(lines, index, permissionEnd, inlineFilter);
+                if (!string.IsNullOrWhiteSpace(filter))
+                {
+                    permissions.Add(new SemanticTablePermissionInventory(table, filter));
+                }
+
+                unaccounted.AddRange(UnaccountedChildren(
+                    lines, index, permissionEnd, TablePermissionConstructsWithoutObjectReferences));
+                index = permissionEnd - 1;
+                continue;
             }
 
-            index = permissionEnd - 1;
+            var keyword = LeadingKeyword(lines[index].Trimmed);
+            if (!RoleConstructsWithoutObjectReferences.Contains(keyword))
+            {
+                unaccounted.Add(keyword);
+            }
         }
 
         return new SemanticRoleInventory(
             Name: roleName,
             ModelPermission: FindProperty(lines, declarationIndex, roleEnd, "modelPermission"),
             TablePermissions: permissions,
-            RelativePath: path);
+            RelativePath: path)
+        {
+            UnanalyzedConstructs = unaccounted.Distinct(StringComparer.OrdinalIgnoreCase).ToArray(),
+        };
+    }
+
+    /// <summary>
+    /// The indent of a block's immediate children, or -1 when the block has none. Microsoft documents
+    /// that a multi-line expression sits one level deeper than an object's properties, so children found
+    /// at this indent are constructs rather than expression continuation.
+    /// </summary>
+    private static int ChildIndent(IReadOnlyList<TmdlLine> lines, int declarationIndex, int endIndex)
+    {
+        var indents = new List<int>();
+        for (var index = declarationIndex + 1; index < endIndex; index++)
+        {
+            if (!string.IsNullOrWhiteSpace(lines[index].Text))
+            {
+                indents.Add(lines[index].Indent);
+            }
+        }
+
+        return indents.Count == 0 ? -1 : indents.Min();
+    }
+
+    /// <summary>
+    /// Immediate children of a block whose leading keyword is not known to be free of model-object
+    /// references. Used to decide whether anything dependency-bearing was left unread.
+    /// </summary>
+    private static IEnumerable<string> UnaccountedChildren(
+        IReadOnlyList<TmdlLine> lines,
+        int declarationIndex,
+        int endIndex,
+        HashSet<string> knownWithoutObjectReferences)
+    {
+        var childIndent = ChildIndent(lines, declarationIndex, endIndex);
+        if (childIndent < 0)
+        {
+            yield break;
+        }
+
+        for (var index = declarationIndex + 1; index < endIndex; index++)
+        {
+            if (string.IsNullOrWhiteSpace(lines[index].Text) || lines[index].Indent != childIndent)
+            {
+                continue;
+            }
+
+            var keyword = LeadingKeyword(lines[index].Trimmed);
+            if (!knownWithoutObjectReferences.Contains(keyword))
+            {
+                yield return keyword;
+            }
+        }
+    }
+
+    /// <summary>The construct or property name at the start of a TMDL line.</summary>
+    private static string LeadingKeyword(string trimmed)
+    {
+        var end = 0;
+        while (end < trimmed.Length && (char.IsLetterOrDigit(trimmed[end]) || trimmed[end] == '_'))
+        {
+            end++;
+        }
+
+        return trimmed[..end];
     }
 
     private static SemanticRelationshipInventory[] ParseRelationships(IProjectFileSource source, string path)

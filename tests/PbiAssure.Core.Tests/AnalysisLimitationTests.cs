@@ -216,7 +216,10 @@ public sealed class AnalysisLimitationTests
         Assert.Equal("Sales", limitation.SemanticModel);
         Assert.Equal(AnalysisLimitationScopes.SemanticModel, limitation.Scope);
         Assert.Equal(AnalysisLimitationCauses.ConstructNotSupported, limitation.Cause);
-        Assert.Equal(ConstructDependencyImpacts.MayCreateDependencies, limitation.DependencyImpact);
+        // This role file holds nothing beyond its declaration, so nothing unanalysed in it could
+        // reference a model object. The registry default is narrowed by that artifact evidence; see
+        // RoleLimitationPrecisionTests.
+        Assert.Equal(ConstructDependencyImpacts.NoKnownDependencyEffect, limitation.DependencyImpact);
         Assert.Contains(AnalysisConcerns.Security, limitation.Concerns);
         Assert.Null(limitation.Table);
         Assert.Null(limitation.ObjectName);

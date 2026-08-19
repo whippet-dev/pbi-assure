@@ -5,17 +5,20 @@ Tactical entry point for an incoming coding agent. Read this first, then
 
 ## What just happened
 
-Row-level security dependency analysis landed. Role table permission filters are parsed and their
-references become model-structure roots, so a column used only by a security filter is now
-`StructurallyRequired` instead of a deletion candidate. Roles are recorded as `PartiallyAnalyzed`, not
-supported: column permissions are still unread, so the role limitation keeps a qualifying impact.
+Role limitations now report dependency impact from what a role file actually contains rather than from
+what roles can contain in general. The Desktop fixture's two roles hold only analysed or
+reference-free content, so they report `NoKnownDependencyEffect` while remaining `PartiallyAnalyzed`
+and still emitting a limitation. A role with unrecognised content stays conservative.
+
+This changed no usage state and no confidence value. It removed two false *causes* of qualification; the
+fixture's absence states are still qualified, by perspective and function metadata.
 
 ## State
 
-- **Last verified product state:** `97c0902` on `master`. Later commits may be documentation-only; run
+- **Last verified product state:** `PRECCOMMIT` on `master`. Later commits may be documentation-only; run
   `git log --oneline` to see whether anything after it touched behaviour.
 - **Working tree:** expected clean apart from untracked local review documents; no tracked modifications
-- **Verified at that commit:** build succeeded with 0 warnings; **290 core + 2 privacy tests passed**; CI green
+- **Verified at that commit:** build succeeded with 0 warnings; **306 core + 2 privacy tests passed**; CI green
 - **Known exception:** `dotnet format --verify-no-changes` fails with 24 pre-existing whitespace errors
   in two Theme Review files. Unrelated to current work, deliberately not fixed. See
   [CURRENT_STATE.md](CURRENT_STATE.md).
@@ -32,9 +35,9 @@ rather than followed blindly.
 Worth settling in the same pass: whether an object marked `QualifiedByLimitation` should read differently
 from one that is plainly `ApparentlyUnused`, and how to avoid making every report look alarming.
 
-The alternative candidate is perspective and function dependency parsing. Those are the two remaining
-qualifying limitations on the Desktop fixture, and parsing them would shrink the caveat the way RLS
-parsing just did — 23 of 27 objects there are still qualified.
+The stronger candidate is perspective and function dependency parsing. Those are now the *only* two
+qualifying limitations left on the Desktop fixture, so parsing them would take its qualified count from
+23 of 27 to zero and make presentation design realistic rather than uniformly alarming.
 
 ## Do not do yet
 

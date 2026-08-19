@@ -16,11 +16,13 @@ internal static class AnalysisLimitationDetector
 {
     public static AnalysisLimitation[] Detect(
         IProjectFileSource source,
-        IReadOnlyList<ArtifactInventory> artifacts)
+        IReadOnlyList<ArtifactInventory> artifacts,
+        IReadOnlyDictionary<string, string>? refinedDependencyImpacts = null)
     {
+        var refinements = refinedDependencyImpacts ?? new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
         return artifacts
             .Where(artifact => artifact.Kind == ArtifactKinds.SemanticModel)
-            .SelectMany(artifact => DetectForModel(source, artifact))
+            .SelectMany(artifact => DetectForModel(source, artifact, refinements))
             .OrderBy(limitation => limitation.SemanticModel, StringComparer.OrdinalIgnoreCase)
             .ThenBy(limitation => limitation.ArtifactPath, StringComparer.OrdinalIgnoreCase)
             .ToArray();
@@ -28,7 +30,8 @@ internal static class AnalysisLimitationDetector
 
     private static IEnumerable<AnalysisLimitation> DetectForModel(
         IProjectFileSource source,
-        ArtifactInventory artifact)
+        ArtifactInventory artifact,
+        IReadOnlyDictionary<string, string> refinedDependencyImpacts)
     {
         var prefix = ProjectFilePaths.Normalize(artifact.RelativePath).TrimEnd('/') + "/";
 
@@ -60,7 +63,11 @@ internal static class AnalysisLimitationDetector
                 ObjectName: null,
                 ArtifactPath: file.RelativePath,
                 EvidencePath: AnalysisLimitation.WholeFileEvidence,
-                DependencyImpact: rule.DependencyImpact,
+                // The registry states what this construct type can contain. Where the scanner proved
+                // more about this particular file, the artifact evidence narrows it.
+                DependencyImpact: refinedDependencyImpacts.TryGetValue(file.RelativePath, out var refined)
+                    ? refined
+                    : rule.DependencyImpact,
                 Concerns: rule.Concerns,
                 Reason: rule.Reason);
         }

@@ -38,7 +38,8 @@ public static class ProjectScanner
         var powerQueryColumnUsages = PowerQueryColumnLineageAnalyzer.Analyze(
             semanticModels, powerQueryAnalysis.Usages);
         var semanticTablePowerQueryContexts = SemanticTablePowerQueryEnricher.Build(powerQueryAnalysis.Usages);
-        var analysisLimitations = AnalysisLimitationDetector.Detect(source, artifacts);
+        var analysisLimitations = AnalysisLimitationDetector.Detect(
+            source, artifacts, AnalysisCoverageRefinements.Build(semanticModels));
 
         // Applied once, after usage states are final and the limitations are known. Usage states are not
         // changed here; only the orthogonal confidence marker is set.

@@ -141,14 +141,20 @@ public sealed class DesktopSemanticConstructsFixtureTests
     /// The constructs that genuinely can reference model objects must keep saying so, otherwise the
     /// previous assertion would be trivially satisfiable by neutering every impact value.
     /// </summary>
+    /// <summary>
+    /// Roles are deliberately absent here: their table permission filters are analysed and the fixture's
+    /// role files contain nothing else that could reference an object, so their impact is narrowed by
+    /// artifact evidence. Perspective and function metadata is still unread, so those must keep saying
+    /// so — otherwise the previous assertion would be satisfiable by neutering every impact value.
+    /// </summary>
     [Fact]
     public void ConstructsThatCanReferenceModelObjectsStillCarryDependencyImpact()
     {
         var limitations = ScanFixture().AnalysisLimitations
-            .Where(limitation => limitation.ConstructType is "role" or "perspective" or "function")
+            .Where(limitation => limitation.ConstructType is "perspective" or "function")
             .ToArray();
 
-        Assert.Equal(4, limitations.Length);
+        Assert.Equal(2, limitations.Length);
         Assert.All(
             limitations,
             limitation => Assert.Equal(

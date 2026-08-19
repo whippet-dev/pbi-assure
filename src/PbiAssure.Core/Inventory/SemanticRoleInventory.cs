@@ -13,6 +13,20 @@ public sealed record SemanticRoleInventory(
     IReadOnlyList<SemanticTablePermissionInventory> TablePermissions,
     string RelativePath)
 {
+    /// <summary>
+    /// Constructs found inside this role that this version neither analysed nor can show to be free of
+    /// model-object references. Empty means the scanner accounted for everything the file actually
+    /// contains — which is a statement about this artifact, not about roles in general.
+    /// </summary>
+    public IReadOnlyList<string> UnanalyzedConstructs { get; init; } = [];
+
+    /// <summary>
+    /// True when every construct present in this role file was either analysed or is known to carry no
+    /// model-object reference. Absence of evidence is never treated as evidence of absence: an
+    /// unrecognised construct leaves this false.
+    /// </summary>
+    public bool DependencyContentFullyAccountedFor => UnanalyzedConstructs.Count == 0;
+
     public int TablePermissionCount => TablePermissions.Count;
 }
 
