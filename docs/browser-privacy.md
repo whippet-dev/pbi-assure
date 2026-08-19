@@ -84,7 +84,16 @@ The purpose-built browser tests use Microsoft Playwright for .NET and the redist
 model, Power Query and visual metadata. It contains no real organisation data, credentials or private
 URLs.
 
-Run the deterministic local verification from the repository root:
+These tests are part of the normal solution test run, so `dotnet test PbiAssure.slnx` executes them
+alongside the core tests, and continuous integration runs them on every push and pull request. They
+require Node.js and a matching Playwright Chromium build on the machine; install the browser once per
+checkout with:
+
+```powershell
+.\tests\PbiAssure.Privacy.E2E\bin\Debug\net10.0\playwright.ps1 install chromium
+```
+
+Run the deterministic local verification on its own from the repository root:
 
 ```powershell
 .\scripts\Test-Privacy-E2E.ps1
@@ -92,8 +101,7 @@ Run the deterministic local verification from the repository root:
 
 The runner builds the separate browser-test project, installs the matching Chromium build if required,
 uses the canonical clean web publish, starts a temporary local static host that applies the checked-in
-`_headers` policy, then runs online and offline workflows. The heavier browser tests are deliberately not
-part of the normal solution test run.
+`_headers` policy, then runs online and offline workflows.
 
 The application-ready boundary is the visible
 `data-pbiassure-app-ready="true"` marker followed by Playwright's network-idle state. Monitoring starts

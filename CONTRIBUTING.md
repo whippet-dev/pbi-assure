@@ -6,7 +6,7 @@ This repository should remain understandable to Power BI specialists who may be 
 
 1. Create a short-lived Git branch for one coherent change.
 2. Add or update automated tests for behavioural changes.
-3. Run `dotnet format --verify-no-changes`, `dotnet build`, and `dotnet test`.
+3. Run `dotnet format --verify-no-changes`, `dotnet build`, and `dotnet test`. The solution test run includes the browser privacy end-to-end tests, which need Node.js and a Playwright Chromium build; see [Build and test](README.md#build-and-test).
 4. Keep generated reports, real PBIP projects, secrets, and report data out of Git.
 5. Record significant architectural decisions under `docs/decisions/`.
 6. After user-facing desktop feature changes, refresh the Windows publish output with `dotnet publish src/PbiAssure.Desktop -c Release -o artifacts/desktop`.

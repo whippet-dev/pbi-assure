@@ -42,6 +42,16 @@ dotnet build PbiAssure.slnx --no-restore
 dotnet test PbiAssure.slnx --no-build
 ```
 
+The solution test run includes the browser privacy end-to-end tests that guard the local-processing
+claim, so it also needs Node.js and a Playwright Chromium build. Install the browser once per checkout:
+
+```powershell
+.\tests\PbiAssure.Privacy.E2E\bin\Debug\net10.0\playwright.ps1 install chromium
+```
+
+See [browser privacy model](docs/browser-privacy.md) for what those tests assert and how to run them on
+their own.
+
 ## Generate assurance results
 
 For real-world local testing, place a PBIP/PBIR project under `samples-local/<report name>/`. This folder is intentionally ignored by Git so real reports and generated outputs stay local.
