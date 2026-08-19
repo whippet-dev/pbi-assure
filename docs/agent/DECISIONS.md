@@ -100,6 +100,31 @@ Not every report merits committing; only those carrying durable project state.
   Neither can keep an otherwise-unused object alive, so neither may caveat a usage conclusion. Ask what
   would break if the object were removed, not whether its name appears somewhere.
 
+## Presenting uncertainty
+
+- **Usage state and classification confidence stay separate on screen, not only in the domain.** The
+  state says what was found; the confidence says how complete the evidence behind it is. Qualification
+  must never be expressed as a different usage label, a modified badge or an extra status — that would
+  reintroduce the sixth state the domain deliberately avoids.
+- **Qualification is context about the analysis, not a defect in the object.** It must not borrow the
+  report's error or warning treatment. A qualified classification is also **not** a low-confidence one:
+  PBI Assure may hold strong positive evidence and simply not have read one more possible source.
+- **An analysis limitation is explained once at model scope, never repeated per affected object.** One
+  unanalysed construct can qualify most of a model — 21 of 27 objects in the Desktop fixture — so
+  per-object prose would be 21 copies of one sentence, and per-object warnings would teach readers to
+  ignore warnings. Limitations are grouped by construct rather than by file for the same reason, since a
+  model emits one file per role.
+- **The renderer consumes `ClassificationConfidence`; it never infers qualification** from a usage state,
+  a construct name or an artifact path. The rule lives in `SemanticUsageConfidenceQualifier` so the
+  registry stays the single place a construct's effect is declared, and so the reserved
+  `MayInvalidateExistingEvidence` impact would qualify a positive state with no renderer change.
+- **Counts, never scores.** No percentage, no red/amber/green, no accuracy rating, no invented
+  limitation severity. There is no evidence basis for any of them, and prioritisation must be derived
+  from the existing `SupportState`, `DependencyImpact` and `Concerns` semantics.
+- **Nothing is shown when nothing was left unanalysed.** A panel announcing that there is nothing to
+  report is reassurance nobody asked for; the standing caveats already have a home in the scope section.
+  A limitation that cannot affect a conclusion is still disclosed, but must not imply qualification.
+
 ## Established Power BI semantics — verified, do not re-derive
 
 Confirmed experimentally in Power BI Desktop and pinned by tests and fixtures.

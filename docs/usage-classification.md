@@ -13,6 +13,7 @@ PBI Assure classifies semantic-model objects by traversing an evidence-backed de
 - Active and inactive relationship endpoint columns.
 - Row-level security table permission filter expressions. References inside a filter resolve against the table named by the permission, because Power BI Desktop serialises same-table column references unqualified.
 - Perspective members: the tables, columns, measures and hierarchies a perspective exposes.
+- DAX user-defined function bodies: what a function references, and which functions call one another. A function is a dependency node rather than a root, so an uncalled function does not keep what it references alive.
 - The table containing each column, measure, or hierarchy level.
 
 Every edge records its source and target identities, dependency kind, source file, and the relevant expression or reference text.
@@ -58,6 +59,37 @@ A perspective is a curated subset of the model that an author deliberately expos
 Membership is exactly what the perspective lists. Naming a table does not expose its columns or measures; Microsoft documents that each member must be added individually unless `includeAll` is set, which includes every column, hierarchy and measure of that table. Treating a listed table as exposing all its fields would be a large source of false "used" conclusions.
 
 This is a statement about intent recorded in the model, not a claim that any consumer has used the perspective. PBI Assure cannot observe that.
+
+## Classification confidence
+
+Every classification also carries a confidence, and it is deliberately a separate axis rather than a
+sixth state. The state says what PBI Assure found. The confidence says how complete the evidence behind
+that answer is.
+
+- **Established**: nothing PBI Assure skipped in this model could change the object's state.
+- **Qualified**: this model contains metadata that was not fully analysed and that could bear on the
+  object's state. The state itself is unchanged and remains the best available answer.
+
+A qualified classification is not a low-confidence one. PBI Assure may hold strong positive evidence and
+simply not have read one more possible source of references. Qualification is context about the
+analysis, not a defect in the object, and it never means the object is definitely used — that is not
+known either.
+
+Because an unanalysed construct can only *add* references, it cannot retract evidence already collected.
+Qualification therefore applies to the two states that assert an absence of usage, `ApparentlyUnused`
+and `UsedOnlyByUnusedBranch`. The states resting on positive evidence keep their confidence. That is a
+conservative product rule about the constructs known today, not a permanent guarantee: a future
+construct that changes how existing evidence should be *read*, rather than only adding to it, would
+qualify positive states too.
+
+The HTML report shows this in two places. An **Analysis coverage** section states, per semantic model,
+what was not fully analysed and whether it can affect usage classification. Each affected object then
+carries a small **Qualified** marker beside its status, linking to that model's entry. The cause is
+explained once at model scope rather than repeated beside every affected object, because one unanalysed
+construct can qualify most of a model.
+
+PBI Assure gains coverage for more Power BI metadata over time, so a limitation describes what the
+current version reads rather than a problem with the analysed project.
 
 ## Unresolved evidence
 

@@ -12,7 +12,7 @@ evidenced · **[design decision]** a choice, not a fact.
 |---|---|
 | Remote | `whippet-dev/pbi-assure` |
 | Branch | `master` (also the default branch) |
-| Last verified product state | `659b895` — *Analyse DAX user-defined function dependencies* |
+| Last verified product state | `ec6a3d0` — *Show analysis limitations and classification confidence in the HTML report* |
 | Working tree | Expected clean of tracked modifications. Untracked local review documents may be present |
 
 `master` may have moved past that commit for documentation-only changes. Re-verify and update this
@@ -22,7 +22,7 @@ section whenever a commit changes build, test or behaviour — not for every com
 
 - `dotnet build PbiAssure.slnx` — **succeeded, 0 warnings, 0 errors** [verified]. `TreatWarningsAsErrors`
   is on, so warnings fail the build.
-- `dotnet test PbiAssure.slnx` — **361 core + 2 privacy end-to-end tests passed**, 0 failed [verified].
+- `dotnet test PbiAssure.slnx` — **381 core + 2 privacy end-to-end tests passed**, 0 failed [verified].
 - CI (`.github/workflows/ci.yml`) — **green** [verified]. Runs restore, build, a Playwright Chromium
   install, then the whole solution test suite on `windows-latest`.
 - The privacy end-to-end tests are part of the normal solution test run; they need Node.js and a
@@ -86,9 +86,17 @@ unused with no indication that security metadata had been skipped.
   model object, the emitted limitation is narrowed to `NoKnownDependencyEffect`. The limitation is still
   emitted and the support state is unchanged. Coverage is affirmative: only constructs known to carry no
   object reference count as accounted for, so anything unrecognised keeps the conservative impact.
+- **User-facing presentation of limitations and confidence, in HTML.** Two levels, deliberately split by
+  scope. An **Analysis coverage** section states per model what was not fully analysed, grouping
+  limitations by construct rather than by file, showing the ones that can affect classification and
+  disclosing the ones that cannot inside a `details` element. Each affected object then carries a small
+  **Qualified** link beside its status, pointing at that model's coverage block. Terminology:
+  `QualifiedByLimitation` is shown as **Qualified**, support states as *Partially analysed* / *Not yet
+  analysed*, and `DependencyImpact` as its consequence — *May affect usage classification* rather than
+  *May create dependencies*. Counts only; there is no score, percentage or severity.
 
-Limitation **detection** is file level only. Confidence is an orthogonal additive field, and no
-user-facing surface consumes limitations or confidence yet.
+Limitation **detection** is file level only. Confidence is an orthogonal additive field. HTML consumes
+both; **CSV and the browser app do not** — see the gaps table.
 
 Usage states change only through real dependency evidence entering the graph — as RLS parsing now does.
 Nothing derives a usage state from the presence of a limitation.
@@ -99,7 +107,8 @@ Nothing derives a usage state from the presence of a limitation.
 - Property-level detection
 - Malformed-TMDL recovery
 - `AnalysisScopeBoundary` catalog
-- Any HTML or CSV surface for limitations — they reach the JSON inventory only
+- A CSV or browser-app surface for limitations or confidence. HTML has one; `SemanticUsageCsvRenderer`
+  has a fixed header contract that was deliberately not widened in that slice
 - Report-side PBIR limitation detection
 
 ## Resolved — the propagation blocker
@@ -158,7 +167,12 @@ unanalysed files are the always-present three — verified against three Desktop
 
 ## Immediate task
 
-**Design how limitations and qualified confidence should appear to a user.**
+**Not yet chosen — see [HANDOVER.md](HANDOVER.md) for the ranked options.**
+
+The presentation work below is done. What follows is the record of why it was next, kept because it
+explains the shape of the HTML surface.
+
+### Completed — limitation and confidence presentation
 
 The expectation recorded here previously — that parsing UDF references would take the Desktop fixture's
 qualified count to zero — turned out to be **wrong, and the measurement is what settled it**. Reading
@@ -167,21 +181,42 @@ definitions: it is where a function is *called from*. Visual calculations and re
 call one and neither is parsed, so the impact stays `MayCreateDependencies` and
 `desktop-semantic-constructs` still shows 21 of 27 objects `QualifiedByLimitation`, unchanged.
 
-That is the correct outcome, not a shortfall. It also means waiting for zero qualification before
-designing presentation would be waiting for something that is not close, so presentation is now the
-task.
+That is the correct outcome, not a shortfall. It also meant that waiting for zero qualification before
+designing presentation would have been waiting for something that is not close, which is why
+presentation was taken next.
 
-Nothing surfaces in HTML, CSV or the browser app, so a user still cannot see that a conclusion was
-qualified. That presentation deserves its own design pass rather than an ad-hoc badge — see
-[../design/unsupported-construct-design.md](../design/unsupported-construct-design.md) §5 for the shape
-already proposed, which has not been reviewed against the implemented behaviour.
+Two things the visual review established that are worth not rediscovering:
 
-Alternative, if presentation is not the preferred next step: **read report-level measure expressions as
-DAX.** A report measure's dependencies come today from the structured `references.measures` list Power
-BI writes beside it, and its `Expression` is never parsed — so a call to a user-defined function from a
-report measure, and any column reference, is invisible. Closing that would narrow, though not retire,
-the function limitation. It needs a Desktop fixture containing a report-level measure that calls a UDF;
-none exists.
+- **All 21 qualified objects in `desktop-semantic-constructs` are Power BI-generated**, and the semantic
+  model section defaults to developer-authored objects. On the default filter a reader sees the model
+  headline saying 21 classifications are qualified and no markers at all, which is why the headline
+  describes the marker rather than promising where it appears.
+- **A model emits one limitation file per role**, so grouping by construct rather than by artifact is
+  load-bearing, not cosmetic.
+
+The proposal in [../design/unsupported-construct-design.md](../design/unsupported-construct-design.md)
+§5 predates the implemented behaviour and was not followed literally.
+
+Behaviour worth knowing before changing this surface [verified by rendered HTML]:
+
+- **Nothing renders when nothing was left unanalysed.** The section, its navigation entry and the usage
+  guide's explanation of the marker all disappear. The guide's note is gated on a qualified object
+  actually existing, not merely on a limitation existing, so a model with only harmless limitations
+  explains a marker it does not show.
+- **Limitations exist but none qualify** is a distinct, common case — `grouped-tab-order` and the
+  `model-reference-context` fixtures. The section renders with "None of them affect usage
+  classification" and the disclosure reads "What was not fully analysed" rather than "other files".
+- **Scoping is per model.** A model with no limitations gets no coverage block at all, and each object's
+  marker links to its own model's anchor. `ClassificationConfidence` does not name the limitation that
+  caused it, so object-level copy says "qualified by analysis limitations in this model" and never
+  attributes a specific file.
+- **Accessibility:** the marker is an `<a>`, so it is keyboard operable with no scripting; its meaning is
+  visible text plus a `visually-hidden` expansion, never colour or hover alone; the harmless-limitation
+  disclosure is a native `<details>`. Muted marker text measures 6.46:1 against the card background, and
+  at a 375px viewport the section fits with no horizontal overflow.
+- **Rendered results:** `desktop-semantic-constructs` 21 markers / 1 qualifying cause / 6 disclosed;
+  `desktop-udf-references` 3 markers, both absence states represented; `grouped-tab-order` 0 markers,
+  3 disclosed; `privacy-canary` no section at all.
 
 ## Reference documents
 

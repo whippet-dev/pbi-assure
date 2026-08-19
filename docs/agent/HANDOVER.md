@@ -5,47 +5,51 @@ Tactical entry point for an incoming coding agent. Read this first, then
 
 ## What just happened
 
-DAX user-defined function dependencies are analysed, backed by a second Desktop-authored fixture,
-`desktop-udf-references`, authored specifically to show how a function body writes a reference.
+Analysis limitations and classification confidence are now visible to a reader. They were recorded
+internally for several slices and surfaced nowhere, so an object could show a flat "Apparently unused"
+when the scan knew it was "apparently unused, given metadata nobody read".
 
-A function is a **dependency node, not a root**. Nothing in the model requires a definition to exist, so
-what a function references becomes reachable only when something reachable calls it, and an uncalled
-function's references land on `UsedOnlyByUnusedBranch`. That is what separates a function from a role
-filter or a perspective member, both of which are roots.
+The design is split by scope, because the hard constraint is noise rather than discoverability. One
+unanalysed construct qualifies 21 of 27 objects in the Desktop fixture, so an **Analysis coverage**
+section states the cause once per model, and each affected object carries only a small **Qualified**
+link back to it. Limitations are grouped by construct rather than by file, since a model emits one file
+per role.
 
-**The expected result did not happen, and that is the important finding.** The previous handover
-predicted this would take the Desktop fixture's qualified count to zero. It did not move at all:
-`desktop-semantic-constructs` is still 21 of 27 objects `QualifiedByLimitation`, before and after. The
-unread part of `functions.tmdl` was never the definitions — it is where a function is *called from*.
-Microsoft documents that visual calculations and report-level measures can call one, and PBI Assure
-parses neither, so the impact stays `MayCreateDependencies`. Do not treat that as unfinished work to be
-tidied away; it is the honest state.
+No domain, scanner or classification logic changed. The renderer reads `ClassificationConfidence` and
+never re-derives it.
 
 ## State
 
-- **Last verified product state:** `659b895` on `master`. Later commits may be documentation-only; run
+- **Last verified product state:** `ec6a3d0` on `master`. Later commits may be documentation-only; run
   `git log --oneline` to see whether anything after it touched behaviour.
 - **Working tree:** expected clean apart from untracked local review documents; no tracked modifications
-- **Verified at that commit:** build succeeded with 0 warnings; **361 core + 2 privacy tests passed**; CI green
+- **Verified at that commit:** build succeeded with 0 warnings; **381 core + 2 privacy tests passed**; CI green
 - **Known exception:** `dotnet format --verify-no-changes` fails with 24 pre-existing whitespace errors
   in two Theme Review files. Unrelated to current work, deliberately not fixed. See
   [CURRENT_STATE.md](CURRENT_STATE.md).
 
 ## Immediate next task
 
-**Design how limitations and qualified confidence should appear to a user.**
+**Not obvious — pick deliberately rather than continuing the last thread.**
 
-The previous handover deferred this on the grounds that most objects were about to stop being caveated.
-That reasoning is now measured and wrong — the caveat is not about to disappear, because the unread UDF
-consumers are report-side metadata that is a separate piece of work. Designing presentation while
-objects are qualified is therefore designing for the real situation, not a transitional one.
+The analysis side is complete for every construct currently supported, and it now has a user-facing
+surface. That means the next task should be chosen on user impact, not on what was touched last.
+Ranked:
 
-Nothing surfaces in HTML, CSV or the browser app today, so a user cannot see that a conclusion was
-qualified. See [../design/unsupported-construct-design.md](../design/unsupported-construct-design.md) §5
-for the shape already proposed, which has not been reviewed against the implemented behaviour.
+1. **Surface unresolved semantic dependencies.** `UnresolvedSemanticDependency` is retained as evidence
+   and reaches the JSON inventory only. It is a *bounded* uncertainty — source, kind and reference text
+   are all known — which makes it more actionable than a limitation, and a broken reference in a report
+   is a real defect rather than a coverage gap. The architecture is ready and no new evidence is needed.
+2. **Measure `PBI-ACCESS-001` against real reports.** Its false-positive concern is [inferred] and has
+   never been measured. That inference currently blocks changing an accessibility rule that fires on
+   every report, so the measurement unblocks a decision rather than adding a feature.
+3. **Read report-level measure expressions as DAX.** A report measure's dependencies come from the
+   structured `references.measures` list Power BI writes beside it; its `Expression` is never parsed, so
+   a UDF call or a column reference in one is invisible. This narrows but does not retire the function
+   limitation, and needs a Desktop fixture with a report measure calling a UDF.
 
-The alternative is to read report-level measure expressions as DAX, which would close one of the two
-unread UDF consumers. That needs a Desktop fixture with a report-level measure calling a UDF.
+Deliberately *not* ranked first: visual-calculation parsing. It is the other unread UDF consumer, but
+it is the largest of the three and only moves a caveat that the report now explains honestly.
 
 ## Do not do yet
 
@@ -54,7 +58,8 @@ unread UDF consumers. That needs a Desktop fixture with a report-level measure c
   corrected on the evidence recorded in `SemanticDefinitionFileRegistry`; `dataSources.tmdl` stays
   `DependencyEffectUnknown` until it is actually observed
 - Malformed-TMDL recovery
-- HTML/CSV limitation surfaces
+- CSV or browser-app surfaces for limitations and confidence — HTML has one; the CSV header is a
+  fixed contract and widening it deserves its own decision
 - Changes to `PBI-ACCESS-001`
 - The pre-existing `dotnet format` whitespace cleanup
 
