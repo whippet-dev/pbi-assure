@@ -109,21 +109,17 @@ records.
 
 Choose on user impact, not on what was touched last. Ranked:
 
-1. **Author the report-measure → UDF Desktop fixture before implementation.** The parser already retains
-   the full report-measure `Expression`; `SemanticDependencyAnalyzer` follows only
-   `references.measures`. Existing DAX/UDF extraction is reusable, but the supported Desktop scenario is
-   a live-connected `byConnection` report, which PBI Assure deliberately does not bind to a local model.
-   The fixture must pin the real `reportExtensions.json`, connection and visual-reference shapes; later
-   graph behaviour should be proven by a clearly labelled synthetic local-binding test. Follow the exact
-   experiment in [the fixture design](../reviews/report-level-measure-udf-fixture-design.md).
-2. **Collect Desktop evidence for broken structured model references** if product wording stronger than
+1. **Collect Desktop evidence for broken structured model references** if product wording stronger than
    "PBI Assure could not find" is ever proposed. Create a reference in Desktop, remove or rename its
    target, save, and inspect whether Desktop persists, repairs, rejects or removes the metadata. Do not
    mutate an existing fixture and relabel it Desktop-authored.
 
-The remaining UDF-consumer gap is **narrower than it looks**: an ordinary semantic-model measure calling
-a UDF is already followed correctly, now proven by `tests/fixtures/desktop-udf-measure-consumer`. Only
-report-level measures and visual calculations remain unread.
+The report-level-measure → UDF idea is **parked on evidence**, not awaiting implementation. Desktop
+2.157.879.0 rejected the live-connect UDF call, then persisted its invalid expression with no structured
+reference; the valid control was fully described by `references.measures`. The report is `byConnection`
+and contains no source model PBI Assure can analyse offline. Details and the fixture decision are in
+[the evidence review](../reviews/report-level-measure-udf-fixture-design.md). Visual calculations remain
+unread and were not part of that experiment.
 
 **Known presentation gap, deliberately not filled:** an object that is structurally required only by a
 perspective or a role filter gets no "Why" line, because no reason wording exists for those kinds. That
@@ -142,6 +138,8 @@ it is the largest of the three and only moves a caveat that the report now expla
 - Malformed-TMDL recovery
 - CSV or browser-app surfaces for limitations and confidence — HTML has one; the CSV header is a
   fixed contract and widening it deserves its own decision
+- Report-level measure expression parsing or report-measure → UDF traversal without trustworthy source
+  model metadata. A persisted expression in a remote report is not proof of a valid dependency.
 - Changes to `PBI-ACCESS-001` without independently authored, author-labelled evidence. The local sample
   measurement found only 13 plausible decorative candidates among 216 representative findings; 22 text
   boxes remain metadata-uncertain. See [the measurement](../reviews/access-001-alt-text-measurement.md).
@@ -159,9 +157,9 @@ blocking rather than merely sequenced:
 ## Missing evidence
 
 - RLS forms beyond the two the Desktop fixture proves — cross-table filters, column permissions (OLS)
-- **Desktop serialization of a live-connect report measure calling a UDF** — exact fixture steps are
-  recorded in [the investigation](../reviews/report-level-measure-udf-fixture-design.md). Report measure
-  expressions are retained but not dependency-analysed; visual calculations remain unread.
+- A Desktop-authored local/bound report-measure shape, or trustworthy source-model metadata for a
+  `byConnection` report. The observed live-connect UDF expression was rejected and is not a valid
+  dependency fixture. See [the evidence review](../reviews/report-level-measure-udf-fixture-design.md).
 - Whether a *translated* culture file names model objects, and whether Q&A synonyms constitute usage
 - Whether `dataSources.tmdl` is ever emitted by current Desktop
 - Independently authored, author-labelled `PBI-ACCESS-001` examples, particularly decorative shapes,

@@ -264,6 +264,12 @@ Established by `tests/fixtures/desktop-semantic-constructs`.
   neither is parsed. `functions.tmdl` therefore stays `PartiallyAnalyzed` with `MayCreateDependencies`.
   Missing a consumer under-reports usage, which is the dangerous direction. Do not lower this impact to
   reduce caveat volume.
+- **A `byConnection` report-measure expression is authored text, not resolvable model evidence.** The
+  offline report carries no source-model definitions, and Desktop has been observed preserving a rejected
+  `Doubled()` expression with no structured reference or unrecognised marker. Inventory the text, but do
+  not turn it into a semantic dependency without trustworthy source-model metadata. Do not bind a remote
+  report to a convenient local model or use synthetic traversal to claim support for a state Desktop did
+  not produce validly.
 
 Established by `tests/fixtures/desktop-udf-references`, which also records what it does not prove.
 
