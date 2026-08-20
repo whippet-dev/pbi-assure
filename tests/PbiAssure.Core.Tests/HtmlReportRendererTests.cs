@@ -414,10 +414,11 @@ public sealed class HtmlReportRendererTests : IDisposable
 
         var html = HtmlReportRenderer.Render(ProjectScanner.Scan(testRoot));
 
-        Assert.Equal(8, html.Split("<p class=\"section-intro\">", StringSplitOptions.None).Length - 1);
+        Assert.Equal(9, html.Split("<p class=\"section-intro\">", StringSplitOptions.None).Length - 1);
         Assert.Contains("Start here for the overall assurance result", html, StringComparison.Ordinal);
         Assert.Contains("Keep these limits in mind", html, StringComparison.Ordinal);
         Assert.Contains("See which queries load data into the model", html, StringComparison.Ordinal);
+        Assert.Contains("report-format metadata that PBI Assure has not verified exactly", html, StringComparison.Ordinal);
         Assert.Contains("Issues and review points found by automated checks", html, StringComparison.Ordinal);
         Assert.Contains("How to use findings", html, StringComparison.Ordinal);
         Assert.Contains("Suggested action gives a practical next step", html, StringComparison.Ordinal);

@@ -67,7 +67,7 @@ public sealed class VisualGroupSupportTests
         var inventory = Scan(Group("group-a", 0, groupMode: "ScaleMode"), Visual("visual-a", 1, parent: "group-a"));
         var json = JsonSerializer.Serialize(inventory);
 
-        Assert.Contains("\"SchemaVersion\":\"0.21\"", json, StringComparison.Ordinal);
+        Assert.Contains("\"SchemaVersion\":\"0.22\"", json, StringComparison.Ordinal);
         Assert.Contains("\"VisualGroups\"", json, StringComparison.Ordinal);
         Assert.Contains("\"GroupMode\":\"ScaleMode\"", json, StringComparison.Ordinal);
         Assert.Contains("\"ParentGroupName\":\"group-a\"", json, StringComparison.Ordinal);

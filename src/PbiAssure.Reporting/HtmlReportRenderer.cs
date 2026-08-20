@@ -63,7 +63,7 @@ public static partial class HtmlReportRenderer
         html.AppendLine("      <nav class=\"section-navigator\" aria-label=\"Report sections\">");
         html.AppendLine("        <ul class=\"section-nav\">");
         AppendSectionNavigationItem(html, "summary", "Summary", "Overview and key counts");
-        if (coverage.HasLimitations)
+        if (coverage.HasCoverage)
         {
             AppendSectionNavigationItem(html, "analysis-coverage", "Analysis coverage", "What was and was not checked");
         }
@@ -206,14 +206,29 @@ public static partial class HtmlReportRenderer
     /// </summary>
     private static void AppendAnalysisCoverage(StringBuilder html, AnalysisCoverage coverage)
     {
-        if (!coverage.HasLimitations)
+        if (!coverage.HasCoverage)
         {
             return;
         }
 
         html.AppendLine("    <section id=\"analysis-coverage\" class=\"report-section\" data-report-section=\"analysis-coverage\" aria-labelledby=\"analysis-coverage-heading\">");
         html.AppendLine("      <h2 id=\"analysis-coverage-heading\" tabindex=\"-1\">Analysis coverage</h2>");
-        html.AppendLine("      <p class=\"section-intro\">PBI Assure reads most of each semantic model, but not all of it. This is what it could not fully check, and whether that could change any used or unused result in this report.</p>");
+        html.AppendLine("      <p class=\"section-intro\">This shows report-format metadata that PBI Assure has not verified exactly, alongside anything it could not fully check in the semantic model. These notes describe PBI Assure's coverage, not a problem with your project.</p>");
+
+        foreach (var report in coverage.Reports)
+        {
+            html.Append("      <section class=\"coverage-model\" id=\"").Append(Encode(report.AnchorId)).AppendLine("\">");
+            html.Append("        <h3>Report: ").Append(Encode(report.ReportName)).AppendLine("</h3>");
+            html.AppendLine("        <p class=\"coverage-headline\">PBI Assure recorded report-format metadata it has not verified exactly. Analysis continues normally.</p>");
+            html.AppendLine("        <ul class=\"coverage-list\">");
+            foreach (var group in report.Groups)
+            {
+                AppendReportSchemaCoverageGroup(html, group);
+            }
+
+            html.AppendLine("        </ul>");
+            html.AppendLine("      </section>");
+        }
 
         foreach (var model in coverage.Models)
         {
@@ -334,6 +349,66 @@ public static partial class HtmlReportRenderer
 
         html.AppendLine("</p>");
         html.AppendLine("            </li>");
+    }
+
+    private static void AppendReportSchemaCoverageGroup(StringBuilder html, ReportSchemaCoverageGroup group)
+    {
+        html.Append("          <li class=\"coverage-item\"><p class=\"coverage-item-head\"><strong>")
+            .Append(Encode(group.Label)).Append("</strong> <span class=\"badge badge-neutral\">")
+            .Append(Encode(ReportSchemaStateLabel(group.State))).AppendLine("</span></p>");
+        html.Append("            <p class=\"coverage-reason\">").Append(Encode(group.Message)).AppendLine("</p>");
+        html.AppendLine("            <details class=\"technical-details\"><summary>Technical details</summary><dl class=\"technical-list\">");
+        AppendTechnicalDefinition(html, "Expected schema family", group.ExpectedSchemaFamily);
+        if (!string.IsNullOrWhiteSpace(group.SchemaFamily))
+        {
+            AppendTechnicalDefinition(html, "Declared schema family", group.SchemaFamily);
+        }
+
+        if (!string.IsNullOrWhiteSpace(group.SchemaVersion))
+        {
+            AppendTechnicalDefinition(html, "Declared schema version", group.SchemaVersion);
+        }
+
+        if (!string.IsNullOrWhiteSpace(group.VerifiedBaselineVersion))
+        {
+            AppendTechnicalDefinition(html, "Verified version", group.VerifiedBaselineVersion);
+        }
+
+        if (group.RawSchemaUris.Count > 0)
+        {
+            html.AppendLine("              <dt>Schema declaration</dt><dd>");
+            foreach (var schemaUri in group.RawSchemaUris)
+            {
+                html.Append("                <code>").Append(Encode(schemaUri)).AppendLine("</code>");
+            }
+
+            html.AppendLine("              </dd>");
+        }
+
+        html.AppendLine("              <dt>Source files</dt><dd>");
+        foreach (var artifactPath in group.ArtifactPaths)
+        {
+            html.Append("                <code>").Append(Encode(DisplayPath(artifactPath))).AppendLine("</code>");
+        }
+
+        html.AppendLine("              </dd>");
+        html.AppendLine("            </dl></details>");
+        html.AppendLine("          </li>");
+    }
+
+    private static string ReportSchemaStateLabel(string state) => state switch
+    {
+        ReportSchemaObservationStates.RecognisedUnverifiedVersion => "Version not verified",
+        ReportSchemaObservationStates.UnknownFamily => "Schema family not verified",
+        ReportSchemaObservationStates.MetadataMissing => "Schema metadata missing",
+        ReportSchemaObservationStates.MetadataMalformed => "Schema metadata could not be read",
+        _ => "Schema metadata needs review",
+    };
+
+    private static void AppendTechnicalDefinition(StringBuilder html, string term, string value)
+    {
+        html.Append("              <dt>").Append(Encode(term)).Append("</dt><dd><code>")
+            .Append(Encode(value)).AppendLine("</code></dd>");
     }
 
     /// <summary>

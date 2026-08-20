@@ -14,19 +14,24 @@ DAX such as `VAR` is not misreported as unsupported role metadata. This was veri
 RLS, measure, UDF, calculation-group and M-partition cases; the real work report that prompted it was
 not copied into the repository.
 
-The encountered-PBIR-schema compatibility policy is now defined. PBI Assure's report parsers retain
-several versioned schema URIs but do not branch on any of them; they read known properties and silently
-ignore unknown ones. The committed Desktop fixtures establish an exact baseline for
+The encountered-PBIR-schema compatibility policy is now implemented for the report artifacts PBI Assure
+parses. The parser still reads known properties and silently ignores unknown ones; a structured
+`ReportSchemaObservation` records its schema evidence without gating parsing. The committed Desktop
+fixtures establish an exact baseline for
 `definitionProperties/2.0.0`, `report/3.3.0`, `pagesMetadata/1.1.0`, `page/2.1.0` and
 `visualContainer/2.11.0`. They also contain `versionMetadata/1.0.0` with PBIR definition version `2.0.0`,
-which PBI Assure does not yet retain. Bookmark schemas exist only in local sample evidence and
+which is now retained separately from the existing `definition.pbir` version. Bookmark schemas exist only in local sample evidence and
 `reportExtension/1.0.0` only in synthetic tests.
 
 The adopted boundary is conservative: exact fixture-backed versions are the verified baseline; another
 version in a recognised family is unverified, not automatically unsupported; missing, malformed and
 unknown-family schema metadata are separate states; and PBIR-Legacy is a separate format rather than an
 old modern-PBIR schema. These states describe PBI Assure's coverage, not defects in the user's project.
-No compatibility finding was added or recommended for the first implementation. See
+Non-exact declarations appear as neutral report-scoped **Analysis coverage** information, never as a
+Finding. Exact declarations are silent. Bookmark and report-extension schemas remain
+recognised-unverified because there is no committed Desktop baseline for them. The JSON inventory gained
+additive report `SchemaObservations`, `VersionMetadataPath` and `PbirDefinitionVersion` properties; CSV
+is unchanged. See
 [the compatibility review](../reviews/encountered-pbir-schema-compatibility-policy.md).
 
 Report page cards now always start collapsed, including the page that was active when Desktop last saved
@@ -163,27 +168,22 @@ records.
 
 ## State
 
-- **Last verified product state:** current `master` worktree with fenced TMDL expression parsing repair.
+- **Last verified product state:** current `master` worktree with report-side PBIR schema observations.
   Record the resulting commit after this slice is committed.
 - **Working tree:** expected clean apart from untracked local review documents; no tracked modifications
-- **Verified locally:** Release build succeeded with 0 warnings; **441 core + 2 privacy tests passed**
+- **Verified locally:** Release build succeeded with 0 warnings; **453 core + 2 privacy tests passed**
 - **Known exception:** `dotnet format --verify-no-changes` fails with 24 pre-existing whitespace errors
   in two Theme Review files. Unrelated to current work, deliberately not fixed. See
   [CURRENT_STATE.md](CURRENT_STATE.md).
 
 ## Immediate next task
 
-Implement the smallest schema-observation slice described in the compatibility review:
+The next ranked work remains connector **coverage measurement**, not a feature specification: first count
+unrecognised connector calls in redistribution-safe or local real-report examples, then add only concrete
+families and location classifications supported by that evidence. Do not add a connector rule before the
+measurement establishes a meaningful gap.
 
-1. parse and retain the raw/family/version evidence for report-side PBIR schema declarations, including
-   `definition/version.json`;
-2. classify exact verified, recognised-unverified, unknown-family, missing and malformed states without
-   changing parser behaviour;
-3. surface non-exact states in Analysis coverage / scan metadata only;
-4. use current Desktop fixtures plus synthetic URI mutations; do not duplicate fixtures and do not add
-   `PBI-COMPAT-003`.
-
-After that, broader connector coverage remains a measurement task rather than a feature specification:
+Broader connector work remains a measurement task rather than a feature specification:
 first count unrecognised connector calls in redistribution-safe or local real-report examples, then add
 only concrete families and location classifications supported by that evidence.
 

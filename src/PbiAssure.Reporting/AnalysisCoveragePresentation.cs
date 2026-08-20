@@ -21,11 +21,6 @@ internal static class AnalysisCoveragePresentation
     {
         ArgumentNullException.ThrowIfNull(inventory);
 
-        if (inventory.AnalysisLimitations.Count == 0)
-        {
-            return new AnalysisCoverage([]);
-        }
-
         var qualifiedByModel = inventory.SemanticObjectUsages
             .Where(usage => usage.ClassificationConfidence == ClassificationConfidences.QualifiedByLimitation)
             .GroupBy(usage => usage.SemanticModel, StringComparer.OrdinalIgnoreCase)
@@ -40,8 +35,86 @@ internal static class AnalysisCoveragePresentation
             .Select((group, index) => BuildModel(group.Key, index + 1, group, qualifiedByModel, objectsByModel))
             .ToArray();
 
-        return new AnalysisCoverage(models);
+        var reports = inventory.Reports
+            .Select((report, index) => BuildReport(report, index + 1))
+            .Where(report => report is not null)
+            .Cast<ReportSchemaCoverage>()
+            .ToArray();
+
+        return new AnalysisCoverage(models, reports);
     }
+
+    private static ReportSchemaCoverage? BuildReport(ReportInventory report, int anchorOrdinal)
+    {
+        var groups = report.SchemaObservations
+            .Where(observation => observation.State != ReportSchemaObservationStates.VerifiedExact)
+            .GroupBy(observation => (
+                observation.ArtifactKind,
+                observation.ExpectedSchemaFamily,
+                observation.State,
+                observation.SchemaFamily,
+                observation.SchemaVersion,
+                observation.VerifiedBaselineVersion))
+            .Select(group => new ReportSchemaCoverageGroup(
+                Label: ReportSchemaArtifactLabel(group.Key.ArtifactKind),
+                State: group.Key.State,
+                Message: ReportSchemaMessage(group.Key.State),
+                ExpectedSchemaFamily: group.Key.ExpectedSchemaFamily,
+                SchemaFamily: group.Key.SchemaFamily,
+                SchemaVersion: group.Key.SchemaVersion,
+                VerifiedBaselineVersion: group.Key.VerifiedBaselineVersion,
+                RawSchemaUris: group
+                    .Select(observation => observation.RawSchemaUri)
+                    .Where(uri => !string.IsNullOrWhiteSpace(uri))
+                    .Cast<string>()
+                    .Distinct(StringComparer.Ordinal)
+                    .OrderBy(uri => uri, StringComparer.Ordinal)
+                    .ToArray(),
+                ArtifactPaths: group
+                    .Select(observation => observation.RelativePath)
+                    .Distinct(StringComparer.OrdinalIgnoreCase)
+                    .OrderBy(path => path, StringComparer.OrdinalIgnoreCase)
+                    .ToArray()))
+            .OrderBy(group => group.Label, StringComparer.OrdinalIgnoreCase)
+            .ThenBy(group => group.State, StringComparer.Ordinal)
+            .ToArray();
+
+        return groups.Length == 0
+            ? null
+            : new ReportSchemaCoverage(
+                ReportName: report.Name,
+                AnchorId: string.Create(
+                    System.Globalization.CultureInfo.InvariantCulture,
+                    $"analysis-coverage-report-{anchorOrdinal}"),
+                Groups: groups);
+    }
+
+    private static string ReportSchemaMessage(string state) => state switch
+    {
+        ReportSchemaObservationStates.RecognisedUnverifiedVersion =>
+            "PBI Assure has not verified this report-format version yet.",
+        ReportSchemaObservationStates.UnknownFamily =>
+            "PBI Assure could not verify coverage for this report-format family.",
+        ReportSchemaObservationStates.MetadataMissing =>
+            "Schema metadata was not available for this file.",
+        ReportSchemaObservationStates.MetadataMalformed =>
+            "PBI Assure could not interpret this schema declaration.",
+        _ => "PBI Assure could not verify this report-format metadata.",
+    };
+
+    private static string ReportSchemaArtifactLabel(string artifactKind) => artifactKind switch
+    {
+        ReportSchemaArtifactKinds.DefinitionProperties => "Report connection definition",
+        ReportSchemaArtifactKinds.VersionMetadata => "PBIR version metadata",
+        ReportSchemaArtifactKinds.Report => "Report definition",
+        ReportSchemaArtifactKinds.PagesMetadata => "Page metadata",
+        ReportSchemaArtifactKinds.Page => "Page definitions",
+        ReportSchemaArtifactKinds.VisualContainer => "Visual definitions",
+        ReportSchemaArtifactKinds.BookmarksMetadata => "Bookmarks metadata",
+        ReportSchemaArtifactKinds.Bookmark => "Bookmark definitions",
+        ReportSchemaArtifactKinds.ReportExtension => "Report extensions",
+        _ => HumanReadable(artifactKind),
+    };
 
     private static AnalysisCoverageModel BuildModel(
         string modelName,
@@ -174,9 +247,15 @@ internal static class AnalysisCoveragePresentation
 }
 
 /// <summary>Analysis coverage for a whole scan. Empty when nothing was left unanalysed.</summary>
-internal sealed record AnalysisCoverage(IReadOnlyList<AnalysisCoverageModel> Models)
+internal sealed record AnalysisCoverage(
+    IReadOnlyList<AnalysisCoverageModel> Models,
+    IReadOnlyList<ReportSchemaCoverage> Reports)
 {
     public bool HasLimitations => Models.Count > 0;
+
+    public bool HasReportSchemaCoverage => Reports.Count > 0;
+
+    public bool HasCoverage => HasLimitations || HasReportSchemaCoverage;
 
     public int QualifiedObjectCount => Models.Sum(model => model.QualifiedObjectCount);
 }
@@ -206,4 +285,26 @@ internal sealed record AnalysisCoverageGroup(
     string ImpactLabel,
     bool MayAffectClassification,
     string Reason,
+    IReadOnlyList<string> ArtifactPaths);
+
+/// <summary>
+/// Report-format metadata that this version of PBI Assure could not verify exactly. It is kept outside
+/// semantic-model limitations because it describes parser coverage, never a qualifier on used/unused
+/// classifications.
+/// </summary>
+internal sealed record ReportSchemaCoverage(
+    string ReportName,
+    string AnchorId,
+    IReadOnlyList<ReportSchemaCoverageGroup> Groups);
+
+/// <summary>One grouped report-format observation and the files that declared it.</summary>
+internal sealed record ReportSchemaCoverageGroup(
+    string Label,
+    string State,
+    string Message,
+    string ExpectedSchemaFamily,
+    string? SchemaFamily,
+    string? SchemaVersion,
+    string? VerifiedBaselineVersion,
+    IReadOnlyList<string> RawSchemaUris,
     IReadOnlyList<string> ArtifactPaths);

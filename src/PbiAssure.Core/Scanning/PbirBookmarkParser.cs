@@ -5,7 +5,10 @@ namespace PbiAssure.Core.Scanning;
 
 internal static class PbirBookmarkParser
 {
-    public static PbirBookmarkParseResult Parse(IProjectFileSource source, string reportDirectory)
+    public static PbirBookmarkParseResult Parse(
+        IProjectFileSource source,
+        string reportDirectory,
+        ICollection<ReportSchemaObservation> schemaObservations)
     {
         var bookmarksDirectory = ProjectFilePaths.Combine(reportDirectory, "definition", "bookmarks");
         if (!source.EnumerateFiles(bookmarksDirectory).Any())
@@ -20,13 +23,15 @@ internal static class PbirBookmarkParser
         {
             using var metadata = OpenJsonDocument(source, metadataPath);
             schemaUri = GetString(metadata.RootElement, "$schema");
+            schemaObservations.Add(PbirSchemaObservationFactory.Create(
+                ReportSchemaArtifactKinds.BookmarksMetadata, metadataPath, metadata.RootElement));
             bookmarkOrder = ReadBookmarkOrder(metadata.RootElement).ToArray();
         }
 
         var bookmarks = source
             .EnumerateFiles(bookmarksDirectory, recursive: false)
             .Where(file => file.RelativePath.EndsWith(".bookmark.json", StringComparison.OrdinalIgnoreCase))
-            .Select(file => ParseBookmark(source, file.RelativePath))
+            .Select(file => ParseBookmark(source, file.RelativePath, schemaObservations))
             .OrderBy(bookmark => BookmarkOrder(bookmark.Name, bookmarkOrder))
             .ThenBy(bookmark => bookmark.DisplayName, StringComparer.OrdinalIgnoreCase)
             .ToArray();
@@ -34,10 +39,15 @@ internal static class PbirBookmarkParser
         return new PbirBookmarkParseResult(schemaUri, bookmarkOrder, bookmarks);
     }
 
-    private static BookmarkInventory ParseBookmark(IProjectFileSource source, string path)
+    private static BookmarkInventory ParseBookmark(
+        IProjectFileSource source,
+        string path,
+        ICollection<ReportSchemaObservation> schemaObservations)
     {
         using var document = OpenJsonDocument(source, path);
         var root = document.RootElement;
+        schemaObservations.Add(PbirSchemaObservationFactory.Create(
+            ReportSchemaArtifactKinds.Bookmark, path, root));
         TryGetObject(root, "options", out var options);
         TryGetObject(root, "explorationState", out var explorationState);
         var name = GetString(root, "name") ?? Path.GetFileNameWithoutExtension(ProjectFilePaths.GetFileNameWithoutExtension(path));

@@ -12,7 +12,7 @@ evidenced · **[design decision]** a choice, not a fact.
 |---|---|
 | Remote | `whippet-dev/pbi-assure` |
 | Branch | `master` (also the default branch) |
-| Last verified product state | Current `master` worktree — fenced TMDL expression parsing repair |
+| Last verified product state | Current `master` worktree — report-side PBIR schema observations |
 | Working tree | Expected clean of tracked modifications. Untracked local review documents may be present |
 
 `master` may have moved past that commit for documentation-only changes. Re-verify and update this
@@ -22,7 +22,7 @@ section whenever a commit changes build, test or behaviour — not for every com
 
 - `dotnet build PbiAssure.slnx` — **succeeded, 0 warnings, 0 errors** [verified]. `TreatWarningsAsErrors`
   is on, so warnings fail the build.
-- `dotnet test PbiAssure.slnx` — **441 core + 2 privacy end-to-end tests passed**, 0 failed [verified].
+- `dotnet test PbiAssure.slnx` — **453 core + 2 privacy end-to-end tests passed**, 0 failed [verified].
 - CI (`.github/workflows/ci.yml`) — **green** [verified], confirmed complete (not queued) for the
   pre-feature baseline `0c1af3c`. Runs restore, build, a Playwright Chromium install, then the whole
   solution test suite on `windows-latest`.
@@ -302,12 +302,26 @@ unanalysed files are the always-present three — verified against three Desktop
 
 ## Immediate task
 
-**Next recommended slice: implement report-side schema observations as Analysis coverage / scan
-metadata, not as a compatibility finding.** Parse the canonical Microsoft PBIR schema URI into artifact
-family and version, retain `definition/version.json`, compare against the fixture-backed exact baseline,
-and distinguish exact, recognised-unverified, unknown-family, missing and malformed metadata. Keep the
-existing property-wise parsing behaviour unchanged. The policy and evidence inventory are in
+**Completed — report-side PBIR schema observations.** `ReportSchemaObservation` now records source path,
+raw declaration, parsed family/version, expected family, fixture-backed verified version and a structured
+coverage state for each parsed report artifact. It distinguishes `VerifiedExact`,
+`RecognisedUnverifiedVersion`, `UnknownFamily`, `MetadataMissing` and `MetadataMalformed`; property-wise
+parsing never branches on those states. The exact Desktop baseline is centralised for
+`definitionProperties/2.0.0`, `versionMetadata/1.0.0`, `report/3.3.0`, `pagesMetadata/1.1.0`,
+`page/2.1.0` and `visualContainer/2.11.0`. `definition/version.json` now retains its PBIR definition
+version separately from both its schema URI and `definition.pbir`'s existing version.
+
+Non-exact observations appear as neutral, report-scoped **Analysis coverage** information, grouped by
+artifact/type/state/version with raw paths behind technical details. Exact observations are silent, no
+Finding is created and CSV is unchanged. The public JSON inventory changed additively through report
+`SchemaObservations`, `VersionMetadataPath` and `PbirDefinitionVersion`; its schema version is `0.22`.
+Bookmark and report-extension declarations are deliberately recognised-unverified because no committed
+Desktop fixture establishes their exact baselines. The policy and evidence inventory are in
 [the encountered PBIR schema compatibility review](../reviews/encountered-pbir-schema-compatibility-policy.md).
+
+**Next recommended slice: connector coverage measurement.** Count unrecognised connector calls in
+redistribution-safe or local real-report examples before deciding which connector families are worth
+implementing.
 
 The compatibility investigation established that current parsers retain several schema URIs but never
 branch on them. Exact versions in committed Desktop fixtures are `definitionProperties/2.0.0`,

@@ -19,6 +19,17 @@ public sealed record ReportInventory(
     IReadOnlyList<string> BookmarkOrder,
     IReadOnlyList<BookmarkInventory> Bookmarks)
 {
+    /// <summary>
+    /// Report-side PBIR schema declarations observed while parsing this report. Exact fixture-backed
+    /// baselines are retained for technical inventory but remain silent in normal coverage presentation.
+    /// </summary>
+    public IReadOnlyList<ReportSchemaObservation> SchemaObservations { get; init; } = [];
+
+    public string? VersionMetadataPath { get; init; }
+
+    /// <summary>The PBIR definition version from definition/version.json, distinct from its schema URI.</summary>
+    public string? PbirDefinitionVersion { get; init; }
+
     public ThemeInventory Theme { get; init; } = ThemeInventory.Unavailable;
 
     public ThemeReviewInventory ThemeReview { get; init; } = ThemeReviewInventory.Unavailable;

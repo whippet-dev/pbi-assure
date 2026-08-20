@@ -14,10 +14,12 @@ internal static class PbirReportParser
         }
 
         var relativeReportPath = ProjectFilePaths.Normalize(reportDirectory);
-        var modelConnection = ParseModelConnection(source, reportDirectory);
-        var bookmarkResult = PbirBookmarkParser.Parse(source, reportDirectory);
+        var schemaObservations = new List<ReportSchemaObservation>();
+        var modelConnection = ParseModelConnection(source, reportDirectory, schemaObservations);
+        var versionMetadata = ParseVersionMetadata(source, reportDirectory, schemaObservations);
+        var bookmarkResult = PbirBookmarkParser.Parse(source, reportDirectory, schemaObservations);
         var reportExtensionsPath = ProjectFilePaths.Combine(reportDirectory, "definition", "reportExtensions.json");
-        var reportExtensions = ParseReportExtensions(source, reportExtensionsPath);
+        var reportExtensions = ParseReportExtensions(source, reportExtensionsPath, schemaObservations);
         var reportDefinitionPath = ProjectFilePaths.Combine(reportDirectory, "definition", "report.json");
         string? reportSchemaUri = null;
         var theme = ThemeInventory.Unavailable;
@@ -27,6 +29,8 @@ internal static class PbirReportParser
         {
             using var reportDefinition = OpenJsonDocument(source, reportDefinitionPath);
             reportSchemaUri = GetString(reportDefinition.RootElement, "$schema");
+            schemaObservations.Add(PbirSchemaObservationFactory.Create(
+                ReportSchemaArtifactKinds.Report, reportDefinitionPath, reportDefinition.RootElement));
             theme = PbirThemeParser.Parse(source, reportDirectory, reportDefinition.RootElement);
             reportFieldReferences = PbirFieldReferenceExtractor.Extract(reportDefinition.RootElement);
             reportFilters = ParseFilters(reportDefinition.RootElement);
@@ -58,6 +62,9 @@ internal static class PbirReportParser
                 BookmarkOrder: bookmarkResult.BookmarkOrder,
                 Bookmarks: bookmarkResult.Bookmarks)
             {
+                SchemaObservations = OrderObservations(schemaObservations),
+                VersionMetadataPath = versionMetadata.Path,
+                PbirDefinitionVersion = versionMetadata.Version,
                 Theme = theme,
                 ThemeReview = ThemeReviewAnalyzer.Analyze(theme, []),
             };
@@ -66,13 +73,21 @@ internal static class PbirReportParser
         using var pagesMetadata = OpenJsonDocument(source, pagesMetadataPath);
         var metadataRoot = pagesMetadata.RootElement;
         var schemaUri = GetString(metadataRoot, "$schema");
+        schemaObservations.Add(PbirSchemaObservationFactory.Create(
+            ReportSchemaArtifactKinds.PagesMetadata, pagesMetadataPath, metadataRoot));
         var activePageName = GetString(metadataRoot, "activePageName");
         var landingPageName = GetString(metadataRoot, "landingPageName");
         var pageOrder = ReadPageOrder(metadataRoot);
 
         var pages = source
             .EnumerateDirectories(pagesDirectory)
-            .Select(directory => ParsePage(source, ProjectFilePaths.Combine(pagesDirectory, directory), pageOrder, activePageName, theme))
+            .Select(directory => ParsePage(
+                source,
+                ProjectFilePaths.Combine(pagesDirectory, directory),
+                pageOrder,
+                activePageName,
+                theme,
+                schemaObservations))
             .Where(page => page is not null)
             .Cast<PageInventory>()
             .OrderBy(page => page.Order ?? int.MaxValue)
@@ -100,12 +115,18 @@ internal static class PbirReportParser
             BookmarkOrder: bookmarkResult.BookmarkOrder,
             Bookmarks: bookmarkResult.Bookmarks)
         {
+            SchemaObservations = OrderObservations(schemaObservations),
+            VersionMetadataPath = versionMetadata.Path,
+            PbirDefinitionVersion = versionMetadata.Version,
             Theme = theme,
             ThemeReview = ThemeReviewAnalyzer.Analyze(theme, pages),
         };
     }
 
-    private static ReportModelConnectionInventory ParseModelConnection(IProjectFileSource source, string reportDirectory)
+    private static ReportModelConnectionInventory ParseModelConnection(
+        IProjectFileSource source,
+        string reportDirectory,
+        List<ReportSchemaObservation> schemaObservations)
     {
         var definitionPath = ProjectFilePaths.Combine(reportDirectory, "definition.pbir");
         var relativePath = definitionPath;
@@ -119,6 +140,8 @@ internal static class PbirReportParser
         using var document = OpenJsonDocument(source, definitionPath);
         var root = document.RootElement;
         var schemaUri = GetString(root, "$schema");
+        schemaObservations.Add(PbirSchemaObservationFactory.Create(
+            ReportSchemaArtifactKinds.DefinitionProperties, definitionPath, root));
         var version = GetString(root, "version");
         if (!TryGetObject(root, "datasetReference", out var datasetReference))
         {
@@ -174,7 +197,10 @@ internal static class PbirReportParser
             null, null, null, false);
     }
 
-    private static ReportExtensionParseResult ParseReportExtensions(IProjectFileSource source, string path)
+    private static ReportExtensionParseResult ParseReportExtensions(
+        IProjectFileSource source,
+        string path,
+        List<ReportSchemaObservation> schemaObservations)
     {
         if (!source.FileExists(path))
         {
@@ -183,6 +209,8 @@ internal static class PbirReportParser
 
         using var document = OpenJsonDocument(source, path);
         var root = document.RootElement;
+        schemaObservations.Add(PbirSchemaObservationFactory.Create(
+            ReportSchemaArtifactKinds.ReportExtension, path, root));
         var extensionName = GetString(root, "name") ?? "extension";
         var measures = new List<ReportMeasureInventory>();
         if (root.TryGetProperty("entities", out var entities) && entities.ValueKind == JsonValueKind.Array)
@@ -220,6 +248,24 @@ internal static class PbirReportParser
             path, GetString(root, "$schema"), measures.ToArray());
     }
 
+    private static VersionMetadataParseResult ParseVersionMetadata(
+        IProjectFileSource source,
+        string reportDirectory,
+        List<ReportSchemaObservation> schemaObservations)
+    {
+        var path = ProjectFilePaths.Combine(reportDirectory, "definition", "version.json");
+        if (!source.FileExists(path))
+        {
+            return new VersionMetadataParseResult(null, null);
+        }
+
+        using var document = OpenJsonDocument(source, path);
+        var root = document.RootElement;
+        schemaObservations.Add(PbirSchemaObservationFactory.Create(
+            ReportSchemaArtifactKinds.VersionMetadata, path, root));
+        return new VersionMetadataParseResult(path, GetString(root, "version"));
+    }
+
     private static bool ReadUnrecognizedReferences(JsonElement measure) =>
         TryGetObject(measure, "references", out var references) &&
         GetBoolean(references, "unrecognizedReferences") == true;
@@ -240,12 +286,20 @@ internal static class PbirReportParser
             .ToArray();
     }
 
+    private static ReportSchemaObservation[] OrderObservations(
+        IEnumerable<ReportSchemaObservation> observations) =>
+        observations
+            .OrderBy(observation => observation.RelativePath, StringComparer.OrdinalIgnoreCase)
+            .ThenBy(observation => observation.ArtifactKind, StringComparer.Ordinal)
+            .ToArray();
+
     private static PageInventory? ParsePage(
         IProjectFileSource source,
         string pageDirectory,
         Dictionary<string, int> pageOrder,
         string? activePageName,
-        ThemeInventory theme)
+        ThemeInventory theme,
+        List<ReportSchemaObservation> schemaObservations)
     {
         var pagePath = ProjectFilePaths.Combine(pageDirectory, "page.json");
         if (!source.FileExists(pagePath))
@@ -255,10 +309,12 @@ internal static class PbirReportParser
 
         using var pageDocument = OpenJsonDocument(source, pagePath);
         var pageRoot = pageDocument.RootElement;
+        schemaObservations.Add(PbirSchemaObservationFactory.Create(
+            ReportSchemaArtifactKinds.Page, pagePath, pageRoot));
         var name = GetString(pageRoot, "name") ?? ProjectFilePaths.GetFileName(pageDirectory);
         var displayName = GetString(pageRoot, "displayName") ?? name;
         var visualsDirectory = ProjectFilePaths.Combine(pageDirectory, "visuals");
-        var containers = ParseContainers(source, visualsDirectory, theme);
+        var containers = ParseContainers(source, visualsDirectory, theme, schemaObservations);
 
         return new PageInventory(
             Name: name,
@@ -325,12 +381,16 @@ internal static class PbirReportParser
             .ToArray();
     }
 
-    private static ContainerParseResult ParseContainers(IProjectFileSource source, string visualsDirectory, ThemeInventory theme)
+    private static ContainerParseResult ParseContainers(
+        IProjectFileSource source,
+        string visualsDirectory,
+        ThemeInventory theme,
+        ICollection<ReportSchemaObservation> schemaObservations)
     {
         var containers = source
             .EnumerateFiles(visualsDirectory)
             .Where(file => string.Equals(ProjectFilePaths.GetFileName(file.RelativePath), "visual.json", StringComparison.OrdinalIgnoreCase))
-            .Select(file => ParseContainer(source, file.RelativePath, theme))
+            .Select(file => ParseContainer(source, file.RelativePath, theme, schemaObservations))
             .ToArray();
 
         return new ContainerParseResult(
@@ -344,10 +404,16 @@ internal static class PbirReportParser
                 .ToArray());
     }
 
-    private static ParsedContainer ParseContainer(IProjectFileSource source, string visualPath, ThemeInventory theme)
+    private static ParsedContainer ParseContainer(
+        IProjectFileSource source,
+        string visualPath,
+        ThemeInventory theme,
+        ICollection<ReportSchemaObservation> schemaObservations)
     {
         using var visualDocument = OpenJsonDocument(source, visualPath);
         var visualRoot = visualDocument.RootElement;
+        schemaObservations.Add(PbirSchemaObservationFactory.Create(
+            ReportSchemaArtifactKinds.VisualContainer, visualPath, visualRoot));
         var name = GetString(visualRoot, "name") ??
                    ProjectFilePaths.GetFileName(ProjectFilePaths.GetDirectoryName(visualPath)) ??
                    ProjectFilePaths.GetFileNameWithoutExtension(visualPath) ??
@@ -547,6 +613,8 @@ internal static class PbirReportParser
         string? Path,
         string? SchemaUri,
         ReportMeasureInventory[] Measures);
+
+    private sealed record VersionMetadataParseResult(string? Path, string? Version);
 
     private sealed record ParsedContainer(VisualInventory? Visual, VisualGroupInventory? Group);
 
