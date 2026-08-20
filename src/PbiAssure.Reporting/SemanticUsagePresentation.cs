@@ -40,6 +40,13 @@ internal static class SemanticUsagePresentation
                     ? "Used as a relationship key"
                     : $"Relationship key between {usage.Table}[{usage.ObjectName}] and {otherEndpoint.ToTable}[{otherEndpoint.ToObjectName}]";
             }
+
+            var objectLevelPermission = incoming.FirstOrDefault(dependency =>
+                dependency.DependencyKind == SemanticDependencyKinds.ObjectLevelPermission);
+            if (objectLevelPermission is not null)
+            {
+                return $"Needed by the {objectLevelPermission.FromObjectName} object-level security permission";
+            }
         }
 
         // Every remaining kind carries reachability from a real predecessor, so each is eligible only

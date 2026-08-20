@@ -126,16 +126,11 @@ public sealed class RoleLimitationPrecisionTests
     }
 
     /// <summary>
-    /// Object-level security lives inside a table permission and names a column, so a role containing it
-    /// has unanalysed dependency-bearing content. This slice detects its presence; it deliberately does
-    /// not parse it.
-    ///
-    /// The keyword is the camelCase form of the Tabular type name, which is TMDL's documented convention,
-    /// but no Desktop fixture proves this serialization. The test does not depend on that: an
-    /// unrecognised construct would keep the conservative impact regardless of its name.
+    /// The bounded OLS parser recognises Desktop's inline columnPermission form. That supported content
+    /// must not keep a role limitation qualifying unrelated absence states.
     /// </summary>
     [Fact]
-    public void ARoleContainingColumnPermissionsKeepsTheConservativeImpact()
+    public void ARoleContainingSupportedColumnPermissionsDoesNotKeepTheConservativeImpact()
     {
         var inventory = ScanSynthetic(
             "role Reader\n\tmodelPermission: read\n\n\ttablePermission Sales = [Region] = \"West\"\n\t\tcolumnPermission Region = None\n");
@@ -143,7 +138,7 @@ public sealed class RoleLimitationPrecisionTests
         var limitation = Assert.Single(
             inventory.AnalysisLimitations, item => item.ConstructType == "role");
         Assert.Equal(ConstructSupportStates.PartiallyAnalyzed, limitation.SupportState);
-        Assert.Equal(ConstructDependencyImpacts.MayCreateDependencies, limitation.DependencyImpact);
+        Assert.Equal(ConstructDependencyImpacts.NoKnownDependencyEffect, limitation.DependencyImpact);
     }
 
     // ---- 7. Known non-dependency metadata does not force conservatism ------------------------

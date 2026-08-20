@@ -212,7 +212,7 @@ internal static class AnalysisCoveragePresentation
     private static string ConstructLabel(string constructType) => constructType switch
     {
         "function" => "DAX user-defined functions",
-        "role" => "Row-level security roles",
+        "role" => "Security roles",
         "perspective" => "Perspectives",
         "culture" => "Cultures and translations",
         "modelDefinition" => "Model-level settings",

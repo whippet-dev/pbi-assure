@@ -20,7 +20,8 @@ input and privacy-safe identity/join contract can be specified.
 
 ## Completed core-analysis slices
 
-- Row-level security review: conditional HTML inventory of roles, model permissions and table-filter DAX,
+- Security roles review: conditional HTML inventory of roles, model permissions, table-filter DAX and
+  supported object-level permissions,
   with an explicit project-only security boundary and no new findings or classification changes.
 - Calculation groups and field parameters: first-class inventory, conservative graph traversal, friendly HTML summaries, and explicit evidence for objects reached through these features.
 - Report extensions and report-level measures: first-class inventory, visual-reference resolution, structured measure dependency traversal, and developer-friendly HTML summaries.

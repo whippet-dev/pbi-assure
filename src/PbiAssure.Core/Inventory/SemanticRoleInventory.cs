@@ -27,11 +27,17 @@ public sealed record SemanticRoleInventory(
     /// </summary>
     public bool DependencyContentFullyAccountedFor => UnanalyzedConstructs.Count == 0;
 
-    public int TablePermissionCount => TablePermissions.Count;
+    /// <summary>The number of row-level table filters stored in this role.</summary>
+    public int TablePermissionCount => TablePermissions.Count(permission => !string.IsNullOrWhiteSpace(permission.FilterExpression));
+
+    /// <summary>The number of explicitly stored object-level permissions in this role.</summary>
+    public int ObjectLevelPermissionCount => TablePermissions.Sum(permission =>
+        (string.IsNullOrWhiteSpace(permission.MetadataPermission) ? 0 : 1) + permission.ColumnPermissions.Count);
 }
 
 /// <summary>
-/// A table permission within a role: the table it filters, and the DAX filter expression.
+/// A table permission within a role. It can contain a row-level DAX filter, table-level metadata access,
+/// explicitly named column permissions, or a combination of those forms.
 ///
 /// The table is load-bearing for reference resolution. Power BI Desktop serialises column references
 /// inside the filter unqualified — <c>[Region]</c> rather than <c>Sales[Region]</c> — so the owning table
@@ -39,4 +45,14 @@ public sealed record SemanticRoleInventory(
 /// </summary>
 public sealed record SemanticTablePermissionInventory(
     string Table,
-    string FilterExpression);
+    string FilterExpression)
+{
+    /// <summary>The table-level object-level metadata permission, when stored by Power BI Desktop.</summary>
+    public string? MetadataPermission { get; init; }
+
+    /// <summary>Explicit column-level object-level permissions stored under this table permission.</summary>
+    public IReadOnlyList<SemanticColumnPermissionInventory> ColumnPermissions { get; init; } = [];
+}
+
+/// <summary>An explicitly named column-level object-level permission within a role table permission.</summary>
+public sealed record SemanticColumnPermissionInventory(string Column, string Permission);

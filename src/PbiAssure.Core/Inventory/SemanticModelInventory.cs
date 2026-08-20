@@ -8,7 +8,7 @@ public sealed record SemanticModelInventory(
     IReadOnlyList<SemanticNamedExpressionInventory> NamedExpressions)
 {
     /// <summary>
-    /// Row-level security roles. Additive: consumers that ignore this behave as they did before it
+    /// Stored security roles. Additive: consumers that ignore this behave as they did before it
     /// existed. Only dependency-bearing parts of a role are modelled; see SemanticRoleInventory.
     /// </summary>
     public IReadOnlyList<SemanticRoleInventory> Roles { get; init; } = [];

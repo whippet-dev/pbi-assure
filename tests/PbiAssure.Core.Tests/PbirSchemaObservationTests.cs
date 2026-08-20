@@ -27,6 +27,15 @@ public sealed class PbirSchemaObservationTests
         AssertAllExact(observations, ReportSchemaArtifactKinds.VisualContainer, "visualContainer", "2.11.0");
     }
 
+    [Fact]
+    public void DesktopAuthoredOlsFixtureAddsASecondExactVisualContainerBaseline()
+    {
+        var root = Path.Combine(RepositoryRoot(), "tests", "fixtures", "desktop-ols-evidence");
+        var observations = Assert.Single(ProjectScanner.Scan(root).Reports).SchemaObservations;
+
+        AssertAllExact(observations, ReportSchemaArtifactKinds.VisualContainer, "visualContainer", "2.12.0");
+    }
+
     [Theory]
     [InlineData("3.2.9")]
     [InlineData("3.3.1")]
@@ -160,7 +169,7 @@ public sealed class PbirSchemaObservationTests
         var inventory = Scan(reportSchema: Schema("report", "3.4.0", definitionArtifact: true));
         var json = System.Text.Json.JsonSerializer.Serialize(inventory);
 
-        Assert.Contains("\"SchemaVersion\":\"0.22\"", json, StringComparison.Ordinal);
+        Assert.Contains("\"SchemaVersion\":\"0.23\"", json, StringComparison.Ordinal);
         Assert.Contains("\"SchemaObservations\"", json, StringComparison.Ordinal);
         Assert.Contains("\"RecognisedUnverifiedVersion\"", json, StringComparison.Ordinal);
     }

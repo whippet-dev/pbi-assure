@@ -11,7 +11,7 @@ PBI Assure classifies semantic-model objects by traversing an evidence-backed de
 - Sort-by column links.
 - Hierarchy levels and their backing columns.
 - Active and inactive relationship endpoint columns.
-- Row-level security table permission filter expressions. References inside a filter resolve against the table named by the permission, because Power BI Desktop serialises same-table column references unqualified.
+- Row-level security table permission filter expressions, plus explicitly named column-level object-level security permissions. References inside a filter resolve against the table named by the permission, because Power BI Desktop serialises same-table column references unqualified.
 - Perspective members: the tables, columns, measures and hierarchies a perspective exposes.
 - DAX user-defined function bodies: what a function references, and which functions call one another. A function is a dependency node rather than a root, so an uncalled function does not keep what it references alive.
 - The table containing each column, measure, or hierarchy level.
@@ -48,9 +48,9 @@ When a report uses a calculation-group table, every calculation item is treated 
 
 ## Security metadata
 
-A column referenced only by a role's table permission filter is required to enforce that filter, so it is not a deletion candidate. Such objects are `StructurallyRequired`: the model requires them, but no report references them, which is exactly what that state means. They are deliberately not `DirectlyUsed`, because that state means report metadata references the object.
+A column referenced only by a role's table permission filter, or named explicitly by a column-level object-level security permission, is required by stored model security metadata and is not a deletion candidate. Such objects are `StructurallyRequired`: the model requires them, but no report references them, which is exactly what that state means. They are deliberately not `DirectlyUsed`, because that state means report metadata references the object.
 
-Only table permission filters are analysed. A role also carries column permissions, which name columns for object-level security and are not read, so roles remain a partially analysed construct and continue to record an analysis limitation. Role membership is held in the Power BI service and never appears in a project, so it is outside the analysed scope entirely rather than an unanalysed construct.
+PBI Assure inventories table-level metadata permissions and explicitly named column permissions. A table-level permission is shown in Security roles but does not make every column in that table structurally required: it does not explicitly name those columns. Other role metadata can remain unanalysed, so roles remain a partially analysed construct. Role membership is held in the Power BI service and never appears in a project, so it is outside the analysed scope entirely rather than an unanalysed construct.
 
 ## Perspectives
 

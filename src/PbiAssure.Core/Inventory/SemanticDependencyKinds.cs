@@ -21,6 +21,9 @@ public static class SemanticDependencyKinds
     /// <summary>A reference from a role table permission filter expression.</summary>
     public const string TablePermission = "TablePermission";
 
+    /// <summary>An explicitly named column-level object-level security permission.</summary>
+    public const string ObjectLevelPermission = "ObjectLevelPermission";
+
     /// <summary>A reference from a perspective to a model object it exposes.</summary>
     public const string PerspectiveMember = "PerspectiveMember";
 

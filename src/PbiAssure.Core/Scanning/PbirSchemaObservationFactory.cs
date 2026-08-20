@@ -20,12 +20,14 @@ internal static class PbirSchemaObservationFactory
             [ReportSchemaArtifactKinds.Report] = new("report", "3.3.0"),
             [ReportSchemaArtifactKinds.PagesMetadata] = new("pagesMetadata", "1.1.0"),
             [ReportSchemaArtifactKinds.Page] = new("page", "2.1.0"),
-            [ReportSchemaArtifactKinds.VisualContainer] = new("visualContainer", "2.11.0"),
+            // Both versions below are retained by committed, Desktop-authored PBIP fixtures. Exact
+            // evidence is deliberately version-specific; a different version is still unverified.
+            [ReportSchemaArtifactKinds.VisualContainer] = new("visualContainer", "2.11.0", "2.12.0"),
             // These families are known to PBI Assure, but committed Desktop fixtures do not yet establish
             // an exact baseline. A well-formed declaration therefore stays recognised and unverified.
-            [ReportSchemaArtifactKinds.BookmarksMetadata] = new("bookmarksMetadata", null),
-            [ReportSchemaArtifactKinds.Bookmark] = new("bookmark", null),
-            [ReportSchemaArtifactKinds.ReportExtension] = new("reportExtension", null),
+            [ReportSchemaArtifactKinds.BookmarksMetadata] = new("bookmarksMetadata"),
+            [ReportSchemaArtifactKinds.Bookmark] = new("bookmark"),
+            [ReportSchemaArtifactKinds.ReportExtension] = new("reportExtension"),
         };
 
     public static ReportSchemaObservation Create(string artifactKind, string relativePath, JsonElement root)
@@ -64,11 +66,20 @@ internal static class PbirSchemaObservationFactory
                 ReportSchemaObservationStates.UnknownFamily);
         }
 
-        var state = baseline.VerifiedVersion is not null &&
-                    Version.Parse(baseline.VerifiedVersion).Equals(version)
+        var verifiedVersion = baseline.VerifiedVersions.FirstOrDefault(candidate =>
+            Version.Parse(candidate).Equals(version));
+        var state = verifiedVersion is not null
             ? ReportSchemaObservationStates.VerifiedExact
             : ReportSchemaObservationStates.RecognisedUnverifiedVersion;
-        return Observation(artifactKind, baseline, relativePath, rawSchemaUri, family, version.ToString(3), state);
+        return Observation(
+            artifactKind,
+            baseline,
+            relativePath,
+            rawSchemaUri,
+            family,
+            version.ToString(3),
+            state,
+            verifiedVersion ?? baseline.VerifiedVersions.FirstOrDefault());
     }
 
     private static ReportSchemaObservation Observation(
@@ -78,7 +89,8 @@ internal static class PbirSchemaObservationFactory
         string? rawSchemaUri,
         string? family,
         string? version,
-        string state) =>
+        string state,
+        string? verifiedBaselineVersion = null) =>
         new(
             ArtifactKind: artifactKind,
             ExpectedSchemaFamily: baseline.Family,
@@ -87,7 +99,7 @@ internal static class PbirSchemaObservationFactory
             SchemaFamily: family,
             SchemaVersion: version,
             State: state,
-            VerifiedBaselineVersion: baseline.VerifiedVersion);
+            VerifiedBaselineVersion: verifiedBaselineVersion ?? baseline.VerifiedVersions.FirstOrDefault());
 
     private static bool TryParseCanonicalUri(string rawSchemaUri, out string family, out Version version)
     {
@@ -133,5 +145,5 @@ internal static class PbirSchemaObservationFactory
         return !string.IsNullOrWhiteSpace(family);
     }
 
-    private sealed record SchemaBaseline(string Family, string? VerifiedVersion);
+    private sealed record SchemaBaseline(string Family, params string[] VerifiedVersions);
 }

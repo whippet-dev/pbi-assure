@@ -1,0 +1,11 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/gitIntegration/platformProperties/2.0.0/schema.json",
+  "metadata": {
+    "type": "SemanticModel",
+    "displayName": "desktop-ols-evidence"
+  },
+  "config": {
+    "version": "2.0",
+    "logicalId": "8ec05c88-a4f9-48e6-a37f-eb5e71519e18"
+  }
+}

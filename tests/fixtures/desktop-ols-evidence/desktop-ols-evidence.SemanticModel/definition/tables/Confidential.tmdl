@@ -1,0 +1,40 @@
+table Confidential
+	lineageTag: 5f0005c9-2107-49db-81ba-82d291817dfd
+
+	column RecordID
+		dataType: int64
+		formatString: 0
+		lineageTag: 28dea396-1712-498f-9a13-0bb259b10d11
+		summarizeBy: count
+		sourceColumn: RecordID
+
+		annotation SummarizationSetBy = Automatic
+
+	column Category
+		dataType: string
+		lineageTag: 9a4ddb46-86ae-4333-ac92-bfe15621cda5
+		summarizeBy: none
+		sourceColumn: Category
+
+		annotation SummarizationSetBy = Automatic
+
+	column Notes
+		dataType: string
+		lineageTag: 0278e84e-96d7-4621-9aad-8d0f0df4167c
+		summarizeBy: none
+		sourceColumn: Notes
+
+		annotation SummarizationSetBy = Automatic
+
+	partition Confidential = m
+		mode: import
+		source =
+				let
+				  Source = Table.FromRows(Json.Document(Binary.Decompress(Binary.FromText("i45WMlTSUQpIrCzKz8kBsoJSi0uKMpNLUlMUCiCCCpl5aflFuYklmfl5SrE60UpGQGUeQahqU3MLcvIrU1MxFBsD1bll5iXmJaei6kgDC2YmYppvAlTom5iXmJ6am5pXgqorFy6Ooc0UqNInNT0RzRc5ICFUxbEA", BinaryEncoding.Base64), Compression.Deflate)), let _t = ((type nullable text) meta [Serialized.Text = true]) in type table [RecordID = _t, Category = _t, Notes = _t]),
+				  #"Changed column type" = Table.TransformColumnTypes(Source, {{"RecordID", Int64.Type}, {"Category", type text}, {"Notes", type text}}, "en-US")
+				in
+				  #"Changed column type"
+
+	annotation PBI_NavigationStepName = Navigation
+
+	annotation PBI_ResultType = Table

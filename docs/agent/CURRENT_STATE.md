@@ -130,16 +130,17 @@ unused with no indication that security metadata had been skipped.
 - **`ClassificationConfidence`** on `SemanticObjectUsage` — `Established` or
   `QualifiedByLimitation`. `SemanticUsageConfidenceQualifier` marks absence-state objects in a model
   that holds a limitation whose impact is `MayCreateDependencies` or `DependencyEffectUnknown`.
-- **Row-level security table permission dependencies.** `definition/roles/<role>.tmdl` is parsed;
-  each `tablePermission` filter's references resolve against the table the permission names — Desktop
-  serialises them unqualified, `[Region]` not `Sales[Region]` — and become model-structure roots. An
-  object required by a role filter is therefore `StructurallyRequired`, via ordinary traversal rather
-  than any RLS-specific rule. Column permissions are **not** parsed, so roles stay `PartiallyAnalyzed`.
-- **Compact row-level security review in HTML.** When a model defines roles, a conditional review section
-  shows each role's model permission and table-filter DAX, grouped by semantic model and ordered
-  deterministically. It presents retained facts only: there are no new findings and no changes to usage,
-  JSON or CSV. The section states that Power BI Service membership and effective runtime identity are
-  unavailable, and that complete object-level security and column permissions are not assessed.
+- **Bounded role-security dependencies.** The Desktop-authored `desktop-ols-evidence` fixture pins the
+  supported Power BI serialization. `definition/roles/<role>.tmdl` is parsed; each
+  `tablePermission` filter resolves against its owning table and becomes a model-structure root. Desktop's
+  explicit `columnPermission <column> = <permission>` form is also retained and roots only that named
+  column. Table-level `metadataPermission` is retained for security inventory but does not root every
+  child column. Roles remain `PartiallyAnalyzed` when other role metadata is not accounted for.
+- **Compact Security roles review in HTML.** When a model defines roles, a conditional review section
+  shows model permission, row-level filter DAX, table-level metadata permissions and explicitly named
+  column permissions, grouped by semantic model and ordered deterministically. It presents retained facts
+  only: there are no findings or Service membership/effective-runtime verdicts. The role/permission
+  inventory is additive JSON; semantic-usage CSV schema is unchanged.
 - **Perspective member dependencies.** `definition/perspectives/<name>.tmdl` is parsed;
   `perspectiveTable`, `perspectiveColumn`, `perspectiveMeasure`, `perspectiveHierarchy` and
   `includeAll` become model-structure roots, so an object a perspective exposes is
@@ -268,7 +269,7 @@ unanalysed files are the always-present three — verified against three Desktop
 | Multi-parameter UDFs, other parameter type hints, `VAR`/`RETURN` or multi-line bodies | Not observed. Every function in `desktop-udf-references` is one line, and only one takes a parameter at all |
 | Perspective `includeAll`, `perspectiveHierarchy` and perspective sets in real Desktop output | Implemented from Microsoft-documented syntax for the first two; no fixture emits any of them |
 | Whether current Desktop can still produce TMSL `model.bim` | Unknown |
-| RLS forms beyond the two the fixture proves — cross-table filters, OLS column permissions, DirectQuery/Direct Lake roles | **Open.** Parser tests cover more shapes synthetically; only the two static/dynamic same-table forms are Desktop-verified |
+| Role-security forms beyond the committed evidence — cross-table filters, other OLS permission shapes, DirectQuery/Direct Lake roles | **Open.** Desktop evidence proves same-table RLS filters, inline column permissions and table metadata permissions; parser tests cover further bounded shapes synthetically |
 | `PBI-ACCESS-001` sample finding volume | **Measured in 12 local PBIP projects (216 representative findings after deliberate test-format duplicates are not double-counted).** Only 13 are plausibly decorative; 22 text boxes are uncertain because on-canvas text is not exposed. Do not change the rule from visual type alone. See [alt-text measurement](../reviews/access-001-alt-text-measurement.md) [verified] |
 
 ### Settled, so it does not need re-investigating
@@ -308,13 +309,13 @@ coverage state for each parsed report artifact. It distinguishes `VerifiedExact`
 `RecognisedUnverifiedVersion`, `UnknownFamily`, `MetadataMissing` and `MetadataMalformed`; property-wise
 parsing never branches on those states. The exact Desktop baseline is centralised for
 `definitionProperties/2.0.0`, `versionMetadata/1.0.0`, `report/3.3.0`, `pagesMetadata/1.1.0`,
-`page/2.1.0` and `visualContainer/2.11.0`. `definition/version.json` now retains its PBIR definition
+`page/2.1.0` and `visualContainer/2.11.0` plus `visualContainer/2.12.0`. `definition/version.json` now retains its PBIR definition
 version separately from both its schema URI and `definition.pbir`'s existing version.
 
 Non-exact observations appear as neutral, report-scoped **Analysis coverage** information, grouped by
 artifact/type/state/version with raw paths behind technical details. Exact observations are silent, no
 Finding is created and CSV is unchanged. The public JSON inventory changed additively through report
-`SchemaObservations`, `VersionMetadataPath` and `PbirDefinitionVersion`; its schema version is `0.22`.
+`SchemaObservations`, `VersionMetadataPath` and `PbirDefinitionVersion`; its schema version is `0.23`.
 Bookmark and report-extension declarations are deliberately recognised-unverified because no committed
 Desktop fixture establishes their exact baselines. The policy and evidence inventory are in
 [the encountered PBIR schema compatibility review](../reviews/encountered-pbir-schema-compatibility-policy.md).
@@ -332,7 +333,7 @@ redistribution-safe fixture or an existing local sample contains an unrecognised
 
 The compatibility investigation established that current parsers retain several schema URIs but never
 branch on them. Exact versions in committed Desktop fixtures are `definitionProperties/2.0.0`,
-`report/3.3.0`, `pagesMetadata/1.1.0`, `page/2.1.0`, `visualContainer/2.11.0` and
+`report/3.3.0`, `pagesMetadata/1.1.0`, `page/2.1.0`, `visualContainer/2.11.0`, `visualContainer/2.12.0` and
 `versionMetadata/1.0.0` (the last is encountered in `version.json` but is not currently retained). A
 different known-family version is unverified rather than automatically unsupported. Compatibility state
 belongs first in Analysis coverage; no `PBI-COMPAT-003` finding is justified yet.

@@ -19,7 +19,7 @@ parses. The parser still reads known properties and silently ignores unknown one
 `ReportSchemaObservation` records its schema evidence without gating parsing. The committed Desktop
 fixtures establish an exact baseline for
 `definitionProperties/2.0.0`, `report/3.3.0`, `pagesMetadata/1.1.0`, `page/2.1.0` and
-`visualContainer/2.11.0`. They also contain `versionMetadata/1.0.0` with PBIR definition version `2.0.0`,
+`visualContainer/2.11.0` and `visualContainer/2.12.0`. They also contain `versionMetadata/1.0.0` with PBIR definition version `2.0.0`,
 which is now retained separately from the existing `definition.pbir` version. Bookmark schemas exist only in local sample evidence and
 `reportExtension/1.0.0` only in synthetic tests.
 
@@ -64,17 +64,18 @@ The broken-target case is deliberately synthetic; Desktop persistence of stale l
 not claimed. `LandingPageName` is an additive JSON inventory property; semantic usage and CSV are
 unchanged. Validation: Release build clean, **426 core + 2 privacy E2E tests passed**.
 
-A compact **Row-level security** review is now part of the generated HTML whenever a semantic model
-defines roles. It groups roles by model, shows model permission and the exact retained table-filter DAX,
-and keeps technical source paths behind disclosure. Models, roles and filters are ordered
-deterministically; long and multiline expressions wrap safely at desktop and mobile widths.
+A compact **Security roles** review is now part of the generated HTML whenever a semantic model defines
+roles. It groups roles by model, shows model permission, retained row-level filter DAX, table-level
+metadata permissions and explicitly named column permissions, and keeps technical source paths behind
+disclosure. Models, roles and filters are ordered deterministically; long and multiline expressions wrap
+safely at desktop and mobile widths.
 
-This is an inventory/review surface, not a security verdict. It adds no findings and changes no parsing,
-usage classification, JSON or CSV. The page explicitly says that PBI Assure cannot see Power BI Service
-role membership, assess effective runtime identity, confirm the overall security design, or fully assess
-object-level security and column permissions. Validation: Release build clean, **418 core + 2 privacy
-E2E tests passed**; the real `desktop-semantic-constructs` output was reviewed at desktop and 375px with
-no horizontal overflow.
+This is an inventory/review surface, not a security verdict. It adds no findings. Explicit column-level
+OLS can legitimately make the named semantic object `StructurallyRequired`; table-level OLS never makes
+all child columns used. The role/permission inventory is additive JSON and the semantic-usage CSV schema
+is unchanged. The page explicitly says that PBI Assure cannot see Power BI Service role membership,
+assess effective runtime identity, confirm the overall security design, or determine access through other
+paths.
 
 The first post-confidence feature slice is complete: `PBI-MODEL-005` surfaces **Reference not found**
 Warnings for evidence-safe unresolved semantic dependencies. It does not surface every retained
@@ -182,13 +183,10 @@ The product backlog was freshly re-ranked on 2026-08-20 after the schema, naviga
 evidence work. The decision and the scored top five are in
 [the product-value re-rank](../reviews/product-value-rerank-2026-08-20.md).
 
-**Next: create a Desktop-authored OLS evidence fixture; do not implement OLS parsing in the same task.**
-Use synthetic `Employee` and `Confidential` tables. Through Power BI Desktop TMDL view, apply one
-column-level `metadataPermission: none` to `Employee[Salary]` and one table-level permission to
-`Confidential`; ensure those objects have no other report/model use. Save, close, reopen and save a copy,
-then record the exact `definition/roles/*.tmdl` shape and round-trip stability. Scan the fixture with the
-current product to pin the pre-change usage state, analysis limitation and RLS HTML. Proceed to an OLS
-inventory/structural-dependency design only if the permission targets are explicit and deterministic.
+**Next recommended investigation: measure bookmark-only semantic references before designing bookmark
+graph edges.** The Desktop-authored `desktop-ols-evidence` fixture now pins the supported OLS forms: inline
+`columnPermission Salary = none` and table-level `metadataPermission: none`. It is deliberately narrow;
+other OLS shapes still need Desktop evidence before they are interpreted.
 
 After that evidence task, measure bookmark-only semantic references before designing bookmark graph edges,
 then create a controlled inactive-relationship/`USERELATIONSHIP` fixture. The existing role/perspective
@@ -225,7 +223,7 @@ blocking rather than merely sequenced:
 
 ## Missing evidence
 
-- RLS forms beyond the two the Desktop fixture proves — cross-table filters, column permissions (OLS)
+- Role-security forms beyond the committed Desktop fixtures — cross-table filters, other OLS permission shapes
 - A Desktop-authored local/bound report-measure shape, or trustworthy source-model metadata for a
   `byConnection` report. The observed live-connect UDF expression was rejected and is not a valid
   dependency fixture. See [the evidence review](../reviews/report-level-measure-udf-fixture-design.md).

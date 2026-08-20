@@ -769,8 +769,8 @@ internal static class SemanticDependencyAnalyzer
     /// mechanism relationship endpoints use, so ordinary traversal produces the classification rather
     /// than any RLS-specific rule.
     ///
-    /// Only table permissions are interpreted. Other role content is not, which is why roles remain a
-    /// partially analysed construct in the definition-file registry.
+    /// Row-level filters and explicitly named column-level object permissions are interpreted. Other
+    /// role content is not, which is why roles remain partially analysed in the definition-file registry.
     /// </summary>
     private static void AnalyzeRoles(
         SemanticModelInventory model,
@@ -797,17 +797,51 @@ internal static class SemanticDependencyAnalyzer
                     continue;
                 }
 
-                AddDaxDependencies(
-                    model,
-                    permission.Table,
-                    role.RelativePath,
-                    source,
-                    permission.FilterExpression,
-                    SemanticDependencyKinds.TablePermission,
-                    lookup,
-                    dependencies,
-                    unresolved,
-                    structuralRoots);
+                if (!string.IsNullOrWhiteSpace(permission.FilterExpression))
+                {
+                    AddDaxDependencies(
+                        model,
+                        permission.Table,
+                        role.RelativePath,
+                        source,
+                        permission.FilterExpression,
+                        SemanticDependencyKinds.TablePermission,
+                        lookup,
+                        dependencies,
+                        unresolved,
+                        structuralRoots);
+                }
+
+                foreach (var columnPermission in permission.ColumnPermissions)
+                {
+                    if (lookup.TryResolveQualified(
+                            permission.Table,
+                            columnPermission.Column,
+                            out var target,
+                            out var reason,
+                            out var resolutionOutcome))
+                    {
+                        dependencies.Add(CreateEdge(
+                            model.Name,
+                            source,
+                            target,
+                            SemanticDependencyKinds.ObjectLevelPermission,
+                            role.RelativePath,
+                            $"{permission.Table}[{columnPermission.Column}] = {columnPermission.Permission}"));
+                        structuralRoots.Add(NodeKey(model.Name, target));
+                    }
+                    else
+                    {
+                        unresolved.Add(CreateUnresolved(
+                            model.Name,
+                            source,
+                            SemanticDependencyKinds.ObjectLevelPermission,
+                            $"{permission.Table}[{columnPermission.Column}]",
+                            resolutionOutcome,
+                            $"Role '{role.Name}' object-level permission: {reason}",
+                            role.RelativePath));
+                    }
+                }
             }
         }
     }

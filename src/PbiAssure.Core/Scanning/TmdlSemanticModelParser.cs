@@ -308,8 +308,8 @@ internal static class TmdlSemanticModelParser
         };
 
     /// <summary>
-    /// Table-permission constructs that cannot reference a model object. Deliberately excludes
-    /// columnPermission, which names a column for object-level security and is not analysed.
+    /// Table-permission constructs that cannot reference a model object. Column permissions are parsed
+    /// separately because they explicitly name a column for object-level security.
     /// </summary>
     private static readonly HashSet<string> TablePermissionConstructsWithoutObjectReferences =
         new(StringComparer.OrdinalIgnoreCase)
@@ -501,9 +501,8 @@ internal static class TmdlSemanticModelParser
     }
 
     /// <summary>
-    /// Reads a role's table permissions. Only the dependency-bearing parts are read: the owning table
-    /// and the filter expression. Other role content, including column permissions, is not interpreted,
-    /// which is why roles remain a partially analysed construct.
+    /// Reads the supported role permission forms: row-level table filters, table-level metadata access,
+    /// and explicitly named column-level object permissions. Other role content remains conservative.
     /// </summary>
     private static SemanticRoleInventory? ParseRole(IProjectFileSource source, string path)
     {
@@ -530,14 +529,23 @@ internal static class TmdlSemanticModelParser
             if (TryParseDeclaration(lines[index].Trimmed, "tablePermission", out var table, out var inlineFilter))
             {
                 var permissionEnd = FindBlockEnd(lines, index, roleEnd);
-                var filter = ReadExpression(lines, index, permissionEnd, inlineFilter);
-                if (!string.IsNullOrWhiteSpace(filter))
+                var filter = ReadExpression(lines, index, permissionEnd, inlineFilter) ?? string.Empty;
+                var columnPermissions = ReadColumnPermissions(lines, index, permissionEnd);
+                permissions.Add(new SemanticTablePermissionInventory(table, filter)
                 {
-                    permissions.Add(new SemanticTablePermissionInventory(table, filter));
+                    MetadataPermission = FindProperty(lines, index, permissionEnd, "metadataPermission"),
+                    ColumnPermissions = columnPermissions,
+                });
+
+                var unaccountedChildren = UnaccountedChildren(
+                    lines, index, permissionEnd, TablePermissionConstructsWithoutObjectReferences).ToList();
+                if (HasOnlySupportedColumnPermissions(lines, index, permissionEnd))
+                {
+                    unaccountedChildren.RemoveAll(keyword =>
+                        string.Equals(keyword, "columnPermission", StringComparison.OrdinalIgnoreCase));
                 }
 
-                unaccounted.AddRange(UnaccountedChildren(
-                    lines, index, permissionEnd, TablePermissionConstructsWithoutObjectReferences));
+                unaccounted.AddRange(unaccountedChildren);
                 index = permissionEnd - 1;
                 continue;
             }
@@ -557,6 +565,59 @@ internal static class TmdlSemanticModelParser
         {
             UnanalyzedConstructs = unaccounted.Distinct(StringComparer.OrdinalIgnoreCase).ToArray(),
         };
+    }
+
+    private static List<SemanticColumnPermissionInventory> ReadColumnPermissions(
+        IReadOnlyList<TmdlLine> lines,
+        int declarationIndex,
+        int endIndex)
+    {
+        var childIndent = ChildIndent(lines, declarationIndex, endIndex);
+        if (childIndent < 0)
+        {
+            return [];
+        }
+
+        var permissions = new List<SemanticColumnPermissionInventory>();
+        for (var index = declarationIndex + 1; index < endIndex; index++)
+        {
+            if (lines[index].Indent != childIndent ||
+                !TryParseDeclaration(lines[index].Trimmed, "columnPermission", out var column, out var permission) ||
+                string.IsNullOrWhiteSpace(permission))
+            {
+                continue;
+            }
+
+            permissions.Add(new SemanticColumnPermissionInventory(column, permission));
+        }
+
+        return permissions;
+    }
+
+    private static bool HasOnlySupportedColumnPermissions(
+        IReadOnlyList<TmdlLine> lines,
+        int declarationIndex,
+        int endIndex)
+    {
+        var childIndent = ChildIndent(lines, declarationIndex, endIndex);
+        var foundColumnPermission = false;
+        for (var index = declarationIndex + 1; index < endIndex; index++)
+        {
+            if (lines[index].Indent != childIndent ||
+                !string.Equals(LeadingKeyword(lines[index].Trimmed), "columnPermission", StringComparison.OrdinalIgnoreCase))
+            {
+                continue;
+            }
+
+            foundColumnPermission = true;
+            if (!TryParseDeclaration(lines[index].Trimmed, "columnPermission", out _, out var permission) ||
+                string.IsNullOrWhiteSpace(permission))
+            {
+                return false;
+            }
+        }
+
+        return foundColumnPermission;
     }
 
     /// <summary>

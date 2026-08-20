@@ -74,7 +74,7 @@ public static partial class HtmlReportRenderer
         AppendSectionNavigationItem(html, "relationships", "Model relationships", "Table connections and filtering");
         if (inventory.SemanticModels.Any(model => model.Roles.Count > 0))
         {
-            AppendSectionNavigationItem(html, "row-level-security", "Row-level security", "Roles and table filters");
+            AppendSectionNavigationItem(html, "row-level-security", "Security roles", "Roles, filters and object permissions");
         }
 
         AppendSectionNavigationItem(html, "semantic-usage", "Semantic model", "Model objects and usage");
@@ -1095,9 +1095,9 @@ public static partial class HtmlReportRenderer
         }
 
         html.AppendLine("    <section id=\"row-level-security\" class=\"report-section\" data-report-section=\"row-level-security\" aria-labelledby=\"row-level-security-heading\">");
-        html.AppendLine("      <h2 id=\"row-level-security-heading\" tabindex=\"-1\">Row-level security</h2>");
-        html.AppendLine("      <p class=\"section-intro\">Review the row-level security roles and table filters saved in each semantic model.</p>");
-        html.AppendLine("      <div class=\"rls-boundary\" role=\"note\"><strong>Project definitions only</strong><p>PBI Assure can inspect RLS definitions stored in this project. It cannot see who is assigned to roles in Power BI Service, assess effective runtime identity, or confirm the overall security design. Complete object-level security and column permissions are not assessed.</p></div>");
+        html.AppendLine("      <h2 id=\"row-level-security-heading\" tabindex=\"-1\">Security roles</h2>");
+        html.AppendLine("      <p class=\"section-intro\">Review the security role definitions, row-level filters and object-level permissions saved in each semantic model.</p>");
+        html.AppendLine("      <div class=\"rls-boundary\" role=\"note\"><strong>Project definitions only</strong><p>PBI Assure shows role definitions stored in this project. It cannot see who is assigned to roles in Power BI Service, assess effective runtime identity, confirm the overall security design, or determine whether data can be accessed through another path. It reads row-level filters, table-level metadata permissions and explicitly named column permissions; other role metadata may not be fully checked.</p></div>");
         html.AppendLine("      <div class=\"rls-model-list\">");
         foreach (var model in models)
         {
@@ -1113,10 +1113,17 @@ public static partial class HtmlReportRenderer
             foreach (var role in model.Roles
                          .OrderBy(item => item.Name, StringComparer.OrdinalIgnoreCase))
             {
-                html.Append("            <details class=\"semantic-table rls-role-card\"><summary><span class=\"summary-copy\"><span class=\"kicker\">RLS role</span><strong>")
+                html.Append("            <details class=\"semantic-table rls-role-card\"><summary><span class=\"summary-copy\"><span class=\"kicker\">Security role</span><strong>")
                     .Append(Encode(role.Name)).Append("</strong><span>")
                     .Append(role.TablePermissionCount.ToString("N0", CultureInfo.InvariantCulture)).Append(' ')
-                    .Append(Pluralize(role.TablePermissionCount, "table filter", "table filters"))
+                    .Append(Pluralize(role.TablePermissionCount, "row-level filter", "row-level filters"));
+                if (role.ObjectLevelPermissionCount > 0)
+                {
+                    html.Append(" · ").Append(role.ObjectLevelPermissionCount.ToString("N0", CultureInfo.InvariantCulture)).Append(' ')
+                        .Append(Pluralize(role.ObjectLevelPermissionCount, "object-level permission", "object-level permissions"));
+                }
+
+                html
                     .AppendLine("</span></span></summary>");
                 html.AppendLine("              <div class=\"rls-role-body\">");
                 if (!string.IsNullOrWhiteSpace(role.ModelPermission))
@@ -1127,16 +1134,19 @@ public static partial class HtmlReportRenderer
                 }
 
                 html.AppendLine("                <h4>Table filters</h4>");
-                if (role.TablePermissions.Count == 0)
+                var tableFilters = role.TablePermissions
+                    .Where(permission => !string.IsNullOrWhiteSpace(permission.FilterExpression))
+                    .OrderBy(permission => permission.Table, StringComparer.OrdinalIgnoreCase)
+                    .ThenBy(permission => permission.FilterExpression, StringComparer.Ordinal)
+                    .ToArray();
+                if (tableFilters.Length == 0)
                 {
                     html.AppendLine("                <p class=\"secondary\">No table filters were found in this role definition.</p>");
                 }
                 else
                 {
                     html.AppendLine("                <div class=\"rls-filter-list\">");
-                    foreach (var permission in role.TablePermissions
-                                 .OrderBy(item => item.Table, StringComparer.OrdinalIgnoreCase)
-                                 .ThenBy(item => item.FilterExpression, StringComparer.Ordinal))
+                    foreach (var permission in tableFilters)
                     {
                         html.AppendLine("                  <article class=\"rls-filter\">");
                         html.Append("                    <h5><span>Table</span>")
@@ -1144,6 +1154,46 @@ public static partial class HtmlReportRenderer
                         html.AppendLine("                    <pre><code>");
                         html.Append(Encode(permission.FilterExpression));
                         html.AppendLine("</code></pre>");
+                        html.AppendLine("                  </article>");
+                    }
+
+                    html.AppendLine("                </div>");
+                }
+
+                html.AppendLine("                <h4>Object-level permissions</h4>");
+                var tablePermissions = role.TablePermissions
+                    .Where(permission => !string.IsNullOrWhiteSpace(permission.MetadataPermission))
+                    .OrderBy(permission => permission.Table, StringComparer.OrdinalIgnoreCase)
+                    .ToArray();
+                var columnPermissions = role.TablePermissions
+                    .SelectMany(permission => permission.ColumnPermissions.Select(column => (Table: permission.Table, Column: column)))
+                    .OrderBy(permission => permission.Table, StringComparer.OrdinalIgnoreCase)
+                    .ThenBy(permission => permission.Column.Column, StringComparer.OrdinalIgnoreCase)
+                    .ToArray();
+                if (tablePermissions.Length == 0 && columnPermissions.Length == 0)
+                {
+                    html.AppendLine("                <p class=\"secondary\">No object-level permissions were found in this role definition.</p>");
+                }
+                else
+                {
+                    html.AppendLine("                <div class=\"rls-filter-list\">");
+                    foreach (var permission in tablePermissions)
+                    {
+                        html.AppendLine("                  <article class=\"rls-filter\">");
+                        html.Append("                    <h5><span>Table protected</span>")
+                            .Append(Encode(permission.Table)).AppendLine("</h5>");
+                        html.Append("                    <p class=\"secondary\">Metadata access: ")
+                            .Append(Encode(HumanizeIdentifier(permission.MetadataPermission!))).AppendLine("</p>");
+                        html.AppendLine("                  </article>");
+                    }
+
+                    foreach (var permission in columnPermissions)
+                    {
+                        html.AppendLine("                  <article class=\"rls-filter\">");
+                        html.Append("                    <h5><span>Column protected</span>")
+                            .Append(Encode($"{permission.Table}[{permission.Column.Column}]")).AppendLine("</h5>");
+                        html.Append("                    <p class=\"secondary\">Metadata access: ")
+                            .Append(Encode(HumanizeIdentifier(permission.Column.Permission))).AppendLine("</p>");
                         html.AppendLine("                  </article>");
                     }
 

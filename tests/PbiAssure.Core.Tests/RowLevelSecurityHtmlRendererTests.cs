@@ -9,7 +9,7 @@ namespace PbiAssure.Core.Tests;
 public sealed class RowLevelSecurityHtmlRendererTests
 {
     [Fact]
-    public void RenderGroupsEncodedRolesAndFiltersWithinTheirSemanticModels()
+    public void RenderGroupsEncodedSecurityRolesAndFiltersWithinTheirSemanticModels()
     {
         var inventory = Scan([
             File("Review.pbip", "{}"),
@@ -61,15 +61,15 @@ public sealed class RowLevelSecurityHtmlRendererTests
         var html = HtmlReportRenderer.Render(inventory);
 
         Assert.Contains("data-section-target=\"row-level-security\"", html, StringComparison.Ordinal);
-        Assert.Contains("<small>Roles and table filters</small>", html, StringComparison.Ordinal);
+        Assert.Contains("<small>Roles, filters and object permissions</small>", html, StringComparison.Ordinal);
         Assert.Contains("id=\"row-level-security\"", html, StringComparison.Ordinal);
         Assert.True(
             html.IndexOf("<h3>Alpha</h3>", StringComparison.Ordinal) <
             html.IndexOf("<h3>Beta</h3>", StringComparison.Ordinal));
         Assert.Equal(2, CountOccurrences(html, "Regional &lt;Admin&gt;"));
-        Assert.Contains("<strong>All regions</strong><span>0 table filters", html, StringComparison.Ordinal);
+        Assert.Contains("<strong>All regions</strong><span>0 row-level filters", html, StringComparison.Ordinal);
         Assert.Contains("<dt>Model permission</dt><dd>Read</dd>", html, StringComparison.Ordinal);
-        Assert.Contains("<strong>Regional &lt;Admin&gt;</strong><span>2 table filters", html, StringComparison.Ordinal);
+        Assert.Contains("<strong>Regional &lt;Admin&gt;</strong><span>2 row-level filters", html, StringComparison.Ordinal);
         Assert.Contains("<h5><span>Table</span>Customers</h5>", html, StringComparison.Ordinal);
         Assert.Contains("<h5><span>Table</span>Sales &amp; Targets</h5>", html, StringComparison.Ordinal);
         Assert.Contains("[Region] = &quot;&lt;West&gt;&quot;", html, StringComparison.Ordinal);
@@ -100,7 +100,7 @@ public sealed class RowLevelSecurityHtmlRendererTests
         Assert.Contains("cannot see who is assigned to roles in Power BI Service", html, StringComparison.Ordinal);
         Assert.Contains("assess effective runtime identity", html, StringComparison.Ordinal);
         Assert.Contains("confirm the overall security design", html, StringComparison.Ordinal);
-        Assert.Contains("Complete object-level security and column permissions are not assessed.", html, StringComparison.Ordinal);
+        Assert.Contains("table-level metadata permissions and explicitly named column permissions", html, StringComparison.Ordinal);
         Assert.DoesNotContain("security passed", html, StringComparison.OrdinalIgnoreCase);
         Assert.DoesNotContain("RLS validated", html, StringComparison.OrdinalIgnoreCase);
         Assert.DoesNotContain("compliant", html, StringComparison.OrdinalIgnoreCase);
@@ -123,7 +123,7 @@ public sealed class RowLevelSecurityHtmlRendererTests
                     modelPermission: read
 
                     tablePermission Sales = [Region] = "West"
-                        columnPermission Region = None
+                        futureRoleProperty Region = None
                 """),
         ]);
 
@@ -163,9 +163,9 @@ public sealed class RowLevelSecurityHtmlRendererTests
 
         var html = HtmlReportRenderer.Render(inventory);
 
-        Assert.Contains("<strong>DynamicUser</strong><span>1 table filter", html, StringComparison.Ordinal);
+        Assert.Contains("<strong>DynamicUser</strong><span>1 row-level filter", html, StringComparison.Ordinal);
         Assert.Contains("[UserEmail] = USERPRINCIPALNAME()", html, StringComparison.Ordinal);
-        Assert.Contains("<strong>RegionalManager</strong><span>1 table filter", html, StringComparison.Ordinal);
+        Assert.Contains("<strong>RegionalManager</strong><span>1 row-level filter", html, StringComparison.Ordinal);
         Assert.Contains("[Region] = &quot;West&quot;", html, StringComparison.Ordinal);
         Assert.Contains("<h2 id=\"analysis-coverage-heading\"", html, StringComparison.Ordinal);
         Assert.DoesNotContain("Some metadata in this role was not fully checked.", html, StringComparison.Ordinal);

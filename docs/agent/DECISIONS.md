@@ -249,10 +249,12 @@ Established by `tests/fixtures/desktop-semantic-constructs`.
   field-parameter metadata already use, so ordinary graph traversal produces the classification and the
   filter's transitive dependencies come along. There is no RLS-specific classification rule, and there
   must not be one.
-- **Parsing part of a construct is not supporting it.** Table permission filters are analysed; column
-  permissions, which `TablePermission` also carries and which name columns for object-level security, are
-  not. Roles are therefore `PartiallyAnalyzed` and keep a qualifying dependency impact. Do not lower that
-  impact to reduce caveat counts.
+- **Stored role security has bounded, explicit dependency semantics.** Table-permission filters and
+  Desktop's inline `columnPermission <column> = <permission>` form are analysed; an explicitly named
+  column becomes a model-structure root. A table-level `metadataPermission` is inventory/security-review
+  evidence only: it protects the table object and does not imply semantic usage of every child column.
+  Roles remain `PartiallyAnalyzed`; genuinely unrecognised role content keeps a qualifying dependency
+  impact rather than being hidden to reduce caveat counts.
 - Role membership lives in the Power BI service and never appears in a project. It is outside the
   analysed scope, not an unanalysed construct, and PBI Assure must never imply it can assess deployed
   security.

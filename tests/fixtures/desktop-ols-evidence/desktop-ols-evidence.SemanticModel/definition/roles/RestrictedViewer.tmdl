@@ -1,0 +1,11 @@
+role RestrictedViewer
+	modelPermission: read
+
+	tablePermission Employee
+
+		columnPermission Salary = none
+
+	tablePermission Confidential
+		metadataPermission: none
+
+	annotation PBI_Id = bc38e01645ce4b5e9615a91ee036e69e

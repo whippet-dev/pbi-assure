@@ -1,0 +1,49 @@
+table Employee
+	lineageTag: 552eaf0a-6361-4006-90d4-c10090e3d3aa
+
+	column EmployeeID
+		dataType: int64
+		formatString: 0
+		lineageTag: 0affbb9c-f537-4447-9768-0566076016b8
+		summarizeBy: count
+		sourceColumn: EmployeeID
+
+		annotation SummarizationSetBy = Automatic
+
+	column Name
+		dataType: string
+		lineageTag: 76dd187f-82d6-4d23-ac52-bcebdf6ad5cd
+		summarizeBy: none
+		sourceColumn: Name
+
+		annotation SummarizationSetBy = Automatic
+
+	column Department
+		dataType: string
+		lineageTag: 69438360-68be-41dd-bc3b-35149f63cff2
+		summarizeBy: none
+		sourceColumn: Department
+
+		annotation SummarizationSetBy = Automatic
+
+	column Salary
+		dataType: int64
+		formatString: 0
+		lineageTag: 14ad3c39-e67a-4939-8af5-fdd6634d104e
+		summarizeBy: sum
+		sourceColumn: Salary
+
+		annotation SummarizationSetBy = Automatic
+
+	partition Employee = m
+		mode: import
+		source =
+				let
+				  Source = Table.FromRows(Json.Document(Binary.Decompress(Binary.FromText("i45WMlTSUXLMyUxOBdJumXmJeWCWiZGBgYFSrE60khGQ55SaByT9C1KLEksy8/OKgRxjC1OoAmMgzzkjJx+kzSMIpNcMptcEyHNJzMtMzQExMtMzSxJBLFNDmAJTIM81NzcR1W4TsNGxAA==", BinaryEncoding.Base64), Compression.Deflate)), let _t = ((type nullable text) meta [Serialized.Text = true]) in type table [EmployeeID = _t, Name = _t, Department = _t, Salary = _t]),
+				  #"Changed column type" = Table.TransformColumnTypes(Source, {{"EmployeeID", Int64.Type}, {"Name", type text}, {"Department", type text}, {"Salary", Int64.Type}}, "en-US")
+				in
+				  #"Changed column type"
+
+	annotation PBI_NavigationStepName = Navigation
+
+	annotation PBI_ResultType = Table

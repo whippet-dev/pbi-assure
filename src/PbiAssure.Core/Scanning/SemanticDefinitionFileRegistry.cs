@@ -107,11 +107,10 @@ internal static class SemanticDefinitionFileRegistry
             Concerns: [],
             Reason: "Named expressions are parsed into the semantic-model inventory."),
         new(
-            // Partially analysed. Table permission filter expressions are parsed and their references
-            // become model-structure roots, so a column used only by a row filter is no longer reported
-            // as unused. Not parsed: column permissions, which TablePermission also carries and which
-            // name columns for object-level security. Because that unread content is dependency-bearing,
-            // the impact stays qualifying — this value is not lowered to reduce caveat counts.
+            // Partially analysed. Table permission filter expressions and explicitly named column-level
+            // object permissions are parsed and become model-structure roots, so a referenced column is
+            // no longer reported as unused. Other role content can still carry dependency-bearing data,
+            // so the construct remains partial and unknown content remains qualifying.
             // Role membership lives in the Power BI service, never in the project, so it is a permanent
             // scope boundary rather than something this construct could ever supply.
             LimitationId: "PBI-LIMIT-MODEL-ROLE",
@@ -122,9 +121,9 @@ internal static class SemanticDefinitionFileRegistry
             SupportState: ConstructSupportStates.PartiallyAnalyzed,
             DependencyImpact: ConstructDependencyImpacts.MayCreateDependencies,
             Concerns: [AnalysisConcerns.Dependency, AnalysisConcerns.Security],
-            Reason: "Row-level security table permission filters are analysed, so objects they reference " +
-                    "are treated as required. Other role content, including column permissions, is not " +
-                    "analysed and can also reference model objects."),
+            Reason: "Row-level security filters and explicitly named object-level column permissions are " +
+                    "analysed, so objects they reference are treated as required. Other role content can " +
+                    "also reference model objects."),
         new(
             // Partially analysed. The documented members that name model objects — perspectiveTable,
             // perspectiveColumn, perspectiveMeasure, perspectiveHierarchy and includeAll — are parsed and
