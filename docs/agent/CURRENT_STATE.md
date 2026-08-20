@@ -12,7 +12,7 @@ evidenced · **[design decision]** a choice, not a fact.
 |---|---|
 | Remote | `whippet-dev/pbi-assure` |
 | Branch | `master` (also the default branch) |
-| Last verified product state | `1349f3e` — *Surface evidence-safe unresolved references* |
+| Last verified product state | Current `master` worktree — structured unresolved-resolution outcomes |
 | Working tree | Expected clean of tracked modifications. Untracked local review documents may be present |
 
 `master` may have moved past that commit for documentation-only changes. Re-verify and update this
@@ -22,7 +22,7 @@ section whenever a commit changes build, test or behaviour — not for every com
 
 - `dotnet build PbiAssure.slnx` — **succeeded, 0 warnings, 0 errors** [verified]. `TreatWarningsAsErrors`
   is on, so warnings fail the build.
-- `dotnet test PbiAssure.slnx` — **411 core + 2 privacy end-to-end tests passed**, 0 failed [verified].
+- `dotnet test PbiAssure.slnx` — **413 core + 2 privacy end-to-end tests passed**, 0 failed [verified].
 - CI (`.github/workflows/ci.yml`) — **green** [verified], confirmed complete (not queued) for the
   pre-feature baseline `0c1af3c`. Runs restore, build, a Playwright Chromium install, then the whole
   solution test suite on `windows-latest`.
@@ -48,6 +48,11 @@ structured model reference and a resolution result establishing that its target 
 initial kinds are `SortBy`, `HierarchyLevel`, `RelationshipEndpoint`, `PerspectiveMember` and
 `ReportMeasure`.
 
+The resolution outcome is structured evidence on every `UnresolvedSemanticDependency`: current values
+are `NotFound` and `Ambiguous`. `Reason` remains human-readable diagnostic context only; `MODEL-005`
+must not inspect its wording to decide eligibility. A `NotFound` outcome does not override producer
+evidence safety: DAX, field-parameter and mixed `TablePermission` records remain suppressed.
+
 Best-effort DAX references are deliberately suppressed. `FieldParameter` is also suppressed because its
 reference comes from specialised DAX-text extraction, and `TablePermission` is suppressed because that
 single dependency kind currently mixes an explicit missing role table with references extracted from a
@@ -55,9 +60,10 @@ role's DAX filter. Ambiguous structured references are not described as missing.
 
 The rule groups only identical model/source/kind/reference/reason evidence and preserves every source
 path. Model identity and source-object identity are part of the key. Findings are deterministically
-ordered. The existing unresolved-dependency JSON records are unchanged; the semantic-usage CSV remains
-an object-usage export and is unchanged. Analysis coverage and semantic usage classification are not
-involved.
+ordered. The unresolved-dependency JSON contract has one additive `ResolutionOutcome` property; existing
+fields, including `Reason`, `ReferenceText` and `EvidencePath`, are unchanged. The semantic-usage CSV
+remains an object-usage export and is unchanged. Analysis coverage and semantic usage classification are
+not involved.
 
 No committed Desktop-authored fixture currently contains an unresolved semantic dependency. Six
 Desktop fixtures and four local sample projects were measured and contained zero. The missing-reference

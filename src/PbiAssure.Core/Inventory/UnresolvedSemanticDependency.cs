@@ -9,4 +9,11 @@ public sealed record UnresolvedSemanticDependency(
     string DependencyKind,
     string ReferenceText,
     string Reason,
-    string EvidencePath);
+    string EvidencePath)
+{
+    /// <summary>
+    /// The structured result of resolving <see cref="ReferenceText"/>. This must be used for machine
+    /// decisions; <see cref="Reason"/> is retained only as human-readable diagnostic context.
+    /// </summary>
+    public string ResolutionOutcome { get; init; } = UnresolvedSemanticDependencyResolutionOutcomes.NotFound;
+}

@@ -255,6 +255,7 @@ public sealed class FunctionDependencyTests
 
         var unresolved = Assert.Single(inventory.UnresolvedSemanticDependencies);
         Assert.Equal("Broken", unresolved.FromObjectName);
+        Assert.Equal(UnresolvedSemanticDependencyResolutionOutcomes.NotFound, unresolved.ResolutionOutcome);
         Assert.Contains("Absent", unresolved.ReferenceText, StringComparison.Ordinal);
         Assert.DoesNotContain(inventory.SemanticObjectUsages, u => u.ObjectName == "Absent");
     }

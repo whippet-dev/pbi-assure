@@ -208,6 +208,7 @@ public sealed class PerspectiveDependencyTests
         var unresolved = Assert.Single(
             inventory.UnresolvedSemanticDependencies,
             item => item.DependencyKind == SemanticDependencyKinds.PerspectiveMember);
+        Assert.Equal(UnresolvedSemanticDependencyResolutionOutcomes.NotFound, unresolved.ResolutionOutcome);
         Assert.Equal("View", unresolved.FromObjectName);
         Assert.Contains("Absent", unresolved.ReferenceText, StringComparison.Ordinal);
         Assert.DoesNotContain(inventory.SemanticObjectUsages, u => u.ObjectName == "Absent");
@@ -220,7 +221,8 @@ public sealed class PerspectiveDependencyTests
 
         Assert.Contains(
             inventory.UnresolvedSemanticDependencies,
-            item => item.DependencyKind == SemanticDependencyKinds.PerspectiveMember);
+            item => item.DependencyKind == SemanticDependencyKinds.PerspectiveMember &&
+                item.ResolutionOutcome == UnresolvedSemanticDependencyResolutionOutcomes.NotFound);
         Assert.Equal(
             SemanticUsageStates.ApparentlyUnused,
             inventory.SemanticObjectUsages.Single(u => u.ObjectName == "Region").UsageState);

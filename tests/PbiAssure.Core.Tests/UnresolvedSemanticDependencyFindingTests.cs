@@ -54,10 +54,54 @@ public sealed class UnresolvedSemanticDependencyFindingTests
             Dependency("Sales", "Sales", "Measure A", SemanticDependencyKinds.Dax, "[Missing]", "No measure was found.", "Sales.tmdl"),
             Dependency("Sales", "Sales", "Parameter", SemanticDependencyKinds.FieldParameter, "Sales[Missing]", "Field parameter 'Parameter': 'Sales[Missing]' was not found.", "Parameter.tmdl"),
             Dependency("Sales", string.Empty, "Reader", SemanticDependencyKinds.TablePermission, "Sales[Missing]", "'Sales[Missing]' was not found.", "Reader.tmdl"),
-            Dependency("Sales", "Sales", "Month", SemanticDependencyKinds.SortBy, "Amount", "'Sales[Amount]' matches both a column and a measure.", "Sales.tmdl"),
+            Dependency(
+                "Sales",
+                "Sales",
+                "Month",
+                SemanticDependencyKinds.SortBy,
+                "Amount",
+                "'Sales[Amount]' matches both a column and a measure.",
+                "Sales.tmdl",
+                UnresolvedSemanticDependencyResolutionOutcomes.Ambiguous),
         ]);
 
         Assert.Empty(findings);
+    }
+
+    [Fact]
+    public void EligibilityDependsOnStructuredOutcomeRatherThanReasonWording()
+    {
+        var originalWording = Dependency(
+            "Sales",
+            "Sales",
+            "Month",
+            SemanticDependencyKinds.SortBy,
+            "Month Number",
+            "'Sales[Month Number]' was not found.",
+            "Sales.tmdl");
+        var revisedWording = originalWording with
+        {
+            Reason = "PBI Assure could not resolve the configured sort-by target.",
+        };
+
+        Assert.Single(UnresolvedSemanticDependencyRule.CreateFindings([originalWording]));
+        Assert.Single(UnresolvedSemanticDependencyRule.CreateFindings([revisedWording]));
+    }
+
+    [Fact]
+    public void AmbiguousOutcomeIsSuppressedEvenWhenReasonUsesNotFoundWording()
+    {
+        var ambiguous = Dependency(
+            "Sales",
+            "Sales",
+            "Month",
+            SemanticDependencyKinds.SortBy,
+            "Month Number",
+            "'Sales[Month Number]' was not found.",
+            "Sales.tmdl",
+            UnresolvedSemanticDependencyResolutionOutcomes.Ambiguous);
+
+        Assert.Empty(UnresolvedSemanticDependencyRule.CreateFindings([ambiguous]));
     }
 
     [Fact]
@@ -120,8 +164,10 @@ public sealed class UnresolvedSemanticDependencyFindingTests
         Assert.DoesNotContain("Sales<script>", html, StringComparison.Ordinal);
         Assert.Contains("<h2 id=\"analysis-coverage-heading\"", html, StringComparison.Ordinal);
         Assert.Equal("Missing&Column", beforeJson.ReferenceText);
+        Assert.Equal(UnresolvedSemanticDependencyResolutionOutcomes.NotFound, beforeJson.ResolutionOutcome);
         Assert.Contains("\"UnresolvedSemanticDependencies\"", json, StringComparison.Ordinal);
         Assert.Contains("Missing\\u0026Column", json, StringComparison.Ordinal);
+        Assert.Contains("\"ResolutionOutcome\":\"NotFound\"", json, StringComparison.Ordinal);
         Assert.Equal(csvWithoutFindings, SemanticUsageCsvRenderer.Render(inventory));
     }
 
@@ -157,7 +203,8 @@ public sealed class UnresolvedSemanticDependencyFindingTests
         string kind,
         string reference,
         string reason,
-        string path)
+        string path,
+        string resolutionOutcome = UnresolvedSemanticDependencyResolutionOutcomes.NotFound)
     {
         return new UnresolvedSemanticDependency(
             model,
@@ -168,7 +215,10 @@ public sealed class UnresolvedSemanticDependencyFindingTests
             kind,
             reference,
             reason,
-            path);
+            path)
+        {
+            ResolutionOutcome = resolutionOutcome,
+        };
     }
 
     private static ProjectFileContent File(string path, string content) =>

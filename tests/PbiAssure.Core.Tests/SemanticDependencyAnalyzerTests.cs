@@ -237,6 +237,7 @@ public sealed class SemanticDependencyAnalyzerTests
             analysis.UnresolvedDependencies,
             item => item.FromObjectName == "Uses");
         Assert.Equal(SemanticDependencyKinds.Dax, unresolved.DependencyKind);
+        Assert.Equal(UnresolvedSemanticDependencyResolutionOutcomes.Ambiguous, unresolved.ResolutionOutcome);
         Assert.Contains("ambiguous", unresolved.Reason, StringComparison.OrdinalIgnoreCase);
         Assert.DoesNotContain(
             analysis.Dependencies,
@@ -258,6 +259,7 @@ public sealed class SemanticDependencyAnalyzerTests
         var unresolved = Assert.Single(
             analysis.UnresolvedDependencies,
             item => item.FromObjectName == "Uses");
+        Assert.Equal(UnresolvedSemanticDependencyResolutionOutcomes.Ambiguous, unresolved.ResolutionOutcome);
         Assert.Contains("matches both", unresolved.Reason, StringComparison.OrdinalIgnoreCase);
     }
 
@@ -286,6 +288,7 @@ public sealed class SemanticDependencyAnalyzerTests
 
         var unresolved = Assert.Single(analysis.UnresolvedDependencies);
         Assert.Equal(SemanticDependencyKinds.SortBy, unresolved.DependencyKind);
+        Assert.Equal(UnresolvedSemanticDependencyResolutionOutcomes.NotFound, unresolved.ResolutionOutcome);
         Assert.Equal("MonthNumber", unresolved.ReferenceText);
         Assert.DoesNotContain(
             analysis.Dependencies,
@@ -307,6 +310,9 @@ public sealed class SemanticDependencyAnalyzerTests
         Assert.All(
             analysis.UnresolvedDependencies,
             item => Assert.Equal(SemanticDependencyKinds.RelationshipEndpoint, item.DependencyKind));
+        Assert.All(
+            analysis.UnresolvedDependencies,
+            item => Assert.Equal(UnresolvedSemanticDependencyResolutionOutcomes.NotFound, item.ResolutionOutcome));
         Assert.All(
             analysis.UnresolvedDependencies,
             item => Assert.Contains("r1", item.Reason, StringComparison.Ordinal));

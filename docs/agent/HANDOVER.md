@@ -13,17 +13,18 @@ claim that PBI Assure could not find an explicitly named target; DAX and field-p
 cannot support the same claim without a caveat; and `TablePermission` currently mixes both forms under
 one kind.
 
-The public gate is therefore intentionally narrow: eligible structured kind **and** a stored resolution
-reason that establishes "was not found". Ambiguous matches are suppressed. Findings are scoped and
-grouped by model and source object, ordered deterministically, encoded by the existing Findings renderer,
-and appear through the normal Findings search, rule filter and rule catalogue. Analysis coverage remains
-about PBI Assure limitations; this rule remains about the user's artifact.
+The public gate is therefore intentionally narrow: eligible structured kind **and** a structured
+`NotFound` resolution outcome. `Reason` is retained as explanatory diagnostic text and must never decide
+whether a finding is shown. Ambiguous matches are represented structurally and suppressed. Findings are
+scoped and grouped by model and source object, ordered deterministically, encoded by the existing Findings
+renderer, and appear through the normal Findings search, rule filter and rule catalogue. Analysis coverage
+remains about PBI Assure limitations; this rule remains about the user's artifact.
 
-Validation for this slice: Release build clean, **411 core + 2 privacy E2E tests passed**. Four deliberate
-mutations proved the suppression, model-scope, source-context and deterministic-order tests have teeth.
-Rendered HTML was inspected at 1280 px and 375 px. No committed Desktop fixture contains a broken
-reference, so persistence of these malformed states through a Desktop save remains unproven and is not
-claimed.
+Validation for this slice: Release build clean, **413 core + 2 privacy E2E tests passed**. Four deliberate
+mutations proved prose independence, ambiguity classification, producer-evidence safety and the two-part
+gate. Rendered HTML was compared before and after the remedial change. No committed Desktop fixture
+contains a broken reference, so persistence of these malformed states through a Desktop save remains
+unproven and is not claimed.
 
 The semantic usage/classification workstream described below remains closed and unchanged.
 

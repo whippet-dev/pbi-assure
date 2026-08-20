@@ -36,7 +36,7 @@ internal sealed class UnresolvedSemanticDependencyRule : IAssuranceRule
     internal static bool IsSafeToSurface(UnresolvedSemanticDependency dependency)
     {
         return StructuredKinds.Contains(dependency.DependencyKind) &&
-               dependency.Reason.Contains("was not found", StringComparison.OrdinalIgnoreCase);
+               dependency.ResolutionOutcome == UnresolvedSemanticDependencyResolutionOutcomes.NotFound;
     }
 
     private static AssuranceFinding CreateFinding(

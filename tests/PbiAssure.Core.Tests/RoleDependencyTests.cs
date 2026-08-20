@@ -202,6 +202,7 @@ public sealed class RoleDependencyTests
         var unresolved = Assert.Single(
             inventory.UnresolvedSemanticDependencies,
             item => item.DependencyKind == SemanticDependencyKinds.TablePermission);
+        Assert.Equal(UnresolvedSemanticDependencyResolutionOutcomes.NotFound, unresolved.ResolutionOutcome);
         Assert.Equal("Reader", unresolved.FromObjectName);
         Assert.Contains("Missing", unresolved.ReferenceText, StringComparison.Ordinal);
         Assert.DoesNotContain(inventory.SemanticObjectUsages, u => u.ObjectName == "Missing");
@@ -214,7 +215,8 @@ public sealed class RoleDependencyTests
 
         Assert.Contains(
             inventory.UnresolvedSemanticDependencies,
-            item => item.DependencyKind == SemanticDependencyKinds.TablePermission);
+            item => item.DependencyKind == SemanticDependencyKinds.TablePermission &&
+                item.ResolutionOutcome == UnresolvedSemanticDependencyResolutionOutcomes.NotFound);
         Assert.Equal(
             SemanticUsageStates.ApparentlyUnused,
             inventory.SemanticObjectUsages.Single(u => u.ObjectName == "Region").UsageState);

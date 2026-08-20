@@ -168,6 +168,11 @@ Not every report merits committing; only those carrying durable project state.
   best-effort text extraction and ambiguous resolution. A public finding requires evidence that the
   reference shape and identity were understood, plus a resolution outcome establishing absence. "Could
   not resolve" alone is insufficient.
+- **Machine decisions must not depend on diagnostic prose.** `ResolutionOutcome` is structured evidence
+  (`NotFound` or `Ambiguous` for the current producers); `Reason` is explanatory text only. A public
+  unresolved-reference finding requires both an evidence-safe producer kind and `NotFound`, so a
+  parser-derived `NotFound` remains suppressed and an ambiguous record cannot become a finding because
+  its wording happens to say "not found".
 - **Parser uncertainty stays internal until separately justified.** DAX token extraction, specialised
   expression parsing, or a dependency kind that mixes structured and inferred producers must not be
   presented as a missing project object wholesale. Add narrow provenance only if existing retained

@@ -781,6 +781,7 @@ public sealed class ProjectScannerTests : IDisposable
         Assert.Equal("Broken", unresolved.FromObjectName);
         Assert.Equal("[Missing Measure]", unresolved.ReferenceText);
         Assert.Equal(SemanticDependencyKinds.Dax, unresolved.DependencyKind);
+        Assert.Equal(UnresolvedSemanticDependencyResolutionOutcomes.NotFound, unresolved.ResolutionOutcome);
         Assert.Equal("Model.SemanticModel/definition/tables/Measures.tmdl", unresolved.EvidencePath);
         Assert.Contains("was found", unresolved.Reason, StringComparison.OrdinalIgnoreCase);
     }
