@@ -11,6 +11,11 @@ internal sealed class NavigationAssuranceRule : IAssuranceRule
     {
         foreach (var report in inventory.Reports)
         {
+            foreach (var finding in EvaluateLandingPage(report))
+            {
+                yield return finding;
+            }
+
             foreach (var finding in EvaluateVisualActions(report))
             {
                 yield return finding;
@@ -21,6 +26,34 @@ internal sealed class NavigationAssuranceRule : IAssuranceRule
                 yield return finding;
             }
         }
+    }
+
+    private static IEnumerable<AssuranceFinding> EvaluateLandingPage(ReportInventory report)
+    {
+        if (string.IsNullOrWhiteSpace(report.LandingPageName) ||
+            report.Pages.Any(page => string.Equals(page.Name, report.LandingPageName, StringComparison.Ordinal)))
+        {
+            yield break;
+        }
+
+        yield return new AssuranceFinding(
+            RuleId: "PBI-NAV-017",
+            RuleVersion,
+            AssuranceCategories.Navigation,
+            FindingSeverities.Error,
+            "The configured landing page could not be found in this report.",
+            "Choose an existing page as the landing page in Power BI Desktop, or remove the landing-page setting if it is no longer needed.",
+            report.Name,
+            Page: null,
+            PageDisplayName: null,
+            Visual: null,
+            SemanticModel: null,
+            Table: null,
+            ObjectName: report.LandingPageName,
+            ArtifactPath: Path.Combine(report.RelativePath, "definition", "pages", "pages.json"),
+            EvidencePaths: ["$.landingPageName"],
+            AssessmentType: AssessmentTypes.Finding,
+            ReferenceUrl);
     }
 
     private static IEnumerable<AssuranceFinding> EvaluateVisualActions(ReportInventory report)

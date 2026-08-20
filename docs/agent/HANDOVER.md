@@ -5,6 +5,18 @@ Tactical entry point for an incoming coding agent. Read this first, then
 
 ## What just happened
 
+Explicit report landing pages are now parsed and checked. Desktop writes the optional
+`landingPageName` property only when a page is set as the landing page; it is separate from
+`activePageName`, which remains saved authoring state. The paired Desktop fixtures preserve both valid
+states: an explicit Page 3 landing page while Page 2 is active, and no landing-page property at all.
+
+`PBI-NAV-017` is an Error / Finding for an explicit nonblank landing-page target that no longer exists.
+It provides the internal target name and `pages.json` evidence, with a Desktop-oriented recommendation
+to choose an existing landing page or reset the setting. No landing-page property is valid and silent.
+The broken-target case is deliberately synthetic; Desktop persistence of stale landing-page metadata is
+not claimed. `LandingPageName` is an additive JSON inventory property; semantic usage and CSV are
+unchanged. Validation: Release build clean, **426 core + 2 privacy E2E tests passed**.
+
 A compact **Row-level security** review is now part of the generated HTML whenever a semantic model
 defines roles. It groups roles by model, shows model permission and the exact retained table-filter DAX,
 and keeps technical source paths behind disclosure. Models, roles and filters are ordered
@@ -109,10 +121,10 @@ records.
 
 ## State
 
-- **Last verified product state:** current `master` worktree with the compact RLS review. Record the
-  resulting commit after this slice is committed.
+- **Last verified product state:** current `master` worktree with explicit landing-page integrity review.
+  Record the resulting commit after this slice is committed.
 - **Working tree:** expected clean apart from untracked local review documents; no tracked modifications
-- **Verified locally:** Release build succeeded with 0 warnings; **418 core + 2 privacy tests passed**
+- **Verified locally:** Release build succeeded with 0 warnings; **426 core + 2 privacy tests passed**
 - **Known exception:** `dotnet format --verify-no-changes` fails with 24 pre-existing whitespace errors
   in two Theme Review files. Unrelated to current work, deliberately not fixed. See
   [CURRENT_STATE.md](CURRENT_STATE.md).
@@ -122,9 +134,10 @@ records.
 Choose on user impact, not on what was touched last. A product/technical triage on 2026-08-20 replaced
 the previous evidence-gap ranking with these priorities:
 
-1. **Small integrity findings over explicit metadata:** first a report whose configured active page does
-   not exist; then an explicitly referenced custom-theme resource that is missing or malformed. Keep
-   these as separate slices and reuse the evidence already retained by the report and theme parsers.
+1. **Small integrity finding over explicit metadata:** an explicitly referenced custom-theme resource
+   that is missing or malformed. Keep it separate from theme-quality assessment and reuse the evidence
+   already retained by the theme parser. Do not add an active-page rule without new evidence: that value
+   is authoring state, not the explicit landing-page setting.
 2. **Define an encountered-schema support policy before adding a PBIR compatibility warning.** Schema
    URIs are retained but not validated. Do not add a warning until supported versions and the behaviour
    for unknown newer schemas are pinned by focused fixtures.

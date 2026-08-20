@@ -12,7 +12,7 @@ evidenced · **[design decision]** a choice, not a fact.
 |---|---|
 | Remote | `whippet-dev/pbi-assure` |
 | Branch | `master` (also the default branch) |
-| Last verified product state | Current `master` worktree — compact row-level security review |
+| Last verified product state | Current `master` worktree — explicit landing-page integrity review |
 | Working tree | Expected clean of tracked modifications. Untracked local review documents may be present |
 
 `master` may have moved past that commit for documentation-only changes. Re-verify and update this
@@ -22,7 +22,7 @@ section whenever a commit changes build, test or behaviour — not for every com
 
 - `dotnet build PbiAssure.slnx` — **succeeded, 0 warnings, 0 errors** [verified]. `TreatWarningsAsErrors`
   is on, so warnings fail the build.
-- `dotnet test PbiAssure.slnx` — **418 core + 2 privacy end-to-end tests passed**, 0 failed [verified].
+- `dotnet test PbiAssure.slnx` — **426 core + 2 privacy end-to-end tests passed**, 0 failed [verified].
 - CI (`.github/workflows/ci.yml`) — **green** [verified], confirmed complete (not queued) for the
   pre-feature baseline `0c1af3c`. Runs restore, build, a Playwright Chromium install, then the whole
   solution test suite on `windows-latest`.
@@ -69,6 +69,25 @@ No committed Desktop-authored fixture currently contains an unresolved semantic 
 Desktop fixtures and four local sample projects were measured and contained zero. The missing-reference
 finding is therefore proven against accurately labelled synthetic malformed metadata, not claimed as a
 Desktop-persisted broken state. Desktop may repair, reject or remove such metadata when saving.
+
+## Explicit report landing page
+
+`ReportInventory.LandingPageName` is an additive JSON inventory property. It retains the exact optional
+`landingPageName` from `definition/pages/pages.json`; `ActivePageName` is unchanged. The paired
+Desktop-authored fixtures `desktop-landing-page` and `desktop-landing-page-no-explicit` establish that
+Desktop writes `landingPageName` only after **Set as landing page** is used, and that it can name a
+different page from the saved authoring-state `activePageName`.
+
+`PBI-NAV-017` (**Configured landing page missing**) is an Error / Finding only when the explicit,
+nonblank `LandingPageName` cannot be found among the report's internal page names. It carries the report,
+the retained internal target name, `pages.json` and `$.landingPageName` evidence. No explicit landing
+page is valid and never produces a finding. The positive malformed-target case remains synthetic: there
+is no claim that Desktop preserves a missing target after saving.
+
+The former proposed active-page-missing rule is not currently recommended. `activePageName` is saved
+authoring state, whereas `landingPageName` is the explicit landing-page setting; current evidence does
+not establish user impact from a stale authoring-state value. Revisit only if a real report or Desktop
+experiment demonstrates a meaningful integrity consequence.
 
 ## Active workstream — unsupported-construct detection
 
@@ -264,10 +283,10 @@ unanalysed files are the always-present three — verified against three Desktop
 
 ## Immediate task
 
-**Next recommended slice: add a focused integrity finding when a report's configured active page does
-not exist.** The report parser already retains the configured active-page reference and the available
-pages, so this should remain a small explicit-metadata check. Keep it separate from the later missing or
-malformed custom-theme-resource check, and do not broaden it into general report repair.
+**Next recommended slice: add a focused integrity finding when an explicitly referenced custom-theme
+resource is missing or malformed.** Keep it a narrow retained-resource check; do not broaden it into
+general theme-quality analysis. A missing active-page rule is no longer ranked without evidence that the
+saved authoring-state value has a meaningful user-facing consequence.
 
 The compact row-level security HTML review is complete. It is conditional on retained roles, shows model
 permission and table-filter DAX, and keeps its project-only security boundary explicit. See

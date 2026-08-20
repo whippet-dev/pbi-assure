@@ -35,6 +35,7 @@ PBI Assure rules turn parsed facts into reviewable results. Rule identifiers and
 | `PBI-NAV-014` | 1.0.0 | Navigation | Warning | Finding | An enabled static report-page tooltip binding has no target page. Built-in default and text-only tooltip settings are excluded. |
 | `PBI-NAV-015` | 1.0.0 | Navigation | Warning | Finding | An enabled report-page tooltip binding targets an existing page that is not configured as a Tooltip page. |
 | `PBI-NAV-016` | 1.0.0 | Navigation | Information | Review required | A report-page tooltip binding contains a dynamic expression that cannot be fully resolved by static analysis. |
+| `PBI-NAV-017` | 1.0.0 | Navigation | Error | Finding | The report explicitly names a landing page that does not exist in the report. Reports with no explicit landing-page setting do not trigger this rule. |
 
 ## Interpretation
 

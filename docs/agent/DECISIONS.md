@@ -205,6 +205,16 @@ Confirmed experimentally in Power BI Desktop and pinned by tests and fixtures.
 Do not "simplify" these three rules. See `tests/fixtures/tab-order-states/README.md`, which also warns
 against re-saving that fixture, since saving destroys the pre-save state it exists to preserve.
 
+### Explicit report landing page
+
+- `landingPageName` in `definition/pages/pages.json` is the optional explicit **Set as landing page**
+  setting. `activePageName` is separate saved authoring state; the values can legitimately name different
+  pages. The absence of `landingPageName` is a valid state.
+- `PBI-NAV-017` applies only to a nonblank `landingPageName` whose internal page name is absent. It must
+  not infer a landing page from `activePageName`, and no finding is raised when no landing page is set.
+- A stale `activePageName` is not currently a user-facing integrity finding. Reconsider only with
+  evidence of a meaningful consequence, not merely because the property names a missing page.
+
 ### Row-level security serialization and classification
 
 - Desktop emits **one file per role** under `definition/roles/`.

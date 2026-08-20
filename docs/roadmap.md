@@ -4,9 +4,9 @@ PBI Assure is being developed in vertical slices that produce reviewable value w
 
 ## Next product priorities
 
-1. **Small, evidence-backed integrity checks.** Prioritise explicit broken metadata such as a configured
-   report active page that does not exist and an active custom-theme resource that is missing or
-   malformed. Keep each as a focused rule slice.
+1. **Small, evidence-backed integrity checks.** Prioritise an explicitly referenced custom-theme resource
+   that is missing or malformed. The explicit landing-page target check is complete; do not add an
+   active-page check without evidence that its saved authoring state has a meaningful consequence.
 2. **PBIR schema compatibility guard.** The scanner retains encountered schema URIs but does not yet
    compare them with an explicit support policy. Define and fixture that policy before producing a
    compatibility finding.

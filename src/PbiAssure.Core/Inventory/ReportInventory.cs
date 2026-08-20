@@ -8,6 +8,7 @@ public sealed record ReportInventory(
     string? SchemaUri,
     string? PagesSchemaUri,
     string? ActivePageName,
+    string? LandingPageName,
     IReadOnlyList<PageInventory> Pages,
     IReadOnlyList<ReportFilterInventory> Filters,
     IReadOnlyList<VisualFieldReference> FieldReferences,

@@ -45,6 +45,7 @@ public static class AssuranceRuleCatalog
         new("PBI-NAV-014", "Tooltip target not set", "Checks enabled report and visual-header tooltips that have no destination page.", AssuranceCategories.Navigation),
         new("PBI-NAV-015", "Tooltip target is not a tooltip page", "Checks report and visual-header tooltips whose destination is not configured as a Tooltip page.", AssuranceCategories.Navigation),
         new("PBI-NAV-016", "Dynamic tooltip target", "Identifies report and visual-header tooltip targets that change dynamically and need testing.", AssuranceCategories.Navigation),
+        new("PBI-NAV-017", "Configured landing page missing", "Checks an explicitly configured landing page for a page that no longer exists in the report.", AssuranceCategories.Navigation),
     ];
 
     public static AssuranceRuleMetadata? Find(string ruleId) => ActiveRules.FirstOrDefault(rule =>

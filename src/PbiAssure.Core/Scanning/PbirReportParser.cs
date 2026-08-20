@@ -47,6 +47,7 @@ internal static class PbirReportParser
                 SchemaUri: reportSchemaUri,
                 PagesSchemaUri: null,
                 ActivePageName: null,
+                LandingPageName: null,
                 Pages: [],
                 Filters: reportFilters,
                 FieldReferences: reportFieldReferences,
@@ -66,6 +67,7 @@ internal static class PbirReportParser
         var metadataRoot = pagesMetadata.RootElement;
         var schemaUri = GetString(metadataRoot, "$schema");
         var activePageName = GetString(metadataRoot, "activePageName");
+        var landingPageName = GetString(metadataRoot, "landingPageName");
         var pageOrder = ReadPageOrder(metadataRoot);
 
         var pages = source
@@ -87,6 +89,7 @@ internal static class PbirReportParser
             SchemaUri: reportSchemaUri,
             PagesSchemaUri: schemaUri,
             ActivePageName: activePageName,
+            LandingPageName: landingPageName,
             Pages: pages,
             Filters: reportFilters,
             FieldReferences: reportFieldReferences,
