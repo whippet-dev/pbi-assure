@@ -39,7 +39,10 @@ public static class ProjectScanner
             semanticModels, powerQueryAnalysis.Usages);
         var semanticTablePowerQueryContexts = SemanticTablePowerQueryEnricher.Build(powerQueryAnalysis.Usages);
         var analysisLimitations = AnalysisLimitationDetector.Detect(
-            source, artifacts, AnalysisCoverageRefinements.Build(semanticModels));
+            source,
+            artifacts,
+            AnalysisCoverageRefinements.Build(semanticModels),
+            AnalysisCoverageRefinements.BuildFullyAccountedRolePaths(semanticModels));
 
         // Applied once, after usage states are final and the limitations are known. Usage states are not
         // changed here; only the orthogonal confidence marker is set.

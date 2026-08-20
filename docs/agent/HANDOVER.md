@@ -169,10 +169,11 @@ records.
 
 ## State
 
-- **Last verified product state:** current `master` worktree with report-side PBIR schema observations.
-  Record the resulting commit after this slice is committed.
+- **Last verified product state:** `b2e2e899` — bounded object-level security inventory. Power BI
+  Desktop-authored OLS evidence is integrated; explicitly named column OLS roots only that column, while
+  table-level OLS remains security inventory only.
 - **Working tree:** expected clean apart from untracked local review documents; no tracked modifications
-- **Verified locally:** Release build succeeded with 0 warnings; **453 core + 2 privacy tests passed**
+- **Verified locally:** Release build succeeded with 0 warnings; **463 core + 2 privacy tests passed**
 - **Known exception:** `dotnet format --verify-no-changes` fails with 24 pre-existing whitespace errors
   in two Theme Review files. Unrelated to current work, deliberately not fixed. See
   [CURRENT_STATE.md](CURRENT_STATE.md).

@@ -79,20 +79,17 @@ public sealed class DesktopSemanticConstructsFixtureTests
     }
 
     /// <summary>
-    /// Roles and perspectives are one file per object, not a single aggregate file. Two roles exist in
-    /// the fixture, so a directory rule is required rather than an exact-path rule.
+    /// Roles are one file per object, not a single aggregate file. Both role files are fully accounted
+    /// for by the parser, so neither produces a hypothetical role coverage item.
     /// </summary>
     [Fact]
-    public void RolesAreEmittedAsOneFilePerRole()
+    public void FullyAccountedRoleFilesProduceNoRoleCoverageItems()
     {
         var roleLimitations = ScanFixture().AnalysisLimitations
             .Where(limitation => limitation.ConstructType == "role")
             .ToArray();
 
-        Assert.Equal(2, roleLimitations.Length);
-        Assert.Contains(roleLimitations, l => l.ArtifactPath.EndsWith("/roles/RegionalManager.tmdl", StringComparison.Ordinal));
-        Assert.Contains(roleLimitations, l => l.ArtifactPath.EndsWith("/roles/DynamicUser.tmdl", StringComparison.Ordinal));
-        Assert.All(roleLimitations, l => Assert.Contains(AnalysisConcerns.Security, l.Concerns));
+        Assert.Empty(roleLimitations);
     }
 
     /// <summary>

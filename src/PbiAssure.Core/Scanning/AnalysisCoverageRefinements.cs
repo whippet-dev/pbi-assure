@@ -12,7 +12,8 @@ namespace PbiAssure.Core.Scanning;
 ///
 /// Refinements only ever narrow to <see cref="ConstructDependencyImpacts.NoKnownDependencyEffect"/>, and
 /// only where coverage was positively established. Silence produces no refinement, so an unrecognised
-/// construct keeps the conservative default.
+/// construct keeps the conservative default. Fully accounted role files are also returned separately so
+/// the file-level limitation detector can omit a limitation that does not apply to that encountered file.
 /// </summary>
 internal static class AnalysisCoverageRefinements
 {
@@ -38,4 +39,13 @@ internal static class AnalysisCoverageRefinements
 
         return refinements;
     }
+
+    public static IReadOnlySet<string> BuildFullyAccountedRolePaths(
+        IReadOnlyList<SemanticModelInventory> semanticModels) =>
+        new HashSet<string>(
+            semanticModels
+                .SelectMany(model => model.Roles)
+                .Where(role => role.DependencyContentFullyAccountedFor)
+                .Select(role => role.RelativePath),
+            StringComparer.OrdinalIgnoreCase);
 }

@@ -12,7 +12,7 @@ evidenced · **[design decision]** a choice, not a fact.
 |---|---|
 | Remote | `whippet-dev/pbi-assure` |
 | Branch | `master` (also the default branch) |
-| Last verified product state | Current `master` worktree — report-side PBIR schema observations |
+| Last verified product state | `b2e2e899` — bounded object-level security inventory |
 | Working tree | Expected clean of tracked modifications. Untracked local review documents may be present |
 
 `master` may have moved past that commit for documentation-only changes. Re-verify and update this
@@ -22,7 +22,7 @@ section whenever a commit changes build, test or behaviour — not for every com
 
 - `dotnet build PbiAssure.slnx` — **succeeded, 0 warnings, 0 errors** [verified]. `TreatWarningsAsErrors`
   is on, so warnings fail the build.
-- `dotnet test PbiAssure.slnx` — **453 core + 2 privacy end-to-end tests passed**, 0 failed [verified].
+- `dotnet test PbiAssure.slnx` — **463 core + 2 privacy end-to-end tests passed**, 0 failed [verified].
 - CI (`.github/workflows/ci.yml`) — **green** [verified], confirmed complete (not queued) for the
   pre-feature baseline `0c1af3c`. Runs restore, build, a Playwright Chromium install, then the whole
   solution test suite on `windows-latest`.
@@ -40,6 +40,16 @@ across two files:
 All pre-existing and unrelated to recent work. `CONTRIBUTING.md` tells contributors to run this command,
 so it fails on a clean checkout. Deliberately left alone so it is not mixed into unrelated commits; fix
 it as its own change.
+
+## Bounded object-level security inventory
+
+Desktop-authored `desktop-ols-evidence` proves that Power BI Desktop persists inline
+`columnPermission Salary = none` and table `metadataPermission: none` inside a role's
+`tablePermission` block. PBI Assure retains both as structured role inventory. An explicitly named
+column permission makes only that column structurally required; table-level OLS is visible in the
+Security roles review but never makes every child column used. The JSON inventory is additively versioned
+at `0.23`; Findings and the semantic-usage CSV are unchanged. The next recommended investigation remains
+bookmark-only semantic references.
 
 ## Evidence-gated unresolved-reference findings
 

@@ -283,32 +283,21 @@ public sealed class RoleDependencyTests
     // ---- H. Revised role limitation semantics -----------------------------------------------
 
     /// <summary>
-    /// Roles are partially analysed, not fully supported. Table permission filters are read; column
-    /// permissions and other role semantics are not, so the limitation is still emitted and the support
-    /// state stays partial.
-    ///
-    /// The dependency impact is decided per artifact rather than by construct type — see
-    /// <see cref="RoleLimitationPrecisionTests"/> — so it is asserted there rather than here.
+    /// Fully accounted role files have no unsupported role content to surface in Analysis coverage.
     /// </summary>
     [Fact]
-    public void TheRoleLimitationReportsPartialSupport()
+    public void FullyAccountedRoleFilesDoNotReportPartialSupport()
     {
-        var limitation = ScanDesktopFixture().AnalysisLimitations
-            .First(item => item.ConstructType == "role");
-
-        Assert.Equal(ConstructSupportStates.PartiallyAnalyzed, limitation.SupportState);
-        Assert.Contains(AnalysisConcerns.Security, limitation.Concerns);
+        Assert.DoesNotContain(
+            ScanDesktopFixture().AnalysisLimitations,
+            item => item.ConstructType == "role");
     }
 
-    /// <summary>
-    /// Roles are still recorded as not fully analysed, so the limitation must keep being emitted. Parsing
-    /// part of a construct is not the same as supporting it.
-    /// </summary>
     [Fact]
-    public void RoleFilesStillProduceALimitationDespiteBeingParsed()
+    public void EachFullyAccountedRoleFileIsOmittedFromAnalysisCoverage()
     {
         Assert.Equal(
-            2,
+            0,
             ScanDesktopFixture().AnalysisLimitations.Count(item => item.ConstructType == "role"));
     }
 

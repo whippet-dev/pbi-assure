@@ -17,12 +17,14 @@ internal static class AnalysisLimitationDetector
     public static AnalysisLimitation[] Detect(
         IProjectFileSource source,
         IReadOnlyList<ArtifactInventory> artifacts,
-        IReadOnlyDictionary<string, string>? refinedDependencyImpacts = null)
+        IReadOnlyDictionary<string, string>? refinedDependencyImpacts = null,
+        IReadOnlySet<string>? fullyAccountedRolePaths = null)
     {
         var refinements = refinedDependencyImpacts ?? new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        var accountedRolePaths = fullyAccountedRolePaths ?? new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         return artifacts
             .Where(artifact => artifact.Kind == ArtifactKinds.SemanticModel)
-            .SelectMany(artifact => DetectForModel(source, artifact, refinements))
+            .SelectMany(artifact => DetectForModel(source, artifact, refinements, accountedRolePaths))
             .OrderBy(limitation => limitation.SemanticModel, StringComparer.OrdinalIgnoreCase)
             .ThenBy(limitation => limitation.ArtifactPath, StringComparer.OrdinalIgnoreCase)
             .ToArray();
@@ -31,7 +33,8 @@ internal static class AnalysisLimitationDetector
     private static IEnumerable<AnalysisLimitation> DetectForModel(
         IProjectFileSource source,
         ArtifactInventory artifact,
-        IReadOnlyDictionary<string, string> refinedDependencyImpacts)
+        IReadOnlyDictionary<string, string> refinedDependencyImpacts,
+        IReadOnlySet<string> fullyAccountedRolePaths)
     {
         var prefix = ProjectFilePaths.Normalize(artifact.RelativePath).TrimEnd('/') + "/";
 
@@ -48,6 +51,14 @@ internal static class AnalysisLimitationDetector
             var rule = SemanticDefinitionFileRegistry.Classify(modelRelativePath);
             if (rule.Classification is not (ConstructClassifications.SemanticNotYetAnalyzed
                 or ConstructClassifications.Unrecognized))
+            {
+                continue;
+            }
+
+            // Roles are normally a partially analysed construct family. The TMDL role parser can,
+            // however, establish that every child actually encountered in this specific role file was
+            // accounted for. In that narrow case there is no unsupported role metadata to report.
+            if (rule.ConstructType == "role" && fullyAccountedRolePaths.Contains(file.RelativePath))
             {
                 continue;
             }

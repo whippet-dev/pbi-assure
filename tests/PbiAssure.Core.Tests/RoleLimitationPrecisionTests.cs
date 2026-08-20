@@ -11,8 +11,9 @@ namespace PbiAssure.Core.Tests;
 /// analysed or is known to hold no model-object reference should not claim skipped dependency evidence
 /// that is not there.
 ///
-/// This narrows dependency impact only. It never claims roles are fully supported: the limitation is
-/// still emitted, and the support state stays partial.
+/// A role file whose encountered content is fully accounted for produces no role coverage item. This
+/// does not claim universal role support: a role with an unrecognised child still produces a conservative
+/// limitation.
 /// </summary>
 public sealed class RoleLimitationPrecisionTests
 {
@@ -24,21 +25,13 @@ public sealed class RoleLimitationPrecisionTests
     /// particular files is both unanalysed and capable of referencing an object.
     /// </summary>
     [Fact]
-    public void DesktopRolesWithOnlyAnalysedContentReportNoKnownDependencyEffect()
+    public void DesktopRolesWithOnlyAnalysedContentDoNotProduceRoleCoverageItems()
     {
         var roleLimitations = ScanDesktopFixture().AnalysisLimitations
             .Where(item => item.ConstructType == "role")
             .ToArray();
 
-        Assert.Equal(2, roleLimitations.Length);
-        Assert.All(roleLimitations, limitation =>
-        {
-            // Still reported, still only partially supported.
-            Assert.Equal(ConstructSupportStates.PartiallyAnalyzed, limitation.SupportState);
-            Assert.Contains(AnalysisConcerns.Security, limitation.Concerns);
-            // But nothing skipped here can invalidate a usage conclusion.
-            Assert.Equal(ConstructDependencyImpacts.NoKnownDependencyEffect, limitation.DependencyImpact);
-        });
+        Assert.Empty(roleLimitations);
     }
 
     [Fact]
@@ -130,15 +123,12 @@ public sealed class RoleLimitationPrecisionTests
     /// must not keep a role limitation qualifying unrelated absence states.
     /// </summary>
     [Fact]
-    public void ARoleContainingSupportedColumnPermissionsDoesNotKeepTheConservativeImpact()
+    public void ARoleContainingSupportedColumnPermissionsDoesNotProduceRoleCoverage()
     {
         var inventory = ScanSynthetic(
             "role Reader\n\tmodelPermission: read\n\n\ttablePermission Sales = [Region] = \"West\"\n\t\tcolumnPermission Region = None\n");
 
-        var limitation = Assert.Single(
-            inventory.AnalysisLimitations, item => item.ConstructType == "role");
-        Assert.Equal(ConstructSupportStates.PartiallyAnalyzed, limitation.SupportState);
-        Assert.Equal(ConstructDependencyImpacts.NoKnownDependencyEffect, limitation.DependencyImpact);
+        Assert.DoesNotContain(inventory.AnalysisLimitations, item => item.ConstructType == "role");
     }
 
     // ---- 7. Known non-dependency metadata does not force conservatism ------------------------
@@ -147,14 +137,12 @@ public sealed class RoleLimitationPrecisionTests
     [InlineData("\tmodelPermission: read")]
     [InlineData("\tannotation PBI_Id = 9949dfdbc56843c186a081639d68d821")]
     [InlineData("\textendedProperty Custom = {\"value\":1}")]
-    public void KnownNonDependencyRoleMetadataDoesNotForceAQualifyingImpact(string extraLine)
+    public void KnownNonDependencyRoleMetadataDoesNotProduceRoleCoverage(string extraLine)
     {
         var inventory = ScanSynthetic(
             $"role Reader\n{extraLine}\n\n\ttablePermission Sales = [Region] = \"West\"\n");
 
-        var limitation = Assert.Single(
-            inventory.AnalysisLimitations, item => item.ConstructType == "role");
-        Assert.Equal(ConstructDependencyImpacts.NoKnownDependencyEffect, limitation.DependencyImpact);
+        Assert.DoesNotContain(inventory.AnalysisLimitations, item => item.ConstructType == "role");
     }
 
     // ---- 8. Roles are refined individually ---------------------------------------------------
@@ -168,12 +156,12 @@ public sealed class RoleLimitationPrecisionTests
                 "role Murky\n\tmodelPermission: read\n\n\ttablePermission Sales = [Region] = \"West\"\n\n\tmysteryBlock Thing\n",
             ]);
 
-        var clean = Assert.Single(
-            inventory.AnalysisLimitations, item => item.ArtifactPath.EndsWith("Clean.tmdl", StringComparison.Ordinal));
         var murky = Assert.Single(
             inventory.AnalysisLimitations, item => item.ArtifactPath.EndsWith("Murky.tmdl", StringComparison.Ordinal));
 
-        Assert.Equal(ConstructDependencyImpacts.NoKnownDependencyEffect, clean.DependencyImpact);
+        Assert.DoesNotContain(
+            inventory.AnalysisLimitations,
+            item => item.ArtifactPath.EndsWith("Clean.tmdl", StringComparison.Ordinal));
         Assert.Equal(ConstructDependencyImpacts.MayCreateDependencies, murky.DependencyImpact);
     }
 
@@ -220,10 +208,9 @@ public sealed class RoleLimitationPrecisionTests
 
         var inventory = ProjectScanner.Scan(new InMemoryProjectFileSource("Two models", files));
 
-        Assert.Equal(
-            ConstructDependencyImpacts.NoKnownDependencyEffect,
-            Assert.Single(inventory.AnalysisLimitations,
-                item => item.SemanticModel == "Clean" && item.ConstructType == "role").DependencyImpact);
+        Assert.DoesNotContain(
+            inventory.AnalysisLimitations,
+            item => item.SemanticModel == "Clean" && item.ConstructType == "role");
         Assert.Equal(
             ConstructDependencyImpacts.MayCreateDependencies,
             Assert.Single(inventory.AnalysisLimitations,

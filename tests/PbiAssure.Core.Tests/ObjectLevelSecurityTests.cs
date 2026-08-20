@@ -69,12 +69,11 @@ public sealed class ObjectLevelSecurityTests
     }
 
     [Fact]
-    public void SupportedOlsOnlyRoleDoesNotCreateTheOldUnanalysedRoleNotice()
+    public void SupportedOlsOnlyRoleDoesNotCreateRoleAnalysisCoverage()
     {
         var inventory = ScanDesktopFixture();
-        var roleLimitation = Assert.Single(inventory.AnalysisLimitations, item => item.ConstructType == "role");
 
-        Assert.Equal(ConstructDependencyImpacts.NoKnownDependencyEffect, roleLimitation.DependencyImpact);
+        Assert.DoesNotContain(inventory.AnalysisLimitations, item => item.ConstructType == "role");
         Assert.DoesNotContain("Some metadata in this role was not fully checked.", HtmlReportRenderer.Render(inventory), StringComparison.Ordinal);
     }
 

@@ -189,6 +189,13 @@ public sealed class AnalysisLimitationTests
             var shouldBeLimited = rule.Classification is
                 ConstructClassifications.SemanticNotYetAnalyzed or ConstructClassifications.Unrecognized;
 
+            // A role is registry-classified as partially analysed in general, but a particular role file
+            // is omitted when its parser inventory proves every encountered child was accounted for.
+            if (rule.ConstructType == "role")
+            {
+                shouldBeLimited = false;
+            }
+
             Assert.Equal(shouldBeLimited, limitedPaths.Contains(path));
         }
 
@@ -203,30 +210,18 @@ public sealed class AnalysisLimitationTests
     /// roles/ sub-folder, not a single definition/roles.tmdl.
     /// </summary>
     [Fact]
-    public void RoleMetadataIsReportedAsALimitationAgainstItsOwnFile()
+    public void FullyAccountedRoleMetadataDoesNotProduceALimitation()
     {
         var inventory = ProjectScanner.Scan(BuildModelSource(
             "Sales",
             ("definition/tables/Sales.tmdl", "table Sales"),
             ("definition/roles/RegionalManager.tmdl", "role RegionalManager")));
 
-        var limitation = Assert.Single(inventory.AnalysisLimitations);
-        Assert.Equal("PBI-LIMIT-MODEL-ROLE", limitation.LimitationId);
-        Assert.Equal("Sales.SemanticModel/definition/roles/RegionalManager.tmdl", limitation.ArtifactPath);
-        Assert.Equal("Sales", limitation.SemanticModel);
-        Assert.Equal(AnalysisLimitationScopes.SemanticModel, limitation.Scope);
-        Assert.Equal(AnalysisLimitationCauses.ConstructNotSupported, limitation.Cause);
-        // This role file holds nothing beyond its declaration, so nothing unanalysed in it could
-        // reference a model object. The registry default is narrowed by that artifact evidence; see
-        // RoleLimitationPrecisionTests.
-        Assert.Equal(ConstructDependencyImpacts.NoKnownDependencyEffect, limitation.DependencyImpact);
-        Assert.Contains(AnalysisConcerns.Security, limitation.Concerns);
-        Assert.Null(limitation.Table);
-        Assert.Null(limitation.ObjectName);
+        Assert.DoesNotContain(inventory.AnalysisLimitations, item => item.ConstructType == "role");
     }
 
     [Fact]
-    public void EachRoleFileIsReportedSeparately()
+    public void FullyAccountedRoleFilesDoNotProduceLimitations()
     {
         var inventory = ProjectScanner.Scan(BuildModelSource(
             "Sales",
@@ -234,10 +229,7 @@ public sealed class AnalysisLimitationTests
             ("definition/roles/Role1.tmdl", "role Role1"),
             ("definition/roles/Role2.tmdl", "role Role2")));
 
-        Assert.Equal(2, inventory.AnalysisLimitations.Count);
-        Assert.All(
-            inventory.AnalysisLimitations,
-            limitation => Assert.Equal("PBI-LIMIT-MODEL-ROLE", limitation.LimitationId));
+        Assert.DoesNotContain(inventory.AnalysisLimitations, limitation => limitation.ConstructType == "role");
     }
 
     /// <summary>
