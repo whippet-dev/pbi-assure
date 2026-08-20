@@ -293,6 +293,25 @@ Established by `tests/fixtures/desktop-semantic-constructs`.
 
 Established by `tests/fixtures/desktop-udf-references`, which also records what it does not prove.
 
+### PBIR schema compatibility evidence
+
+- **A different PBIR schema version is not automatically unsupported.** The exact schema family/version
+  combinations in committed Desktop fixtures form PBI Assure's verified baseline. Other versions in the
+  expected family are recognised but unverified until fixture evidence exists; semantic-version numbers
+  alone are not a compatibility promise.
+- **Schema compatibility is an analysis-coverage concern before it is a Finding.** Unknown, newer,
+  missing or malformed schema metadata limits what PBI Assure can claim. It does not by itself prove a
+  defect in the user's report. The first implementation must surface these states in scan metadata or
+  Analysis coverage and must not add `PBI-COMPAT-003`.
+- **Schema evidence must be structured and raw evidence preserved.** Compare parsed artifact family and
+  version against a central baseline; do not drive behaviour from URI substrings or diagnostic prose.
+  Continue property-wise parsing unless the artifact itself is unreadable.
+- **PBIR-Legacy is a separate format boundary, not an old modern-PBIR schema version.** TMDL
+  compatibility is likewise outside the report-side PBIR JSON policy.
+
+Established by
+[the encountered PBIR schema compatibility review](../reviews/encountered-pbir-schema-compatibility-policy.md).
+
 ### Generated model objects
 
 - Power BI-generated Auto Date/Time tables are identified **only** by the explicit TMDL annotations

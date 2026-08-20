@@ -5,6 +5,21 @@ Tactical entry point for an incoming coding agent. Read this first, then
 
 ## What just happened
 
+The encountered-PBIR-schema compatibility policy is now defined. PBI Assure's report parsers retain
+several versioned schema URIs but do not branch on any of them; they read known properties and silently
+ignore unknown ones. The committed Desktop fixtures establish an exact baseline for
+`definitionProperties/2.0.0`, `report/3.3.0`, `pagesMetadata/1.1.0`, `page/2.1.0` and
+`visualContainer/2.11.0`. They also contain `versionMetadata/1.0.0` with PBIR definition version `2.0.0`,
+which PBI Assure does not yet retain. Bookmark schemas exist only in local sample evidence and
+`reportExtension/1.0.0` only in synthetic tests.
+
+The adopted boundary is conservative: exact fixture-backed versions are the verified baseline; another
+version in a recognised family is unverified, not automatically unsupported; missing, malformed and
+unknown-family schema metadata are separate states; and PBIR-Legacy is a separate format rather than an
+old modern-PBIR schema. These states describe PBI Assure's coverage, not defects in the user's project.
+No compatibility finding was added or recommended for the first implementation. See
+[the compatibility review](../reviews/encountered-pbir-schema-compatibility-policy.md).
+
 Report page cards now always start collapsed, including the page that was active when Desktop last saved
 the report. A valid explicit `landingPageName` is instead surfaced quietly as a visible **Landing page**
 badge on the matching collapsed page card, and is searchable as landing-page metadata. `activePageName`
@@ -149,15 +164,19 @@ records.
 
 ## Immediate next task
 
-Choose on user impact, not on what was touched last. A product/technical triage on 2026-08-20 replaced
-the previous evidence-gap ranking with these priorities:
+Implement the smallest schema-observation slice described in the compatibility review:
 
-1. **Define an encountered-schema support policy before adding a PBIR compatibility warning.** Schema
-   URIs are retained but not validated. Do not add a warning until supported versions and the behaviour
-   for unknown newer schemas are pinned by focused fixtures.
-2. **Turn broader connector coverage into a measurement task, not a feature specification.** First count
-   unrecognised connector calls in redistribution-safe or local real-report examples, then add only
-   concrete families and location classifications supported by that evidence.
+1. parse and retain the raw/family/version evidence for report-side PBIR schema declarations, including
+   `definition/version.json`;
+2. classify exact verified, recognised-unverified, unknown-family, missing and malformed states without
+   changing parser behaviour;
+3. surface non-exact states in Analysis coverage / scan metadata only;
+4. use current Desktop fixtures plus synthetic URI mutations; do not duplicate fixtures and do not add
+   `PBI-COMPAT-003`.
+
+After that, broader connector coverage remains a measurement task rather than a feature specification:
+first count unrecognised connector calls in redistribution-safe or local real-report examples, then add
+only concrete families and location classifications supported by that evidence.
 
 Inactive-relationship usage through `USERELATIONSHIP` remains a potentially valuable later review, but
 it requires new DAX evidence and has unavoidable external-consumer false positives. Cross-artifact and

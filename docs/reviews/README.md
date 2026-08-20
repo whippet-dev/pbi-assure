@@ -13,6 +13,7 @@ Forward-looking design lives in [`../design/`](../design/).
 | [audit-verification.md](audit-verification.md) | Verification of the two reviews above against the working tree, plus the first two fixes. **Corrects several claims in them** — see its §3 |
 | [unsupported-construct-slice1-implementation.md](unsupported-construct-slice1-implementation.md) | What slice 1 of unsupported-construct detection implemented, at `06eaec2` |
 | [unsupported-construct-slice1-registry-correction.md](unsupported-construct-slice1-registry-correction.md) | Correction of the slice-1 registry against documented TMDL/PBIP structure, at `dcbde4a` |
+| [encountered-pbir-schema-compatibility-policy.md](encountered-pbir-schema-compatibility-policy.md) | Inventory of report-side PBIR schema evidence and the conservative policy for exact, unverified, unknown, missing and malformed schema metadata |
 
 Earlier feasibility spikes remain directly under [`../`](../) — `pbix-ingestion-feasibility.md`,
 `theme-review-feasibility-spike.md`, `theme-review-fixture-analysis.md` and

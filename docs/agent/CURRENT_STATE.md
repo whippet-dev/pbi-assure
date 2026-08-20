@@ -302,10 +302,19 @@ unanalysed files are the always-present three — verified against three Desktop
 
 ## Immediate task
 
-**Next recommended slice: add a focused integrity finding when an explicitly referenced custom-theme
-resource is missing or malformed.** Keep it a narrow retained-resource check; do not broaden it into
-general theme-quality analysis. A missing active-page rule is no longer ranked without evidence that the
-saved authoring-state value has a meaningful user-facing consequence.
+**Next recommended slice: implement report-side schema observations as Analysis coverage / scan
+metadata, not as a compatibility finding.** Parse the canonical Microsoft PBIR schema URI into artifact
+family and version, retain `definition/version.json`, compare against the fixture-backed exact baseline,
+and distinguish exact, recognised-unverified, unknown-family, missing and malformed metadata. Keep the
+existing property-wise parsing behaviour unchanged. The policy and evidence inventory are in
+[the encountered PBIR schema compatibility review](../reviews/encountered-pbir-schema-compatibility-policy.md).
+
+The compatibility investigation established that current parsers retain several schema URIs but never
+branch on them. Exact versions in committed Desktop fixtures are `definitionProperties/2.0.0`,
+`report/3.3.0`, `pagesMetadata/1.1.0`, `page/2.1.0`, `visualContainer/2.11.0` and
+`versionMetadata/1.0.0` (the last is encountered in `version.json` but is not currently retained). A
+different known-family version is unverified rather than automatically unsupported. Compatibility state
+belongs first in Analysis coverage; no `PBI-COMPAT-003` finding is justified yet.
 
 The compact row-level security HTML review is complete. It is conditional on retained roles, shows model
 permission and table-filter DAX, and keeps its project-only security boundary explicit. See
