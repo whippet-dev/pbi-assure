@@ -178,32 +178,25 @@ records.
 
 ## Immediate next task
 
-Connector coverage measurement is complete: 40 local/fixture projects supplied 77 M expressions and 268 dotted
-calls. Every observed external-source call was already recognised (`File.Contents` or `Excel.Workbook`);
-the four unrecognised names were binary/JSON/table library functions, not connector gaps. No connector
-support work is recommended. The safe next action is to repeat the aggregate measurement only when a
-redistribution-safe fixture or existing local sample contains an unrecognised class-A source function. See
-[the measurement](../reviews/power-query-connector-coverage-measurement.md).
+The product backlog was freshly re-ranked on 2026-08-20 after the schema, navigation, RLS, UDF and connector
+evidence work. The decision and the scored top five are in
+[the product-value re-rank](../reviews/product-value-rerank-2026-08-20.md).
 
-Inactive-relationship usage through `USERELATIONSHIP` remains a potentially valuable later review, but
-it requires new DAX evidence and has unavoidable external-consumer false positives. Cross-artifact and
-external-consumer evidence is likewise not currently an actionable core slice because the selected PBIP
-does not contain those consumers.
+**Next: create a Desktop-authored OLS evidence fixture; do not implement OLS parsing in the same task.**
+Use synthetic `Employee` and `Confidential` tables. Through Power BI Desktop TMDL view, apply one
+column-level `metadataPermission: none` to `Employee[Salary]` and one table-level permission to
+`Confidential`; ensure those objects have no other report/model use. Save, close, reopen and save a copy,
+then record the exact `definition/roles/*.tmdl` shape and round-trip stability. Scan the fixture with the
+current product to pin the pre-change usage state, analysis limitation and RLS HTML. Proceed to an OLS
+inventory/structural-dependency design only if the permission targets are explicit and deterministic.
 
-The report-level-measure → UDF idea is **parked on evidence**, not awaiting implementation. Desktop
-2.157.879.0 rejected the live-connect UDF call, then persisted its invalid expression with no structured
-reference; the valid control was fully described by `references.measures`. The report is `byConnection`
-and contains no source model PBI Assure can analyse offline. Details and the fixture decision are in
-[the evidence review](../reviews/report-level-measure-udf-fixture-design.md). Visual calculations remain
-unread and were not part of that experiment.
+After that evidence task, measure bookmark-only semantic references before designing bookmark graph edges,
+then create a controlled inactive-relationship/`USERELATIONSHIP` fixture. The existing role/perspective
+"Why" presentation gap remains a safe small task between evidence slices, but is not higher product value.
 
-**Known presentation gap, deliberately not filled:** an object that is structurally required only by a
-perspective or a role filter gets no "Why" line, because no reason wording exists for those kinds. That
-is silence rather than a wrong statement, and adding copy was out of scope. Worth a small slice if a
-user asks why those objects are unexplained.
-
-Deliberately *not* ranked first: visual-calculation parsing. It is the other unread UDF consumer, but
-it is the largest of the three and only moves a caveat that the report now explains honestly.
+Connector expansion and report-level-measure → UDF traversal remain parked on the evidence already recorded;
+`PBI-ACCESS-001` remains unchanged pending independently authored intent evidence. Visual-calculation parsing
+is not a current top-five task.
 
 ## Do not do yet
 

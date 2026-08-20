@@ -14,6 +14,7 @@ Forward-looking design lives in [`../design/`](../design/).
 | [unsupported-construct-slice1-implementation.md](unsupported-construct-slice1-implementation.md) | What slice 1 of unsupported-construct detection implemented, at `06eaec2` |
 | [unsupported-construct-slice1-registry-correction.md](unsupported-construct-slice1-registry-correction.md) | Correction of the slice-1 registry against documented TMDL/PBIP structure, at `dcbde4a` |
 | [encountered-pbir-schema-compatibility-policy.md](encountered-pbir-schema-compatibility-policy.md) | Inventory of report-side PBIR schema evidence and the conservative policy for exact, unverified, unknown, missing and malformed schema metadata |
+| [product-value-rerank-2026-08-20.md](product-value-rerank-2026-08-20.md) | Fresh product-value ranking after the schema, navigation, RLS, UDF and connector evidence work; selects an OLS Desktop fixture as the next task |
 
 Earlier feasibility spikes remain directly under [`../`](../) — `pbix-ingestion-feasibility.md`,
 `theme-review-feasibility-spike.md`, `theme-review-fixture-analysis.md` and
