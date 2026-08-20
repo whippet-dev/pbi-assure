@@ -227,6 +227,13 @@ against re-saving that fixture, since saving destroys the pre-save state it exis
 
 ### Row-level security serialization and classification
 
+- **Triple-backtick fences are TMDL expression syntax, never expression content or child metadata.** A
+  shared reader must consume from an opening fence immediately following `=` through the closing fence,
+  remove only the closing fence's structural left boundary and retain relative expression whitespace.
+  This applies equally to declaration and assignment expressions; do not add RLS-specific fence parsing.
+  Any generic scan of child constructs must skip the fenced body so DAX/M tokens are not reported as
+  unsupported model metadata.
+
 - Desktop emits **one file per role** under `definition/roles/`.
 - Inside a `tablePermission`, the owning table is named once on the `tablePermission` line and the
   filter expression uses **unqualified** column references — `[Region]`, not `Sales[Region]`. References

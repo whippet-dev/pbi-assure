@@ -5,6 +5,7 @@ namespace PbiAssure.Core.Scanning;
 internal static class TmdlSemanticModelParser
 {
     private static readonly string[] NamedObjectKeywords = ["column", "measure", "hierarchy", "partition"];
+    private const string ExpressionFence = "```";
 
     public static SemanticModelInventory Parse(IProjectFileSource source, string semanticModelDirectory)
     {
@@ -593,8 +594,25 @@ internal static class TmdlSemanticModelParser
             yield break;
         }
 
+        var insideFencedExpression = IsFencedExpressionOpening(lines[declarationIndex].Trimmed);
         for (var index = declarationIndex + 1; index < endIndex; index++)
         {
+            if (insideFencedExpression)
+            {
+                if (IsExpressionFence(lines[index].Trimmed))
+                {
+                    insideFencedExpression = false;
+                }
+
+                continue;
+            }
+
+            if (IsFencedExpressionOpening(lines[index].Trimmed))
+            {
+                insideFencedExpression = true;
+                continue;
+            }
+
             if (string.IsNullOrWhiteSpace(lines[index].Text) || lines[index].Indent != childIndent)
             {
                 continue;
@@ -664,6 +682,11 @@ internal static class TmdlSemanticModelParser
         int endIndex,
         string? inlineExpression)
     {
+        if (IsExpressionFence(inlineExpression))
+        {
+            return ReadFencedExpression(lines, declarationIndex + 1, endIndex);
+        }
+
         if (!string.IsNullOrWhiteSpace(inlineExpression))
         {
             return inlineExpression;
@@ -747,6 +770,11 @@ internal static class TmdlSemanticModelParser
             }
 
             var inlineExpression = lines[index].Trimmed[prefix.Length..].Trim();
+            if (IsExpressionFence(inlineExpression))
+            {
+                return ReadFencedExpression(lines, index + 1, endIndex);
+            }
+
             if (inlineExpression.Length > 0)
             {
                 return inlineExpression;
@@ -785,6 +813,61 @@ internal static class TmdlSemanticModelParser
         }
 
         return null;
+    }
+
+    /// <summary>
+    /// Reads a TMDL expression enclosed by triple backticks. TMDL defines the closing delimiter as the
+    /// expression's left boundary, so only that structural indentation is removed; relative indentation
+    /// and blank lines inside the expression are preserved.
+    /// </summary>
+    private static string ReadFencedExpression(IReadOnlyList<TmdlLine> lines, int startIndex, int endIndex)
+    {
+        var closingIndex = -1;
+        for (var index = startIndex; index < endIndex; index++)
+        {
+            if (IsExpressionFence(lines[index].Trimmed))
+            {
+                closingIndex = index;
+                break;
+            }
+        }
+
+        // Keep malformed or incomplete input from swallowing a following object. The ordinary parser is
+        // intentionally tolerant, so retain the available text rather than treating an opening fence as
+        // a complete expression.
+        var expressionEnd = closingIndex >= 0 ? closingIndex : endIndex;
+        if (expressionEnd == startIndex)
+        {
+            return string.Empty;
+        }
+
+        var leftBoundary = closingIndex >= 0 ? LeadingWhitespace(lines[closingIndex].Text) : string.Empty;
+        return string.Join(
+            Environment.NewLine,
+            lines.Skip(startIndex).Take(expressionEnd - startIndex).Select(line =>
+                line.Text.StartsWith(leftBoundary, StringComparison.Ordinal)
+                    ? line.Text[leftBoundary.Length..]
+                    : line.Text));
+    }
+
+    private static bool IsExpressionFence(string? value) =>
+        string.Equals(value?.Trim(), ExpressionFence, StringComparison.Ordinal);
+
+    private static bool IsFencedExpressionOpening(string value)
+    {
+        var equalsIndex = value.LastIndexOf('=');
+        return equalsIndex >= 0 && IsExpressionFence(value[(equalsIndex + 1)..]);
+    }
+
+    private static string LeadingWhitespace(string value)
+    {
+        var length = 0;
+        while (length < value.Length && (value[length] == ' ' || value[length] == '\t'))
+        {
+            length++;
+        }
+
+        return value[..length];
     }
 
     private static bool HasFlag(

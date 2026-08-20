@@ -5,6 +5,15 @@ Tactical entry point for an incoming coding agent. Read this first, then
 
 ## What just happened
 
+TMDL triple-backtick fenced expressions are now read centrally rather than being retained as the opening
+fence. Power BI Desktop's serializer can use this form to preserve expression whitespace, including for
+RLS `tablePermission` filters. The shared declaration and assignment readers now consume through the
+closing fence, remove only the fence's structural left boundary, preserve relative whitespace and stop
+before following properties or objects. The generic unanalysed-child scan also skips fenced bodies, so
+DAX such as `VAR` is not misreported as unsupported role metadata. This was verified with synthetic
+RLS, measure, UDF, calculation-group and M-partition cases; the real work report that prompted it was
+not copied into the repository.
+
 The encountered-PBIR-schema compatibility policy is now defined. PBI Assure's report parsers retain
 several versioned schema URIs but do not branch on any of them; they read known properties and silently
 ignore unknown ones. The committed Desktop fixtures establish an exact baseline for
@@ -154,10 +163,10 @@ records.
 
 ## State
 
-- **Last verified product state:** current `master` worktree with landing-page presentation refinement.
+- **Last verified product state:** current `master` worktree with fenced TMDL expression parsing repair.
   Record the resulting commit after this slice is committed.
 - **Working tree:** expected clean apart from untracked local review documents; no tracked modifications
-- **Verified locally:** Release build succeeded with 0 warnings; **436 core + 2 privacy tests passed**
+- **Verified locally:** Release build succeeded with 0 warnings; **441 core + 2 privacy tests passed**
 - **Known exception:** `dotnet format --verify-no-changes` fails with 24 pre-existing whitespace errors
   in two Theme Review files. Unrelated to current work, deliberately not fixed. See
   [CURRENT_STATE.md](CURRENT_STATE.md).

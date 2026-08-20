@@ -12,7 +12,7 @@ evidenced · **[design decision]** a choice, not a fact.
 |---|---|
 | Remote | `whippet-dev/pbi-assure` |
 | Branch | `master` (also the default branch) |
-| Last verified product state | Current `master` worktree — landing-page presentation refinement |
+| Last verified product state | Current `master` worktree — fenced TMDL expression parsing repair |
 | Working tree | Expected clean of tracked modifications. Untracked local review documents may be present |
 
 `master` may have moved past that commit for documentation-only changes. Re-verify and update this
@@ -22,7 +22,7 @@ section whenever a commit changes build, test or behaviour — not for every com
 
 - `dotnet build PbiAssure.slnx` — **succeeded, 0 warnings, 0 errors** [verified]. `TreatWarningsAsErrors`
   is on, so warnings fail the build.
-- `dotnet test PbiAssure.slnx` — **436 core + 2 privacy end-to-end tests passed**, 0 failed [verified].
+- `dotnet test PbiAssure.slnx` — **441 core + 2 privacy end-to-end tests passed**, 0 failed [verified].
 - CI (`.github/workflows/ci.yml`) — **green** [verified], confirmed complete (not queued) for the
   pre-feature baseline `0c1af3c`. Runs restore, build, a Playwright Chromium install, then the whole
   solution test suite on `windows-latest`.
@@ -315,6 +315,26 @@ branch on them. Exact versions in committed Desktop fixtures are `definitionProp
 `versionMetadata/1.0.0` (the last is encountered in `version.json` but is not currently retained). A
 different known-family version is unverified rather than automatically unsupported. Compatibility state
 belongs first in Analysis coverage; no `PBI-COMPAT-003` finding is justified yet.
+
+### Completed — fenced TMDL expression parsing
+
+The shared TMDL expression readers now recognise a triple-backtick value immediately after `=` as a
+fenced expression, rather than treating the opening delimiter as inline DAX or M. The closing delimiter
+sets the structural left boundary; it is removed along with the opening fence, while relative indentation
+and blank lines inside the expression are retained. The parser stops at that closing delimiter, so a
+following property, annotation or object is not consumed as expression text.
+
+This applies to current parser surfaces using `ReadExpression` or `ReadAssignmentExpression`: calculated
+columns, measures, named expressions, DAX functions, calculation items, calculation-group selection and
+format-string expressions, calculated partitions, M partitions and RLS table-permission filters. The
+generic unread-child detection skips fenced bodies too, so expression keywords are not mistaken for
+unsupported role metadata. A real Desktop-authored work report showed a fenced `tablePermission` on
+2026-08-20; only redistribution-safe synthetic cases are committed.
+
+Observable corrections are intentional: fenced expressions now retain their actual bodies; dependencies
+inside them can reach semantic usage classification; fenced M reaches connector analysis; and an RLS
+role whose only apparent unread content was its fence no longer displays the spurious role coverage
+note. No JSON or CSV shape changed.
 
 The compact row-level security HTML review is complete. It is conditional on retained roles, shows model
 permission and table-filter DAX, and keeps its project-only security boundary explicit. See
