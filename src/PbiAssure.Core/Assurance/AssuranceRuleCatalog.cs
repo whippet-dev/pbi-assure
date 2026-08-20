@@ -25,6 +25,7 @@ public static class AssuranceRuleCatalog
         new("PBI-MODEL-002", "Referenced semantic model missing", "Checks that a semantic model referenced by project path is available in the scanned project.", AssuranceCategories.ModelIntegrity),
         new("PBI-MODEL-003", "Bidirectional relationship", "Identifies relationships that filter in both directions for review.", AssuranceCategories.ModelIntegrity),
         new("PBI-MODEL-004", "Many-to-many relationship", "Identifies many-to-many relationships for review.", AssuranceCategories.ModelIntegrity),
+        new("PBI-MODEL-005", "Reference not found", "Checks explicit model references whose target cannot be found in the same semantic model.", AssuranceCategories.ModelIntegrity),
         new("PBI-QUERY-001", "Dynamic Power Query references", "Checks for Power Query references built dynamically, where complete query dependencies cannot be determined automatically.", AssuranceCategories.ModelIntegrity),
         new("PBI-QUERY-002", "Power Query with no known use", "Checks reusable Power Query expressions with no detected loaded table or supporting query that uses them.", AssuranceCategories.ModelIntegrity),
 
