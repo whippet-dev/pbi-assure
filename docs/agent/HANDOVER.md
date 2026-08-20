@@ -107,12 +107,28 @@ records.
 
 ## Immediate next task
 
-Choose on user impact, not on what was touched last. Ranked:
+Choose on user impact, not on what was touched last. A product/technical triage on 2026-08-20 replaced
+the previous evidence-gap ranking with these priorities:
 
-1. **Collect Desktop evidence for broken structured model references** if product wording stronger than
-   "PBI Assure could not find" is ever proposed. Create a reference in Desktop, remove or rename its
-   target, save, and inspect whether Desktop persists, repairs, rejects or removes the metadata. Do not
-   mutate an existing fixture and relabel it Desktop-authored.
+1. **Add a compact row-level security review surface to the HTML.** Roles, model permission, table
+   permissions and their DAX filters are already parsed, retained and Desktop-fixture-backed, but none is
+   visible to the developer except indirectly through usage classification and Analysis coverage. Show
+   those facts without creating new security findings, changing classification, or implying that PBI
+   Assure can see service role membership or fully assess object-level security.
+2. **Small integrity findings over explicit metadata:** first a report whose configured active page does
+   not exist; then an explicitly referenced custom-theme resource that is missing or malformed. Keep
+   these as separate slices and reuse the evidence already retained by the report and theme parsers.
+3. **Define an encountered-schema support policy before adding a PBIR compatibility warning.** Schema
+   URIs are retained but not validated. Do not add a warning until supported versions and the behaviour
+   for unknown newer schemas are pinned by focused fixtures.
+4. **Turn broader connector coverage into a measurement task, not a feature specification.** First count
+   unrecognised connector calls in redistribution-safe or local real-report examples, then add only
+   concrete families and location classifications supported by that evidence.
+
+Inactive-relationship usage through `USERELATIONSHIP` remains a potentially valuable later review, but
+it requires new DAX evidence and has unavoidable external-consumer false positives. Cross-artifact and
+external-consumer evidence is likewise not currently an actionable core slice because the selected PBIP
+does not contain those consumers.
 
 The report-level-measure → UDF idea is **parked on evidence**, not awaiting implementation. Desktop
 2.157.879.0 rejected the live-connect UDF call, then persisted its invalid expression with no structured

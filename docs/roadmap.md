@@ -2,10 +2,24 @@
 
 PBI Assure is being developed in vertical slices that produce reviewable value while protecting the accuracy of unused-object classifications. Priorities may change after each real-report review.
 
-## Next core-analysis priorities
+## Next product priorities
 
-1. Cross-artifact and external-consumer evidence where it can be obtained safely.
-2. Broader connector coverage informed by real-report examples.
+1. **Row-level security review in the HTML.** Present the roles, table filters and analysis boundary that
+   PBI Assure already parses, without implying visibility of Power BI Service membership or complete
+   object-level security.
+2. **Small, evidence-backed integrity checks.** Prioritise explicit broken metadata such as a configured
+   report active page that does not exist and an active custom-theme resource that is missing or
+   malformed. Keep each as a focused rule slice.
+3. **PBIR schema compatibility guard.** The scanner retains encountered schema URIs but does not yet
+   compare them with an explicit support policy. Define and fixture that policy before producing a
+   compatibility finding.
+4. **Measured connector expansion.** First identify unrecognised connector calls in real,
+   redistribution-safe examples. Expand the connector inventory only for concrete observed families and
+   location types rather than treating “broader coverage” as an open-ended feature.
+
+Cross-artifact and external-consumer evidence remains strategically useful but is not an actionable next
+slice while those consumers are absent from the selected PBIP input. Revisit it when a concrete optional
+input and privacy-safe identity/join contract can be specified.
 
 ## Completed core-analysis slices
 

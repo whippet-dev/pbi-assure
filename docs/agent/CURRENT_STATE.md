@@ -259,7 +259,15 @@ unanalysed files are the always-present three — verified against three Desktop
 
 ## Immediate task
 
-**Not yet chosen — see [HANDOVER.md](HANDOVER.md) for the ranked options.**
+**Next recommended slice: expose the row-level security metadata PBI Assure already understands as a
+compact HTML review surface.** `SemanticModelInventory.Roles` already retains role names, model
+permission, table permissions, filter expressions and source paths; the Desktop-authored
+`desktop-semantic-constructs` fixture proves two normal role shapes. The renderer currently shows none of
+it. This is a presentation of analysed facts, not a new finding and not a change to semantic usage.
+
+Keep the boundary explicit: Power BI Service membership is unavailable, column permissions are not fully
+analysed, and PBI Assure must not claim deployed-security assurance. See [HANDOVER.md](HANDOVER.md) for
+the rest of the user-value ranking.
 
 The presentation work below is done. What follows is the record of why it was next, kept because it
 explains the shape of the HTML surface.
