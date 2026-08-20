@@ -1172,19 +1172,17 @@ public static partial class HtmlReportRenderer
             string.Equals(finding.Report, report.Name, StringComparison.OrdinalIgnoreCase) &&
             (string.Equals(finding.Page, page.Name, StringComparison.OrdinalIgnoreCase) ||
              string.Equals(finding.PageDisplayName, page.DisplayName, StringComparison.OrdinalIgnoreCase)));
+        var isLandingPage = !string.IsNullOrWhiteSpace(report.LandingPageName) &&
+            string.Equals(report.LandingPageName, page.Name, StringComparison.OrdinalIgnoreCase);
 
         var visualTypes = string.Join('\u001f', page.Visuals.Select(visual => visual.VisualType).Where(value => !string.IsNullOrWhiteSpace(value)).Distinct(StringComparer.OrdinalIgnoreCase));
         var pageSearchText = string.Join(' ', new[] { page.DisplayName, page.Name, PageRole(page), PageVisibility(page) }
+            .Append(isLandingPage ? "Landing page" : string.Empty)
             .Concat(page.Visuals.SelectMany(visual => new[] { VisualDisplayName(visual), HumanizeVisualType(visual.VisualType), visual.VisualType }))
             .Concat(page.FieldReferences.Select(reference => $"{reference.Table} {reference.ObjectName} {reference.ObjectType}")));
         html.Append("        <details class=\"page-card\" data-investigation-item=\"page\" data-search-text=\"").Append(Encode(pageSearchText))
             .Append("\" data-filter-page-type=\"").Append(Encode(PageRole(page))).Append("\" data-filter-visibility=\"")
             .Append(Encode(PageVisibility(page))).Append("\" data-filter-visual-type=\"").Append(Encode(visualTypes)).Append("\" data-page-name=\"").Append(Encode(page.DisplayName)).Append('"');
-        if (page.IsActive)
-        {
-            html.Append(" open");
-        }
-
         html.AppendLine(">");
         html.Append("          <summary><span class=\"summary-copy\"><span class=\"kicker\">")
             .Append(pageNumber is null ? "Report page" : $"Page {pageNumber}").Append("</span><strong>")
@@ -1195,6 +1193,11 @@ public static partial class HtmlReportRenderer
             ("Visibility", PageVisibility(page)),
             ("Visuals", page.VisualCount.ToString(CultureInfo.InvariantCulture)));
         html.AppendLine("</span>");
+        if (isLandingPage)
+        {
+            html.AppendLine("            <span class=\"badge badge-neutral\">Landing page</span>");
+        }
+
         if (pageFindings > 0)
         {
             html.Append("            <span class=\"count-pill\">").Append(pageFindings.ToString(CultureInfo.InvariantCulture))

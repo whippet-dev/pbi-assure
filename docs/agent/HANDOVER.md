@@ -5,6 +5,14 @@ Tactical entry point for an incoming coding agent. Read this first, then
 
 ## What just happened
 
+Report page cards now always start collapsed, including the page that was active when Desktop last saved
+the report. A valid explicit `landingPageName` is instead surfaced quietly as a visible **Landing page**
+badge on the matching collapsed page card, and is searchable as landing-page metadata. `activePageName`
+remains inventory-only saved authoring state; it has no page-card label or automatic expansion. No page
+is labelled when no landing page is configured or when the configured target is missing — that remains
+the scoped `PBI-NAV-017` Finding. Validation: Release build clean, **436 core + 2 privacy E2E tests
+passed**.
+
 Configured custom-theme resources are now checked narrowly for integrity. `PBI-COMPAT-002` is a
 Warning / Finding only where `definition/report.json` explicitly names `themeCollection.customTheme`
 and its selected local resource cannot be resolved or read. It does not assess theme quality,
@@ -131,10 +139,10 @@ records.
 
 ## State
 
-- **Last verified product state:** current `master` worktree with configured custom-theme resource integrity review.
+- **Last verified product state:** current `master` worktree with landing-page presentation refinement.
   Record the resulting commit after this slice is committed.
 - **Working tree:** expected clean apart from untracked local review documents; no tracked modifications
-- **Verified locally:** Release build succeeded with 0 warnings; **433 core + 2 privacy tests passed**
+- **Verified locally:** Release build succeeded with 0 warnings; **436 core + 2 privacy tests passed**
 - **Known exception:** `dotnet format --verify-no-changes` fails with 24 pre-existing whitespace errors
   in two Theme Review files. Unrelated to current work, deliberately not fixed. See
   [CURRENT_STATE.md](CURRENT_STATE.md).

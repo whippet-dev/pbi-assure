@@ -119,6 +119,54 @@ public sealed class LandingPageSupportTests
         Assert.DoesNotContain(noLandingInventory.Findings, finding => finding.RuleId == "PBI-NAV-017");
     }
 
+    [Fact]
+    public void ReportPageCardsStartCollapsedAndOnlyTheExplicitLandingPageIsLabelled()
+    {
+        var inventory = Scan("page-1", "page-2", ("page-1", "Page 1"), ("page-2", "Page 2"));
+        var html = HtmlReportRenderer.Render(inventory);
+        var activePage = PageCardMarkup(html, "Page 1");
+        var landingPage = PageCardMarkup(html, "Page 2");
+
+        Assert.DoesNotContain(" open", OpeningTag(activePage), StringComparison.Ordinal);
+        Assert.DoesNotContain(" open", OpeningTag(landingPage), StringComparison.Ordinal);
+        Assert.DoesNotContain("Landing page", activePage, StringComparison.Ordinal);
+        Assert.Contains("<span class=\"badge badge-neutral\">Landing page</span>", landingPage, StringComparison.Ordinal);
+        Assert.Contains("Landing page", landingPage, StringComparison.Ordinal);
+        Assert.Contains("landing page", landingPage, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public void AbsentOrMissingLandingPageDoesNotCreateALabelAndKeepsExistingControls()
+    {
+        var absent = Scan("page-1", null, ("page-1", "Page 1"));
+        var missing = Scan("page-1", "missing", ("page-1", "Page 1"));
+        var absentHtml = HtmlReportRenderer.Render(absent);
+        var missingHtml = HtmlReportRenderer.Render(missing);
+
+        Assert.DoesNotContain(">Landing page</span>", absentHtml, StringComparison.Ordinal);
+        Assert.DoesNotContain(">Landing page</span>", missingHtml, StringComparison.Ordinal);
+        Assert.Contains(missing.Findings, finding => finding.RuleId == "PBI-NAV-017");
+        Assert.Contains("Expand all pages", absentHtml, StringComparison.Ordinal);
+        Assert.Contains("Collapse all pages", absentHtml, StringComparison.Ordinal);
+        Assert.Contains("<details class=\"section-help\"", absentHtml, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void LandingPageLabelsRemainScopedToTheirOwnReports()
+    {
+        var files = new List<ProjectFileContent>();
+        files.AddRange(ReportFiles("First", "page-1", "page-2", ("page-1", "First active"), ("page-2", "First landing")));
+        files.AddRange(ReportFiles("Second", "page-2", "page-1", ("page-1", "Second landing"), ("page-2", "Second active")));
+        var html = HtmlReportRenderer.Render(ProjectScanner.Scan(new InMemoryProjectFileSource("Two reports", files)));
+
+        Assert.Contains(">First landing</strong>", PageCardMarkup(html, "First landing"), StringComparison.Ordinal);
+        Assert.Contains(">Landing page</span>", PageCardMarkup(html, "First landing"), StringComparison.Ordinal);
+        Assert.Contains(">Second landing</strong>", PageCardMarkup(html, "Second landing"), StringComparison.Ordinal);
+        Assert.Contains(">Landing page</span>", PageCardMarkup(html, "Second landing"), StringComparison.Ordinal);
+        Assert.DoesNotContain(">Landing page</span>", PageCardMarkup(html, "First active"), StringComparison.Ordinal);
+        Assert.DoesNotContain(">Landing page</span>", PageCardMarkup(html, "Second active"), StringComparison.Ordinal);
+    }
+
     private static IEnumerable<AssuranceFinding> Findings(ReportInventory report) =>
         ScanReport(report).Findings;
 
@@ -175,6 +223,19 @@ public sealed class LandingPageSupportTests
 
     private static ProjectFileContent File(string path, string content) =>
         new(path, Encoding.UTF8.GetBytes(content));
+
+    private static string PageCardMarkup(string html, string pageName)
+    {
+        var marker = $"data-page-name=\"{pageName}\"";
+        var markerIndex = html.IndexOf(marker, StringComparison.Ordinal);
+        Assert.True(markerIndex >= 0, $"Page card for '{pageName}' was not rendered.");
+        var start = html.LastIndexOf("<details", markerIndex, StringComparison.Ordinal);
+        var end = html.IndexOf("</details>", markerIndex, StringComparison.Ordinal);
+        Assert.True(start >= 0 && end > markerIndex, $"Page card for '{pageName}' was not complete.");
+        return html[start..(end + "</details>".Length)];
+    }
+
+    private static string OpeningTag(string markup) => markup[..(markup.IndexOf('>') + 1)];
 
     private static string RepositoryRoot()
     {

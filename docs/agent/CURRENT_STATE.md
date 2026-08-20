@@ -12,7 +12,7 @@ evidenced · **[design decision]** a choice, not a fact.
 |---|---|
 | Remote | `whippet-dev/pbi-assure` |
 | Branch | `master` (also the default branch) |
-| Last verified product state | Current `master` worktree — configured custom-theme resource integrity review |
+| Last verified product state | Current `master` worktree — landing-page presentation refinement |
 | Working tree | Expected clean of tracked modifications. Untracked local review documents may be present |
 
 `master` may have moved past that commit for documentation-only changes. Re-verify and update this
@@ -22,7 +22,7 @@ section whenever a commit changes build, test or behaviour — not for every com
 
 - `dotnet build PbiAssure.slnx` — **succeeded, 0 warnings, 0 errors** [verified]. `TreatWarningsAsErrors`
   is on, so warnings fail the build.
-- `dotnet test PbiAssure.slnx` — **433 core + 2 privacy end-to-end tests passed**, 0 failed [verified].
+- `dotnet test PbiAssure.slnx` — **436 core + 2 privacy end-to-end tests passed**, 0 failed [verified].
 - CI (`.github/workflows/ci.yml`) — **green** [verified], confirmed complete (not queued) for the
   pre-feature baseline `0c1af3c`. Runs restore, build, a Playwright Chromium install, then the whole
   solution test suite on `windows-latest`.
@@ -88,6 +88,12 @@ The former proposed active-page-missing rule is not currently recommended. `acti
 authoring state, whereas `landingPageName` is the explicit landing-page setting; current evidence does
 not establish user impact from a stale authoring-state value. Revisit only if a real report or Desktop
 experiment demonstrates a meaningful integrity consequence.
+
+In the generated HTML, Report page cards always start collapsed. The page whose internal name matches a
+valid explicit `LandingPageName` displays a visible **Landing page** badge in its collapsed summary.
+`ActivePageName` remains retained inventory evidence for saved Desktop authoring state and has no visible
+page-card label or automatic-expansion behaviour. The landing-page badge is included in page search text;
+there is no separate landing-page facet.
 
 ## Configured custom-theme resource integrity
 
