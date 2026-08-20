@@ -12,7 +12,7 @@ evidenced · **[design decision]** a choice, not a fact.
 |---|---|
 | Remote | `whippet-dev/pbi-assure` |
 | Branch | `master` (also the default branch) |
-| Last verified product state | `ae6be56` — *Match every usage reason to the state it explains* |
+| Last verified product state | `1349f3e` — *Surface evidence-safe unresolved references* |
 | Working tree | Expected clean of tracked modifications. Untracked local review documents may be present |
 
 `master` may have moved past that commit for documentation-only changes. Re-verify and update this
@@ -22,9 +22,9 @@ section whenever a commit changes build, test or behaviour — not for every com
 
 - `dotnet build PbiAssure.slnx` — **succeeded, 0 warnings, 0 errors** [verified]. `TreatWarningsAsErrors`
   is on, so warnings fail the build.
-- `dotnet test PbiAssure.slnx` — **400 core + 2 privacy end-to-end tests passed**, 0 failed [verified].
-- CI (`.github/workflows/ci.yml`) — **green** [verified], confirmed complete (not queued) for `feb72b0`,
-  the tip of the closed workstream. Runs restore, build, a Playwright Chromium install, then the whole
+- `dotnet test PbiAssure.slnx` — **411 core + 2 privacy end-to-end tests passed**, 0 failed [verified].
+- CI (`.github/workflows/ci.yml`) — **green** [verified], confirmed complete (not queued) for the
+  pre-feature baseline `0c1af3c`. Runs restore, build, a Playwright Chromium install, then the whole
   solution test suite on `windows-latest`.
 - The privacy end-to-end tests are part of the normal solution test run; they need Node.js and a
   Playwright Chromium build. See [Build and test](../../README.md#build-and-test).
@@ -40,6 +40,29 @@ across two files:
 All pre-existing and unrelated to recent work. `CONTRIBUTING.md` tells contributors to run this command,
 so it fails on a clean checkout. Deliberately left alone so it is not mixed into unrelated commits; fix
 it as its own change.
+
+## Evidence-gated unresolved-reference findings
+
+`PBI-MODEL-005` now presents a **Reference not found** Warning when PBI Assure has both an explicit,
+structured model reference and a resolution result establishing that its target was not found. The safe
+initial kinds are `SortBy`, `HierarchyLevel`, `RelationshipEndpoint`, `PerspectiveMember` and
+`ReportMeasure`.
+
+Best-effort DAX references are deliberately suppressed. `FieldParameter` is also suppressed because its
+reference comes from specialised DAX-text extraction, and `TablePermission` is suppressed because that
+single dependency kind currently mixes an explicit missing role table with references extracted from a
+role's DAX filter. Ambiguous structured references are not described as missing.
+
+The rule groups only identical model/source/kind/reference/reason evidence and preserves every source
+path. Model identity and source-object identity are part of the key. Findings are deterministically
+ordered. The existing unresolved-dependency JSON records are unchanged; the semantic-usage CSV remains
+an object-usage export and is unchanged. Analysis coverage and semantic usage classification are not
+involved.
+
+No committed Desktop-authored fixture currently contains an unresolved semantic dependency. Six
+Desktop fixtures and four local sample projects were measured and contained zero. The missing-reference
+finding is therefore proven against accurately labelled synthetic malformed metadata, not claimed as a
+Desktop-persisted broken state. Desktop may repair, reject or remove such metadata when saving.
 
 ## Active workstream — unsupported-construct detection
 

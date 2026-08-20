@@ -158,6 +158,24 @@ Not every report merits committing; only those carrying durable project state.
   dependency edges must never change an explanation. The original defect was exactly that: "first
   incoming edge" meant "first in sort order".
 
+## Unresolved references require evidence about the reference itself
+
+- **An unresolved dependency and an analysis limitation are different categories.** A limitation says
+  PBI Assure could not fully check a construct. An evidence-safe unresolved reference says PBI Assure
+  understood an explicit reference but could not find its target. Do not move either into the other's
+  presentation merely because both involve uncertainty.
+- **Retained evidence is not automatically a user defect.** `UnresolvedSemanticDependency` also records
+  best-effort text extraction and ambiguous resolution. A public finding requires evidence that the
+  reference shape and identity were understood, plus a resolution outcome establishing absence. "Could
+  not resolve" alone is insufficient.
+- **Parser uncertainty stays internal until separately justified.** DAX token extraction, specialised
+  expression parsing, or a dependency kind that mixes structured and inferred producers must not be
+  presented as a missing project object wholesale. Add narrow provenance only if existing retained
+  evidence cannot support a safe gate; do not create a broad confidence subsystem for presentation.
+- **Wording follows the proven claim.** Use **Reference not found** / "PBI Assure could not find" for the
+  current evidence. Do not say broken or invalid, and do not use Error severity, without Desktop or
+  equivalent evidence proving that stronger interpretation.
+
 ## Established Power BI semantics — verified, do not re-derive
 
 Confirmed experimentally in Power BI Desktop and pinned by tests and fixtures.

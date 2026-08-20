@@ -5,6 +5,28 @@ Tactical entry point for an incoming coding agent. Read this first, then
 
 ## What just happened
 
+The first post-confidence feature slice is complete: `PBI-MODEL-005` surfaces **Reference not found**
+Warnings for evidence-safe unresolved semantic dependencies. It does not surface every retained
+`UnresolvedSemanticDependency`. The producer audit found that provenance quality differs materially:
+structured sort-by, hierarchy, relationship, perspective and report-measure metadata can support the
+claim that PBI Assure could not find an explicitly named target; DAX and field-parameter text extraction
+cannot support the same claim without a caveat; and `TablePermission` currently mixes both forms under
+one kind.
+
+The public gate is therefore intentionally narrow: eligible structured kind **and** a stored resolution
+reason that establishes "was not found". Ambiguous matches are suppressed. Findings are scoped and
+grouped by model and source object, ordered deterministically, encoded by the existing Findings renderer,
+and appear through the normal Findings search, rule filter and rule catalogue. Analysis coverage remains
+about PBI Assure limitations; this rule remains about the user's artifact.
+
+Validation for this slice: Release build clean, **411 core + 2 privacy E2E tests passed**. Four deliberate
+mutations proved the suppression, model-scope, source-context and deterministic-order tests have teeth.
+Rendered HTML was inspected at 1280 px and 375 px. No committed Desktop fixture contains a broken
+reference, so persistence of these malformed states through a Desktop save remains unproven and is not
+claimed.
+
+The semantic usage/classification workstream described below remains closed and unchanged.
+
 Analysis limitations and classification confidence are now visible to a reader. They were recorded
 internally for several slices and surfaced nowhere, so an object could show a flat "Apparently unused"
 when the scan knew it was "apparently unused, given metadata nobody read".
@@ -84,20 +106,19 @@ records.
 
 ## Immediate next task
 
-**Start a new workstream — the previous one is closed (see above).** Choose on user impact, not on what
-was touched last. Ranked:
+Choose on user impact, not on what was touched last. Ranked:
 
-1. **Surface unresolved semantic dependencies.** `UnresolvedSemanticDependency` is retained as evidence
-   and reaches the JSON inventory only. It is a *bounded* uncertainty — source, kind and reference text
-   are all known — which makes it more actionable than a limitation, and a broken reference in a report
-   is a real defect rather than a coverage gap. The architecture is ready and no new evidence is needed.
-2. **Measure `PBI-ACCESS-001` against real reports.** Its false-positive concern is [inferred] and has
+1. **Measure `PBI-ACCESS-001` against real reports.** Its false-positive concern is [inferred] and has
    never been measured. That inference currently blocks changing an accessibility rule that fires on
    every report, so the measurement unblocks a decision rather than adding a feature.
-3. **Read report-level measure expressions as DAX.** A report measure's dependencies come from the
+2. **Read report-level measure expressions as DAX.** A report measure's dependencies come from the
    structured `references.measures` list Power BI writes beside it; its `Expression` is never parsed, so
    a UDF call or a column reference in one is invisible. This narrows but does not retire the function
    limitation, and needs a Desktop fixture with a report measure calling a UDF.
+3. **Collect Desktop evidence for broken structured model references** if product wording stronger than
+   "PBI Assure could not find" is ever proposed. Create a reference in Desktop, remove or rename its
+   target, save, and inspect whether Desktop persists, repairs, rejects or removes the metadata. Do not
+   mutate an existing fixture and relabel it Desktop-authored.
 
 The remaining UDF-consumer gap is **narrower than it looks**: an ordinary semantic-model measure calling
 a UDF is already followed correctly, now proven by `tests/fixtures/desktop-udf-measure-consumer`. Only

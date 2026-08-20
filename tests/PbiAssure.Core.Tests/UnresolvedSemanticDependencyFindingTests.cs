@@ -32,6 +32,21 @@ public sealed class UnresolvedSemanticDependencyFindingTests
         Assert.Contains("Month Number", finding.Message, StringComparison.Ordinal);
     }
 
+    [Theory]
+    [InlineData(SemanticDependencyKinds.SortBy)]
+    [InlineData(SemanticDependencyKinds.HierarchyLevel)]
+    [InlineData(SemanticDependencyKinds.RelationshipEndpoint)]
+    [InlineData(SemanticDependencyKinds.PerspectiveMember)]
+    [InlineData(SemanticDependencyKinds.ReportMeasure)]
+    public void EveryApprovedStructuredKindIsEligible(string dependencyKind)
+    {
+        var finding = Assert.Single(UnresolvedSemanticDependencyRule.CreateFindings([
+            Dependency("Sales", "Sales", "Source", dependencyKind, "Sales[Missing]", "'Sales[Missing]' was not found.", "source.tmdl"),
+        ]));
+
+        Assert.Equal("PBI-MODEL-005", finding.RuleId);
+    }
+
     [Fact]
     public void ParserUncertainAndAmbiguousReferencesAreNotPresentedAsProjectDefects()
     {
