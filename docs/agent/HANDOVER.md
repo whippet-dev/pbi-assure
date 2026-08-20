@@ -178,14 +178,12 @@ records.
 
 ## Immediate next task
 
-The next ranked work remains connector **coverage measurement**, not a feature specification: first count
-unrecognised connector calls in redistribution-safe or local real-report examples, then add only concrete
-families and location classifications supported by that evidence. Do not add a connector rule before the
-measurement establishes a meaningful gap.
-
-Broader connector work remains a measurement task rather than a feature specification:
-first count unrecognised connector calls in redistribution-safe or local real-report examples, then add
-only concrete families and location classifications supported by that evidence.
+Connector coverage measurement is complete: 40 local/fixture projects supplied 77 M expressions and 268 dotted
+calls. Every observed external-source call was already recognised (`File.Contents` or `Excel.Workbook`);
+the four unrecognised names were binary/JSON/table library functions, not connector gaps. No connector
+support work is recommended. The safe next action is to repeat the aggregate measurement only when a
+redistribution-safe fixture or existing local sample contains an unrecognised class-A source function. See
+[the measurement](../reviews/power-query-connector-coverage-measurement.md).
 
 Inactive-relationship usage through `USERELATIONSHIP` remains a potentially valuable later review, but
 it requires new DAX evidence and has unavoidable external-consumer false positives. Cross-artifact and

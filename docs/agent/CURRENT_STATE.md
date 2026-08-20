@@ -319,9 +319,16 @@ Bookmark and report-extension declarations are deliberately recognised-unverifie
 Desktop fixture establishes their exact baselines. The policy and evidence inventory are in
 [the encountered PBIR schema compatibility review](../reviews/encountered-pbir-schema-compatibility-policy.md).
 
-**Next recommended slice: connector coverage measurement.** Count unrecognised connector calls in
-redistribution-safe or local real-report examples before deciding which connector families are worth
-implementing.
+**Completed — connector coverage measurement.** A local, aggregate-only scan of 40 fixture/sample
+projects (77 M expressions, 268 dotted calls) found two recognised source calls and four unrecognised
+library/reader calls only: `Binary.Decompress`, `Binary.FromText`, `Json.Document` and `Table.FromRows`.
+No unrecognised class-A external source function was observed. `Json.Document` is source-adjacent, not a
+connector: it consumes supplied text/binary and cannot safely identify a source or location by itself.
+No production change is recommended. See
+[the measurement](../reviews/power-query-connector-coverage-measurement.md).
+
+**Current recommendation: no connector implementation.** Repeat the aggregate measurement only when a
+redistribution-safe fixture or an existing local sample contains an unrecognised class-A source function.
 
 The compatibility investigation established that current parsers retain several schema URIs but never
 branch on them. Exact versions in committed Desktop fixtures are `definitionProperties/2.0.0`,
