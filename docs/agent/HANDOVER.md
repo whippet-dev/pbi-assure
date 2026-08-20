@@ -5,6 +5,16 @@ Tactical entry point for an incoming coding agent. Read this first, then
 
 ## What just happened
 
+Configured custom-theme resources are now checked narrowly for integrity. `PBI-COMPAT-002` is a
+Warning / Finding only where `definition/report.json` explicitly names `themeCollection.customTheme`
+and its selected local resource cannot be resolved or read. It does not assess theme quality,
+consistency, accessibility or completeness; sparse valid themes, base-only reports and unselected
+registered resources remain silent. `ThemeSourceInventory.ResolutionOutcome` is an additive JSON field
+that records the machine-readable resolution result, so the rule never relies on `ResolutionIssues`
+diagnostic prose. The synthetic tests cover no configured theme, resolved sparse themes, unavailable
+package items/files, invalid JSON, ambiguous resources, unselected resources, multi-report scoping and
+HTML escaping. Validation: Release build clean, **433 core + 2 privacy E2E tests passed**.
+
 Explicit report landing pages are now parsed and checked. Desktop writes the optional
 `landingPageName` property only when a page is set as the landing page; it is separate from
 `activePageName`, which remains saved authoring state. The paired Desktop fixtures preserve both valid
@@ -121,10 +131,10 @@ records.
 
 ## State
 
-- **Last verified product state:** current `master` worktree with explicit landing-page integrity review.
+- **Last verified product state:** current `master` worktree with configured custom-theme resource integrity review.
   Record the resulting commit after this slice is committed.
 - **Working tree:** expected clean apart from untracked local review documents; no tracked modifications
-- **Verified locally:** Release build succeeded with 0 warnings; **426 core + 2 privacy tests passed**
+- **Verified locally:** Release build succeeded with 0 warnings; **433 core + 2 privacy tests passed**
 - **Known exception:** `dotnet format --verify-no-changes` fails with 24 pre-existing whitespace errors
   in two Theme Review files. Unrelated to current work, deliberately not fixed. See
   [CURRENT_STATE.md](CURRENT_STATE.md).
@@ -134,14 +144,10 @@ records.
 Choose on user impact, not on what was touched last. A product/technical triage on 2026-08-20 replaced
 the previous evidence-gap ranking with these priorities:
 
-1. **Small integrity finding over explicit metadata:** an explicitly referenced custom-theme resource
-   that is missing or malformed. Keep it separate from theme-quality assessment and reuse the evidence
-   already retained by the theme parser. Do not add an active-page rule without new evidence: that value
-   is authoring state, not the explicit landing-page setting.
-2. **Define an encountered-schema support policy before adding a PBIR compatibility warning.** Schema
+1. **Define an encountered-schema support policy before adding a PBIR compatibility warning.** Schema
    URIs are retained but not validated. Do not add a warning until supported versions and the behaviour
    for unknown newer schemas are pinned by focused fixtures.
-3. **Turn broader connector coverage into a measurement task, not a feature specification.** First count
+2. **Turn broader connector coverage into a measurement task, not a feature specification.** First count
    unrecognised connector calls in redistribution-safe or local real-report examples, then add only
    concrete families and location classifications supported by that evidence.
 

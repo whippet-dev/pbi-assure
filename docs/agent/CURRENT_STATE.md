@@ -12,7 +12,7 @@ evidenced · **[design decision]** a choice, not a fact.
 |---|---|
 | Remote | `whippet-dev/pbi-assure` |
 | Branch | `master` (also the default branch) |
-| Last verified product state | Current `master` worktree — explicit landing-page integrity review |
+| Last verified product state | Current `master` worktree — configured custom-theme resource integrity review |
 | Working tree | Expected clean of tracked modifications. Untracked local review documents may be present |
 
 `master` may have moved past that commit for documentation-only changes. Re-verify and update this
@@ -22,7 +22,7 @@ section whenever a commit changes build, test or behaviour — not for every com
 
 - `dotnet build PbiAssure.slnx` — **succeeded, 0 warnings, 0 errors** [verified]. `TreatWarningsAsErrors`
   is on, so warnings fail the build.
-- `dotnet test PbiAssure.slnx` — **426 core + 2 privacy end-to-end tests passed**, 0 failed [verified].
+- `dotnet test PbiAssure.slnx` — **433 core + 2 privacy end-to-end tests passed**, 0 failed [verified].
 - CI (`.github/workflows/ci.yml`) — **green** [verified], confirmed complete (not queued) for the
   pre-feature baseline `0c1af3c`. Runs restore, build, a Playwright Chromium install, then the whole
   solution test suite on `windows-latest`.
@@ -88,6 +88,19 @@ The former proposed active-page-missing rule is not currently recommended. `acti
 authoring state, whereas `landingPageName` is the explicit landing-page setting; current evidence does
 not establish user impact from a stale authoring-state value. Revisit only if a real report or Desktop
 experiment demonstrates a meaningful integrity consequence.
+
+## Configured custom-theme resource integrity
+
+`PBI-COMPAT-002` (**Configured custom theme unavailable**) is a Warning / Finding when
+`definition/report.json` explicitly configures `themeCollection.customTheme` but the selected local
+resource cannot be resolved or read. It is intentionally separate from Theme Review: it does not assess
+theme quality, formatting consistency, accessibility or theme completeness.
+
+The theme parser retains an additive public `ThemeSourceInventory.ResolutionOutcome` field. Current
+outcomes distinguish resolved resources from a missing reference name, no matching package item,
+ambiguous package items, invalid package paths, missing files, invalid JSON and unreadable resources.
+The rule uses that structured value, not `ResolutionIssues` prose. Valid sparse themes, reports with no
+custom theme or only a base theme, and unselected registered resources do not produce a finding.
 
 ## Active workstream — unsupported-construct detection
 

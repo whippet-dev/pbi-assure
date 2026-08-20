@@ -13,6 +13,7 @@ internal static class AssuranceRuleEngine
         new RelationshipReviewRule(),
         new PowerQueryLineageRule(),
         new LocalFileDataSourceRule(),
+        new ConfiguredCustomThemeRule(),
         new MissingAltTextRule(),
         new DuplicateTabOrderRule(),
         new VisualExcludedFromTabOrderRule(),

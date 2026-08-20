@@ -72,35 +72,50 @@ internal static class PbirThemeParser
         {
             issues.Add($"Theme reference has no name at {evidencePath}.");
             return new ThemeSourceInventory(kind, null, null, null, version,
-                ThemeAvailabilityStates.Malformed, evidencePath, null);
+                ThemeAvailabilityStates.Malformed, evidencePath, null,
+                ThemeResolutionOutcomes.ReferenceNameMissing);
         }
 
-        var item = packages.FirstOrDefault(candidate =>
+        var matchingItems = packages.Where(candidate =>
             (string.IsNullOrWhiteSpace(referenceType) ||
              string.Equals(candidate.PackageName, referenceType, StringComparison.OrdinalIgnoreCase) ||
              string.Equals(candidate.PackageType, referenceType, StringComparison.OrdinalIgnoreCase)) &&
             (string.Equals(candidate.Name, referenceName, StringComparison.OrdinalIgnoreCase) ||
              string.Equals(ProjectFilePaths.GetFileName(candidate.Path), referenceName, StringComparison.OrdinalIgnoreCase) ||
-             string.Equals(ProjectFilePaths.GetFileNameWithoutExtension(candidate.Path), referenceName, StringComparison.OrdinalIgnoreCase)));
-        if (item is null)
+             string.Equals(ProjectFilePaths.GetFileNameWithoutExtension(candidate.Path), referenceName, StringComparison.OrdinalIgnoreCase)))
+            .ToArray();
+        if (matchingItems.Length == 0)
         {
             issues.Add($"The referenced theme resource '{referenceName}' has no matching resource package item.");
             return new ThemeSourceInventory(kind, referenceName, null, null, version,
-                ThemeAvailabilityStates.ReferencedButUnavailable, evidencePath, null);
+                ThemeAvailabilityStates.ReferencedButUnavailable, evidencePath, null,
+                ThemeResolutionOutcomes.PackageItemNotFound);
         }
+
+        if (matchingItems.Length > 1)
+        {
+            issues.Add($"The referenced theme resource '{referenceName}' matches multiple resource package items.");
+            return new ThemeSourceInventory(kind, referenceName, null, null, version,
+                ThemeAvailabilityStates.Malformed, evidencePath, null,
+                ThemeResolutionOutcomes.AmbiguousPackageItem);
+        }
+
+        var item = matchingItems[0];
 
         if (!TryResolveResourcePath(reportDirectory, item, out var resourcePath))
         {
             issues.Add($"The referenced theme resource '{referenceName}' has an invalid package path.");
             return new ThemeSourceInventory(kind, referenceName, null, null, version,
-                ThemeAvailabilityStates.Malformed, evidencePath, null);
+                ThemeAvailabilityStates.Malformed, evidencePath, null,
+                ThemeResolutionOutcomes.InvalidPackagePath);
         }
 
         if (!source.FileExists(resourcePath))
         {
             issues.Add($"The referenced theme resource '{referenceName}' was not found at '{resourcePath}'.");
             return new ThemeSourceInventory(kind, referenceName, null, resourcePath, version,
-                ThemeAvailabilityStates.ReferencedButUnavailable, evidencePath, null);
+                ThemeAvailabilityStates.ReferencedButUnavailable, evidencePath, null,
+                ThemeResolutionOutcomes.ResourceFileMissing);
         }
 
         try
@@ -109,13 +124,22 @@ internal static class PbirThemeParser
             using var document = JsonDocument.Parse(stream);
             var metadata = ParseMetadata(document.RootElement, kind, referenceName, resourcePath);
             return new ThemeSourceInventory(kind, referenceName, metadata.Name, resourcePath, version,
-                ThemeAvailabilityStates.Available, evidencePath, metadata);
+                ThemeAvailabilityStates.Available, evidencePath, metadata,
+                ThemeResolutionOutcomes.Resolved);
         }
         catch (JsonException)
         {
             issues.Add($"The referenced theme resource '{referenceName}' contains malformed JSON.");
             return new ThemeSourceInventory(kind, referenceName, null, resourcePath, version,
-                ThemeAvailabilityStates.Malformed, evidencePath, null);
+                ThemeAvailabilityStates.Malformed, evidencePath, null,
+                ThemeResolutionOutcomes.InvalidJson);
+        }
+        catch (IOException)
+        {
+            issues.Add($"The referenced theme resource '{referenceName}' could not be read.");
+            return new ThemeSourceInventory(kind, referenceName, null, resourcePath, version,
+                ThemeAvailabilityStates.Malformed, evidencePath, null,
+                ThemeResolutionOutcomes.ResourceUnreadable);
         }
     }
 

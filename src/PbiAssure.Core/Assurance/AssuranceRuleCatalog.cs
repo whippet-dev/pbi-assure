@@ -19,6 +19,7 @@ public static class AssuranceRuleCatalog
         new("PBI-ACCESS-005", "Drillthrough page missing Back action", "Checks drillthrough pages for an enabled Back action.", AssuranceCategories.Accessibility),
 
         new("PBI-COMPAT-001", "Q&A visual retirement", "Checks reports for Power BI Q&A visuals that Microsoft is retiring.", AssuranceCategories.Compatibility),
+        new("PBI-COMPAT-002", "Configured custom theme unavailable", "Checks explicitly configured custom themes whose local resource cannot be resolved or read.", AssuranceCategories.Compatibility),
         new("PBI-SOURCE-001", "Local or network file source", "Checks Power Query for file sources that may not be available to other developers or refresh services.", AssuranceCategories.Compatibility),
 
         new("PBI-MODEL-001", "Unresolved model object reference", "Checks report bindings for model objects that cannot be found in the matching semantic model.", AssuranceCategories.ModelIntegrity),

@@ -16,6 +16,19 @@ public static class ThemeAvailabilityStates
     public const string Malformed = "Malformed";
 }
 
+public static class ThemeResolutionOutcomes
+{
+    public const string Resolved = "Resolved";
+    public const string MetadataUnavailable = "MetadataUnavailable";
+    public const string ReferenceNameMissing = "ReferenceNameMissing";
+    public const string PackageItemNotFound = "PackageItemNotFound";
+    public const string AmbiguousPackageItem = "AmbiguousPackageItem";
+    public const string InvalidPackagePath = "InvalidPackagePath";
+    public const string ResourceFileMissing = "ResourceFileMissing";
+    public const string InvalidJson = "InvalidJson";
+    public const string ResourceUnreadable = "ResourceUnreadable";
+}
+
 public sealed record ThemeImportVersion(
     string? Visual,
     string? Report,
@@ -29,7 +42,8 @@ public sealed record ThemeSourceInventory(
     ThemeImportVersion? ReportVersionAtImport,
     string AvailabilityState,
     string EvidencePath,
-    ThemeMetadataInventory? Metadata);
+    ThemeMetadataInventory? Metadata,
+    string ResolutionOutcome = ThemeResolutionOutcomes.Resolved);
 
 public sealed record ThemeMetadataInventory(
     string? Name,
@@ -80,7 +94,8 @@ public sealed record ThemeInventory(
             null,
             ThemeAvailabilityStates.MetadataUnavailable,
             "$.themeCollection.baseTheme",
-            null),
+            null,
+            ThemeResolutionOutcomes.MetadataUnavailable),
         null,
         [],
         []);

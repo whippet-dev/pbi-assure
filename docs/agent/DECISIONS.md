@@ -215,6 +215,16 @@ against re-saving that fixture, since saving destroys the pre-save state it exis
 - A stale `activePageName` is not currently a user-facing integrity finding. Reconsider only with
   evidence of a meaningful consequence, not merely because the property names a missing page.
 
+### Configured custom-theme resolution
+
+- `ThemeSourceInventory.ResolutionOutcome` is structured evidence about the PBIR resource-resolution
+  attempt. It is distinct from the user-facing availability state and from explanatory resolution text.
+  Machine decisions must use the structured outcome, never wording in `ResolutionIssues`.
+- `PBI-COMPAT-002` applies only when `themeCollection.customTheme` is explicitly present and the
+  configured resource has an evidence-safe unavailable outcome. A sparse but valid theme, base-only
+  report and unselected registered resource are all valid and silent. The rule is not a Theme Review
+  quality or completeness assessment.
+
 ### Row-level security serialization and classification
 
 - Desktop emits **one file per role** under `definition/roles/`.
