@@ -109,10 +109,13 @@ records.
 
 Choose on user impact, not on what was touched last. Ranked:
 
-1. **Read report-level measure expressions as DAX.** A report measure's dependencies come from the
-   structured `references.measures` list Power BI writes beside it; its `Expression` is never parsed, so
-   a UDF call or a column reference in one is invisible. This narrows but does not retire the function
-   limitation, and needs a Desktop fixture with a report measure calling a UDF.
+1. **Author the report-measure → UDF Desktop fixture before implementation.** The parser already retains
+   the full report-measure `Expression`; `SemanticDependencyAnalyzer` follows only
+   `references.measures`. Existing DAX/UDF extraction is reusable, but the supported Desktop scenario is
+   a live-connected `byConnection` report, which PBI Assure deliberately does not bind to a local model.
+   The fixture must pin the real `reportExtensions.json`, connection and visual-reference shapes; later
+   graph behaviour should be proven by a clearly labelled synthetic local-binding test. Follow the exact
+   experiment in [the fixture design](../reviews/report-level-measure-udf-fixture-design.md).
 2. **Collect Desktop evidence for broken structured model references** if product wording stronger than
    "PBI Assure could not find" is ever proposed. Create a reference in Desktop, remove or rename its
    target, save, and inspect whether Desktop persists, repairs, rejects or removes the metadata. Do not
@@ -156,8 +159,9 @@ blocking rather than merely sequenced:
 ## Missing evidence
 
 - RLS forms beyond the two the Desktop fixture proves — cross-table filters, column permissions (OLS)
-- **Where a UDF is called from outside the model definition** — visual calculations and report-level
-  measures, neither parsed. This is now the reason functions still qualify
+- **Desktop serialization of a live-connect report measure calling a UDF** — exact fixture steps are
+  recorded in [the investigation](../reviews/report-level-measure-udf-fixture-design.md). Report measure
+  expressions are retained but not dependency-analysed; visual calculations remain unread.
 - Whether a *translated* culture file names model objects, and whether Q&A synonyms constitute usage
 - Whether `dataSources.tmdl` is ever emitted by current Desktop
 - Independently authored, author-labelled `PBI-ACCESS-001` examples, particularly decorative shapes,
