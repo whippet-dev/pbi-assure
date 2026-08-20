@@ -5,6 +5,18 @@ Tactical entry point for an incoming coding agent. Read this first, then
 
 ## What just happened
 
+A compact **Row-level security** review is now part of the generated HTML whenever a semantic model
+defines roles. It groups roles by model, shows model permission and the exact retained table-filter DAX,
+and keeps technical source paths behind disclosure. Models, roles and filters are ordered
+deterministically; long and multiline expressions wrap safely at desktop and mobile widths.
+
+This is an inventory/review surface, not a security verdict. It adds no findings and changes no parsing,
+usage classification, JSON or CSV. The page explicitly says that PBI Assure cannot see Power BI Service
+role membership, assess effective runtime identity, confirm the overall security design, or fully assess
+object-level security and column permissions. Validation: Release build clean, **418 core + 2 privacy
+E2E tests passed**; the real `desktop-semantic-constructs` output was reviewed at desktop and 375px with
+no horizontal overflow.
+
 The first post-confidence feature slice is complete: `PBI-MODEL-005` surfaces **Reference not found**
 Warnings for evidence-safe unresolved semantic dependencies. It does not surface every retained
 `UnresolvedSemanticDependency`. The producer audit found that provenance quality differs materially:
@@ -97,10 +109,10 @@ records.
 
 ## State
 
-- **Last verified product state:** `ae6be56` on `master`. Later commits may be documentation-only; run
-  `git log --oneline` to see whether anything after it touched behaviour.
+- **Last verified product state:** current `master` worktree with the compact RLS review. Record the
+  resulting commit after this slice is committed.
 - **Working tree:** expected clean apart from untracked local review documents; no tracked modifications
-- **Verified at that commit:** build succeeded with 0 warnings; **400 core + 2 privacy tests passed**; CI green
+- **Verified locally:** Release build succeeded with 0 warnings; **418 core + 2 privacy tests passed**
 - **Known exception:** `dotnet format --verify-no-changes` fails with 24 pre-existing whitespace errors
   in two Theme Review files. Unrelated to current work, deliberately not fixed. See
   [CURRENT_STATE.md](CURRENT_STATE.md).
@@ -110,18 +122,13 @@ records.
 Choose on user impact, not on what was touched last. A product/technical triage on 2026-08-20 replaced
 the previous evidence-gap ranking with these priorities:
 
-1. **Add a compact row-level security review surface to the HTML.** Roles, model permission, table
-   permissions and their DAX filters are already parsed, retained and Desktop-fixture-backed, but none is
-   visible to the developer except indirectly through usage classification and Analysis coverage. Show
-   those facts without creating new security findings, changing classification, or implying that PBI
-   Assure can see service role membership or fully assess object-level security.
-2. **Small integrity findings over explicit metadata:** first a report whose configured active page does
+1. **Small integrity findings over explicit metadata:** first a report whose configured active page does
    not exist; then an explicitly referenced custom-theme resource that is missing or malformed. Keep
    these as separate slices and reuse the evidence already retained by the report and theme parsers.
-3. **Define an encountered-schema support policy before adding a PBIR compatibility warning.** Schema
+2. **Define an encountered-schema support policy before adding a PBIR compatibility warning.** Schema
    URIs are retained but not validated. Do not add a warning until supported versions and the behaviour
    for unknown newer schemas are pinned by focused fixtures.
-4. **Turn broader connector coverage into a measurement task, not a feature specification.** First count
+3. **Turn broader connector coverage into a measurement task, not a feature specification.** First count
    unrecognised connector calls in redistribution-safe or local real-report examples, then add only
    concrete families and location classifications supported by that evidence.
 

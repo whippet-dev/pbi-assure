@@ -12,7 +12,7 @@ evidenced · **[design decision]** a choice, not a fact.
 |---|---|
 | Remote | `whippet-dev/pbi-assure` |
 | Branch | `master` (also the default branch) |
-| Last verified product state | Current `master` worktree — structured unresolved-resolution outcomes |
+| Last verified product state | Current `master` worktree — compact row-level security review |
 | Working tree | Expected clean of tracked modifications. Untracked local review documents may be present |
 
 `master` may have moved past that commit for documentation-only changes. Re-verify and update this
@@ -22,7 +22,7 @@ section whenever a commit changes build, test or behaviour — not for every com
 
 - `dotnet build PbiAssure.slnx` — **succeeded, 0 warnings, 0 errors** [verified]. `TreatWarningsAsErrors`
   is on, so warnings fail the build.
-- `dotnet test PbiAssure.slnx` — **413 core + 2 privacy end-to-end tests passed**, 0 failed [verified].
+- `dotnet test PbiAssure.slnx` — **418 core + 2 privacy end-to-end tests passed**, 0 failed [verified].
 - CI (`.github/workflows/ci.yml`) — **green** [verified], confirmed complete (not queued) for the
   pre-feature baseline `0c1af3c`. Runs restore, build, a Playwright Chromium install, then the whole
   solution test suite on `windows-latest`.
@@ -97,6 +97,11 @@ unused with no indication that security metadata had been skipped.
   serialises them unqualified, `[Region]` not `Sales[Region]` — and become model-structure roots. An
   object required by a role filter is therefore `StructurallyRequired`, via ordinary traversal rather
   than any RLS-specific rule. Column permissions are **not** parsed, so roles stay `PartiallyAnalyzed`.
+- **Compact row-level security review in HTML.** When a model defines roles, a conditional review section
+  shows each role's model permission and table-filter DAX, grouped by semantic model and ordered
+  deterministically. It presents retained facts only: there are no new findings and no changes to usage,
+  JSON or CSV. The section states that Power BI Service membership and effective runtime identity are
+  unavailable, and that complete object-level security and column permissions are not assessed.
 - **Perspective member dependencies.** `definition/perspectives/<name>.tmdl` is parsed;
   `perspectiveTable`, `perspectiveColumn`, `perspectiveMeasure`, `perspectiveHierarchy` and
   `includeAll` become model-structure roots, so an object a perspective exposes is
@@ -259,15 +264,14 @@ unanalysed files are the always-present three — verified against three Desktop
 
 ## Immediate task
 
-**Next recommended slice: expose the row-level security metadata PBI Assure already understands as a
-compact HTML review surface.** `SemanticModelInventory.Roles` already retains role names, model
-permission, table permissions, filter expressions and source paths; the Desktop-authored
-`desktop-semantic-constructs` fixture proves two normal role shapes. The renderer currently shows none of
-it. This is a presentation of analysed facts, not a new finding and not a change to semantic usage.
+**Next recommended slice: add a focused integrity finding when a report's configured active page does
+not exist.** The report parser already retains the configured active-page reference and the available
+pages, so this should remain a small explicit-metadata check. Keep it separate from the later missing or
+malformed custom-theme-resource check, and do not broaden it into general report repair.
 
-Keep the boundary explicit: Power BI Service membership is unavailable, column permissions are not fully
-analysed, and PBI Assure must not claim deployed-security assurance. See [HANDOVER.md](HANDOVER.md) for
-the rest of the user-value ranking.
+The compact row-level security HTML review is complete. It is conditional on retained roles, shows model
+permission and table-filter DAX, and keeps its project-only security boundary explicit. See
+[HANDOVER.md](HANDOVER.md) for the remaining user-value ranking.
 
 The presentation work below is done. What follows is the record of why it was next, kept because it
 explains the shape of the HTML surface.

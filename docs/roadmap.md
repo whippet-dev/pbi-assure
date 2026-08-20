@@ -4,16 +4,13 @@ PBI Assure is being developed in vertical slices that produce reviewable value w
 
 ## Next product priorities
 
-1. **Row-level security review in the HTML.** Present the roles, table filters and analysis boundary that
-   PBI Assure already parses, without implying visibility of Power BI Service membership or complete
-   object-level security.
-2. **Small, evidence-backed integrity checks.** Prioritise explicit broken metadata such as a configured
+1. **Small, evidence-backed integrity checks.** Prioritise explicit broken metadata such as a configured
    report active page that does not exist and an active custom-theme resource that is missing or
    malformed. Keep each as a focused rule slice.
-3. **PBIR schema compatibility guard.** The scanner retains encountered schema URIs but does not yet
+2. **PBIR schema compatibility guard.** The scanner retains encountered schema URIs but does not yet
    compare them with an explicit support policy. Define and fixture that policy before producing a
    compatibility finding.
-4. **Measured connector expansion.** First identify unrecognised connector calls in real,
+3. **Measured connector expansion.** First identify unrecognised connector calls in real,
    redistribution-safe examples. Expand the connector inventory only for concrete observed families and
    location types rather than treating “broader coverage” as an open-ended feature.
 
@@ -23,6 +20,8 @@ input and privacy-safe identity/join contract can be specified.
 
 ## Completed core-analysis slices
 
+- Row-level security review: conditional HTML inventory of roles, model permissions and table-filter DAX,
+  with an explicit project-only security boundary and no new findings or classification changes.
 - Calculation groups and field parameters: first-class inventory, conservative graph traversal, friendly HTML summaries, and explicit evidence for objects reached through these features.
 - Report extensions and report-level measures: first-class inventory, visual-reference resolution, structured measure dependency traversal, and developer-friendly HTML summaries.
 - Report-to-model binding: resolve explicit local `byPath` targets, support several reports sharing one model, and distinguish remote or missing model definitions without generating cascades of false field errors.

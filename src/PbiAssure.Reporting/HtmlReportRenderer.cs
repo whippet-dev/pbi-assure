@@ -24,6 +24,7 @@ public static partial class HtmlReportRenderer
         AppendReportInventory(html, inventory);
         AppendPowerQueryLineage(html, inventory);
         AppendRelationships(html, inventory);
+        AppendRowLevelSecurity(html, inventory, coverage);
         AppendSemanticUsage(html, inventory, coverage);
         AppendThemeReview(html, inventory);
         AppendDocumentEnd(html, inventory);
@@ -71,6 +72,11 @@ public static partial class HtmlReportRenderer
         AppendSectionNavigationItem(html, "reports", "Report pages", "Pages, visuals and fields");
         AppendSectionNavigationItem(html, "power-query", "Power Query", "Queries, sources and dependencies");
         AppendSectionNavigationItem(html, "relationships", "Model relationships", "Table connections and filtering");
+        if (inventory.SemanticModels.Any(model => model.Roles.Count > 0))
+        {
+            AppendSectionNavigationItem(html, "row-level-security", "Row-level security", "Roles and table filters");
+        }
+
         AppendSectionNavigationItem(html, "semantic-usage", "Semantic model", "Model objects and usage");
         AppendSectionNavigationItem(html, "theme-review", "Theme Review", "Design and theme review");
         html.AppendLine("        </ul>");
@@ -996,6 +1002,103 @@ public static partial class HtmlReportRenderer
 
         html.AppendLine("      </div>");
 
+        html.AppendLine("    </section>");
+    }
+
+    private static void AppendRowLevelSecurity(
+        StringBuilder html,
+        ProjectInventory inventory,
+        AnalysisCoverage coverage)
+    {
+        var models = inventory.SemanticModels
+            .Where(model => model.Roles.Count > 0)
+            .OrderBy(model => model.Name, StringComparer.OrdinalIgnoreCase)
+            .ToArray();
+        if (models.Length == 0)
+        {
+            return;
+        }
+
+        html.AppendLine("    <section id=\"row-level-security\" class=\"report-section\" data-report-section=\"row-level-security\" aria-labelledby=\"row-level-security-heading\">");
+        html.AppendLine("      <h2 id=\"row-level-security-heading\" tabindex=\"-1\">Row-level security</h2>");
+        html.AppendLine("      <p class=\"section-intro\">Review the row-level security roles and table filters saved in each semantic model.</p>");
+        html.AppendLine("      <div class=\"rls-boundary\" role=\"note\"><strong>Project definitions only</strong><p>PBI Assure can inspect RLS definitions stored in this project. It cannot see who is assigned to roles in Power BI Service, assess effective runtime identity, or confirm the overall security design. Complete object-level security and column permissions are not assessed.</p></div>");
+        html.AppendLine("      <div class=\"rls-model-list\">");
+        foreach (var model in models)
+        {
+            var coverageAnchor = coverage.Models
+                .FirstOrDefault(item => string.Equals(item.ModelName, model.Name, StringComparison.OrdinalIgnoreCase))
+                ?.AnchorId;
+            html.AppendLine("        <section class=\"rls-model\">");
+            html.Append("          <h3>").Append(Encode(model.Name)).AppendLine("</h3>");
+            html.Append("          <p class=\"secondary\">")
+                .Append(model.RoleCount.ToString("N0", CultureInfo.InvariantCulture)).Append(' ')
+                .Append(Pluralize(model.RoleCount, "role", "roles")).AppendLine(" defined in this semantic model.</p>");
+            html.AppendLine("          <div class=\"rls-role-list\">");
+            foreach (var role in model.Roles
+                         .OrderBy(item => item.Name, StringComparer.OrdinalIgnoreCase))
+            {
+                html.Append("            <details class=\"semantic-table rls-role-card\"><summary><span class=\"summary-copy\"><span class=\"kicker\">RLS role</span><strong>")
+                    .Append(Encode(role.Name)).Append("</strong><span>")
+                    .Append(role.TablePermissionCount.ToString("N0", CultureInfo.InvariantCulture)).Append(' ')
+                    .Append(Pluralize(role.TablePermissionCount, "table filter", "table filters"))
+                    .AppendLine("</span></span></summary>");
+                html.AppendLine("              <div class=\"rls-role-body\">");
+                if (!string.IsNullOrWhiteSpace(role.ModelPermission))
+                {
+                    html.AppendLine("                <dl class=\"fact-strip compact rls-role-facts\">");
+                    AppendFact(html, "Model permission", HumanizeIdentifier(role.ModelPermission));
+                    html.AppendLine("                </dl>");
+                }
+
+                html.AppendLine("                <h4>Table filters</h4>");
+                if (role.TablePermissions.Count == 0)
+                {
+                    html.AppendLine("                <p class=\"secondary\">No table filters were found in this role definition.</p>");
+                }
+                else
+                {
+                    html.AppendLine("                <div class=\"rls-filter-list\">");
+                    foreach (var permission in role.TablePermissions
+                                 .OrderBy(item => item.Table, StringComparer.OrdinalIgnoreCase)
+                                 .ThenBy(item => item.FilterExpression, StringComparer.Ordinal))
+                    {
+                        html.AppendLine("                  <article class=\"rls-filter\">");
+                        html.Append("                    <h5><span>Table</span>")
+                            .Append(Encode(permission.Table)).AppendLine("</h5>");
+                        html.AppendLine("                    <pre><code>");
+                        html.Append(Encode(permission.FilterExpression));
+                        html.AppendLine("</code></pre>");
+                        html.AppendLine("                  </article>");
+                    }
+
+                    html.AppendLine("                </div>");
+                }
+
+                if (role.UnanalyzedConstructs.Count > 0)
+                {
+                    html.AppendLine("                <p class=\"rls-coverage-note\">Some metadata in this role was not fully checked.");
+                    if (coverageAnchor is not null)
+                    {
+                        html.Append("                  <a href=\"#").Append(Encode(coverageAnchor))
+                            .AppendLine("\">Review analysis coverage</a>.");
+                    }
+
+                    html.AppendLine("                </p>");
+                }
+
+                html.AppendLine("                <details class=\"technical-details\"><summary>Technical details</summary><dl class=\"technical-list\">");
+                AppendDefinition(html, "Source file", DisplayPath(role.RelativePath));
+                html.AppendLine("                </dl></details>");
+                html.AppendLine("              </div>");
+                html.AppendLine("            </details>");
+            }
+
+            html.AppendLine("          </div>");
+            html.AppendLine("        </section>");
+        }
+
+        html.AppendLine("      </div>");
         html.AppendLine("    </section>");
     }
 
@@ -3175,6 +3278,24 @@ public static partial class HtmlReportRenderer
     .relationship-facts div { min-width: 0; padding: .55rem .65rem; border-radius: .3rem; background: #f4f7fa; }
     .relationship-facts dt { color: var(--muted); font-size: .83rem; font-weight: 700; }
     .relationship-review { margin: .75rem 0 0; padding: .65rem .75rem; border-left: .3rem solid var(--info); background: var(--info-bg); overflow-wrap: anywhere; }
+    .rls-boundary { max-width: 68rem; margin: 0 0 1.25rem; padding: .75rem .85rem; border-left: .35rem solid var(--info); background: var(--info-bg); overflow-wrap: anywhere; }
+    .rls-boundary p { margin: .25rem 0 0; }
+    .rls-model-list, .rls-role-list, .rls-filter-list { display: grid; min-width: 0; gap: .75rem; }
+    .rls-model + .rls-model { margin-top: 1.5rem; padding-top: 1.25rem; border-top: 1px solid #d7dee5; }
+    .rls-model > h3 { margin: 0 0 .25rem; }
+    .rls-model > .secondary { margin: 0 0 .75rem; }
+    .rls-role-card > summary { align-items: center; }
+    .rls-role-body { min-width: 0; max-width: 100%; padding: .85rem 1rem 1rem; }
+    .rls-role-body > :first-child { margin-top: 0; }
+    .rls-role-body h4 { margin: .8rem 0 .45rem; }
+    .rls-role-facts { margin-bottom: .8rem; }
+    .rls-filter-list { grid-template-columns: repeat(auto-fit, minmax(min(100%, 22rem), 1fr)); }
+    .rls-filter { min-width: 0; max-width: 100%; padding: .7rem .8rem; border: 1px solid #d7dee5; border-radius: .35rem; background: #f7f9fb; }
+    .rls-filter h5 { display: grid; gap: .05rem; margin: 0 0 .45rem; font-size: 1rem; overflow-wrap: anywhere; }
+    .rls-filter h5 span { color: var(--muted); font-size: .75rem; letter-spacing: .05em; text-transform: uppercase; }
+    .rls-filter pre { max-width: 100%; margin: 0; padding: .65rem .7rem; overflow-x: auto; border: 1px solid #c8d2dc; border-radius: .25rem; background: #fff; white-space: pre-wrap; overflow-wrap: anywhere; }
+    .rls-filter pre code { white-space: inherit; }
+    .rls-coverage-note { max-width: 64rem; margin: .75rem 0 0; padding: .6rem .7rem; border-left: .3rem solid var(--info); background: var(--info-bg); overflow-wrap: anywhere; }
     .object-list, .semantic-object-list, .related-findings { display: grid; min-width: 0; grid-template-columns: repeat(auto-fit, minmax(min(100%, 16rem), 1fr)); gap: .5rem; margin: .6rem 0 1rem; padding: 0; list-style: none; }
     .object-list.compact { margin-bottom: 0; }
     .object-list li { display: flex; min-width: 0; justify-content: space-between; gap: .75rem; padding: .65rem .75rem; border: 1px solid #d7dee5; border-radius: .35rem; background: #fff; overflow-wrap: anywhere; }
