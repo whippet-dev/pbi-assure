@@ -109,14 +109,11 @@ records.
 
 Choose on user impact, not on what was touched last. Ranked:
 
-1. **Measure `PBI-ACCESS-001` against real reports.** Its false-positive concern is [inferred] and has
-   never been measured. That inference currently blocks changing an accessibility rule that fires on
-   every report, so the measurement unblocks a decision rather than adding a feature.
-2. **Read report-level measure expressions as DAX.** A report measure's dependencies come from the
+1. **Read report-level measure expressions as DAX.** A report measure's dependencies come from the
    structured `references.measures` list Power BI writes beside it; its `Expression` is never parsed, so
    a UDF call or a column reference in one is invisible. This narrows but does not retire the function
    limitation, and needs a Desktop fixture with a report measure calling a UDF.
-3. **Collect Desktop evidence for broken structured model references** if product wording stronger than
+2. **Collect Desktop evidence for broken structured model references** if product wording stronger than
    "PBI Assure could not find" is ever proposed. Create a reference in Desktop, remove or rename its
    target, save, and inspect whether Desktop persists, repairs, rejects or removes the metadata. Do not
    mutate an existing fixture and relabel it Desktop-authored.
@@ -142,7 +139,9 @@ it is the largest of the three and only moves a caveat that the report now expla
 - Malformed-TMDL recovery
 - CSV or browser-app surfaces for limitations and confidence — HTML has one; the CSV header is a
   fixed contract and widening it deserves its own decision
-- Changes to `PBI-ACCESS-001`
+- Changes to `PBI-ACCESS-001` without independently authored, author-labelled evidence. The local sample
+  measurement found only 13 plausible decorative candidates among 216 representative findings; 22 text
+  boxes remain metadata-uncertain. See [the measurement](../reviews/access-001-alt-text-measurement.md).
 - The pre-existing `dotnet format` whitespace cleanup
 
 Reasons are recorded in [CURRENT_STATE.md](CURRENT_STATE.md) and [DECISIONS.md](DECISIONS.md). Two are
@@ -150,8 +149,9 @@ blocking rather than merely sequenced:
 
 1. **The culture impact value rests on a design decision**, not an observation — translations are treated
    as describing objects rather than consuming them. Everything built on qualification inherits that.
-2. **`PBI-ACCESS-001` volume is unmeasured.** The false-positive concern is inferred, never measured
-   against a real report. Do not change the rule on that inference alone.
+2. **`PBI-ACCESS-001` needs better intent evidence before it changes.** The local sample measurement did
+   not support a blanket visual-type exemption. Collect independently authored, author-labelled decorative
+   examples before changing the rule.
 
 ## Missing evidence
 
@@ -160,7 +160,8 @@ blocking rather than merely sequenced:
   measures, neither parsed. This is now the reason functions still qualify
 - Whether a *translated* culture file names model objects, and whether Q&A synonyms constitute usage
 - Whether `dataSources.tmdl` is ever emitted by current Desktop
-- Real-report measurement of `PBI-ACCESS-001` finding volume
+- Independently authored, author-labelled `PBI-ACCESS-001` examples, particularly decorative shapes,
+  images and text boxes
 
 ## Reading order
 

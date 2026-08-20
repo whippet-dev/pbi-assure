@@ -226,7 +226,7 @@ unanalysed files are the always-present three — verified against three Desktop
 | Perspective `includeAll`, `perspectiveHierarchy` and perspective sets in real Desktop output | Implemented from Microsoft-documented syntax for the first two; no fixture emits any of them |
 | Whether current Desktop can still produce TMSL `model.bim` | Unknown |
 | RLS forms beyond the two the fixture proves — cross-table filters, OLS column permissions, DirectQuery/Direct Lake roles | **Open.** Parser tests cover more shapes synthetically; only the two static/dynamic same-table forms are Desktop-verified |
-| `PBI-ACCESS-001` real-world finding volume | **[inferred], never measured.** Do not change the rule on this inference alone |
+| `PBI-ACCESS-001` sample finding volume | **Measured in 12 local PBIP projects (216 representative findings after deliberate test-format duplicates are not double-counted).** Only 13 are plausibly decorative; 22 text boxes are uncertain because on-canvas text is not exposed. Do not change the rule from visual type alone. See [alt-text measurement](../reviews/access-001-alt-text-measurement.md) [verified] |
 
 ### Settled, so it does not need re-investigating
 
