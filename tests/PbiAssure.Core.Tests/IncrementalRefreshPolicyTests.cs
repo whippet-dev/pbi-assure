@@ -112,7 +112,7 @@ public sealed class IncrementalRefreshPolicyTests
         var json = JsonSerializer.Serialize(inventory);
         var csv = SemanticUsageCsvRenderer.Render(inventory);
 
-        Assert.Equal("0.24", inventory.SchemaVersion);
+        Assert.Equal("0.25", inventory.SchemaVersion);
         Assert.Contains("\"RefreshPolicy\"", json, StringComparison.Ordinal);
         Assert.Contains("\"RollingWindowPeriods\":2", json, StringComparison.Ordinal);
         Assert.Contains("\"ChangeDetectionColumn\":\"LastModified\"", json, StringComparison.Ordinal);

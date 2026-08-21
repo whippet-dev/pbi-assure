@@ -50,7 +50,7 @@ public static class ProjectScanner
             dependencyAnalysis.ObjectUsages, analysisLimitations);
 
         var inventory = new ProjectInventory(
-            SchemaVersion: "0.24",
+            SchemaVersion: "0.25",
             RootPath: source.SourceRoot ?? source.DisplayName,
             ScannedAtUtc: DateTimeOffset.UtcNow,
             Artifacts: artifacts
@@ -58,7 +58,7 @@ public static class ProjectScanner
                 .ThenBy(artifact => artifact.Name, StringComparer.OrdinalIgnoreCase)
                 .ToArray(),
             Reports: reports,
-            SemanticModels: semanticModels,
+            SemanticModels: dependencyAnalysis.SemanticModels,
             SemanticObjectUsages: semanticObjectUsagesWithConfidence,
             SemanticTableUsages: dependencyAnalysis.TableUsages,
             SemanticDependencies: dependencyAnalysis.Dependencies,

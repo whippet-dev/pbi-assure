@@ -12,12 +12,12 @@ schema `0.24`, shows it on the semantic table, and treats the one qualified poll
 required. It adds no Finding and makes no folding, Service refresh or partition-health claim. See
 [the evidence review](../reviews/incremental-refresh-policy-evidence-2026-08-21.md).
 
-The Desktop-authored `desktop-userelationship-evidence` fixture now banks one active relationship and
-three inactive controls: shipping is activated by a report-used measure, referral is referenced only by
-an unused measure, and legacy has no local activating call. No feature was added. The current DAX scanner
-flattens references and discards built-in function identity and argument pairing, so activation cannot be
-inferred safely from endpoint-column co-occurrence. A future bounded `USERELATIONSHIP` call extractor can
-resolve an exact unique endpoint pair and reuse the existing source-node reachability. See
+The Desktop-authored `desktop-userelationship-evidence` fixture now proves one active relationship and
+three inactive controls: shipping is **Activated by report-used DAX**, referral is **Referenced only by
+unused DAX**, and legacy has **No USERELATIONSHIP call found in analysed DAX**. PBI Assure extracts only
+the built-in call with exactly two explicit qualified columns, resolves one exact unique relationship pair
+including reversed argument order, and reuses source reachability. The additive relationship inventory is
+schema `0.25`; CSV, Findings and semantic usage states are unchanged. See
 [the evidence review](../reviews/userelationship-inactive-relationship-evidence-2026-08-21.md).
 
 TMDL triple-backtick fenced expressions are now read centrally rather than being retained as the opening
@@ -185,11 +185,9 @@ records.
 
 ## State
 
-- **Last verified product state:** `4e187aa` — bookmark semantic-usage evidence. Desktop-authored paired
-  fixtures prove that persisted bookmark references can be stale and inert, so bookmarks are not usage
-  roots by default.
+- **Last verified product state:** USERELATIONSHIP activation inventory (current worktree; commit pending).
 - **Working tree:** expected clean apart from untracked local review documents; no tracked modifications
-- **Verified locally:** Release build succeeded with 0 warnings; **475 core + 2 privacy tests passed**
+- **Verified locally:** Release build succeeded with 0 warnings; **490 core + 2 privacy tests passed**
 - **Known exception:** `dotnet format --verify-no-changes` fails with 24 pre-existing whitespace errors
   in two Theme Review files. Unrelated to current work, deliberately not fixed. See
   [CURRENT_STATE.md](CURRENT_STATE.md).
@@ -200,12 +198,10 @@ The product backlog was freshly re-ranked on 2026-08-20 after the schema, naviga
 evidence work. The decision and the scored top five are in
 [the product-value re-rank](../reviews/product-value-rerank-2026-08-20.md).
 
-**Next recommended task: implement the bounded structured `USERELATIONSHIP` call extractor.** The
-inactive-relationship experiment is complete and banked, but the current DAX scanner flattens references
-and does not retain the function call or its paired arguments. The extractor must accept only exactly two
-explicit qualified column arguments, resolve one exact relationship including reversed argument order,
-and reuse existing source-measure reachability. See
-[the USERELATIONSHIP evidence review](../reviews/userelationship-inactive-relationship-evidence-2026-08-21.md).
+**Next recommended task: investigate the report-level measure DAX dependency gap.** Report-level measure
+expressions may call DAX UDFs, but their authored expressions do not yet enter the same dependency path as
+ordinary model measures. Start from the documented Desktop evidence process; do not infer remote-model
+dependencies from report metadata alone.
 
 Bookmark-only graph edges also remain parked: paired Desktop fixtures prove that stale/inert bookmark
 snapshots can retain field references after the live carrier is removed, and effective carriers were already

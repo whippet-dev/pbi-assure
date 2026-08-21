@@ -10,12 +10,11 @@ proposed safe product boundary.
 
 ## Conclusion
 
-The Desktop fixture establishes a useful report-review question, but the current DAX dependency stream
-cannot answer it safely. PBI Assure extracts flat column, measure, table and declared-UDF references. It
-does not retain the built-in `USERELATIONSHIP` call, argument boundaries, argument order or the fact that
-two column references form one endpoint pair. A renderer-only or relationship-inventory-only change
-would therefore reconstruct semantics from generic co-occurrence and could associate the wrong
-relationship. No activation feature is implemented in this slice. **[verified in repository]**
+The Desktop fixture establishes a useful report-review question. PBI Assure now retains the built-in
+`USERELATIONSHIP` call only when it contains exactly two explicit, qualified column arguments, then
+resolves that pair against one exact relationship. A renderer-only or relationship-inventory-only change
+would still reconstruct semantics from generic co-occurrence and could associate the wrong relationship.
+**[verified in repository]**
 
 ## Desktop evidence
 
@@ -43,13 +42,16 @@ Desktop.
    receive function-reference identity.
 4. `SemanticDependencyAnalyzer` turns the remaining flat references into graph edges and publishes
    per-node `SemanticNodeReachability`.
-5. `SemanticRelationshipInventory` retains endpoints and active state, but no activation evidence.
+5. A separate bounded extractor preserves eligible `USERELATIONSHIP` endpoint pairs without changing the
+   ordinary flat-reference stream. It resolves a pair only when one relationship has the exact endpoints,
+   in either argument order, then uses the source node's existing reachability.
+6. `SemanticRelationshipInventory` additively retains inactive-relationship activation state and the
+   calculation sources that established it.
 
-The smallest safe missing layer is a bounded structured-call extractor for `USERELATIONSHIP`. It must
-retain the source calculation and exactly two explicit, qualified column arguments as one call. It must
-ignore text in comments/strings, reject expressions that are not two simple column references, and
-preserve ambiguity/no-match outcomes rather than guessing. This can reuse the existing model resolver and
-reachability after extraction; it does not require a general DAX AST. **[inferred]**
+The bounded extractor retains the source calculation and exactly two explicit, qualified column arguments
+as one call. It ignores text in comments/strings, rejects expressions that are not two simple column
+references, and preserves ambiguity/no-match outcomes by not classifying them. It reuses the existing
+model resolver and reachability after extraction; it is not a general DAX AST. **[verified in repository]**
 
 ## Resolution and presentation design
 
@@ -62,10 +64,9 @@ referral measure, including paths through non-user-facing nodes. That is suffici
 detected call in a live report calculation from a call in an unused branch after structured extraction.
 **[verified in repository]**
 
-A future additive relationship review can show detected activation calculations and their reachability.
-It must not alter semantic object usage states: relationship endpoint columns are already structural
-model dependencies, while ordinary DAX dependencies already classify the shipping/referral columns.
-**[design decision]**
+The relationship review shows detected activation calculations and their reachability. It does not alter
+semantic object usage states: relationship endpoint columns are already structural model dependencies,
+while ordinary DAX dependencies already classify the shipping/referral columns. **[verified in repository]**
 
 No normal Finding is justified merely because an inactive relationship has no detected activation. A
 neutral review state may say **No USERELATIONSHIP call found in the analysed DAX**. It must not say
@@ -84,7 +85,13 @@ remain real boundaries. **[design decision]**
 
 ## Current scan control
 
-The fixture scan retains one active and three inactive relationships. Current semantic usage is:
+The fixture scan retains one active and three inactive relationships. Shipping is **Activated by
+report-used DAX**, Referral is **Referenced only by unused DAX**, and Legacy has **No USERELATIONSHIP call
+found in analysed DAX**. Billing remains visually normal because it is active. Calls in comments/strings,
+malformed calls, non-simple arguments, unresolved endpoints and non-unique relationship matches remain
+unclassified. **[verified in repository]**
+
+Semantic usage remains:
 
 - `Customers[CustomerName]`, `Sales[Total Sales]` and `Sales[Sales by Shipping Customer]` — directly used
 - `Sales[Amount]`, `Sales[ShippingCustomerID]` and `Customers[CustomerID]` — indirectly used
@@ -97,6 +104,6 @@ is currently serialized or displayed. **[verified in repository]**
 
 ## Decision and next task
 
-Implementation should wait for the bounded structured-call extractor. The Desktop evidence is now banked,
-so the next ranked product-value investigation is the Desktop incremental-refresh policy fixture. That
-task is not started here.
+The bounded extractor is complete. Its relationship-review metadata is additive in JSON schema `0.25`;
+CSV and Findings remain unchanged. The next recommended task is the report-level measure DAX dependency
+gap, using the already documented Desktop evidence process.

@@ -99,6 +99,33 @@ public sealed class SemanticDependencyAnalyzerTests
     }
 
     [Fact]
+    public void UserRelationshipActivationRequiresOneExactResolvedRelationship()
+    {
+        var model = ModelWith(
+            "Sales",
+            [
+                Relationship("shipping-a", "Sales", "ShippingCustomerID", "Customers", "CustomerID", isActive: false),
+                Relationship("shipping-b", "Sales", "ShippingCustomerID", "Customers", "CustomerID", isActive: false),
+                Relationship("legacy", "Sales", "LegacyCustomerID", "Customers", "CustomerID", isActive: false),
+            ],
+            Table(
+                "Sales",
+                columns: [Column("ShippingCustomerID"), Column("LegacyCustomerID"), Column("UnknownCustomerID")],
+                measures:
+                [
+                    Measure(
+                        "Live relationship calls",
+                        "CALCULATE(1, USERELATIONSHIP(Customers[CustomerID], Sales[ShippingCustomerID]), USERELATIONSHIP(Customers[CustomerID], Sales[UnknownCustomerID]))"),
+                ]),
+            Table("Customers", columns: [Column("CustomerID")]));
+        var analysis = SemanticDependencyAnalyzer.Analyze([model], Usages(model, directlyUsed: [("Sales", "Live relationship calls")]), []);
+
+        var relationships = Assert.Single(analysis.SemanticModels).Relationships;
+        Assert.All(relationships, relationship =>
+            Assert.Equal(SemanticRelationshipActivationStates.NoDetectedActivation, relationship.Activation!.State));
+    }
+
+    [Fact]
     public void IncomingEdgeFromAnUnusedObjectSeparatesUnusedBranchFromApparentlyUnused()
     {
         // Amount is referenced only by an unused measure; Untouched is referenced by nothing at all.
@@ -537,10 +564,11 @@ public sealed class SemanticDependencyAnalyzerTests
         string fromTable,
         string fromColumn,
         string toTable,
-        string toColumn) =>
+        string toColumn,
+        bool isActive = true) =>
         new(
             Name: name,
-            IsActive: true,
+            IsActive: isActive,
             CrossFilteringBehavior: "oneDirection",
             FromCardinality: "many",
             FromTable: fromTable,

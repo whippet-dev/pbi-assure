@@ -1036,7 +1036,8 @@ public static partial class HtmlReportRenderer
                                   (string.Equals(relationship.FromCardinality, "many", StringComparison.OrdinalIgnoreCase) && string.Equals(relationship.ToCardinality, "many", StringComparison.OrdinalIgnoreCase))
                     ? "Review relationship risk"
                     : string.Empty;
-                var relationshipSearch = $"{relationship.FromTable} {relationship.FromColumn} {relationship.ToTable} {relationship.ToColumn} {cardinality} {direction} {(relationship.IsActive ? "Active" : "Inactive")} {reviewTerms}";
+                var activationLabel = RelationshipActivationLabel(relationship);
+                var relationshipSearch = $"{relationship.FromTable} {relationship.FromColumn} {relationship.ToTable} {relationship.ToColumn} {cardinality} {direction} {activationLabel} {reviewTerms}";
                 html.Append("        <details class=\"relationship-card\" data-investigation-item=\"relationship\" data-search-text=\"").Append(Encode(relationshipSearch))
                     .Append("\" data-filter-status=\"").Append(relationship.IsActive ? "active" : "inactive")
                     .Append("\" data-filter-cardinality=\"").Append(Encode(cardinality)).Append("\" data-filter-direction=\"")
@@ -1044,7 +1045,7 @@ public static partial class HtmlReportRenderer
                 html.Append("          <summary><span class=\"summary-copy\"><strong>")
                     .Append(Encode($"{relationship.FromTable}[{relationship.FromColumn}]"))
                     .Append("</strong><span>").Append(Encode(cardinality)).Append(" · ")
-                    .Append(relationship.IsActive ? "Active" : "Inactive").Append(" · ")
+                    .Append(Encode(activationLabel)).Append(" · ")
                     .Append(Encode(direction)).Append("</span><strong>")
                     .Append(Encode($"{relationship.ToTable}[{relationship.ToColumn}]"))
                     .AppendLine("</strong></span></summary>");
@@ -1055,7 +1056,22 @@ public static partial class HtmlReportRenderer
                 AppendFact(html, "Cardinality", cardinality);
                 AppendFact(html, "Status", relationship.IsActive ? "Active" : "Inactive");
                 AppendFact(html, "Cross-filter direction", direction);
+                if (!relationship.IsActive && relationship.Activation is not null)
+                {
+                    if (relationship.Activation.State == SemanticRelationshipActivationStates.ActivatedByReportUsedDax)
+                    {
+                        AppendFact(html, "Activated by", FormatRelationshipActivationSources(relationship.Activation.Sources));
+                    }
+                    else if (relationship.Activation.State == SemanticRelationshipActivationStates.ReferencedOnlyByUnusedDax)
+                    {
+                        AppendFact(html, "Referenced only by unused DAX", FormatRelationshipActivationSources(relationship.Activation.Sources));
+                    }
+                }
                 html.AppendLine("            </dl>");
+                if (!relationship.IsActive && relationship.Activation?.State == SemanticRelationshipActivationStates.NoDetectedActivation)
+                {
+                    html.AppendLine("            <p class=\"relationship-review\">No <code>USERELATIONSHIP</code> call found in the analysed DAX.</p>");
+                }
                 if (string.Equals(relationship.CrossFilteringBehavior, "bothDirections", StringComparison.OrdinalIgnoreCase))
                 {
                     html.AppendLine("            <p class=\"relationship-review\"><strong>Review:</strong> This relationship filters in both directions. Confirm that bidirectional filtering is required.</p>");
@@ -1229,6 +1245,30 @@ public static partial class HtmlReportRenderer
 
     private static string RelationshipCardinalityLabel(SemanticRelationshipInventory relationship) =>
         $"{RelationshipEndLabel(relationship.FromCardinality)}-to-{RelationshipEndLabel(relationship.ToCardinality).ToLowerInvariant()}";
+
+    private static string RelationshipActivationLabel(SemanticRelationshipInventory relationship)
+    {
+        if (relationship.IsActive || relationship.Activation is null)
+        {
+            return relationship.IsActive ? "Active" : "Inactive";
+        }
+
+        return relationship.Activation.State switch
+        {
+            SemanticRelationshipActivationStates.ActivatedByReportUsedDax => "Inactive · Activated by report-used DAX",
+            SemanticRelationshipActivationStates.ReferencedOnlyByUnusedDax => "Inactive · Referenced only by unused DAX",
+            _ => "Inactive · No USERELATIONSHIP call found in analysed DAX",
+        };
+    }
+
+    private static string FormatRelationshipActivationSources(
+        IReadOnlyList<SemanticRelationshipActivationSourceInventory> sources) =>
+        string.Join(", ", sources
+            .OrderBy(source => source.Table, StringComparer.OrdinalIgnoreCase)
+            .ThenBy(source => source.ObjectName, StringComparer.OrdinalIgnoreCase)
+            .Select(source => string.IsNullOrWhiteSpace(source.Table)
+                ? source.ObjectName
+                : $"{source.Table}[{source.ObjectName}]"));
 
     private static string RelationshipEndLabel(string cardinality) => cardinality.ToLowerInvariant() switch
     {

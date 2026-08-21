@@ -12,7 +12,7 @@ evidenced · **[design decision]** a choice, not a fact.
 |---|---|
 | Remote | `whippet-dev/pbi-assure` |
 | Branch | `master` (also the default branch) |
-| Last verified product state | `fbf7098` — inactive relationship / USERELATIONSHIP evidence bank |
+| Last verified product state | USERELATIONSHIP activation inventory (current worktree; commit pending) |
 | Working tree | Expected clean of tracked modifications. Untracked local review documents may be present |
 
 `master` may have moved past that commit for documentation-only changes. Re-verify and update this
@@ -22,7 +22,7 @@ section whenever a commit changes build, test or behaviour — not for every com
 
 - `dotnet build PbiAssure.slnx` — **succeeded, 0 warnings, 0 errors** [verified]. `TreatWarningsAsErrors`
   is on, so warnings fail the build.
-- `dotnet test PbiAssure.slnx` — **475 core + 2 privacy end-to-end tests passed**, 0 failed [verified].
+- `dotnet test PbiAssure.slnx` — **490 core + 2 privacy end-to-end tests passed**, 0 failed [verified].
 - CI (`.github/workflows/ci.yml`) — **green** [verified], confirmed complete (not queued) for the
   pre-feature baseline `0c1af3c`. Runs restore, build, a Playwright Chromium install, then the whole
   solution test suite on `windows-latest`.
@@ -77,11 +77,14 @@ measure calls it for the referral relationship, and the legacy relationship has 
 The current flat DAX scanner retains the referenced columns but discards built-in function identity,
 argument boundaries and endpoint pairing. Relationship activation therefore cannot yet be inferred safely.
 
-The future bounded design is structured `USERELATIONSHIP` call extraction, exact unique endpoint-pair
-resolution (including reversed arguments), then existing source-node reachability. No relationship usage
-state, Finding or semantic-usage change was added. See
+PBI Assure now extracts only the built-in `USERELATIONSHIP` shape with exactly two explicit qualified
+column references. It resolves the pair only when it uniquely and exactly matches a relationship,
+including reversed argument order, then uses the source calculation's existing reachability. Inactive
+relationships therefore show **Activated by report-used DAX**, **Referenced only by unused DAX**, or
+**No USERELATIONSHIP call found in analysed DAX**; active relationships remain visually normal. The
+metadata is additive in JSON schema `0.25`; CSV, Findings and semantic usage states are unchanged. See
 [the evidence review](../reviews/userelationship-inactive-relationship-evidence-2026-08-21.md). The next
-recommended evidence task is the Desktop incremental-refresh policy experiment.
+recommended task is the report-level measure DAX dependency gap.
 
 ## Bookmark semantic-usage evidence
 

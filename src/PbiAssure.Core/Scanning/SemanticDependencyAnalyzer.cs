@@ -14,6 +14,7 @@ internal static class SemanticDependencyAnalyzer
         var structuralRoots = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         var reportMeasureNodes = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         var reportMeasureRoots = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var userRelationshipCalls = new List<UserRelationshipCallCandidate>();
 
         // A DAX user-defined function is a graph node without a usage row, exactly like a report-level
         // measure, so it needs the same treatment: known to traversal, absent from the reported results.
@@ -22,6 +23,7 @@ internal static class SemanticDependencyAnalyzer
         foreach (var model in semanticModels)
         {
             AnalyzeModel(model, initialUsages, dependencies, unresolved, structuralRoots, functionNodes);
+            userRelationshipCalls.AddRange(CollectUserRelationshipCalls(model));
         }
 
         AnalyzeReportMeasures(
@@ -35,8 +37,14 @@ internal static class SemanticDependencyAnalyzer
         var tableUsages = ClassifyTables(
             semanticModels, classifiedUsages, distinctDependencies, structuralRoots,
             reportMeasureNodes, reportMeasureRoots, functionNodes);
+        var semanticModelsWithRelationshipActivation = ApplyUserRelationshipActivation(
+            semanticModels,
+            initialUsages,
+            userRelationshipCalls,
+            reachability);
 
         return new SemanticDependencyAnalysis(
+            SemanticModels: semanticModelsWithRelationshipActivation,
             ObjectUsages: classifiedUsages,
             TableUsages: tableUsages,
             Dependencies: distinctDependencies
@@ -189,6 +197,196 @@ internal static class SemanticDependencyAnalyzer
         AnalyzeRoles(model, lookup, dependencies, unresolved, structuralRoots);
         AnalyzePerspectives(model, lookup, dependencies, unresolved, structuralRoots);
         AnalyzeFunctions(model, lookup, dependencies, unresolved, functionNodes);
+    }
+
+    /// <summary>
+    /// The ordinary DAX dependency stream deliberately stays flat. This second, bounded pass preserves
+    /// only proven built-in USERELATIONSHIP endpoint pairs for relationship review; it contributes no
+    /// dependency edges and cannot change semantic usage classification.
+    /// </summary>
+    private static IEnumerable<UserRelationshipCallCandidate> CollectUserRelationshipCalls(SemanticModelInventory model)
+    {
+        foreach (var table in model.Tables)
+        {
+            foreach (var column in table.Columns.Where(column => column.Expression is not null))
+            {
+                foreach (var call in DaxReferenceExtractor.ExtractUserRelationshipCalls(column.Expression!))
+                {
+                    yield return new UserRelationshipCallCandidate(
+                        model.Name,
+                        Target(table.Name, column.Name, SemanticObjectTypes.Column),
+                        call);
+                }
+            }
+
+            foreach (var measure in table.Measures)
+            {
+                foreach (var call in DaxReferenceExtractor.ExtractUserRelationshipCalls(measure.Expression))
+                {
+                    yield return new UserRelationshipCallCandidate(
+                        model.Name,
+                        Target(table.Name, measure.Name, SemanticObjectTypes.Measure),
+                        call);
+                }
+            }
+
+            if (table.CalculationGroup is not null)
+            {
+                foreach (var item in table.CalculationGroup.Items)
+                {
+                    foreach (var expression in new[] { item.Expression, item.FormatStringExpression }.Where(expression => expression is not null))
+                    {
+                        foreach (var call in DaxReferenceExtractor.ExtractUserRelationshipCalls(expression!))
+                        {
+                            yield return new UserRelationshipCallCandidate(
+                                model.Name,
+                                Target(table.Name, item.Name, SemanticObjectTypes.CalculationItem),
+                                call);
+                        }
+                    }
+                }
+
+                foreach (var expression in new[]
+                         {
+                             table.CalculationGroup.SelectionExpression,
+                             table.CalculationGroup.MultipleOrEmptySelectionExpression,
+                         }.Where(expression => expression is not null))
+                {
+                    foreach (var call in DaxReferenceExtractor.ExtractUserRelationshipCalls(expression!))
+                    {
+                        yield return new UserRelationshipCallCandidate(
+                            model.Name,
+                            Target(table.Name, table.Name, SemanticObjectTypes.Table),
+                            call);
+                    }
+                }
+            }
+
+            foreach (var partition in table.Partitions.Where(partition =>
+                         partition.Expression is not null &&
+                         string.Equals(partition.SourceType, "calculated", StringComparison.OrdinalIgnoreCase) &&
+                         !string.Equals(partition.Expression, table.FieldParameter?.Expression, StringComparison.Ordinal)))
+            {
+                foreach (var call in DaxReferenceExtractor.ExtractUserRelationshipCalls(partition.Expression!))
+                {
+                    yield return new UserRelationshipCallCandidate(
+                        model.Name,
+                        Target(table.Name, table.Name, SemanticObjectTypes.Table),
+                        call);
+                }
+            }
+        }
+
+        foreach (var function in model.Functions)
+        {
+            foreach (var call in DaxReferenceExtractor.ExtractUserRelationshipCalls(function.Expression))
+            {
+                yield return new UserRelationshipCallCandidate(
+                    model.Name,
+                    Target(string.Empty, function.Name, SemanticObjectTypes.Function),
+                    call);
+            }
+        }
+    }
+
+    private static SemanticModelInventory[] ApplyUserRelationshipActivation(
+        IReadOnlyList<SemanticModelInventory> semanticModels,
+        IReadOnlyList<SemanticObjectUsage> usages,
+        IReadOnlyList<UserRelationshipCallCandidate> calls,
+        IReadOnlyList<SemanticNodeReachability> reachability)
+    {
+        return semanticModels.Select(model =>
+        {
+            var lookup = new ModelLookup(
+                model,
+                usages.Where(usage => string.Equals(usage.SemanticModel, model.Name, StringComparison.OrdinalIgnoreCase)).ToArray());
+            var matchedCalls = new List<(SemanticRelationshipInventory Relationship, UserRelationshipCallCandidate Call)>();
+            foreach (var call in calls.Where(call => string.Equals(call.SemanticModel, model.Name, StringComparison.OrdinalIgnoreCase)))
+            {
+                if (TryResolveRelationshipCall(model, lookup, call, out var relationship))
+                {
+                    matchedCalls.Add((relationship!, call));
+                }
+            }
+
+            var resolvedCalls = matchedCalls
+                .GroupBy(item => item.Relationship.Name, StringComparer.OrdinalIgnoreCase)
+                .ToDictionary(
+                    group => group.Key,
+                    group => group.Select(item => CreateActivationSource(item.Call.Source, reachability)).Distinct().ToArray(),
+                    StringComparer.OrdinalIgnoreCase);
+
+            return model with
+            {
+                Relationships = model.Relationships.Select(relationship =>
+                {
+                    if (relationship.IsActive)
+                    {
+                        return relationship;
+                    }
+
+                    resolvedCalls.TryGetValue(relationship.Name, out var sources);
+                    sources ??= [];
+                    var state = sources.Any(source => source.ReachableFromReport)
+                        ? SemanticRelationshipActivationStates.ActivatedByReportUsedDax
+                        : sources.Length > 0
+                            ? SemanticRelationshipActivationStates.ReferencedOnlyByUnusedDax
+                            : SemanticRelationshipActivationStates.NoDetectedActivation;
+                    return relationship with
+                    {
+                        Activation = new SemanticRelationshipActivationInventory(state, sources),
+                    };
+                }).ToArray(),
+            };
+        }).ToArray();
+    }
+
+    private static bool TryResolveRelationshipCall(
+        SemanticModelInventory model,
+        ModelLookup lookup,
+        UserRelationshipCallCandidate call,
+        out SemanticRelationshipInventory? relationship)
+    {
+        relationship = null;
+        if (!lookup.TryResolveColumn(call.Call.First.Table, call.Call.First.Column, out var first) ||
+            !lookup.TryResolveColumn(call.Call.Second.Table, call.Call.Second.Column, out var second))
+        {
+            return false;
+        }
+
+        var matches = model.Relationships.Where(candidate =>
+            (MatchesEndpoint(candidate.FromTable, candidate.FromColumn, first) &&
+             MatchesEndpoint(candidate.ToTable, candidate.ToColumn, second)) ||
+            (MatchesEndpoint(candidate.FromTable, candidate.FromColumn, second) &&
+             MatchesEndpoint(candidate.ToTable, candidate.ToColumn, first))).ToArray();
+        if (matches.Length != 1)
+        {
+            return false;
+        }
+
+        relationship = matches[0];
+        return true;
+    }
+
+    private static bool MatchesEndpoint(string table, string column, SemanticNode endpoint) =>
+        string.Equals(table, endpoint.Table, StringComparison.OrdinalIgnoreCase) &&
+        string.Equals(column, endpoint.ObjectName, StringComparison.OrdinalIgnoreCase) &&
+        endpoint.ObjectType == SemanticObjectTypes.Column;
+
+    private static SemanticRelationshipActivationSourceInventory CreateActivationSource(
+        SemanticNode source,
+        IReadOnlyList<SemanticNodeReachability> reachability)
+    {
+        var sourceReachability = reachability.FirstOrDefault(item =>
+            string.Equals(item.Table, source.Table, StringComparison.OrdinalIgnoreCase) &&
+            string.Equals(item.ObjectName, source.ObjectName, StringComparison.OrdinalIgnoreCase) &&
+            string.Equals(item.ObjectType, source.ObjectType, StringComparison.Ordinal) &&
+            string.Equals(item.HierarchyName, source.HierarchyName, StringComparison.OrdinalIgnoreCase));
+        return new SemanticRelationshipActivationSourceInventory(
+            source.Table,
+            source.ObjectName,
+            source.ObjectType,
+            sourceReachability?.ReachableFromReport ?? false);
     }
 
     private static void AddFieldParameterMetadataRoots(
@@ -1262,6 +1460,9 @@ internal static class SemanticDependencyAnalyzer
 
         public Dictionary<string, string> TablePaths { get; }
 
+        public bool TryResolveColumn(string table, string column, out SemanticNode target) =>
+            columns.TryGetValue(QualifiedKey(table, column), out target!);
+
         public bool TryResolveDax(
             DaxReferenceExtractor.DaxReference reference,
             string currentTable,
@@ -1351,9 +1552,15 @@ internal static class SemanticDependencyAnalyzer
         string ObjectName,
         string ObjectType,
         string? HierarchyName);
+
+    private sealed record UserRelationshipCallCandidate(
+        string SemanticModel,
+        SemanticNode Source,
+        DaxReferenceExtractor.DaxUserRelationshipCall Call);
 }
 
 internal sealed record SemanticDependencyAnalysis(
+    SemanticModelInventory[] SemanticModels,
     SemanticObjectUsage[] ObjectUsages,
     SemanticTableUsage[] TableUsages,
     SemanticDependencyEdge[] Dependencies,

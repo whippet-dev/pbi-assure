@@ -9,4 +9,11 @@ public sealed record SemanticRelationshipInventory(
     string FromColumn,
     string ToCardinality,
     string ToTable,
-    string ToColumn);
+    string ToColumn)
+{
+    /// <summary>
+    /// Additive static activation evidence for inactive relationships. Active relationships deliberately
+    /// have no review annotation.
+    /// </summary>
+    public SemanticRelationshipActivationInventory? Activation { get; init; }
+}

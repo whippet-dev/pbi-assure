@@ -42,7 +42,8 @@ reopen and save.
 Ben as 300 / 500, Chloe as 400 / 800 and Daniel as 1100 / blank. Codex did not independently perform
 those Desktop interactions.
 
-**[verified in repository]** PBI Assure currently retains the relationships, measure expressions and
-ordinary semantic reachability correctly. It does not yet retain the structured `USERELATIONSHIP` call
-or the paired arguments needed to identify relationship activation safely. See
+**[verified in repository]** PBI Assure retains the relationships, measure expressions and ordinary
+semantic reachability. It also retains a bounded `USERELATIONSHIP` call only where it has exactly two
+explicit qualified columns, resolves that pair only to one exact relationship and shows the resulting
+inactive-relationship review context. See
 `docs/reviews/userelationship-inactive-relationship-evidence-2026-08-21.md`.

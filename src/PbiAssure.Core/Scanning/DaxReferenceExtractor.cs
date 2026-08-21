@@ -69,6 +69,174 @@ internal static class DaxReferenceExtractor
         return references.Distinct().ToArray();
     }
 
+    /// <summary>
+    /// Extracts only the deliberately narrow <c>USERELATIONSHIP</c> form that can be tied to one
+    /// relationship without guessing: exactly two explicit qualified column references. This is kept
+    /// separate from the ordinary flat-reference stream because the paired argument identity is the
+    /// evidence needed to review inactive-relationship activation.
+    /// </summary>
+    public static DaxUserRelationshipCall[] ExtractUserRelationshipCalls(string expression)
+    {
+        var calls = new List<DaxUserRelationshipCall>();
+        var index = 0;
+
+        while (index < expression.Length)
+        {
+            if (TrySkipComment(expression, ref index) || TrySkipString(expression, ref index))
+            {
+                continue;
+            }
+
+            if (expression[index] == '\'')
+            {
+                ReadQuotedIdentifier(expression, ref index, out _);
+                continue;
+            }
+
+            if (!IsUnquotedIdentifierStart(expression[index]))
+            {
+                index++;
+                continue;
+            }
+
+            var identifierStart = index;
+            index++;
+            while (index < expression.Length && IsUnquotedIdentifierPart(expression[index]))
+            {
+                index++;
+            }
+
+            if (!expression[identifierStart..index].Equals("USERELATIONSHIP", StringComparison.OrdinalIgnoreCase) ||
+                !TryReadUserRelationshipCall(expression, ref index, out var call))
+            {
+                continue;
+            }
+
+            calls.Add(call);
+        }
+
+        return calls.Distinct().ToArray();
+    }
+
+    private static bool TryReadUserRelationshipCall(
+        string expression,
+        ref int index,
+        out DaxUserRelationshipCall call)
+    {
+        var openParenthesis = NextNonWhitespace(expression, index);
+        if (openParenthesis >= expression.Length || expression[openParenthesis] != '(')
+        {
+            call = null!;
+            return false;
+        }
+
+        var arguments = new List<string>();
+        var argumentStart = openParenthesis + 1;
+        var cursor = argumentStart;
+        var depth = 1;
+        while (cursor < expression.Length)
+        {
+            if (TrySkipComment(expression, ref cursor) || TrySkipString(expression, ref cursor))
+            {
+                continue;
+            }
+
+            if (expression[cursor] == '(')
+            {
+                depth++;
+                cursor++;
+                continue;
+            }
+
+            if (expression[cursor] == ')')
+            {
+                depth--;
+                if (depth == 0)
+                {
+                    arguments.Add(expression[argumentStart..cursor]);
+                    index = cursor + 1;
+                    return TryCreateUserRelationshipCall(arguments, out call);
+                }
+
+                cursor++;
+                continue;
+            }
+
+            if (expression[cursor] == ',' && depth == 1)
+            {
+                arguments.Add(expression[argumentStart..cursor]);
+                argumentStart = cursor + 1;
+            }
+
+            cursor++;
+        }
+
+        call = null!;
+        return false;
+    }
+
+    private static bool TryCreateUserRelationshipCall(
+        List<string> arguments,
+        out DaxUserRelationshipCall call)
+    {
+        if (arguments.Count == 2 &&
+            TryParseQualifiedColumnReference(arguments[0], out var first) &&
+            TryParseQualifiedColumnReference(arguments[1], out var second))
+        {
+            call = new DaxUserRelationshipCall(first, second);
+            return true;
+        }
+
+        call = null!;
+        return false;
+    }
+
+    private static bool TryParseQualifiedColumnReference(string text, out DaxQualifiedColumnReference reference)
+    {
+        var index = 0;
+        while (index < text.Length && char.IsWhiteSpace(text[index])) index++;
+
+        string table;
+        if (index < text.Length && text[index] == '\'')
+        {
+            if (!ReadQuotedIdentifier(text, ref index, out table))
+            {
+                reference = null!;
+                return false;
+            }
+        }
+        else
+        {
+            var tableStart = index;
+            if (index >= text.Length || !IsUnquotedIdentifierStart(text[index]))
+            {
+                reference = null!;
+                return false;
+            }
+
+            index++;
+            while (index < text.Length && IsUnquotedIdentifierPart(text[index])) index++;
+            table = text[tableStart..index];
+        }
+
+        while (index < text.Length && char.IsWhiteSpace(text[index])) index++;
+        if (index >= text.Length || text[index] != '[' || !ReadBracketIdentifier(text, ref index, out var column))
+        {
+            reference = null!;
+            return false;
+        }
+
+        while (index < text.Length && char.IsWhiteSpace(text[index])) index++;
+        if (index != text.Length || string.IsNullOrWhiteSpace(table) || string.IsNullOrWhiteSpace(column))
+        {
+            reference = null!;
+            return false;
+        }
+
+        reference = new DaxQualifiedColumnReference(table, column);
+        return true;
+    }
+
     private static void ReadQuotedIdentifierReference(
         string expression,
         IReadOnlySet<string> knownTables,
@@ -354,4 +522,10 @@ internal static class DaxReferenceExtractor
         /// <summary>A call to a declared user-defined function rather than a model object reference.</summary>
         public bool IsFunctionReference { get; init; }
     }
+
+    internal sealed record DaxQualifiedColumnReference(string Table, string Column);
+
+    internal sealed record DaxUserRelationshipCall(
+        DaxQualifiedColumnReference First,
+        DaxQualifiedColumnReference Second);
 }
