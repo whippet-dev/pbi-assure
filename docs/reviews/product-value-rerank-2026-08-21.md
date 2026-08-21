@@ -2,9 +2,10 @@
 
 **Date:** 2026-08-21
 
-**Against commit:** `a0fbf554d5ce907425b52ded95e9e96a93293627`
+**Against commit:** `b47881424e4b320cefa45161f3a3c72ab39b2fe8`
 
-**Status:** decision record only. No scanner, fixture, rule, renderer, JSON or CSV behaviour changed.
+**Status:** updated after the bounded aggregation-mapping implementation. The ranking remains a decision
+record; the delivered aggregation item is recorded below.
 
 Evidence labels: **[verified in repository]** means established from the current code, committed
 fixtures or retained review evidence. **[inferred]** is a cautious product judgement. **[design
@@ -23,6 +24,14 @@ could otherwise receive incomplete semantic inventory and unused-object conclusi
 confirmed the path and justified an early supported-input boundary rather than a speculative parser.
 [verified in repository]
 
+Aggregation mapping support is now complete. Desktop's Manage aggregations UI persists explicit
+column-owned `alternateOf` metadata, which PBI Assure now treats as a narrow structural dependency between
+the configured aggregation and detail columns. This protects exact resolved endpoints from
+`ApparentlyUnused` without claiming a runtime aggregation hit, improved performance or Power BI Service
+behaviour. See [the evidence review](aggregation-alternateof-desktop-evidence-2026-08-21.md).
+
+The next evidence-led candidate is **mobile-layout assurance scope**.
+
 The previous ranking is substantially complete: OLS, incremental refresh, inactive-relationship
 activation, the role/perspective explanation and the relevant schema work are now delivered. Bookmark
 semantic usage and report-level-measure expression parsing were investigated and deliberately parked.
@@ -36,8 +45,8 @@ orders discovery work; it is not a promise that every candidate should be implem
 | Rank | Candidate | Impact | Severity | Evidence | Precision | Delivery | Distinctive | Testable | Next action |
 |---:|---|---:|---:|---:|---:|---:|---:|---:|---|
 | 1 | TMSL `model.bim` input coverage | 5 | 5 | 5 | 5 | 5 | 5 | 5 | Complete: safe local input gate |
-| 2 | Aggregation mappings (`alternateOf`) | 4 | 4 | 2 | 5 | 3 | 4 | 5 | Desktop fixture |
-| 3 | Mobile-layout evidence and assurance scope | 4 | 4 | 1 | 3 | 2 | 5 | 3 | Desktop fixture/investigation |
+| 2 | Aggregation mappings (`alternateOf`) | 4 | 4 | 5 | 5 | 5 | 4 | 5 | Complete: bounded structural mapping support |
+| 3 | Mobile-layout evidence and assurance scope | 4 | 4 | 1 | 3 | 2 | 5 | 3 | **Next:** Desktop fixture/investigation |
 | 4 | KPI and detail-rows DAX dependencies | 3 | 3 | 2 | 5 | 4 | 3 | 5 | Combined Desktop fixture |
 | 5 | Culture/Q&A linguistic metadata boundary | 3 | 2 | 2 | 3 | 3 | 3 | 4 | Desktop fixture |
 | 6 | Visual-calculation dependency evidence | 3 | 3 | 1 | 2 | 1 | 3 | 2 | Keep evidence-bounded |
@@ -70,21 +79,22 @@ are semantically interchangeable without fixture evidence.
 
 **Approximate size:** investigation small; any implementation large. **Action:** investigate.
 
-### 2. Aggregation mappings (`alternateOf`)
+### 2. Aggregation mappings (`alternateOf`) — complete
 
 **Problem and user outcome.** `alternateOf` is an explicit aggregation mapping between an aggregation
 table column and its detail-table counterpart. The older coverage review identifies it as a genuine
 structural dependency: either endpoint can otherwise look unused, and the mapping is invisible in the
-current report. [inferred from the retained review; not yet fixture-proven]
+current report. [verified by the retained Desktop evidence and committed regression fixture]
 
-**Evidence and treatment.** This is a strong candidate for a compact Desktop fixture authored through
-Manage aggregations. If Desktop persists a clear, table/column-owned mapping, the existing structural
-dependency graph should be able to retain a narrow edge and a concise reason without a new usage state.
+**Evidence and treatment.** A current Desktop fixture now establishes a clear, column-owned mapping.
+The existing structural graph retains a narrow edge and concise reason without a new usage state. The
+committed regression fixture is sanitised because the Desktop project contains environment-specific
+connection metadata.
 
 **Risk.** Aggregations are specialised. Do not manufacture a structural root from undocumented TMDL,
 or imply query acceleration, refresh performance or Service behaviour from metadata alone.
 
-**Approximate size:** medium after evidence. **Action:** create Desktop fixture.
+**Approximate size:** delivered. **Action:** complete; do not broaden into aggregation performance analysis.
 
 ### 3. Mobile-layout evidence and assurance scope
 

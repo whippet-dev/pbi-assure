@@ -185,18 +185,18 @@ records.
 
 ## State
 
-- **Last verified product state:** `0f02816907d326641b5529273cde3328b5b523ab` — safe local TMSL input gate.
+- **Last verified product state:** `b47881424e4b320cefa45161f3a3c72ab39b2fe8` — semantic aggregation mappings.
 - **Working tree:** expected clean apart from untracked local review documents; no tracked modifications
-- **Verified locally:** Release build succeeded with 0 warnings; **500 core + 2 privacy tests passed**
+- **Verified locally:** Release build succeeded with 0 warnings; **508 core + 2 privacy tests passed**
 - **Known exception:** `dotnet format --verify-no-changes` fails with 24 pre-existing whitespace errors
   in two Theme Review files. Unrelated to current work, deliberately not fixed. See
   [CURRENT_STATE.md](CURRENT_STATE.md).
 
 ## Immediate next task
 
-The product backlog was freshly re-ranked on 2026-08-20 after the schema, navigation, RLS, UDF and connector
+The product backlog was freshly re-ranked on 2026-08-21 after the schema, navigation, RLS, UDF and connector
 evidence work. The decision and the scored top five are in
-[the product-value re-rank](../reviews/product-value-rerank-2026-08-20.md).
+[the product-value re-rank](../reviews/product-value-rerank-2026-08-21.md).
 
 The role/perspective structural-usage explanation is complete: the existing graph/reachability evidence
 now supplies concise `Why` text naming the persisted role filter or perspective. It is presentation-only;
@@ -213,9 +213,14 @@ rejects a local `model.bim` semantic model before rules or output generation, av
 `PBI-MODEL-001`; a model containing both TMSL and TMDL definitions also stops as ambiguous. This does not
 change existing remote `byConnection` handling. See [the evidence review](../reviews/tmsl-model-bim-desktop-evidence-2026-08-21.md).
 
-**Next recommended task: create a Desktop-authored aggregation-mapping (`alternateOf`) fixture.** If
-Desktop persists a clear table/column-owned mapping, assess a narrow structural dependency using the
-existing graph. Do not infer query acceleration, refresh performance or Service behaviour from metadata.
+Aggregation mappings are now complete. A Desktop-authored evidence project established column-owned
+`alternateOf` metadata; the committed sanitised fixture pins exact qualified resolution, structural usage
+and direct-use precedence. The feature proves deliberate model structure only — not runtime aggregation
+selection, performance or Service behaviour. See [the evidence review](../reviews/aggregation-alternateof-desktop-evidence-2026-08-21.md).
+
+**Next recommended task: mobile-layout assurance scope.** Create a minimal Desktop-authored fixture with
+a deliberately different mobile layout and accessibility-relevant control, then determine whether it is
+separate persisted inventory or only presentation metadata before designing any assurance behaviour.
 
 Connector expansion and report-level-measure → UDF traversal remain parked on the evidence already recorded.
 The tested **Add a local model** path migrated valid report measures into local model measures rather than

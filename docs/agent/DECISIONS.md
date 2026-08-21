@@ -352,6 +352,17 @@ Established by
 
 Established by [the TMSL Desktop evidence review](../reviews/tmsl-model-bim-desktop-evidence-2026-08-21.md).
 
+### Aggregation mappings
+
+- **Explicit `alternateOf` mappings are model-structure evidence, not runtime-usage evidence.** A
+  resolved mapping protects its aggregation-side and detail columns from `ApparentlyUnused` through the
+  shared structural dependency graph. It does not claim the aggregation ran, improved performance, or was
+  selected by Power BI Service.
+- **Only persisted, exact mappings count.** Hidden tables, storage mode, matching names and similar
+  patterns never create aggregation dependencies. Missing or unresolved mappings remain non-structural.
+
+Established by [the aggregation mapping evidence review](../reviews/aggregation-alternateof-desktop-evidence-2026-08-21.md).
+
 ### Generated model objects
 
 - Power BI-generated Auto Date/Time tables are identified **only** by the explicit TMDL annotations

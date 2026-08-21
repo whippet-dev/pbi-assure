@@ -12,24 +12,22 @@ evidenced · **[design decision]** a choice, not a fact.
 |---|---|
 | Remote | `whippet-dev/pbi-assure` |
 | Branch | `master` (also the default branch) |
-| Last verified product state | `0f02816907d326641b5529273cde3328b5b523ab` — safe local TMSL input gate |
+| Last verified product state | `b47881424e4b320cefa45161f3a3c72ab39b2fe8` — semantic aggregation mappings |
 | Working tree | Expected clean of tracked modifications. Untracked local review documents may be present |
 
 `master` may have moved past that commit for documentation-only changes. Re-verify and update this
 section whenever a commit changes build, test or behaviour — not for every commit.
 
 The current evidence-led backlog is re-ranked in
-[product-value-rerank-2026-08-21.md](../reviews/product-value-rerank-2026-08-21.md). The TMSL
-Desktop investigation is now evidence-closed: current Desktop retains a valid local `model.bim` model,
-but PBI Assure does not parse TMSL. The scanner must therefore reject that local input before creating
-incomplete assurance output; it must not turn it into a model limitation or a normal Finding. See
-[the evidence review](../reviews/tmsl-model-bim-desktop-evidence-2026-08-21.md).
+[product-value-rerank-2026-08-21.md](../reviews/product-value-rerank-2026-08-21.md). Explicit TMDL
+`alternateOf` aggregation mappings are now fixture-backed structural dependencies. The next evidence-led
+candidate is mobile-layout assurance scope; aggregation metadata is not runtime-performance evidence.
 
 ## Verified at the current product state
 
 - `dotnet build PbiAssure.slnx` — **succeeded, 0 warnings, 0 errors** [verified]. `TreatWarningsAsErrors`
   is on, so warnings fail the build.
-- `dotnet test PbiAssure.slnx` — **500 core + 2 privacy end-to-end tests passed**, 0 failed [verified].
+- `dotnet test PbiAssure.slnx` — **508 core + 2 privacy end-to-end tests passed**, 0 failed [verified].
 - CI (`.github/workflows/ci.yml`) — **green** [verified], confirmed complete (not queued) for the
   pre-feature baseline `0c1af3c`. Runs restore, build, a Playwright Chromium install, then the whole
   solution test suite on `windows-latest`.
@@ -56,6 +54,20 @@ Desktop-authored `desktop-ols-evidence` proves that Power BI Desktop persists in
 column permission makes only that column structurally required; table-level OLS is visible in the
 Security roles review but never makes every child column used. That role/permission inventory was
 introduced in JSON schema `0.23`; Findings and the semantic-usage CSV were unchanged.
+
+## Aggregation mapping structural usage
+
+Desktop's **Manage aggregations** UI persists explicit column-owned `alternateOf` blocks. PBI Assure now
+retains the authored `baseColumn` reference and optional `summarization`, resolves only exact qualified
+model columns, and records an `AggregationMapping` dependency from the aggregation-side column to its
+detail column. A resolved mapping makes its source a structural root, so both endpoints are protected
+from `ApparentlyUnused`; direct report usage keeps its existing higher precedence.
+
+The safe regression fixture is explicitly sanitised because the external Desktop evidence project contains
+environment-specific connection metadata. The mapping proves configured model structure only: it does not
+prove query acceleration, a runtime hit, refresh success or Power BI Service behaviour. JSON is additive
+in schema `0.26`; CSV columns and Findings are unchanged. See
+[the evidence review](../reviews/aggregation-alternateof-desktop-evidence-2026-08-21.md).
 
 ## Incremental-refresh policy inventory
 
