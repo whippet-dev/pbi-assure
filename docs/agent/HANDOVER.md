@@ -185,9 +185,9 @@ records.
 
 ## State
 
-- **Last verified product state:** `56085ea` — USERELATIONSHIP activation inventory.
+- **Last verified product state:** `c6c8a7f1ba90bca107640d6bd70ef1801030c346` — role/perspective structural-usage explanations.
 - **Working tree:** expected clean apart from untracked local review documents; no tracked modifications
-- **Verified locally:** Release build succeeded with 0 warnings; **490 core + 2 privacy tests passed**
+- **Verified locally:** Release build succeeded with 0 warnings; **494 core + 2 privacy tests passed**
 - **Known exception:** `dotnet format --verify-no-changes` fails with 24 pre-existing whitespace errors
   in two Theme Review files. Unrelated to current work, deliberately not fixed. See
   [CURRENT_STATE.md](CURRENT_STATE.md).
