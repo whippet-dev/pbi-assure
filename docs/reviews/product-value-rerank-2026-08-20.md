@@ -69,6 +69,13 @@ HTML security review and focused tests. No new DAX parser is required.
 
 ### 2. Bookmark-captured semantic usage — measurement and fixture before design
 
+**Status update, 2026-08-21.** Evidence has now been gathered and the item is parked/demoted. Paired
+Desktop-authored fixtures show that removed live carriers can leave stale, inert field references in
+bookmark state, while behaviourally effective bookmarks in the control fixture rely on fields already
+found by normal live page/visual/filter parsing. See
+[bookmark semantic-usage evidence](bookmark-semantic-usage-evidence-2026-08-21.md). Reopen only with a
+unique, effective bookmark carrier.
+
 **Problem.** Report bookmarks can save filters, slicer state, sort/drill state and visual state. [verified in
 Microsoft documentation] PBI Assure validates bookmark navigation but deliberately does not use captured
 bookmark state as semantic usage. An object used only by a bookmark can therefore look apparently unused.
@@ -154,37 +161,12 @@ not outrank a missing security dependency or a core usage blind spot merely beca
 | Calculation groups, field parameters, UDF definitions, perspectives | Core dependency support already exists. Improve proven edges or explanations rather than reopening completed architecture. |
 | OLS compliance/security verdicts | Out of scope. Project files do not contain Power BI Service role membership or effective runtime identity. |
 
-## Exact immediate next task
-
-Create a redistribution-safe **Desktop-authored OLS evidence fixture**; do not implement OLS parsing in the
-same task.
-
-1. In a new PBIP/TMDL project, create small synthetic `Employee` and `Confidential` tables. Keep
-   `Employee[Salary]` and the `Confidential` table absent from visuals, measures, relationships and sort-by
-   settings so the OLS references are their only intended structural evidence.
-2. Add an ordinary visual using a harmless control field such as `Employee[Name]`.
-3. In Power BI Desktop TMDL view, apply a `RestrictedViewer` role containing:
-   - `columnPermission Salary` with `metadataPermission: none` beneath `tablePermission Employee`; and
-   - `metadataPermission: none` beneath `tablePermission Confidential`.
-4. Save as PBIP, close, reopen and save a copy. Record the Desktop version and whether the role definition
-   is byte-stable across the round trip.
-5. Inspect `definition/roles/*.tmdl`, the affected table definitions and `model.tmdl`. Confirm that the
-   permission names are explicit and whether Desktop emits any additional role metadata.
-6. Scan the unchanged fixture with current PBI Assure and record the JSON usage states, role limitation and
-   HTML security review. This pins the pre-implementation behavior without accepting it as a new baseline.
-7. Only if the serialization is deterministic and the permission target identity is unambiguous, design the
-   medium OLS slice described above.
-
-Microsoft's current OLS instructions and syntax are documented in
-[Object-level security (OLS)](https://learn.microsoft.com/en-us/fabric/security/service-admin-object-level-security).
-
 ## Next sequence
 
-1. **OLS Desktop fixture and evidence review** — the immediate task above.
-2. **Bookmark-only usage experiment and local-corpus measurement** — decide whether any saved state is safe
-   enough to become graph evidence.
-3. **`USERELATIONSHIP` Desktop fixture and design** — then add relationship activation locations before
-   considering a review observation.
+1. **`USERELATIONSHIP` Desktop fixture and design** — establish inactive-relationship activation evidence
+   before considering a review observation.
+2. **Incremental-refresh policy evidence** — verify the persisted TMDL shape and a user-facing outcome.
+3. **Role/perspective structural-usage explanation** — optional contained presentation improvement.
 
 The small role/perspective explanation improvement can be taken between evidence tasks if a contained
 implementation slice is needed; it must not displace the evidence gathering.

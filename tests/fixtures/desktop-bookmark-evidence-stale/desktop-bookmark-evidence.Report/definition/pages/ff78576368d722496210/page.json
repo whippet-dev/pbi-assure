@@ -1,0 +1,8 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/page/2.1.0/schema.json",
+  "name": "ff78576368d722496210",
+  "displayName": "Bookmark Evidence",
+  "displayOption": "FitToPage",
+  "height": 1080,
+  "width": 1920
+}

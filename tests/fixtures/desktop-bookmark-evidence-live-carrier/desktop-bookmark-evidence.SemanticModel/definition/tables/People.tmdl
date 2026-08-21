@@ -1,0 +1,56 @@
+table People
+	lineageTag: 136c77ac-6f21-4495-9ec1-85a9afc6823c
+
+	column ID
+		dataType: int64
+		formatString: 0
+		lineageTag: 7d334f4e-2b15-4fb4-b9ef-5fc506a5ca5a
+		summarizeBy: count
+		sourceColumn: ID
+
+		annotation SummarizationSetBy = Automatic
+
+	column Name
+		dataType: string
+		lineageTag: 68481771-2ca6-432e-94b8-8b854b753f05
+		summarizeBy: none
+		sourceColumn: Name
+
+		annotation SummarizationSetBy = Automatic
+
+	column Region
+		dataType: string
+		lineageTag: 3caadb7f-620c-4eec-8d28-7b5c7b57b664
+		summarizeBy: none
+		sourceColumn: Region
+
+		annotation SummarizationSetBy = Automatic
+
+	column SecretCategory
+		dataType: string
+		lineageTag: aea267cb-a1d5-4746-9363-2b737a61704b
+		summarizeBy: none
+		sourceColumn: SecretCategory
+
+		annotation SummarizationSetBy = Automatic
+
+	column ControlUnused
+		dataType: string
+		lineageTag: 08ecbd85-b742-403b-955e-e82bc1369874
+		summarizeBy: none
+		sourceColumn: ControlUnused
+
+		annotation SummarizationSetBy = Automatic
+
+	partition People = m
+		mode: import
+		source =
+				let
+				  Source = Table.FromRows(Json.Document(Binary.Decompress(Binary.FromText("TY67DoMwDEX/xTNLn3splK1DOyA1YrBaS4lkEhTC/+OYVs10da9OTmwM7KCCC7s3Sd5DTFbyQR9dJ4swVAb20mryBVHzQjqmjThIuVoOeXyGpbB0OI4bc5TWoHfEBdRFUnFD/FWdpLX5jQTO6f9ZO82Og1foLP2GEbOiJ6V+ppfeNKw=", BinaryEncoding.Base64), Compression.Deflate)), let _t = ((type nullable text) meta [Serialized.Text = true]) in type table [ID = _t, Name = _t, Region = _t, SecretCategory = _t, ControlUnused = _t]),
+				  #"Changed column type" = Table.TransformColumnTypes(Source, {{"ID", Int64.Type}, {"Name", type text}, {"Region", type text}, {"SecretCategory", type text}, {"ControlUnused", type text}}, "en-US")
+				in
+				  #"Changed column type"
+
+	annotation PBI_NavigationStepName = Navigation
+
+	annotation PBI_ResultType = Table

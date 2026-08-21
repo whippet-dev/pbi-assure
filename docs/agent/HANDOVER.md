@@ -20,16 +20,17 @@ parses. The parser still reads known properties and silently ignores unknown one
 fixtures establish an exact baseline for
 `definitionProperties/2.0.0`, `report/3.3.0`, `pagesMetadata/1.1.0`, `page/2.1.0` and
 `visualContainer/2.11.0` and `visualContainer/2.12.0`. They also contain `versionMetadata/1.0.0` with PBIR definition version `2.0.0`,
-which is now retained separately from the existing `definition.pbir` version. Bookmark schemas exist only in local sample evidence and
-`reportExtension/1.0.0` only in synthetic tests.
+which is now retained separately from the existing `definition.pbir` version. The paired Desktop bookmark
+fixtures add exact `bookmarksMetadata/1.0.0` and `bookmark/2.1.0` evidence; `reportExtension/1.0.0`
+remains synthetic-only.
 
 The adopted boundary is conservative: exact fixture-backed versions are the verified baseline; another
 version in a recognised family is unverified, not automatically unsupported; missing, malformed and
 unknown-family schema metadata are separate states; and PBIR-Legacy is a separate format rather than an
 old modern-PBIR schema. These states describe PBI Assure's coverage, not defects in the user's project.
 Non-exact declarations appear as neutral report-scoped **Analysis coverage** information, never as a
-Finding. Exact declarations are silent. Bookmark and report-extension schemas remain
-recognised-unverified because there is no committed Desktop baseline for them. The JSON inventory gained
+Finding. Exact declarations are silent. Bookmark schemas are exact-verified; report-extension schemas
+remain recognised-unverified because there is no committed Desktop baseline. The JSON inventory gained
 additive report `SchemaObservations`, `VersionMetadataPath` and `PbirDefinitionVersion` properties; CSV
 is unchanged. See
 [the compatibility review](../reviews/encountered-pbir-schema-compatibility-policy.md).
@@ -173,7 +174,7 @@ records.
   Desktop-authored OLS evidence is integrated; explicitly named column OLS roots only that column, while
   table-level OLS remains security inventory only.
 - **Working tree:** expected clean apart from untracked local review documents; no tracked modifications
-- **Verified locally:** Release build succeeded with 0 warnings; **463 core + 2 privacy tests passed**
+- **Verified locally:** Release build succeeded with 0 warnings; **467 core + 2 privacy tests passed**
 - **Known exception:** `dotnet format --verify-no-changes` fails with 24 pre-existing whitespace errors
   in two Theme Review files. Unrelated to current work, deliberately not fixed. See
   [CURRENT_STATE.md](CURRENT_STATE.md).
@@ -184,13 +185,13 @@ The product backlog was freshly re-ranked on 2026-08-20 after the schema, naviga
 evidence work. The decision and the scored top five are in
 [the product-value re-rank](../reviews/product-value-rerank-2026-08-20.md).
 
-**Next recommended investigation: measure bookmark-only semantic references before designing bookmark
-graph edges.** The Desktop-authored `desktop-ols-evidence` fixture now pins the supported OLS forms: inline
-`columnPermission Salary = none` and table-level `metadataPermission: none`. It is deliberately narrow;
-other OLS shapes still need Desktop evidence before they are interpreted.
+**Next recommended evidence task: create a Desktop-authored inactive-relationship / `USERELATIONSHIP`
+fixture.** Bookmark-only graph edges are parked: paired Desktop fixtures prove that stale/inert bookmark
+snapshots can retain field references after the live carrier is removed, and effective carriers were already
+found through normal live metadata. See
+[the bookmark evidence review](../reviews/bookmark-semantic-usage-evidence-2026-08-21.md).
 
-After that evidence task, measure bookmark-only semantic references before designing bookmark graph edges,
-then create a controlled inactive-relationship/`USERELATIONSHIP` fixture. The existing role/perspective
+The existing role/perspective
 "Why" presentation gap remains a safe small task between evidence slices, but is not higher product value.
 
 Connector expansion and report-level-measure → UDF traversal remain parked on the evidence already recorded;

@@ -96,14 +96,47 @@ public sealed class PbirSchemaObservationTests
     }
 
     [Fact]
-    public void BookmarkAndReportExtensionSchemasAreRecognisedButNeverPromotedWithoutDesktopEvidence()
+    public void DesktopAuthoredBookmarkFixturesPinExactBookmarkSchemaBaselines()
+    {
+        foreach (var fixture in new[]
+                 {
+                     "desktop-bookmark-evidence-stale",
+                     "desktop-bookmark-evidence-live-carrier",
+                 })
+        {
+            var root = Path.Combine(RepositoryRoot(), "tests", "fixtures", fixture);
+            var observations = Assert.Single(ProjectScanner.Scan(root).Reports).SchemaObservations;
+
+            AssertAllExact(observations, ReportSchemaArtifactKinds.BookmarksMetadata, "bookmarksMetadata", "1.0.0");
+            AssertAllExact(observations, ReportSchemaArtifactKinds.Bookmark, "bookmark", "2.1.0");
+        }
+    }
+
+    [Fact]
+    public void OlderBookmarkSchemasAndReportExtensionsRemainRecognisedButUnverified()
     {
         var report = Assert.Single(Scan(includeBookmarksAndExtensions: true).Reports);
 
+        Assert.Equal(ReportSchemaObservationStates.VerifiedExact,
+            Assert.Single(report.SchemaObservations,
+                observation => observation.ArtifactKind == ReportSchemaArtifactKinds.BookmarksMetadata).State);
         Assert.All(report.SchemaObservations.Where(observation => observation.ArtifactKind is
-            ReportSchemaArtifactKinds.BookmarksMetadata or
             ReportSchemaArtifactKinds.Bookmark or
             ReportSchemaArtifactKinds.ReportExtension), observation =>
+            Assert.Equal(ReportSchemaObservationStates.RecognisedUnverifiedVersion, observation.State));
+    }
+
+    [Fact]
+    public void DifferentBookmarkSchemaVersionsRemainRecognisedButUnverified()
+    {
+        var report = Assert.Single(Scan(
+            includeBookmarksAndExtensions: true,
+            bookmarksMetadataVersion: "1.1.0",
+            bookmarkVersion: "2.2.0").Reports);
+
+        Assert.All(report.SchemaObservations.Where(observation => observation.ArtifactKind is
+            ReportSchemaArtifactKinds.BookmarksMetadata or
+            ReportSchemaArtifactKinds.Bookmark), observation =>
             Assert.Equal(ReportSchemaObservationStates.RecognisedUnverifiedVersion, observation.State));
     }
 
@@ -181,10 +214,12 @@ public sealed class PbirSchemaObservationTests
         int visualCount = 1,
         string? visualSchema = null,
         bool includeBookmarksAndExtensions = false,
+        string bookmarksMetadataVersion = "1.0.0",
+        string bookmarkVersion = "1.0.0",
         string? reportJsonOverride = null) =>
         ProjectScanner.Scan(new InMemoryProjectFileSource(
             "Schema observations",
-            Files("Fixture", reportSchema, reportSchemaIsJson, includeReportSchema, visualCount, visualSchema, includeBookmarksAndExtensions, reportJsonOverride)));
+            Files("Fixture", reportSchema, reportSchemaIsJson, includeReportSchema, visualCount, visualSchema, includeBookmarksAndExtensions, bookmarksMetadataVersion, bookmarkVersion, reportJsonOverride)));
 
     private static IEnumerable<ProjectFileContent> Files(
         string name,
@@ -194,6 +229,8 @@ public sealed class PbirSchemaObservationTests
         int visualCount = 1,
         string? visualSchema = null,
         bool includeBookmarksAndExtensions = false,
+        string bookmarksMetadataVersion = "1.0.0",
+        string bookmarkVersion = "1.0.0",
         string? reportJsonOverride = null)
     {
         yield return File($"{name}.pbip", "{}");
@@ -213,8 +250,8 @@ public sealed class PbirSchemaObservationTests
 
         if (includeBookmarksAndExtensions)
         {
-            yield return File($"{name}.Report/definition/bookmarks/bookmarks.json", $$"""{ "$schema": "{{Schema("bookmarksMetadata", "1.0.0", definitionArtifact: true)}}", "bookmarkOrder": ["bookmark"] }""");
-            yield return File($"{name}.Report/definition/bookmarks/bookmark/bookmark.json", $$"""{ "$schema": "{{Schema("bookmark", "1.0.0", definitionArtifact: true)}}", "name": "bookmark", "displayName": "Bookmark" }""");
+            yield return File($"{name}.Report/definition/bookmarks/bookmarks.json", $$"""{ "$schema": "{{Schema("bookmarksMetadata", bookmarksMetadataVersion, definitionArtifact: true)}}", "bookmarkOrder": ["bookmark"] }""");
+            yield return File($"{name}.Report/definition/bookmarks/bookmark/bookmark.json", $$"""{ "$schema": "{{Schema("bookmark", bookmarkVersion, definitionArtifact: true)}}", "name": "bookmark", "displayName": "Bookmark" }""");
             yield return File($"{name}.Report/definition/reportExtensions.json", $$"""{ "$schema": "{{Schema("reportExtension", "1.0.0", definitionArtifact: true)}}", "entities": [] }""");
         }
     }

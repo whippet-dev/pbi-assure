@@ -12,7 +12,7 @@ evidenced · **[design decision]** a choice, not a fact.
 |---|---|
 | Remote | `whippet-dev/pbi-assure` |
 | Branch | `master` (also the default branch) |
-| Last verified product state | `b2e2e899` — bounded object-level security inventory |
+| Last verified product state | `627544b` — role analysis coverage refinement |
 | Working tree | Expected clean of tracked modifications. Untracked local review documents may be present |
 
 `master` may have moved past that commit for documentation-only changes. Re-verify and update this
@@ -22,7 +22,7 @@ section whenever a commit changes build, test or behaviour — not for every com
 
 - `dotnet build PbiAssure.slnx` — **succeeded, 0 warnings, 0 errors** [verified]. `TreatWarningsAsErrors`
   is on, so warnings fail the build.
-- `dotnet test PbiAssure.slnx` — **463 core + 2 privacy end-to-end tests passed**, 0 failed [verified].
+- `dotnet test PbiAssure.slnx` — **467 core + 2 privacy end-to-end tests passed**, 0 failed [verified].
 - CI (`.github/workflows/ci.yml`) — **green** [verified], confirmed complete (not queued) for the
   pre-feature baseline `0c1af3c`. Runs restore, build, a Playwright Chromium install, then the whole
   solution test suite on `windows-latest`.
@@ -48,8 +48,18 @@ Desktop-authored `desktop-ols-evidence` proves that Power BI Desktop persists in
 `tablePermission` block. PBI Assure retains both as structured role inventory. An explicitly named
 column permission makes only that column structurally required; table-level OLS is visible in the
 Security roles review but never makes every child column used. The JSON inventory is additively versioned
-at `0.23`; Findings and the semantic-usage CSV are unchanged. The next recommended investigation remains
-bookmark-only semantic references.
+at `0.23`; Findings and the semantic-usage CSV are unchanged.
+
+## Bookmark semantic-usage evidence
+
+The paired Desktop-authored bookmark fixtures establish that persisted `People[Region]` and
+`People[SecretCategory]` references can remain after their live filter/slicer carriers are removed and
+become inert. When the carriers remain effective, normal page/visual parsing already classifies both
+fields as directly used. Bookmark snapshots are therefore **not** semantic-usage roots by default; graph
+edges are parked pending a unique, behaviourally effective durable carrier. Exact
+`bookmarksMetadata/1.0.0` and `bookmark/2.1.0` are now verified schema baselines. See
+[the evidence review](../reviews/bookmark-semantic-usage-evidence-2026-08-21.md). The next recommended
+evidence task is Desktop-authored inactive-relationship / `USERELATIONSHIP` support.
 
 ## Evidence-gated unresolved-reference findings
 
@@ -326,8 +336,9 @@ Non-exact observations appear as neutral, report-scoped **Analysis coverage** in
 artifact/type/state/version with raw paths behind technical details. Exact observations are silent, no
 Finding is created and CSV is unchanged. The public JSON inventory changed additively through report
 `SchemaObservations`, `VersionMetadataPath` and `PbirDefinitionVersion`; its schema version is `0.23`.
-Bookmark and report-extension declarations are deliberately recognised-unverified because no committed
-Desktop fixture establishes their exact baselines. The policy and evidence inventory are in
+Bookmark declarations are exact-verified at `bookmarksMetadata/1.0.0` and `bookmark/2.1.0`; report-extension
+declarations remain recognised-unverified because no committed Desktop fixture establishes their exact
+baseline. The policy and evidence inventory are in
 [the encountered PBIR schema compatibility review](../reviews/encountered-pbir-schema-compatibility-policy.md).
 
 **Completed — connector coverage measurement.** A local, aggregate-only scan of 40 fixture/sample

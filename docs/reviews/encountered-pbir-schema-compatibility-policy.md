@@ -67,8 +67,8 @@ fixtures retain the same versions, but are not counted as independent Desktop ev
 | `ReportInventory.PagesSchemaUri` | `definition/pages/pages.json` | `pagesMetadata/1.1.0` **[verified by Power BI Desktop-authored fixture]** | Synthetic URI-retention tests only **[verified in repository]** | Parsed property-wise; no version branch. New navigation/page metadata could be missed. |
 | `PageInventory.SchemaUri` | `definition/pages/<page>/page.json` | `page/2.1.0` **[verified by Power BI Desktop-authored fixture]** | Synthetic URI-retention tests only **[verified in repository]** | Parsed property-wise; no version branch. New page filters, settings or formatting could be missed. |
 | `VisualInventory.SchemaUri`; `VisualGroupInventory.SchemaUri` | `definition/pages/<page>/visuals/<visual>/visual.json` | `visualContainer/2.11.0` **[verified by Power BI Desktop-authored fixture]** | Synthetic URI-retention tests only **[verified in repository]** | Parsed property-wise; no version branch. New visual/query/filter/action structures could be silently ignored. |
-| `ReportInventory.BookmarksSchemaUri` | `definition/bookmarks/bookmarks.json` | No committed Desktop-fixture evidence | `bookmarksMetadata/1.0.0` in local sample projects; arbitrary synthetic URI retained **[verified in repository]** | Parsed property-wise; no version branch. New ordering/group metadata could be missed. Local samples are not a public verified baseline. |
-| `BookmarkInventory.SchemaUri` | `definition/bookmarks/*.bookmark.json` | No committed Desktop-fixture evidence | `bookmark/2.1.0` in local sample projects; arbitrary synthetic URI retained **[verified in repository]** | Parsed property-wise; no version branch. New bookmark state, targets or actions could be missed. |
+| `ReportInventory.BookmarksSchemaUri` | `definition/bookmarks/bookmarks.json` | `bookmarksMetadata/1.0.0` **[verified by Power BI Desktop-authored fixture]** | Arbitrary synthetic URI retained **[verified in repository]** | Parsed property-wise; no version branch. New ordering/group metadata could be missed. Another version remains unverified. |
+| `BookmarkInventory.SchemaUri` | `definition/bookmarks/*.bookmark.json` | `bookmark/2.1.0` **[verified by Power BI Desktop-authored fixture]** | Arbitrary synthetic URI retained **[verified in repository]** | Parsed property-wise; no version branch. New bookmark state, targets or actions could be missed. Another version remains unverified. |
 | `ReportInventory.ReportExtensionsSchemaUri` | `definition/reportExtensions.json` | No committed Desktop-fixture evidence | `reportExtension/1.0.0` appears only in synthetic tests **[verified in repository]** | Parsed property-wise; no version branch. New extension item types or reference forms could be missed. |
 | `ThemeMetadataInventory.SchemaUri` | selected theme resource JSON | No report-schema baseline established | The renderer retains a theme resource's own `$schema` when present **[verified in repository]** | This is theme-resource metadata, not a core PBIR artifact family. It belongs to a separate theme-schema policy. |
 
@@ -188,7 +188,6 @@ save/reopen behaviour and every emitted schema URI.
 
 ## Remaining evidence gaps
 
-- No committed Desktop-authored bookmark or bookmarks-metadata schema example.
 - No committed Desktop-authored `reportExtension` schema example; current evidence is synthetic only.
 - No fixture-backed evidence for a newer or older version of the same artifact family, so graceful parsing
   is an implementation inference rather than a compatibility guarantee.

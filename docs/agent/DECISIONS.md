@@ -48,6 +48,10 @@ Not every report merits committing; only those carrying durable project state.
 - **"Apparently unused" means "no usage found within the analysed scope"** — a review candidate, never
   automatic permission to delete. Reflected in `docs/usage-classification.md` and in the product's
   own wording.
+- **Persisted bookmark references are not semantic-usage roots by default.** Desktop can retain stale,
+  inert bookmark snapshots after their live carrier is removed. Bookmark-derived usage requires evidence
+  that the state remains behaviourally effective and uniquely carries a dependency not represented by
+  current live report metadata.
 - Prefer `Unknown` or `ReviewRequired` over a confident claim when metadata cannot support certainty.
 - Unresolved references are retained as evidence and never silently corrected or fuzzy-matched onto a
   similar name.

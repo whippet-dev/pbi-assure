@@ -1,0 +1,11 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/gitIntegration/platformProperties/2.0.0/schema.json",
+  "metadata": {
+    "type": "Report",
+    "displayName": "desktop-bookmark-evidence"
+  },
+  "config": {
+    "version": "2.0",
+    "logicalId": "28fc950d-18d5-4a34-b72e-95f2795f9640"
+  }
+}

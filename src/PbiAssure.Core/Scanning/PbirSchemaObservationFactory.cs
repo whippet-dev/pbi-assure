@@ -23,10 +23,10 @@ internal static class PbirSchemaObservationFactory
             // Both versions below are retained by committed, Desktop-authored PBIP fixtures. Exact
             // evidence is deliberately version-specific; a different version is still unverified.
             [ReportSchemaArtifactKinds.VisualContainer] = new("visualContainer", "2.11.0", "2.12.0"),
-            // These families are known to PBI Assure, but committed Desktop fixtures do not yet establish
-            // an exact baseline. A well-formed declaration therefore stays recognised and unverified.
-            [ReportSchemaArtifactKinds.BookmarksMetadata] = new("bookmarksMetadata"),
-            [ReportSchemaArtifactKinds.Bookmark] = new("bookmark"),
+            // Desktop-authored bookmark evidence fixtures establish these exact versions. A different
+            // version remains recognised but unverified; no semantic-version compatibility is assumed.
+            [ReportSchemaArtifactKinds.BookmarksMetadata] = new("bookmarksMetadata", "1.0.0"),
+            [ReportSchemaArtifactKinds.Bookmark] = new("bookmark", "2.1.0"),
             [ReportSchemaArtifactKinds.ReportExtension] = new("reportExtension"),
         };
 
