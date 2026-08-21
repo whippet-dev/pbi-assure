@@ -12,16 +12,16 @@ decision]** is the selected direction.
 
 ## Executive decision
 
-The next task should be a **small Desktop-authored TMSL (`model.bim`) input-format investigation**.
-Its purpose is to establish whether a current, ordinary Power BI Desktop workflow still produces a PBIP
-whose semantic model is stored as `model.bim`, and, if so, to define a safe fixture and the smallest
-truthful product treatment. **Do not implement a TMSL parser from this decision alone.**
+The TMSL (`model.bim`) input-format investigation is complete. Current Power BI Desktop can retain a
+PBIP whose local semantic model is stored as `model.bim`; PBI Assure now rejects that unsupported local
+format before normal analysis/output rather than presenting incomplete results or a false model-reference
+Finding. It does not implement a TMSL parser. See
+[the evidence review](tmsl-model-bim-desktop-evidence-2026-08-21.md).
 
-This ranks first because a supported-looking PBIP with a whole semantic model in an unread format is a
-larger potential user outcome than another narrow dependency edge: the current registry records
-`model.bim` as an unanalysed whole-model limitation, so it cannot provide the normal semantic inventory
-or unused-object conclusions for that model. The format is deliberately not claimed to be a current
-Desktop path yet; that is the evidence question. [verified in repository]
+This had ranked first because a supported-looking PBIP with a whole semantic model in an unread format
+could otherwise receive incomplete semantic inventory and unused-object conclusions. The evidence
+confirmed the path and justified an early supported-input boundary rather than a speculative parser.
+[verified in repository]
 
 The previous ranking is substantially complete: OLS, incremental refresh, inactive-relationship
 activation, the role/perspective explanation and the relevant schema work are now delivered. Bookmark
@@ -35,7 +35,7 @@ orders discovery work; it is not a promise that every candidate should be implem
 
 | Rank | Candidate | Impact | Severity | Evidence | Precision | Delivery | Distinctive | Testable | Next action |
 |---:|---|---:|---:|---:|---:|---:|---:|---:|---|
-| 1 | TMSL `model.bim` input coverage | 5 | 5 | 1 | 5 | 1 | 5 | 4 | Desktop investigation |
+| 1 | TMSL `model.bim` input coverage | 5 | 5 | 5 | 5 | 5 | 5 | 5 | Complete: safe local input gate |
 | 2 | Aggregation mappings (`alternateOf`) | 4 | 4 | 2 | 5 | 3 | 4 | 5 | Desktop fixture |
 | 3 | Mobile-layout evidence and assurance scope | 4 | 4 | 1 | 3 | 2 | 5 | 3 | Desktop fixture/investigation |
 | 4 | KPI and detail-rows DAX dependencies | 3 | 3 | 2 | 5 | 4 | 3 | 5 | Combined Desktop fixture |
@@ -46,7 +46,7 @@ orders discovery work; it is not a promise that every candidate should be implem
 
 ## Ranked candidates
 
-### 1. TMSL `model.bim` input coverage
+### 1. TMSL `model.bim` input coverage — complete
 
 **Problem and user outcome.** The semantic-definition registry recognises `model.bim` as the TMSL
 alternative to the TMDL `definition/` folder, but does not parse it. It correctly records a
@@ -60,11 +60,9 @@ The report can already explain the limitation honestly, but that is weaker than 
 format. The cost is intentionally not underestimated: a TMSL parser would be a separate, potentially
 large product decision.
 
-**Evidence and treatment.** Current Desktop emission is unknown. First create a minimal Desktop-authored
-project or conversion experiment that proves whether `model.bim` is still produced, records save/reopen
-stability, and establishes the precise PBIP/PBIR binding and schema shape. If it is no longer a practical
-Desktop path, retain the current limitation and document the evidence. If it is current, design a
-bounded parser/inventory decision before implementation.
+**Evidence and treatment.** Paired Desktop fixtures establish TMSL save/reopen retention and explicit
+TMDL upgrade. The current release stops before normal analysis if it encounters a local `model.bim`; a
+future TMSL parser remains a separate, evidence-led product decision.
 
 **Risk.** Do not treat a hand-authored `.bim` file, an old downloaded artifact or a format name in
 documentation as proof that current Power BI Desktop users need this support. Do not claim TMDL and TMSL
@@ -193,13 +191,9 @@ class-A source example or an observed `dataSources.tmdl` file.
 
 ## Recommendation and sequence
 
-1. **Start the TMSL `model.bim` Desktop investigation.** This is the selected next task. It is an
-   evidence/fixture task, not parser implementation.
-2. If current Desktop no longer produces TMSL PBIP projects, retain the existing boundary and take the
-   **aggregation-mapping fixture** next.
-3. If TMSL is current and materially used, write a separate design decision for bounded input support
-   before implementation.
-4. Keep the remaining candidates evidence-led; do not start visual calculations, EXTERNALMEASURE,
+1. **Create the aggregation-mapping fixture** next.
+2. Keep the local TMSL input gate until a separately evidenced parser/inventory decision exists.
+3. Keep the remaining candidates evidence-led; do not start visual calculations, EXTERNALMEASURE,
    bookmark usage or accessibility-rule changes without their stated evidence.
 
 ## Scope

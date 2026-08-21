@@ -12,27 +12,24 @@ evidenced · **[design decision]** a choice, not a fact.
 |---|---|
 | Remote | `whippet-dev/pbi-assure` |
 | Branch | `master` (also the default branch) |
-| Last verified product state | `c6c8a7f1ba90bca107640d6bd70ef1801030c346` — role/perspective structural-usage explanations |
+| Last verified product state | `0f02816907d326641b5529273cde3328b5b523ab` — safe local TMSL input gate |
 | Working tree | Expected clean of tracked modifications. Untracked local review documents may be present |
 
 `master` may have moved past that commit for documentation-only changes. Re-verify and update this
 section whenever a commit changes build, test or behaviour — not for every commit.
 
-Structural semantic usage caused by retained role filters and perspective membership is explained through
-the existing graph/reachability evidence: role-filter targets say which persisted security filter needs
-them, and perspective targets say which perspective includes them. This is presentation-only; it does
-not change classification, reachability, confidence, Findings, CSV or the inventory schema.
-
 The current evidence-led backlog is re-ranked in
-[product-value-rerank-2026-08-21.md](../reviews/product-value-rerank-2026-08-21.md). The selected next
-step is a Desktop-authored investigation of whether current Power BI Desktop still emits a TMSL
-`model.bim` semantic-model project; it is not parser implementation.
+[product-value-rerank-2026-08-21.md](../reviews/product-value-rerank-2026-08-21.md). The TMSL
+Desktop investigation is now evidence-closed: current Desktop retains a valid local `model.bim` model,
+but PBI Assure does not parse TMSL. The scanner must therefore reject that local input before creating
+incomplete assurance output; it must not turn it into a model limitation or a normal Finding. See
+[the evidence review](../reviews/tmsl-model-bim-desktop-evidence-2026-08-21.md).
 
 ## Verified at the current product state
 
 - `dotnet build PbiAssure.slnx` — **succeeded, 0 warnings, 0 errors** [verified]. `TreatWarningsAsErrors`
   is on, so warnings fail the build.
-- `dotnet test PbiAssure.slnx` — **494 core + 2 privacy end-to-end tests passed**, 0 failed [verified].
+- `dotnet test PbiAssure.slnx` — **500 core + 2 privacy end-to-end tests passed**, 0 failed [verified].
 - CI (`.github/workflows/ci.yml`) — **green** [verified], confirmed complete (not queued) for the
   pre-feature baseline `0c1af3c`. Runs restore, build, a Playwright Chromium install, then the whole
   solution test suite on `windows-latest`.
@@ -333,7 +330,7 @@ unanalysed files are the always-present three — verified against three Desktop
 | Whether a UDF name can be namespaced with dots | Not observed. `DaxReferenceExtractor` does not treat `.` as an identifier character, so a dotted name would not tokenise as one identifier |
 | Multi-parameter UDFs, other parameter type hints, `VAR`/`RETURN` or multi-line bodies | Not observed. Every function in `desktop-udf-references` is one line, and only one takes a parameter at all |
 | Perspective `includeAll`, `perspectiveHierarchy` and perspective sets in real Desktop output | Implemented from Microsoft-documented syntax for the first two; no fixture emits any of them |
-| Whether current Desktop can still produce TMSL `model.bim` | Unknown |
+| Whether current Desktop can still produce TMSL `model.bim` | **Settled.** The committed paired Desktop fixtures prove TMSL can persist through save/reopen and can be explicitly upgraded to TMDL. PBI Assure rejects local TMSL before analysis; no TMSL parser is implemented. See [the evidence review](../reviews/tmsl-model-bim-desktop-evidence-2026-08-21.md) |
 | Role-security forms beyond the committed evidence — cross-table filters, other OLS permission shapes, DirectQuery/Direct Lake roles | **Open.** Desktop evidence proves same-table RLS filters, inline column permissions and table metadata permissions; parser tests cover further bounded shapes synthetically |
 | `PBI-ACCESS-001` sample finding volume | **Measured in 12 local PBIP projects (216 representative findings after deliberate test-format duplicates are not double-counted).** Only 13 are plausibly decorative; 22 text boxes are uncertain because on-canvas text is not exposed. Do not change the rule from visual type alone. See [alt-text measurement](../reviews/access-001-alt-text-measurement.md) [verified] |
 

@@ -185,9 +185,9 @@ records.
 
 ## State
 
-- **Last verified product state:** `c6c8a7f1ba90bca107640d6bd70ef1801030c346` — role/perspective structural-usage explanations.
+- **Last verified product state:** `0f02816907d326641b5529273cde3328b5b523ab` — safe local TMSL input gate.
 - **Working tree:** expected clean apart from untracked local review documents; no tracked modifications
-- **Verified locally:** Release build succeeded with 0 warnings; **494 core + 2 privacy tests passed**
+- **Verified locally:** Release build succeeded with 0 warnings; **500 core + 2 privacy tests passed**
 - **Known exception:** `dotnet format --verify-no-changes` fails with 24 pre-existing whitespace errors
   in two Theme Review files. Unrelated to current work, deliberately not fixed. See
   [CURRENT_STATE.md](CURRENT_STATE.md).
@@ -207,12 +207,15 @@ snapshots can retain field references after the live carrier is removed, and eff
 found through normal live metadata. See
 [the bookmark evidence review](../reviews/bookmark-semantic-usage-evidence-2026-08-21.md).
 
-**Next recommended task: investigate TMSL `model.bim` input coverage with a current
-Desktop-authored experiment.** The current scanner recognises this whole-model alternative but does not
-parse it, so first determine whether ordinary current Desktop workflows still emit it and whether it is a
-material user path. This is evidence/fixture work only; do not implement a TMSL parser from the format
-name or a hand-authored file. See the
-[2026-08-21 re-rank](../reviews/product-value-rerank-2026-08-21.md).
+The TMSL `model.bim` input boundary is complete: paired Desktop fixtures prove a current local TMSL
+project and its explicitly upgraded TMDL companion. PBI Assure does not parse TMSL. The shared scanner
+rejects a local `model.bim` semantic model before rules or output generation, avoiding a false
+`PBI-MODEL-001`; a model containing both TMSL and TMDL definitions also stops as ambiguous. This does not
+change existing remote `byConnection` handling. See [the evidence review](../reviews/tmsl-model-bim-desktop-evidence-2026-08-21.md).
+
+**Next recommended task: create a Desktop-authored aggregation-mapping (`alternateOf`) fixture.** If
+Desktop persists a clear table/column-owned mapping, assess a narrow structural dependency using the
+existing graph. Do not infer query acceleration, refresh performance or Service behaviour from metadata.
 
 Connector expansion and report-level-measure → UDF traversal remain parked on the evidence already recorded.
 The tested **Add a local model** path migrated valid report measures into local model measures rather than
