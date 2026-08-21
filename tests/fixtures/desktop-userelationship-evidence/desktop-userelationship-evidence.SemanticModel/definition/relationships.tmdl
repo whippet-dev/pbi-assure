@@ -1,0 +1,18 @@
+relationship fc31072a-e9f0-2979-5716-da01c5af5ef1
+	fromColumn: Sales.BillingCustomerID
+	toColumn: Customers.CustomerID
+
+relationship 96664215-be35-fa6c-09b4-23b39a4c04a0
+	isActive: false
+	fromColumn: Sales.ShippingCustomerID
+	toColumn: Customers.CustomerID
+
+relationship 9b631f5b-34cb-a8c6-c1d5-ba4e147c0729
+	isActive: false
+	fromColumn: Sales.ReferralCustomerID
+	toColumn: Customers.CustomerID
+
+relationship 8b19b56c-7318-d170-d3c4-3a7fdafcb648
+	isActive: false
+	fromColumn: Sales.LegacyCustomerID
+	toColumn: Customers.CustomerID

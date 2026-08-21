@@ -12,7 +12,7 @@ evidenced · **[design decision]** a choice, not a fact.
 |---|---|
 | Remote | `whippet-dev/pbi-assure` |
 | Branch | `master` (also the default branch) |
-| Last verified product state | `627544b` — role analysis coverage refinement |
+| Last verified product state | `4e187aa` — bookmark semantic-usage evidence |
 | Working tree | Expected clean of tracked modifications. Untracked local review documents may be present |
 
 `master` may have moved past that commit for documentation-only changes. Re-verify and update this
@@ -50,6 +50,20 @@ column permission makes only that column structurally required; table-level OLS 
 Security roles review but never makes every child column used. The JSON inventory is additively versioned
 at `0.23`; Findings and the semantic-usage CSV are unchanged.
 
+## Inactive relationship / USERELATIONSHIP evidence
+
+Desktop-authored `desktop-userelationship-evidence` retains one active relationship and three inactive
+relationships. A report-used measure calls `USERELATIONSHIP` for the shipping relationship, an unused
+measure calls it for the referral relationship, and the legacy relationship has no local activating call.
+The current flat DAX scanner retains the referenced columns but discards built-in function identity,
+argument boundaries and endpoint pairing. Relationship activation therefore cannot yet be inferred safely.
+
+The future bounded design is structured `USERELATIONSHIP` call extraction, exact unique endpoint-pair
+resolution (including reversed arguments), then existing source-node reachability. No relationship usage
+state, Finding or semantic-usage change was added. See
+[the evidence review](../reviews/userelationship-inactive-relationship-evidence-2026-08-21.md). The next
+recommended evidence task is the Desktop incremental-refresh policy experiment.
+
 ## Bookmark semantic-usage evidence
 
 The paired Desktop-authored bookmark fixtures establish that persisted `People[Region]` and
@@ -58,8 +72,7 @@ become inert. When the carriers remain effective, normal page/visual parsing alr
 fields as directly used. Bookmark snapshots are therefore **not** semantic-usage roots by default; graph
 edges are parked pending a unique, behaviourally effective durable carrier. Exact
 `bookmarksMetadata/1.0.0` and `bookmark/2.1.0` are now verified schema baselines. See
-[the evidence review](../reviews/bookmark-semantic-usage-evidence-2026-08-21.md). The next recommended
-evidence task is Desktop-authored inactive-relationship / `USERELATIONSHIP` support.
+[the evidence review](../reviews/bookmark-semantic-usage-evidence-2026-08-21.md).
 
 ## Evidence-gated unresolved-reference findings
 

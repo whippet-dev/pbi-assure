@@ -52,6 +52,10 @@ Not every report merits committing; only those carrying durable project state.
   inert bookmark snapshots after their live carrier is removed. Bookmark-derived usage requires evidence
   that the state remains behaviourally effective and uniquely carries a dependency not represented by
   current live report metadata.
+- **Relationship activation is not inferred from endpoint-column co-occurrence.** It requires a retained
+  structured `USERELATIONSHIP` call whose paired endpoints resolve exactly and uniquely. Whether the source
+  calculation is report-reachable is separate evidence. An inactive relationship with no detected call is
+  never described as unused or safe to remove.
 - Prefer `Unknown` or `ReviewRequired` over a confident claim when metadata cannot support certainty.
 - Unresolved references are retained as evidence and never silently corrected or fuzzy-matched onto a
   similar name.

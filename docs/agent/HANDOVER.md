@@ -5,6 +5,14 @@ Tactical entry point for an incoming coding agent. Read this first, then
 
 ## What just happened
 
+The Desktop-authored `desktop-userelationship-evidence` fixture now banks one active relationship and
+three inactive controls: shipping is activated by a report-used measure, referral is referenced only by
+an unused measure, and legacy has no local activating call. No feature was added. The current DAX scanner
+flattens references and discards built-in function identity and argument pairing, so activation cannot be
+inferred safely from endpoint-column co-occurrence. A future bounded `USERELATIONSHIP` call extractor can
+resolve an exact unique endpoint pair and reuse the existing source-node reachability. See
+[the evidence review](../reviews/userelationship-inactive-relationship-evidence-2026-08-21.md).
+
 TMDL triple-backtick fenced expressions are now read centrally rather than being retained as the opening
 fence. Power BI Desktop's serializer can use this form to preserve expression whitespace, including for
 RLS `tablePermission` filters. The shared declaration and assignment readers now consume through the
@@ -170,9 +178,9 @@ records.
 
 ## State
 
-- **Last verified product state:** `b2e2e899` — bounded object-level security inventory. Power BI
-  Desktop-authored OLS evidence is integrated; explicitly named column OLS roots only that column, while
-  table-level OLS remains security inventory only.
+- **Last verified product state:** `4e187aa` — bookmark semantic-usage evidence. Desktop-authored paired
+  fixtures prove that persisted bookmark references can be stale and inert, so bookmarks are not usage
+  roots by default.
 - **Working tree:** expected clean apart from untracked local review documents; no tracked modifications
 - **Verified locally:** Release build succeeded with 0 warnings; **467 core + 2 privacy tests passed**
 - **Known exception:** `dotnet format --verify-no-changes` fails with 24 pre-existing whitespace errors
@@ -185,8 +193,13 @@ The product backlog was freshly re-ranked on 2026-08-20 after the schema, naviga
 evidence work. The decision and the scored top five are in
 [the product-value re-rank](../reviews/product-value-rerank-2026-08-20.md).
 
-**Next recommended evidence task: create a Desktop-authored inactive-relationship / `USERELATIONSHIP`
-fixture.** Bookmark-only graph edges are parked: paired Desktop fixtures prove that stale/inert bookmark
+**Next recommended evidence task: create the Desktop incremental-refresh policy fixture.** The
+inactive-relationship experiment is complete and banked, but implementation is deferred: the current DAX
+scanner flattens references and does not retain the `USERELATIONSHIP` call or its paired arguments. A future
+bounded extractor can resolve exact endpoint pairs and reuse existing source-measure reachability. See
+[the USERELATIONSHIP evidence review](../reviews/userelationship-inactive-relationship-evidence-2026-08-21.md).
+
+Bookmark-only graph edges also remain parked: paired Desktop fixtures prove that stale/inert bookmark
 snapshots can retain field references after the live carrier is removed, and effective carriers were already
 found through normal live metadata. See
 [the bookmark evidence review](../reviews/bookmark-semantic-usage-evidence-2026-08-21.md).

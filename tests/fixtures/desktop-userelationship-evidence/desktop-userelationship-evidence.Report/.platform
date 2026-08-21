@@ -1,0 +1,11 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/gitIntegration/platformProperties/2.0.0/schema.json",
+  "metadata": {
+    "type": "Report",
+    "displayName": "desktop-userelationship-evidence"
+  },
+  "config": {
+    "version": "2.0",
+    "logicalId": "74988aba-15c8-4756-b599-d5adea29fa22"
+  }
+}

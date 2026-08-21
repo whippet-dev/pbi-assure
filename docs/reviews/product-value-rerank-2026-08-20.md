@@ -97,6 +97,12 @@ because it is ready to code.
 
 ### 3. Inactive relationship activation — fixture, then review-only support
 
+**Status (2026-08-21).** The Desktop fixture is complete and banked. It proves used, unused-branch and
+no-local-call controls, but current DAX extraction flattens references and discards the
+`USERELATIONSHIP` call/argument pair. Implementation is deferred until a bounded structured-call extractor
+can supply exact evidence. See
+[the evidence review](userelationship-inactive-relationship-evidence-2026-08-21.md).
+
 **Problem.** The relationship review shows active state, but PBI Assure does not identify calls to
 `USERELATIONSHIP`. Microsoft documents that the function identifies an existing relationship by its two
 endpoint columns and enables it for a calculation. [verified in Microsoft documentation] Developers cannot
@@ -163,9 +169,9 @@ not outrank a missing security dependency or a core usage blind spot merely beca
 
 ## Next sequence
 
-1. **`USERELATIONSHIP` Desktop fixture and design** — establish inactive-relationship activation evidence
-   before considering a review observation.
-2. **Incremental-refresh policy evidence** — verify the persisted TMDL shape and a user-facing outcome.
+1. **Incremental-refresh policy evidence** — verify the persisted TMDL shape and a user-facing outcome.
+2. **Bounded `USERELATIONSHIP` extraction** — return only after the structured call/argument evidence layer
+   is explicitly scoped.
 3. **Role/perspective structural-usage explanation** — optional contained presentation improvement.
 
 The small role/perspective explanation improvement can be taken between evidence tasks if a contained

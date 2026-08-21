@@ -1,0 +1,107 @@
+table Sales
+	lineageTag: 83ab6487-2623-4dd8-99d8-c132063c853b
+
+	measure 'Total Sales' =
+
+			SUM ( Sales[Amount] )
+		formatString: 0
+		lineageTag: 536a1f52-d448-4a86-8693-90196dc07b4e
+
+	measure 'Sales by Shipping Customer' =
+
+			CALCULATE (
+			    [Total Sales],
+			    USERELATIONSHIP (
+			        Customers[CustomerID],
+			        Sales[ShippingCustomerID]
+			    )
+			)
+		formatString: 0
+		lineageTag: 162ffbf5-8831-4870-b27e-34b8f9a14f48
+
+	measure 'Sales by Referral Customer' =
+
+			CALCULATE (
+			    [Total Sales],
+			    USERELATIONSHIP (
+			        Customers[CustomerID],
+			        Sales[ReferralCustomerID]
+			    )
+			)
+		formatString: 0
+		lineageTag: a2d9eab3-c782-4bba-8931-785852da0218
+
+	column SaleID
+		dataType: int64
+		formatString: 0
+		lineageTag: 1148f8c6-58d6-4fd8-abd4-d0d2f8bde66b
+		summarizeBy: count
+		sourceColumn: SaleID
+
+		annotation SummarizationSetBy = Automatic
+
+	column BillingCustomerID
+		dataType: int64
+		formatString: 0
+		lineageTag: f64252af-677f-46a0-871a-913e6648acad
+		summarizeBy: none
+		sourceColumn: BillingCustomerID
+
+		annotation SummarizationSetBy = Automatic
+
+	column ShippingCustomerID
+		dataType: int64
+		formatString: 0
+		lineageTag: 810f497a-0048-456e-a062-3f18d4d3c9a5
+		summarizeBy: count
+		sourceColumn: ShippingCustomerID
+
+		annotation SummarizationSetBy = Automatic
+
+	column ReferralCustomerID
+		dataType: int64
+		formatString: 0
+		lineageTag: b59d4d38-76e0-40f1-8d3c-aff281413ac0
+		summarizeBy: count
+		sourceColumn: ReferralCustomerID
+
+		annotation SummarizationSetBy = Automatic
+
+	column LegacyCustomerID
+		dataType: int64
+		formatString: 0
+		lineageTag: 31a4501b-dc52-43b4-ab7b-4ae0625b6f68
+		summarizeBy: count
+		sourceColumn: LegacyCustomerID
+
+		annotation SummarizationSetBy = Automatic
+
+	column Amount
+		dataType: int64
+		formatString: 0
+		lineageTag: 7222c8d9-77f4-472d-982a-c4bfb662f857
+		summarizeBy: sum
+		sourceColumn: Amount
+
+		annotation SummarizationSetBy = Automatic
+
+	column ControlUnused
+		dataType: string
+		lineageTag: 530e67a0-e9ba-4cc6-8403-2edd7d579388
+		summarizeBy: none
+		sourceColumn: ControlUnused
+
+		annotation SummarizationSetBy = Automatic
+
+	partition Sales = m
+		mode: import
+		source =
+				let
+				  Source = Table.FromRows(Json.Document(Binary.Decompress(Binary.FromText("i45WMjQwVNJRAmEjIDYGYhMQ38AASDrmFGQkKsXqgFQZQVXBVID4RmBVTqklMEXGUAlkhcZgRe6JubkwVSZQWRSVYFUuqTlws0xhTkFymilYlWtBcWZOfh5UnRnMHiQTzcDqosAOiwUA", BinaryEncoding.Base64), Compression.Deflate)), let _t = ((type nullable text) meta [Serialized.Text = true]) in type table [SaleID = _t, BillingCustomerID = _t, ShippingCustomerID = _t, ReferralCustomerID = _t, LegacyCustomerID = _t, Amount = _t, ControlUnused = _t]),
+				  #"Changed column type" = Table.TransformColumnTypes(Source, {{"SaleID", Int64.Type}, {"BillingCustomerID", Int64.Type}, {"ShippingCustomerID", Int64.Type}, {"ReferralCustomerID", Int64.Type}, {"LegacyCustomerID", Int64.Type}, {"Amount", Int64.Type}, {"ControlUnused", type text}}, "en-US")
+				in
+				  #"Changed column type"
+
+	annotation PBI_NavigationStepName = Navigation
+
+	annotation PBI_ResultType = Table
