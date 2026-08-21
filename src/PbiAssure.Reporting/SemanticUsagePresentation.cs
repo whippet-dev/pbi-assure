@@ -117,9 +117,53 @@ internal static class SemanticUsagePresentation
             {
                 return $"Included in the {perspective.FromObjectName} perspective";
             }
+
+            var aggregationTarget = FirstSupporting(
+                inventory, usage, incoming, SemanticDependencyKinds.AggregationMapping);
+            if (aggregationTarget is not null)
+            {
+                return $"Used as the detail column in {DescribeAggregationMapping(inventory, aggregationTarget)} from {aggregationTarget.FromTable}[{aggregationTarget.FromObjectName}]";
+            }
+
+            var aggregationSource = FirstAggregationMappingOwnedBy(inventory, usage);
+            if (aggregationSource is not null)
+            {
+                return $"Needed by {DescribeAggregationMapping(inventory, aggregationSource)} to {aggregationSource.ToTable}[{aggregationSource.ToObjectName}]";
+            }
         }
 
         return null;
+    }
+
+    private static SemanticDependencyEdge? FirstAggregationMappingOwnedBy(
+        ProjectInventory inventory,
+        SemanticObjectUsage usage) =>
+        inventory.SemanticDependencies
+            .Where(dependency => dependency.DependencyKind == SemanticDependencyKinds.AggregationMapping &&
+                                 string.Equals(dependency.SemanticModel, usage.SemanticModel, StringComparison.OrdinalIgnoreCase) &&
+                                 string.Equals(dependency.FromTable, usage.Table, StringComparison.OrdinalIgnoreCase) &&
+                                 string.Equals(dependency.FromObjectName, usage.ObjectName, StringComparison.OrdinalIgnoreCase) &&
+                                 string.Equals(dependency.FromObjectType, usage.ObjectType, StringComparison.OrdinalIgnoreCase))
+            .Where(dependency => SupportsClassification(inventory, usage, dependency))
+            .OrderBy(dependency => dependency.ToTable, StringComparer.OrdinalIgnoreCase)
+            .ThenBy(dependency => dependency.ToObjectName, StringComparer.OrdinalIgnoreCase)
+            .FirstOrDefault();
+
+    private static string DescribeAggregationMapping(
+        ProjectInventory inventory,
+        SemanticDependencyEdge dependency)
+    {
+        var summarization = inventory.SemanticModels
+            .Where(model => string.Equals(model.Name, dependency.SemanticModel, StringComparison.OrdinalIgnoreCase))
+            .SelectMany(model => model.Tables)
+            .Where(table => string.Equals(table.Name, dependency.FromTable, StringComparison.OrdinalIgnoreCase))
+            .SelectMany(table => table.Columns)
+            .Where(column => string.Equals(column.Name, dependency.FromObjectName, StringComparison.OrdinalIgnoreCase))
+            .Select(column => column.AlternateOf?.Summarization)
+            .FirstOrDefault();
+        return string.IsNullOrWhiteSpace(summarization)
+            ? "an aggregation mapping"
+            : $"a {char.ToUpperInvariant(summarization[0])}{summarization[1..]} aggregation mapping";
     }
 
     /// <summary>

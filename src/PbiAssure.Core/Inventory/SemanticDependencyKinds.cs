@@ -27,6 +27,9 @@ public static class SemanticDependencyKinds
     /// <summary>An explicitly named column in a table's incremental-refresh policy.</summary>
     public const string IncrementalRefreshPolicy = "IncrementalRefreshPolicy";
 
+    /// <summary>An explicit TMDL alternateOf aggregation mapping between model columns.</summary>
+    public const string AggregationMapping = "AggregationMapping";
+
     /// <summary>A reference from a perspective to a model object it exposes.</summary>
     public const string PerspectiveMember = "PerspectiveMember";
 

@@ -161,7 +161,7 @@ internal static class SemanticDependencyAnalyzer
 
         foreach (var table in model.Tables)
         {
-            AnalyzeTable(model, table, lookup, dependencies, unresolved);
+            AnalyzeTable(model, table, lookup, dependencies, unresolved, structuralRoots);
             AddFieldParameterMetadataRoots(model, table, structuralRoots);
             AddRefreshPolicyMetadataRoot(model, table, lookup, dependencies, unresolved, structuralRoots);
         }
@@ -457,11 +457,14 @@ internal static class SemanticDependencyAnalyzer
         SemanticTableInventory table,
         ModelLookup lookup,
         List<SemanticDependencyEdge> dependencies,
-        List<UnresolvedSemanticDependency> unresolved)
+        List<UnresolvedSemanticDependency> unresolved,
+        ISet<string> structuralRoots)
     {
         foreach (var column in table.Columns)
         {
             var source = Target(table.Name, column.Name, SemanticObjectTypes.Column);
+            AddAggregationMappingDependency(
+                model, table, column, source, lookup, dependencies, unresolved, structuralRoots);
             if (column.Expression is not null)
             {
                 AddDaxDependencies(model, table, source, column.Expression, lookup, dependencies, unresolved);
@@ -586,6 +589,51 @@ internal static class SemanticDependencyAnalyzer
                 dependencies,
                 unresolved);
         }
+    }
+
+    private static void AddAggregationMappingDependency(
+        SemanticModelInventory model,
+        SemanticTableInventory table,
+        SemanticColumnInventory column,
+        SemanticNode source,
+        ModelLookup lookup,
+        List<SemanticDependencyEdge> dependencies,
+        List<UnresolvedSemanticDependency> unresolved,
+        ISet<string> structuralRoots)
+    {
+        var mapping = column.AlternateOf;
+        if (mapping is null || string.IsNullOrWhiteSpace(mapping.BaseColumnReference))
+        {
+            return;
+        }
+
+        if (!TmdlSemanticModelParser.TryParseQualifiedName(
+                mapping.BaseColumnReference, out var baseTable, out var baseColumn))
+        {
+            return;
+        }
+
+        if (lookup.TryResolveColumn(baseTable, baseColumn, out var target))
+        {
+            dependencies.Add(CreateEdge(
+                model.Name,
+                source,
+                target,
+                SemanticDependencyKinds.AggregationMapping,
+                table.RelativePath,
+                mapping.BaseColumnReference));
+            structuralRoots.Add(NodeKey(model.Name, source));
+            return;
+        }
+
+        unresolved.Add(CreateUnresolved(
+            model.Name,
+            source,
+            SemanticDependencyKinds.AggregationMapping,
+            mapping.BaseColumnReference,
+            UnresolvedSemanticDependencyResolutionOutcomes.NotFound,
+            $"Aggregation mapping detail column '{baseTable}[{baseColumn}]' was not found.",
+            table.RelativePath));
     }
 
     private static void AnalyzeFieldParameter(

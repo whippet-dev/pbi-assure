@@ -93,7 +93,7 @@ public sealed class DesktopUserRelationshipEvidenceFixtureTests
         var inventory = ScanFixture();
         var json = JsonSerializer.Serialize(inventory);
 
-        Assert.Equal("0.25", inventory.SchemaVersion);
+        Assert.Equal("0.26", inventory.SchemaVersion);
         Assert.Contains("\"Activation\":{\"State\":\"ActivatedByReportUsedDax\"", json, StringComparison.Ordinal);
         Assert.Contains("\"State\":\"ReferencedOnlyByUnusedDax\"", json, StringComparison.Ordinal);
         Assert.Contains("\"State\":\"NoDetectedActivation\"", json, StringComparison.Ordinal);

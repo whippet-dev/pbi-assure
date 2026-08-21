@@ -1,0 +1,17 @@
+table FactSales
+
+    column SaleID
+        dataType: int64
+
+    column DateKey
+        dataType: dateTime
+
+    column ProductKey
+        dataType: int64
+
+    column Amount
+        dataType: decimal
+
+    partition FactSales = m
+        mode: directQuery
+        source = #table({}, {})

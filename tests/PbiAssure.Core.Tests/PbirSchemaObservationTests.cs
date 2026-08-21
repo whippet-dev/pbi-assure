@@ -202,7 +202,7 @@ public sealed class PbirSchemaObservationTests
         var inventory = Scan(reportSchema: Schema("report", "3.4.0", definitionArtifact: true));
         var json = System.Text.Json.JsonSerializer.Serialize(inventory);
 
-        Assert.Contains("\"SchemaVersion\":\"0.25\"", json, StringComparison.Ordinal);
+        Assert.Contains("\"SchemaVersion\":\"0.26\"", json, StringComparison.Ordinal);
         Assert.Contains("\"SchemaObservations\"", json, StringComparison.Ordinal);
         Assert.Contains("\"RecognisedUnverifiedVersion\"", json, StringComparison.Ordinal);
     }

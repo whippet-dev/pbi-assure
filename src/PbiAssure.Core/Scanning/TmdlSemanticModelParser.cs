@@ -113,7 +113,10 @@ internal static class TmdlSemanticModelParser
                     IsHidden: HasFlag(lines, index, endIndex, "isHidden"),
                     SourceColumn: FindProperty(lines, index, endIndex, "sourceColumn"),
                     SortByColumn: NormalizeIdentifierReference(FindProperty(lines, index, endIndex, "sortByColumn")),
-                    Expression: ReadExpression(lines, index, endIndex, columnExpression)));
+                    Expression: ReadExpression(lines, index, endIndex, columnExpression))
+                {
+                    AlternateOf = ParseAlternateOf(lines, index, endIndex),
+                });
             }
             else if (TryParseDeclaration(lines[index].Trimmed, "measure", out var measureName, out var measureExpression))
             {
@@ -199,6 +202,29 @@ internal static class TmdlSemanticModelParser
             SourceExpression: ReadAssignmentExpression(
                 lines, declarationIndex, endIndex, "sourceExpression"),
             ChangeDetectionColumn: TryExtractPollingColumn(tableName, pollingExpression));
+    }
+
+    private static SemanticAggregationMappingInventory? ParseAlternateOf(
+        IReadOnlyList<TmdlLine> lines,
+        int columnDeclarationIndex,
+        int columnEndIndex)
+    {
+        var alternateOfIndent = lines[columnDeclarationIndex].Indent + 4;
+        for (var index = columnDeclarationIndex + 1; index < columnEndIndex; index++)
+        {
+            if (lines[index].Indent != alternateOfIndent ||
+                !string.Equals(lines[index].Trimmed, "alternateOf", StringComparison.OrdinalIgnoreCase))
+            {
+                continue;
+            }
+
+            var alternateOfEnd = FindBlockEnd(lines, index, columnEndIndex);
+            return new SemanticAggregationMappingInventory(
+                BaseColumnReference: FindProperty(lines, index, alternateOfEnd, "baseColumn"),
+                Summarization: FindProperty(lines, index, alternateOfEnd, "summarization"));
+        }
+
+        return null;
     }
 
     /// <summary>
@@ -1108,7 +1134,7 @@ internal static class TmdlSemanticModelParser
         return true;
     }
 
-    private static bool TryParseQualifiedName(string value, out string table, out string column)
+    internal static bool TryParseQualifiedName(string value, out string table, out string column)
     {
         table = string.Empty;
         column = string.Empty;

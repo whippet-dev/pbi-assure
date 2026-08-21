@@ -52,7 +52,7 @@ public static class ProjectScanner
             dependencyAnalysis.ObjectUsages, analysisLimitations);
 
         var inventory = new ProjectInventory(
-            SchemaVersion: "0.25",
+            SchemaVersion: "0.26",
             RootPath: source.SourceRoot ?? source.DisplayName,
             ScannedAtUtc: DateTimeOffset.UtcNow,
             Artifacts: artifacts

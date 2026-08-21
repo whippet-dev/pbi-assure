@@ -1,0 +1,25 @@
+table AggSales
+    isHidden
+
+    column DateKey
+        dataType: dateTime
+        alternateOf
+            baseColumn: FactSales.DateKey
+
+    column ProductKey
+        dataType: int64
+        alternateOf
+            baseColumn: FactSales.ProductKey
+
+    column Amount
+        dataType: decimal
+        alternateOf
+            summarization: sum
+            baseColumn: FactSales.Amount
+
+    column ControlUnused
+        dataType: string
+
+    partition AggSales = m
+        mode: import
+        source = #table({}, {})
