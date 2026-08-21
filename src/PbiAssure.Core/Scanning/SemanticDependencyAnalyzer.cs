@@ -155,6 +155,7 @@ internal static class SemanticDependencyAnalyzer
         {
             AnalyzeTable(model, table, lookup, dependencies, unresolved);
             AddFieldParameterMetadataRoots(model, table, structuralRoots);
+            AddRefreshPolicyMetadataRoot(model, table, lookup, dependencies, unresolved, structuralRoots);
         }
 
         var relationshipsPath = Path.Combine(model.RelativePath, "definition", "relationships.tmdl");
@@ -206,6 +207,50 @@ internal static class SemanticDependencyAnalyzer
                      string.Equals(column.Name, generatedFieldsColumnName, StringComparison.OrdinalIgnoreCase)))
         {
             structuralRoots.Add(NodeKey(model.Name, Target(table.Name, column.Name, SemanticObjectTypes.Column)));
+        }
+    }
+
+    private static void AddRefreshPolicyMetadataRoot(
+        SemanticModelInventory model,
+        SemanticTableInventory table,
+        ModelLookup lookup,
+        List<SemanticDependencyEdge> dependencies,
+        List<UnresolvedSemanticDependency> unresolved,
+        ISet<string> structuralRoots)
+    {
+        var column = table.RefreshPolicy?.ChangeDetectionColumn;
+        if (string.IsNullOrWhiteSpace(column))
+        {
+            return;
+        }
+
+        var source = Target(table.Name, table.Name, SemanticObjectTypes.RefreshPolicy);
+        if (lookup.TryResolveQualified(
+                table.Name,
+                column,
+                out var target,
+                out var reason,
+                out var resolutionOutcome))
+        {
+            dependencies.Add(CreateEdge(
+                model.Name,
+                source,
+                target,
+                SemanticDependencyKinds.IncrementalRefreshPolicy,
+                table.RelativePath,
+                $"{table.Name}[{column}]"));
+            structuralRoots.Add(NodeKey(model.Name, target));
+        }
+        else
+        {
+            unresolved.Add(CreateUnresolved(
+                model.Name,
+                source,
+                SemanticDependencyKinds.IncrementalRefreshPolicy,
+                $"{table.Name}[{column}]",
+                resolutionOutcome,
+                reason,
+                table.RelativePath));
         }
     }
 

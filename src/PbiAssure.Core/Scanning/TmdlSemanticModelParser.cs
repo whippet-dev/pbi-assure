@@ -1,3 +1,4 @@
+using System.Text.RegularExpressions;
 using PbiAssure.Core.Inventory;
 
 namespace PbiAssure.Core.Scanning;
@@ -94,6 +95,7 @@ internal static class TmdlSemanticModelParser
         var hierarchies = new List<SemanticHierarchyInventory>();
         var partitions = new List<SemanticPartitionInventory>();
         SemanticCalculationGroupInventory? calculationGroup = null;
+        SemanticRefreshPolicyInventory? refreshPolicy = null;
 
         for (var index = tableDeclarationIndex + 1; index < lines.Length; index++)
         {
@@ -140,6 +142,10 @@ internal static class TmdlSemanticModelParser
             {
                 calculationGroup = ParseCalculationGroup(lines, index, endIndex);
             }
+            else if (string.Equals(lines[index].Trimmed, "refreshPolicy", StringComparison.OrdinalIgnoreCase))
+            {
+                refreshPolicy = ParseRefreshPolicy(lines, index, endIndex, tableName);
+            }
 
             index = endIndex - 1;
         }
@@ -162,8 +168,70 @@ internal static class TmdlSemanticModelParser
             Hierarchies: hierarchies,
             Partitions: partitions,
             CalculationGroup: calculationGroup,
-            FieldParameter: fieldParameter);
+            FieldParameter: fieldParameter)
+        {
+            RefreshPolicy = refreshPolicy,
+        };
     }
+
+    private static SemanticRefreshPolicyInventory ParseRefreshPolicy(
+        IReadOnlyList<TmdlLine> lines,
+        int declarationIndex,
+        int endIndex,
+        string tableName)
+    {
+        var pollingExpression = ReadAssignmentExpression(
+            lines, declarationIndex, endIndex, "pollingExpression");
+        return new SemanticRefreshPolicyInventory(
+            PolicyType: FindProperty(lines, declarationIndex, endIndex, "policyType"),
+            Mode: FindProperty(lines, declarationIndex, endIndex, "mode"),
+            RollingWindowGranularity: FindProperty(
+                lines, declarationIndex, endIndex, "rollingWindowGranularity"),
+            RollingWindowPeriods: FindIntegerProperty(
+                lines, declarationIndex, endIndex, "rollingWindowPeriods"),
+            IncrementalGranularity: FindProperty(
+                lines, declarationIndex, endIndex, "incrementalGranularity"),
+            IncrementalPeriods: FindIntegerProperty(
+                lines, declarationIndex, endIndex, "incrementalPeriods"),
+            IncrementalPeriodsOffset: FindIntegerProperty(
+                lines, declarationIndex, endIndex, "incrementalPeriodsOffset"),
+            PollingExpression: pollingExpression,
+            SourceExpression: ReadAssignmentExpression(
+                lines, declarationIndex, endIndex, "sourceExpression"),
+            ChangeDetectionColumn: TryExtractPollingColumn(tableName, pollingExpression));
+    }
+
+    /// <summary>
+    /// Recognises only an explicit qualified M table-column reference in the polling expression. A
+    /// custom polling query or a more complex expression remains retained as text without inventing a
+    /// model-column dependency.
+    /// </summary>
+    private static string? TryExtractPollingColumn(string tableName, string? pollingExpression)
+    {
+        if (string.IsNullOrWhiteSpace(pollingExpression))
+        {
+            return null;
+        }
+
+        var searchable = MReferenceExtractor.RemoveStringsAndComments(pollingExpression);
+        var references = Regex.Matches(
+                searchable,
+                "(?<![A-Za-z0-9_])(?<table>#\"(?:[^\"]|\"\")*\"|[A-Za-z_][A-Za-z0-9_.]*)\\s*\\[\\s*(?<column>[^\\]\\r\\n]+)\\s*\\]",
+                RegexOptions.CultureInvariant)
+            .Select(match => (
+                Table: NormalizeMIdentifier(match.Groups["table"].Value),
+                Column: NormalizeMIdentifier(match.Groups["column"].Value.Trim())))
+            .Where(reference => string.Equals(reference.Table, tableName, StringComparison.OrdinalIgnoreCase))
+            .Distinct()
+            .ToArray();
+
+        return references.Length == 1 ? references[0].Column : null;
+    }
+
+    private static string NormalizeMIdentifier(string value) =>
+        value.StartsWith("#\"", StringComparison.Ordinal) && value.EndsWith('"')
+            ? value[2..^1].Replace("\"\"", "\"", StringComparison.Ordinal)
+            : value;
 
     private static string? SystemGeneratedKind(IReadOnlyList<TmdlLine> lines)
     {

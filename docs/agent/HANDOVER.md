@@ -5,6 +5,13 @@ Tactical entry point for an incoming coding agent. Read this first, then
 
 ## What just happened
 
+The paired Desktop-authored incremental-refresh fixtures now prove the load-bearing distinction between
+parameter filtering and a configured policy. Both tables use `RangeStart`/`RangeEnd`; only the configured
+table has a persisted `refreshPolicy`. PBI Assure retains that explicit table-owned policy in additive JSON
+schema `0.24`, shows it on the semantic table, and treats the one qualified polling column as structurally
+required. It adds no Finding and makes no folding, Service refresh or partition-health claim. See
+[the evidence review](../reviews/incremental-refresh-policy-evidence-2026-08-21.md).
+
 The Desktop-authored `desktop-userelationship-evidence` fixture now banks one active relationship and
 three inactive controls: shipping is activated by a report-used measure, referral is referenced only by
 an unused measure, and legacy has no local activating call. No feature was added. The current DAX scanner
@@ -182,7 +189,7 @@ records.
   fixtures prove that persisted bookmark references can be stale and inert, so bookmarks are not usage
   roots by default.
 - **Working tree:** expected clean apart from untracked local review documents; no tracked modifications
-- **Verified locally:** Release build succeeded with 0 warnings; **467 core + 2 privacy tests passed**
+- **Verified locally:** Release build succeeded with 0 warnings; **475 core + 2 privacy tests passed**
 - **Known exception:** `dotnet format --verify-no-changes` fails with 24 pre-existing whitespace errors
   in two Theme Review files. Unrelated to current work, deliberately not fixed. See
   [CURRENT_STATE.md](CURRENT_STATE.md).
@@ -193,10 +200,11 @@ The product backlog was freshly re-ranked on 2026-08-20 after the schema, naviga
 evidence work. The decision and the scored top five are in
 [the product-value re-rank](../reviews/product-value-rerank-2026-08-20.md).
 
-**Next recommended evidence task: create the Desktop incremental-refresh policy fixture.** The
-inactive-relationship experiment is complete and banked, but implementation is deferred: the current DAX
-scanner flattens references and does not retain the `USERELATIONSHIP` call or its paired arguments. A future
-bounded extractor can resolve exact endpoint pairs and reuse existing source-measure reachability. See
+**Next recommended task: implement the bounded structured `USERELATIONSHIP` call extractor.** The
+inactive-relationship experiment is complete and banked, but the current DAX scanner flattens references
+and does not retain the function call or its paired arguments. The extractor must accept only exactly two
+explicit qualified column arguments, resolve one exact relationship including reversed argument order,
+and reuse existing source-measure reachability. See
 [the USERELATIONSHIP evidence review](../reviews/userelationship-inactive-relationship-evidence-2026-08-21.md).
 
 Bookmark-only graph edges also remain parked: paired Desktop fixtures prove that stale/inert bookmark

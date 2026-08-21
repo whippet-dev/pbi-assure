@@ -56,6 +56,13 @@ Not every report merits committing; only those carrying durable project state.
   structured `USERELATIONSHIP` call whose paired endpoints resolve exactly and uniquely. Whether the source
   calculation is report-reachable is separate evidence. An inactive relationship with no detected call is
   never described as unused or safe to remove.
+- **RangeStart/RangeEnd usage is not incremental-refresh policy evidence.** Power BI Desktop can retain the
+  reserved parameters and parameter-filtered M without a configured policy. Only an explicit table-owned
+  `refreshPolicy` object establishes authored policy settings. Those settings do not prove query folding,
+  service refresh success or generated partitions.
+- **An explicit refresh-policy polling column is a structural dependency.** A single qualified reference
+  to the owning table's column can make that column structurally required. Custom or ambiguous polling M
+  remains retained evidence and must not be converted into a guessed model-object dependency.
 - Prefer `Unknown` or `ReviewRequired` over a confident claim when metadata cannot support certainty.
 - Unresolved references are retained as evidence and never silently corrected or fuzzy-matched onto a
   similar name.

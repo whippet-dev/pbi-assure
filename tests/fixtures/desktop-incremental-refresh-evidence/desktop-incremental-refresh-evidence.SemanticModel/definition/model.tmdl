@@ -1,0 +1,24 @@
+model Model
+	culture: en-US
+	defaultPowerBIDataSourceVersion: powerBI_V3
+	sourceQueryCulture: en-GB
+	valueFilterBehavior: independent
+	dataAccessOptions
+		legacyRedirects
+		returnErrorValuesAsNull
+
+annotation __PBI_TimeIntelligenceEnabled = 1
+
+annotation PBI_ProTooling = ["DevMode"]
+
+annotation PBI_QueryOrder = ["RangeStart","RangeEnd","FactEvents_Policy","FactEvents_FilterOnly"]
+
+ref table FactEvents_Policy
+ref table DateTableTemplate_5441359f-182c-48f4-b11b-e08d7766b09f
+ref table LocalDateTable_cec5a38c-9262-4546-9a25-4f150ab7b9e1
+ref table LocalDateTable_ec7093d6-4721-48b1-a506-66765b4dbe22
+ref table FactEvents_FilterOnly
+ref table LocalDateTable_051e8761-b7f2-4543-85d2-fc78c0c3103b
+ref table LocalDateTable_855ccd5e-f513-49b7-a35d-d43a92651b57
+
+ref cultureInfo en-US

@@ -1,0 +1,11 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/gitIntegration/platformProperties/2.0.0/schema.json",
+  "metadata": {
+    "type": "Report",
+    "displayName": "desktop-incremental-refresh-evidence"
+  },
+  "config": {
+    "version": "2.0",
+    "logicalId": "f27a744f-c993-4332-b0fa-20fb0f0b9754"
+  }
+}

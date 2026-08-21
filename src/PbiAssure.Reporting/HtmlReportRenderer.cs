@@ -2113,6 +2113,11 @@ public static partial class HtmlReportRenderer
 
     private static void AppendSemanticFeatures(StringBuilder html, SemanticTableInventory table)
     {
+        if (table.RefreshPolicy is not null)
+        {
+            AppendRefreshPolicy(html, table.RefreshPolicy);
+        }
+
         if (table.FieldParameter is not null)
         {
             html.AppendLine("            <section class=\"semantic-feature\">");
@@ -2164,6 +2169,84 @@ public static partial class HtmlReportRenderer
             html.AppendLine("              </ul>");
             html.AppendLine("            </section>");
         }
+    }
+
+    private static void AppendRefreshPolicy(StringBuilder html, SemanticRefreshPolicyInventory policy)
+    {
+        html.AppendLine("            <section class=\"semantic-feature refresh-policy\">");
+        html.AppendLine("              <h4>Incremental refresh</h4>");
+        html.AppendLine("              <p>A refresh policy is configured for this table. These saved settings do not confirm query folding or a successful refresh in Power BI Service.</p>");
+        html.AppendLine("              <dl class=\"fact-strip compact\">");
+        AppendFact(
+            html,
+            "Archive window",
+            FormatRefreshPeriod(policy.RollingWindowPeriods, policy.RollingWindowGranularity));
+        AppendFact(
+            html,
+            "Refresh window",
+            FormatRefreshPeriod(policy.IncrementalPeriods, policy.IncrementalGranularity));
+        if (policy.IncrementalPeriodsOffset == -1)
+        {
+            AppendFact(html, "Complete periods only", "Yes");
+        }
+        else if (policy.IncrementalPeriodsOffset is not null)
+        {
+            AppendFact(
+                html,
+                "Refresh period offset",
+                policy.IncrementalPeriodsOffset.Value.ToString(CultureInfo.InvariantCulture));
+        }
+
+        if (!string.IsNullOrWhiteSpace(policy.PollingExpression))
+        {
+            AppendFact(
+                html,
+                "Change detection",
+                string.IsNullOrWhiteSpace(policy.ChangeDetectionColumn)
+                    ? "Configured"
+                    : policy.ChangeDetectionColumn);
+        }
+
+        if (!string.IsNullOrWhiteSpace(policy.Mode))
+        {
+            AppendFact(
+                html,
+                "Real-time data",
+                string.Equals(policy.Mode, "hybrid", StringComparison.OrdinalIgnoreCase)
+                    ? "On (hybrid mode)"
+                    : $"Off ({HumanizeIdentifier(policy.Mode)} mode)");
+        }
+
+        html.AppendLine("              </dl>");
+        html.AppendLine("              <details class=\"technical-details\"><summary>Technical details</summary><dl class=\"technical-list\">");
+        AppendTechnicalDefinition(html, "Policy type", policy.PolicyType ?? "Not specified");
+        AppendTechnicalDefinition(
+            html,
+            "Incremental periods offset",
+            policy.IncrementalPeriodsOffset?.ToString(CultureInfo.InvariantCulture) ?? "Not specified");
+        if (!string.IsNullOrWhiteSpace(policy.Mode))
+        {
+            AppendTechnicalDefinition(html, "Policy mode", policy.Mode);
+        }
+        html.AppendLine("              </dl>");
+        if (!string.IsNullOrWhiteSpace(policy.PollingExpression))
+        {
+            html.Append("                <p><strong>Change-detection expression</strong></p><pre><code>")
+                .Append(Encode(policy.PollingExpression)).AppendLine("</code></pre>");
+        }
+        html.AppendLine("              </details>");
+        html.AppendLine("            </section>");
+    }
+
+    private static string FormatRefreshPeriod(int? periods, string? granularity)
+    {
+        if (periods is null || string.IsNullOrWhiteSpace(granularity))
+        {
+            return "Not specified";
+        }
+
+        var unit = HumanizeIdentifier(granularity).ToLowerInvariant();
+        return $"{periods.Value.ToString(CultureInfo.InvariantCulture)} {unit}{(periods.Value == 1 ? string.Empty : "s")}";
     }
 
     private static void AppendCalculatedTableExpressions(StringBuilder html, SemanticTableInventory table)

@@ -15,6 +15,9 @@ public static class SemanticObjectTypes
     /// <summary>A DAX user-defined function. A graph node, never a usage record and never a root.</summary>
     public const string Function = "Function";
 
+    /// <summary>A table-owned refresh policy. A dependency source, never a usage record.</summary>
+    public const string RefreshPolicy = "RefreshPolicy";
+
     public const string Column = "Column";
     public const string Measure = "Measure";
     public const string ReportMeasure = "ReportMeasure";

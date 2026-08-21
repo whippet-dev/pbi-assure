@@ -12,7 +12,7 @@ evidenced · **[design decision]** a choice, not a fact.
 |---|---|
 | Remote | `whippet-dev/pbi-assure` |
 | Branch | `master` (also the default branch) |
-| Last verified product state | `4e187aa` — bookmark semantic-usage evidence |
+| Last verified product state | `fbf7098` — inactive relationship / USERELATIONSHIP evidence bank |
 | Working tree | Expected clean of tracked modifications. Untracked local review documents may be present |
 
 `master` may have moved past that commit for documentation-only changes. Re-verify and update this
@@ -22,7 +22,7 @@ section whenever a commit changes build, test or behaviour — not for every com
 
 - `dotnet build PbiAssure.slnx` — **succeeded, 0 warnings, 0 errors** [verified]. `TreatWarningsAsErrors`
   is on, so warnings fail the build.
-- `dotnet test PbiAssure.slnx` — **467 core + 2 privacy end-to-end tests passed**, 0 failed [verified].
+- `dotnet test PbiAssure.slnx` — **475 core + 2 privacy end-to-end tests passed**, 0 failed [verified].
 - CI (`.github/workflows/ci.yml`) — **green** [verified], confirmed complete (not queued) for the
   pre-feature baseline `0c1af3c`. Runs restore, build, a Playwright Chromium install, then the whole
   solution test suite on `windows-latest`.
@@ -47,8 +47,27 @@ Desktop-authored `desktop-ols-evidence` proves that Power BI Desktop persists in
 `columnPermission Salary = none` and table `metadataPermission: none` inside a role's
 `tablePermission` block. PBI Assure retains both as structured role inventory. An explicitly named
 column permission makes only that column structurally required; table-level OLS is visible in the
-Security roles review but never makes every child column used. The JSON inventory is additively versioned
-at `0.23`; Findings and the semantic-usage CSV are unchanged.
+Security roles review but never makes every child column used. That role/permission inventory was
+introduced in JSON schema `0.23`; Findings and the semantic-usage CSV were unchanged.
+
+## Incremental-refresh policy inventory
+
+The paired Desktop-authored `desktop-incremental-refresh-evidence-baseline` and
+`desktop-incremental-refresh-evidence` fixtures prove that `RangeStart`/`RangeEnd` filtering can exist
+without a configured policy. Desktop adds an explicit table-owned `refreshPolicy` only after policy
+configuration. PBI Assure now retains its basic policy type, rolling/archive window, incremental window,
+offset, polling M, source M and optional mode on `SemanticTableInventory.RefreshPolicy`.
+
+The affected semantic-table card shows a compact **Incremental refresh** block and states that saved
+settings do not confirm query folding or a successful Service refresh. The filter-only control has no
+policy block. A polling expression creates a structural dependency only when it contains one explicit
+qualified reference to the owning table; this makes `FactEvents_Policy[LastModified]` structurally
+required independently of Auto Date/Time. Custom polling M is retained without guessed object usage.
+
+The JSON inventory is additively versioned at `0.24`; CSV and Findings are unchanged. No folding,
+refresh-health, Service partition or real-time default is inferred. See
+[the evidence review](../reviews/incremental-refresh-policy-evidence-2026-08-21.md). The next recommended
+task is the bounded structured `USERELATIONSHIP` call extractor already scoped by its evidence review.
 
 ## Inactive relationship / USERELATIONSHIP evidence
 
@@ -348,7 +367,8 @@ version separately from both its schema URI and `definition.pbir`'s existing ver
 Non-exact observations appear as neutral, report-scoped **Analysis coverage** information, grouped by
 artifact/type/state/version with raw paths behind technical details. Exact observations are silent, no
 Finding is created and CSV is unchanged. The public JSON inventory changed additively through report
-`SchemaObservations`, `VersionMetadataPath` and `PbirDefinitionVersion`; its schema version is `0.23`.
+`SchemaObservations`, `VersionMetadataPath` and `PbirDefinitionVersion`; the current inventory schema is
+`0.24`.
 Bookmark declarations are exact-verified at `bookmarksMetadata/1.0.0` and `bookmark/2.1.0`; report-extension
 declarations remain recognised-unverified because no committed Desktop fixture establishes their exact
 baseline. The policy and evidence inventory are in

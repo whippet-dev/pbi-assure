@@ -26,6 +26,13 @@ internal static class SemanticUsagePresentation
         // StructurallyRequired.
         if (usage.UsageState == SemanticUsageStates.StructurallyRequired)
         {
+            var refreshPolicy = incoming.FirstOrDefault(dependency =>
+                dependency.DependencyKind == SemanticDependencyKinds.IncrementalRefreshPolicy);
+            if (refreshPolicy is not null)
+            {
+                return $"Needed by the {refreshPolicy.FromTable} incremental refresh change-detection setting";
+            }
+
             var relationship = incoming.FirstOrDefault(dependency =>
                 dependency.DependencyKind == SemanticDependencyKinds.RelationshipEndpoint);
             if (relationship is not null)

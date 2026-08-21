@@ -14,6 +14,12 @@ public sealed record SemanticTableInventory(
     SemanticCalculationGroupInventory? CalculationGroup,
     SemanticFieldParameterInventory? FieldParameter)
 {
+    /// <summary>
+    /// Explicit table-owned incremental-refresh policy metadata. The absence of this property means no
+    /// policy block was found; RangeStart/RangeEnd query references alone never populate it.
+    /// </summary>
+    public SemanticRefreshPolicyInventory? RefreshPolicy { get; init; }
+
     public int ColumnCount => Columns.Count;
 
     public int MeasureCount => Measures.Count;

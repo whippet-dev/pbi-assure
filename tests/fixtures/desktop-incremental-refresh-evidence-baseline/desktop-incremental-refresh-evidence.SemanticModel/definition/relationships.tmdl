@@ -1,0 +1,19 @@
+relationship 3ed2d764-e582-490c-bbb2-70d043e16792
+	joinOnDateBehavior: datePartOnly
+	fromColumn: FactEvents_Policy.EventDate
+	toColumn: LocalDateTable_cec5a38c-9262-4546-9a25-4f150ab7b9e1.Date
+
+relationship 8ba009ae-01c5-4022-be52-6a4b23b1ef7c
+	joinOnDateBehavior: datePartOnly
+	fromColumn: FactEvents_Policy.LastModified
+	toColumn: LocalDateTable_ec7093d6-4721-48b1-a506-66765b4dbe22.Date
+
+relationship 1312000e-8908-4aa4-b5c6-e8fc7e5efcea
+	joinOnDateBehavior: datePartOnly
+	fromColumn: FactEvents_FilterOnly.EventDate
+	toColumn: LocalDateTable_051e8761-b7f2-4543-85d2-fc78c0c3103b.Date
+
+relationship ff44a527-df50-4371-be6c-4315bc8ffd42
+	joinOnDateBehavior: datePartOnly
+	fromColumn: FactEvents_FilterOnly.LastModified
+	toColumn: LocalDateTable_855ccd5e-f513-49b7-a35d-d43a92651b57.Date

@@ -24,6 +24,9 @@ public static class SemanticDependencyKinds
     /// <summary>An explicitly named column-level object-level security permission.</summary>
     public const string ObjectLevelPermission = "ObjectLevelPermission";
 
+    /// <summary>An explicitly named column in a table's incremental-refresh policy.</summary>
+    public const string IncrementalRefreshPolicy = "IncrementalRefreshPolicy";
+
     /// <summary>A reference from a perspective to a model object it exposes.</summary>
     public const string PerspectiveMember = "PerspectiveMember";
 

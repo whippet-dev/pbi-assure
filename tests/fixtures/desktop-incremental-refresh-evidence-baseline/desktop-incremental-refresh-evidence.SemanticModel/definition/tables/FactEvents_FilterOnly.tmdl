@@ -1,0 +1,85 @@
+table FactEvents_FilterOnly
+	lineageTag: 8aa6c1a1-fd69-4e2b-b41b-be09df5cde0a
+
+	column EventID
+		dataType: int64
+		formatString: 0
+		lineageTag: 37a71ab9-a728-4719-b73e-80db39256c4f
+		summarizeBy: count
+		sourceColumn: EventID
+
+		annotation SummarizationSetBy = Automatic
+
+	column EventDate
+		dataType: dateTime
+		formatString: General Date
+		lineageTag: 1a63f68b-48fd-4348-a665-b776d05172ee
+		summarizeBy: none
+		sourceColumn: EventDate
+
+		variation Variation
+			isDefault
+			relationship: 1312000e-8908-4aa4-b5c6-e8fc7e5efcea
+			defaultHierarchy: LocalDateTable_051e8761-b7f2-4543-85d2-fc78c0c3103b.'Date Hierarchy'
+
+		annotation SummarizationSetBy = Automatic
+
+	column LastModified
+		dataType: dateTime
+		formatString: General Date
+		lineageTag: 64411f49-71d7-4771-be97-2ec942c9440a
+		summarizeBy: none
+		sourceColumn: LastModified
+
+		variation Variation
+			isDefault
+			relationship: ff44a527-df50-4371-be6c-4315bc8ffd42
+			defaultHierarchy: LocalDateTable_855ccd5e-f513-49b7-a35d-d43a92651b57.'Date Hierarchy'
+
+		annotation SummarizationSetBy = Automatic
+
+	column Amount
+		dataType: int64
+		formatString: 0
+		lineageTag: 713b197c-b80a-4606-bf19-ad71faa09fda
+		summarizeBy: sum
+		sourceColumn: Amount
+
+		annotation SummarizationSetBy = Automatic
+
+	partition FactEvents_FilterOnly = m
+		mode: import
+		source =
+				let
+				    Source =
+				        #table(
+				            type table
+				            [
+				                EventID = Int64.Type,
+				                EventDate = datetime,
+				                LastModified = datetime,
+				                Amount = Int64.Type
+				            ],
+				            {
+				                { 1, #datetime(2025, 12, 20, 0, 0, 0), #datetime(2025, 12, 21, 9, 0, 0), 100 },
+				                { 2, #datetime(2026, 1, 5, 0, 0, 0), #datetime(2026, 1, 5, 12, 0, 0), 200 },
+				                { 3, #datetime(2026, 1, 10, 0, 0, 0), #datetime(2026, 1, 12, 8, 30, 0), 300 },
+				                { 4, #datetime(2026, 1, 20, 0, 0, 0), #datetime(2026, 1, 20, 17, 15, 0), 400 },
+				                { 5, #datetime(2026, 1, 31, 0, 0, 0), #datetime(2026, 2, 1, 7, 45, 0), 500 },
+				                { 6, #datetime(2026, 2, 5, 0, 0, 0), #datetime(2026, 2, 6, 11, 0, 0), 600 }
+				            }
+				        ),
+
+				    FilteredRows =
+				        Table.SelectRows(
+				            Source,
+				            each
+				                [EventDate] >= RangeStart
+				                and [EventDate] < RangeEnd
+				        )
+				in
+				    FilteredRows
+
+	annotation PBI_NavigationStepName = Navigation
+
+	annotation PBI_ResultType = Table
