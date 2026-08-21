@@ -198,18 +198,18 @@ The product backlog was freshly re-ranked on 2026-08-20 after the schema, naviga
 evidence work. The decision and the scored top five are in
 [the product-value re-rank](../reviews/product-value-rerank-2026-08-20.md).
 
-**Next recommended task: explain role/perspective structural usage.** This is the remaining small,
-fixture-backed presentation improvement: existing structural classifications are correct, but their
-user-facing “Why” text does not yet name the role filter or perspective that requires the object. Keep it
-presentation-only; do not alter usage states, reachability or confidence.
+The role/perspective structural-usage explanation is complete: the existing graph/reachability evidence
+now supplies concise `Why` text naming the persisted role filter or perspective. It is presentation-only;
+usage states, reachability and confidence remain unchanged.
 
 Bookmark-only graph edges also remain parked: paired Desktop fixtures prove that stale/inert bookmark
 snapshots can retain field references after the live carrier is removed, and effective carriers were already
 found through normal live metadata. See
 [the bookmark evidence review](../reviews/bookmark-semantic-usage-evidence-2026-08-21.md).
 
-The existing role/perspective
-"Why" presentation gap remains a safe small task between evidence slices, but is not higher product value.
+**Next recommended task: re-rank the evidence-led backlog before selecting another implementation
+slice.** The remaining headline candidates either need new Desktop evidence or are deliberately parked;
+do not begin one opportunistically from this handover.
 
 Connector expansion and report-level-measure → UDF traversal remain parked on the evidence already recorded.
 The tested **Add a local model** path migrated valid report measures into local model measures rather than

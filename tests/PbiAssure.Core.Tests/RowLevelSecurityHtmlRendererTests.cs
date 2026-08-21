@@ -66,7 +66,7 @@ public sealed class RowLevelSecurityHtmlRendererTests
         Assert.True(
             html.IndexOf("<h3>Alpha</h3>", StringComparison.Ordinal) <
             html.IndexOf("<h3>Beta</h3>", StringComparison.Ordinal));
-        Assert.Equal(2, CountOccurrences(html, "Regional &lt;Admin&gt;"));
+        Assert.Equal(2, CountOccurrences(html, "<strong>Regional &lt;Admin&gt;</strong><span>"));
         Assert.Contains("<strong>All regions</strong><span>0 row-level filters", html, StringComparison.Ordinal);
         Assert.Contains("<dt>Model permission</dt><dd>Read</dd>", html, StringComparison.Ordinal);
         Assert.Contains("<strong>Regional &lt;Admin&gt;</strong><span>2 row-level filters", html, StringComparison.Ordinal);

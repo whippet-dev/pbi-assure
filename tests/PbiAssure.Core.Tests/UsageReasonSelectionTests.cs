@@ -134,6 +134,83 @@ public sealed class UsageReasonSelectionTests
         Assert.Contains("relationship", reason, StringComparison.OrdinalIgnoreCase);
     }
 
+    [Fact]
+    public void ARoleFilterOnlyStructuralDependencyNamesThePersistedRole()
+    {
+        var inventory = ScanFixture("desktop-semantic-constructs");
+        var usage = Assert.Single(inventory.SemanticObjectUsages,
+            item => item.Table == "Sales" && item.ObjectName == "UserEmail");
+
+        Assert.Equal(SemanticUsageStates.StructurallyRequired, usage.UsageState);
+        Assert.Equal(
+            "Why: Needed by the DynamicUser security filter",
+            ReasonForIn(HtmlReportRenderer.Render(inventory), "Sales", "UserEmail"));
+    }
+
+    [Fact]
+    public void APerspectiveOnlyStructuralDependencyNamesThePersistedPerspective()
+    {
+        var inventory = ScanFixture("desktop-semantic-constructs");
+        var usage = Assert.Single(inventory.SemanticObjectUsages,
+            item => item.Table == "Sales" && item.ObjectName == "Total Amount");
+
+        Assert.Equal(SemanticUsageStates.StructurallyRequired, usage.UsageState);
+        Assert.Equal(
+            "Why: Included in the SalesView perspective",
+            ReasonForIn(HtmlReportRenderer.Render(inventory), "Sales", "Total Amount"));
+    }
+
+    [Fact]
+    public void RoleAndPerspectiveReasonsAreHtmlEncodedAndDeterministic()
+    {
+        var inventory = ScanFixture("desktop-semantic-constructs");
+        var escaped = inventory with
+        {
+            SemanticDependencies = inventory.SemanticDependencies
+                .Select(edge => edge switch
+                {
+                    { DependencyKind: SemanticDependencyKinds.TablePermission, FromObjectName: "DynamicUser" } =>
+                        edge with { FromObjectName = "Dynamic <Role> & Team" },
+                    { DependencyKind: SemanticDependencyKinds.PerspectiveMember, FromObjectName: "SalesView" } =>
+                        edge with { FromObjectName = "Sales <View> & Team" },
+                    _ => edge,
+                })
+                .ToArray(),
+        };
+
+        var html = HtmlReportRenderer.Render(escaped);
+
+        Assert.Contains("Why: Needed by the Dynamic &lt;Role&gt; &amp; Team security filter", html, StringComparison.Ordinal);
+        Assert.Contains("Why: Included in the Sales &lt;View&gt; &amp; Team perspective", html, StringComparison.Ordinal);
+
+        var reversed = escaped with { SemanticDependencies = escaped.SemanticDependencies.Reverse().ToArray() };
+        Assert.Equal(
+            ReasonForIn(html, "Sales", "Region"),
+            ReasonForIn(HtmlReportRenderer.Render(reversed), "Sales", "Region"));
+    }
+
+    [Fact]
+    public void AnUnusedBranchCannotDisplaceAStructuralRoleFilterReason()
+    {
+        var inventory = ScanFixture("desktop-semantic-constructs");
+        var unusedSource = new SemanticNodeReachability(
+            "desktop-semantic-constructs", "Sales", "Unused Helper", SemanticObjectTypes.Measure,
+            HierarchyName: null, ReachableFromReport: false, ReachableFromModelStructure: false);
+        var unusedEdge = new SemanticDependencyEdge(
+            "desktop-semantic-constructs", "Sales", "Unused Helper", SemanticObjectTypes.Measure, null,
+            "Sales", "UserEmail", SemanticObjectTypes.Column, null,
+            SemanticDependencyKinds.Dax, "synthetic", "Sales[UserEmail]");
+        var withUnusedBranch = inventory with
+        {
+            SemanticDependencies = inventory.SemanticDependencies.Append(unusedEdge).ToArray(),
+            SemanticNodeReachability = inventory.SemanticNodeReachability.Append(unusedSource).ToArray(),
+        };
+
+        Assert.Equal(
+            "Why: Needed by the DynamicUser security filter",
+            ReasonForIn(HtmlReportRenderer.Render(withUnusedBranch), "Sales", "UserEmail"));
+    }
+
     /// <summary>
     /// A column can be a relationship endpoint — which makes it structurally required — and also be
     /// reached from a report, which outranks that and displays "Indirectly used". The relationship is

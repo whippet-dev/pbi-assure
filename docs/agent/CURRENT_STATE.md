@@ -12,13 +12,18 @@ evidenced · **[design decision]** a choice, not a fact.
 |---|---|
 | Remote | `whippet-dev/pbi-assure` |
 | Branch | `master` (also the default branch) |
-| Last verified product state | `56085ea` — USERELATIONSHIP activation inventory |
+| Last verified product state | Current `master` — role/perspective structural-usage explanations |
 | Working tree | Expected clean of tracked modifications. Untracked local review documents may be present |
 
 `master` may have moved past that commit for documentation-only changes. Re-verify and update this
 section whenever a commit changes build, test or behaviour — not for every commit.
 
-## Verified at that commit
+Structural semantic usage caused by retained role filters and perspective membership is explained through
+the existing graph/reachability evidence: role-filter targets say which persisted security filter needs
+them, and perspective targets say which perspective includes them. This is presentation-only; it does
+not change classification, reachability, confidence, Findings, CSV or the inventory schema.
+
+## Verified at the current product state
 
 - `dotnet build PbiAssure.slnx` — **succeeded, 0 warnings, 0 errors** [verified]. `TreatWarningsAsErrors`
   is on, so warnings fail the build.

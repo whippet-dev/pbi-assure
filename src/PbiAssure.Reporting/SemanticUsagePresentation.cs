@@ -95,7 +95,63 @@ internal static class SemanticUsagePresentation
             return $"{prefix} {dax.FromTable}[{dax.FromObjectName}]";
         }
 
+        // Role filters and perspective membership make their targets model-structure roots directly.
+        // Unlike ordinary dependencies, their source nodes are not predecessors that traversal reaches;
+        // the retained edge and the target's published structural reachability are the evidence for this
+        // state. They are considered only after the established relationship, OLS and predecessor-based
+        // explanations above, so they do not displace those existing reasons.
+        if (usage.UsageState == SemanticUsageStates.StructurallyRequired)
+        {
+            var roleFilter = FirstDirectStructuralRoot(
+                inventory, usage, incoming,
+                SemanticDependencyKinds.TablePermission, SemanticObjectTypes.Role);
+            if (roleFilter is not null)
+            {
+                return $"Needed by the {roleFilter.FromObjectName} security filter";
+            }
+
+            var perspective = FirstDirectStructuralRoot(
+                inventory, usage, incoming,
+                SemanticDependencyKinds.PerspectiveMember, SemanticObjectTypes.Perspective);
+            if (perspective is not null)
+            {
+                return $"Included in the {perspective.FromObjectName} perspective";
+            }
+        }
+
         return null;
+    }
+
+    /// <summary>
+    /// Finds a direct model-structure root reason. Role-filter and perspective edges are intentionally
+    /// different from normal incoming dependencies: their target, rather than their source, is seeded
+    /// as a structural root by the scanner. The published target reachability confirms that this edge is
+    /// explaining the displayed structural state without Reporting recreating graph traversal.
+    /// </summary>
+    private static SemanticDependencyEdge? FirstDirectStructuralRoot(
+        ProjectInventory inventory,
+        SemanticObjectUsage usage,
+        IReadOnlyList<SemanticDependencyEdge> incoming,
+        string dependencyKind,
+        string sourceObjectType)
+    {
+        var target = inventory.SemanticNodeReachability.FirstOrDefault(node =>
+            string.Equals(node.SemanticModel, usage.SemanticModel, StringComparison.OrdinalIgnoreCase) &&
+            string.Equals(node.Table, usage.Table, StringComparison.OrdinalIgnoreCase) &&
+            string.Equals(node.ObjectName, usage.ObjectName, StringComparison.OrdinalIgnoreCase) &&
+            string.Equals(node.ObjectType, usage.ObjectType, StringComparison.OrdinalIgnoreCase));
+        if (target is null || !target.ReachableFromModelStructure)
+        {
+            return null;
+        }
+
+        return incoming
+            .Where(dependency => dependency.DependencyKind == dependencyKind &&
+                                 dependency.FromObjectType == sourceObjectType)
+            .OrderBy(dependency => dependency.FromTable, StringComparer.OrdinalIgnoreCase)
+            .ThenBy(dependency => dependency.FromObjectName, StringComparer.OrdinalIgnoreCase)
+            .ThenBy(dependency => dependency.FromObjectType, StringComparer.Ordinal)
+            .FirstOrDefault();
     }
 
     /// <summary>
