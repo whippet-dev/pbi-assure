@@ -14,7 +14,7 @@ button:disabled { opacity: 0.6; cursor: wait; }
 button:focus-visible, summary:focus-visible, a:focus-visible { outline: 3px solid #e48a00; outline-offset: 3px; }
 .picker-actions { display: flex; flex-wrap: wrap; gap: 0.75rem; }
 .secondary-button { border: 1px solid #075a46; background: #fff; color: #075a46; }
-.privacy { color: #38516f; font-size: 0.95rem; }
+.privacy, .supported-input { color: #38516f; font-size: 0.95rem; }
 .privacy a { color: #075a46; }
 .guidance-panel, .picker-help, .summary-help { border: 1px solid #ccd7e5; border-radius: 0.5rem; background: #fff; }
 .guidance-panel { padding: 0.9rem 1.25rem; }
