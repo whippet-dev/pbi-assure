@@ -185,7 +185,7 @@ records.
 
 ## State
 
-- **Last verified product state:** USERELATIONSHIP activation inventory (current worktree; commit pending).
+- **Last verified product state:** `56085ea` — USERELATIONSHIP activation inventory.
 - **Working tree:** expected clean apart from untracked local review documents; no tracked modifications
 - **Verified locally:** Release build succeeded with 0 warnings; **490 core + 2 privacy tests passed**
 - **Known exception:** `dotnet format --verify-no-changes` fails with 24 pre-existing whitespace errors
