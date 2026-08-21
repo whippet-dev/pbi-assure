@@ -26,11 +26,17 @@ MyReport/
 
 Do not select the `.Report` or `.SemanticModel` folder by itself.
 
+The supported local semantic-model layout includes both `definition.pbism` and a `definition/` folder
+containing TMDL files. A local semantic model stored as `model.bim` uses TMSL and is not supported yet.
+PBI Assure stops without generating output rather than producing an incomplete result. Keep a backup,
+enable **Store semantic model using TMDL format**, then choose **Upgrade** when Power BI Desktop prompts
+you to save the conversion. That conversion cannot be undone.
+
 ## What PBI Assure analyses
 
 PBI Assure reads the structured report, semantic-model, DAX, relationship, and Power Query metadata in the selected project. It processes selected files locally in your browser; project files and analysis results are not uploaded to PBI Assure.
 
-A standard PBIX is not the full-assurance input format. PBIR-enabled PBIX can expose report content, but does not provide the complete structured semantic-model and Power Query metadata used by PBI Assure's full analysis. Save as PBIP with PBIR and TMDL to use the complete workflow.
+A standard PBIX is not the full-assurance input format. PBIR-enabled PBIX can expose report content, but does not provide the complete structured semantic-model and Power Query metadata used by PBI Assure's full analysis. Save as PBIP with PBIR and a local TMDL semantic model to use the complete workflow.
 
 ## Microsoft guidance
 

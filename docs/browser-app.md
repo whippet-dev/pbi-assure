@@ -20,11 +20,13 @@ See [Browser privacy](browser-privacy.md) for the exact boundary and caveats.
 
 ## Selecting a project
 
-PBI Assure provides full browser assurance for a PBIP project using PBIR and TMDL. If starting with a
-PBIX, follow [Prepare a Power BI project for PBI Assure](preparing-power-bi-project.md), then choose the
+PBI Assure provides full browser assurance for a PBIP project using PBIR and a local TMDL semantic model.
+If starting with a PBIX, follow [Prepare a Power BI project for PBI Assure](preparing-power-bi-project.md), then choose the
 folder that directly contains one root `.pbip` file. PBI Assure accepts metadata from the immediate
 `.Report` and `.SemanticModel` directories in that folder. It rejects folders with no root project, more
 than one root project, unsafe relative paths, or paths that collide when compared without letter case.
+A local TMSL `model.bim` semantic model is rejected before analysis, with no browser report or CSV
+generated. This does not apply to reports whose semantic model is connected remotely by `byConnection`.
 
 The primary picker uses `showDirectoryPicker` where supported. The **Having trouble selecting a folder?**
 disclosure exposes the directory-input fallback when an organisation policy or browser blocks the primary

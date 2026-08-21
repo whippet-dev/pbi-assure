@@ -232,18 +232,14 @@ public sealed class AnalysisLimitationTests
         Assert.DoesNotContain(inventory.AnalysisLimitations, limitation => limitation.ConstructType == "role");
     }
 
-    /// <summary>
-    /// A semantic model stored in TMSL rather than TMDL is not read at all, so the limitation must say
-    /// so rather than leaving the model silently empty.
-    /// </summary>
     [Fact]
-    public void ATmslModelDefinitionIsReportedAsALimitation()
+    public void ATmslModelDefinitionStopsTheScanBeforeItCanCreateIncompleteOutput()
     {
-        var inventory = ProjectScanner.Scan(BuildModelSource("Sales", ("model.bim", "{}")));
+        var exception = Assert.Throws<UnsupportedProjectInputException>(() =>
+            ProjectScanner.Scan(BuildModelSource("Sales", ("model.bim", "{}"))));
 
-        var limitation = Assert.Single(inventory.AnalysisLimitations);
-        Assert.Equal("PBI-LIMIT-MODEL-TMSL", limitation.LimitationId);
-        Assert.Equal(ConstructDependencyImpacts.MayCreateDependencies, limitation.DependencyImpact);
+        Assert.Contains("TMSL format (model.bim)", exception.Message, StringComparison.Ordinal);
+        Assert.Contains("No assurance output was generated.", exception.Message, StringComparison.Ordinal);
     }
 
     /// <summary>

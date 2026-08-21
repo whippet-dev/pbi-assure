@@ -17,7 +17,7 @@
     </header>
 
     <details class="guidance-panel">
-        <summary>Using a PBIX? See how to prepare it for full assurance</summary>
+        <summary>Check or prepare your Power BI project</summary>
         <div class="guidance-content">
             <p>PBI Assure provides full assurance for a Power BI Project (PBIP) that uses the enhanced report format (PBIR) and the TMDL semantic model format.</p>
             <ol>
@@ -27,8 +27,9 @@
                 <li>Save the report as a Power BI Project, then select its project root folder here.</li>
             </ol>
             <p>PBIR and TMDL store the report and semantic model as structured project files that PBI Assure can analyse locally in your browser.</p>
-            <div class="folder-example" aria-label="Example Power BI project folder structure"><code>MyReport/<br />├── MyReport.pbip<br />├── MyReport.Report/<br />└── MyReport.SemanticModel/</code></div>
+            <div class="folder-example" aria-label="Example supported Power BI project folder structure"><code>MyReport/<br />├── MyReport.pbip<br />├── MyReport.Report/<br />│   └── definition/<br />└── MyReport.SemanticModel/<br />    ├── definition.pbism<br />    └── definition/</code></div>
             <p>Select the <strong>project root</strong> shown above, not the <code>.Report</code> or <code>.SemanticModel</code> folder on its own.</p>
+            <p>A local semantic model stored as <code>model.bim</code> (TMSL) is not supported yet. Keep a backup, enable <strong>Store semantic model using TMDL format</strong>, then choose <strong>Upgrade</strong> when saving in Power BI Desktop. This conversion cannot be undone.</p>
             <p class="guidance-links">Microsoft guidance: <a href="https://learn.microsoft.com/en-us/power-bi/developer/projects/projects-overview" target="_blank" rel="noopener noreferrer">Power BI Projects</a>, <a href="https://learn.microsoft.com/en-us/power-bi/developer/projects/projects-report" target="_blank" rel="noopener noreferrer">PBIR</a>, and <a href="https://learn.microsoft.com/en-us/power-bi/developer/projects/projects-dataset" target="_blank" rel="noopener noreferrer">TMDL semantic models</a>.</p>
         </div>
     </details>
@@ -248,6 +249,11 @@
             csvRenderElapsed = null;
             htmlLength = 0;
             csvLength = 0;
+        }
+        catch (UnsupportedProjectInputException exception)
+        {
+            message = exception.Message;
+            inventory = null;
         }
         catch (Exception exception) when (exception is InvalidDataException or JsonException or ArgumentException or IOException)
         {

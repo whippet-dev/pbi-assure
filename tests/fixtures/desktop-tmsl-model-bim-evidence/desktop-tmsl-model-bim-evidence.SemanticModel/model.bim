@@ -1,0 +1,102 @@
+{
+  "compatibilityLevel": 1606,
+  "model": {
+    "annotations": [
+      {
+        "name": "__PBI_TimeIntelligenceEnabled",
+        "value": "1"
+      },
+      {
+        "name": "PBI_QueryOrder",
+        "value": "[\"Sales\"]"
+      },
+      {
+        "name": "PBI_ProTooling",
+        "value": "[\"DevMode\"]"
+      }
+    ],
+    "culture": "en-US",
+    "cultures": [
+      {
+        "name": "en-US"
+      }
+    ],
+    "dataAccessOptions": {
+      "legacyRedirects": true,
+      "returnErrorValuesAsNull": true
+    },
+    "defaultPowerBIDataSourceVersion": "powerBI_V3",
+    "sourceQueryCulture": "en-GB",
+    "tables": [
+      {
+        "name": "Sales",
+        "annotations": [
+          {
+            "name": "PBI_NavigationStepName",
+            "value": "Navigation"
+          },
+          {
+            "name": "PBI_ResultType",
+            "value": "Table"
+          }
+        ],
+        "columns": [
+          {
+            "name": "ID",
+            "annotations": [
+              {
+                "name": "SummarizationSetBy",
+                "value": "Automatic"
+              }
+            ],
+            "dataType": "int64",
+            "formatString": "0",
+            "lineageTag": "8bcef1fb-a490-4662-a236-a7b42e4d9abb",
+            "sourceColumn": "ID",
+            "summarizeBy": "count"
+          },
+          {
+            "name": "Amount",
+            "annotations": [
+              {
+                "name": "SummarizationSetBy",
+                "value": "Automatic"
+              }
+            ],
+            "dataType": "int64",
+            "formatString": "0",
+            "lineageTag": "da6acbe3-9f58-4860-b71d-dd6ecb15e643",
+            "sourceColumn": "Amount",
+            "summarizeBy": "sum"
+          }
+        ],
+        "lineageTag": "26ed1ef8-9ae6-43bb-b9b7-2ea44095c6ba",
+        "measures": [
+          {
+            "name": "Total Amount",
+            "expression": "SUM(Sales[Amount])",
+            "formatString": "0",
+            "lineageTag": "40ce8e3b-8ada-4c76-966b-aa6f06f56641"
+          }
+        ],
+        "partitions": [
+          {
+            "name": "Sales",
+            "mode": "import",
+            "source": {
+              "expression": [
+                "let",
+                "  Source = Table.FromRows(Json.Document(Binary.Decompress(Binary.FromText(\"i45WMlTSUTIyVorViVYyAjJNjI3AbGMg2xTMMgGyDA1NwGxTuChIKVAsFgA=\", BinaryEncoding.Base64), Compression.Deflate)), let _t = ((type nullable text) meta [Serialized.Text = true]) in type table [ID = _t, Amount = _t]),",
+                "  #\"Changed column type\" = Table.TransformColumnTypes(Source, {{\"ID\", Int64.Type}, {\"Amount\", Int64.Type}}, \"en-US\")",
+                "in",
+                "  #\"Changed column type\""
+              ],
+              "type": "m"
+            }
+          }
+        ]
+      }
+    ],
+    "valueFilterBehavior": "independent"
+  }
+}

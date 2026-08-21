@@ -97,17 +97,14 @@ public partial class MainWindow : Window
                 StatusTextBlock.Text = $"HTML report created, but the semantic CSV could not be created: {result.outputResult.SemanticUsageCsvError}";
             }
         }
+        catch (UnsupportedProjectInputException exception)
+        {
+            ClearOutputState();
+            StatusTextBlock.Text = exception.Message;
+        }
         catch (Exception exception)
         {
-            latestReportPath = null;
-            latestSemanticUsageCsvPath = null;
-            outputFolderPath = null;
-            OutputPathTextBox.Text = string.Empty;
-            CsvPathTextBox.Text = string.Empty;
-            OutputFolderTextBox.Text = string.Empty;
-            OpenReportButton.IsEnabled = false;
-            OpenSemanticCsvButton.IsEnabled = false;
-            OpenOutputFolderButton.IsEnabled = false;
+            ClearOutputState();
             StatusTextBlock.Text = $"Could not run assurance: {exception.Message}";
         }
         finally
@@ -155,6 +152,25 @@ public partial class MainWindow : Window
         RunAssuranceButton.IsEnabled = !isRunning;
         SelectProjectFolderButton.IsEnabled = !isRunning;
         ProjectPathTextBox.IsEnabled = !isRunning;
+        if (isRunning)
+        {
+            OpenReportButton.IsEnabled = false;
+            OpenSemanticCsvButton.IsEnabled = false;
+            OpenOutputFolderButton.IsEnabled = false;
+        }
+    }
+
+    private void ClearOutputState()
+    {
+        latestReportPath = null;
+        latestSemanticUsageCsvPath = null;
+        outputFolderPath = null;
+        OutputPathTextBox.Text = string.Empty;
+        CsvPathTextBox.Text = string.Empty;
+        OutputFolderTextBox.Text = string.Empty;
+        OpenReportButton.IsEnabled = false;
+        OpenSemanticCsvButton.IsEnabled = false;
+        OpenOutputFolderButton.IsEnabled = false;
     }
 
     private static bool ContainsPowerBiProject(string folderPath)

@@ -69,7 +69,7 @@ static async Task<int> RunAsync(string[] arguments)
 
         return 0;
     }
-    catch (Exception exception) when (exception is ArgumentException or DirectoryNotFoundException or IOException or UnauthorizedAccessException)
+    catch (Exception exception) when (exception is UnsupportedProjectInputException or ArgumentException or DirectoryNotFoundException or IOException or UnauthorizedAccessException)
     {
         Console.Error.WriteLine(exception.Message);
         return 1;

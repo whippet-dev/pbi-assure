@@ -115,7 +115,7 @@ The HTML report is organised as expandable review cards rather than long data ta
 
 `PbiAssure.Web` is a standalone Blazor WebAssembly frontend. It lets a user select one PBIP project folder, runs the shared scanner locally in the browser, shows a concise assurance summary, and creates local downloads of the existing self-contained HTML report and semantic-usage CSV. It has no project-processing backend or upload endpoint.
 
-For full assurance, prepare a PBIP using PBIR and TMDL, then select the project root folder containing the `.pbip`, `.Report`, and `.SemanticModel` items. See [Prepare a Power BI project for PBI Assure](docs/preparing-power-bi-project.md) for the PBIX-to-PBIP steps and current Microsoft guidance.
+For full assurance, prepare a PBIP using PBIR and a local TMDL semantic model, then select the project root folder containing the `.pbip`, `.Report`, and `.SemanticModel` items. A local `model.bim` TMSL semantic model is not supported yet; PBI Assure stops without generating output rather than producing an incomplete review. See [Prepare a Power BI project for PBI Assure](docs/preparing-power-bi-project.md) for the PBIX-to-PBIP steps and current Microsoft guidance.
 
 ```powershell
 .\scripts\Publish-Web.cmd
@@ -146,7 +146,7 @@ Working on this repository with a coding agent? Start instead at [the agent hand
 
 ## Current boundaries
 
-- PBIP/PBIR and TMDL are the initial supported input formats.
+- PBIP/PBIR and local TMDL semantic models are the initial supported input formats. A local TMSL `model.bim` semantic model is rejected before analysis; it is not partially scanned.
 - Explicit `byPath` report connections are resolved to local semantic models even when report and model names differ or several reports share one model. `byConnection` reports are identified as remote and excluded from local unused-object conclusions.
 - Analysis is metadata-only by default.
 - Current dependency analysis covers report, page, and visual PBIR references, report-level measure references, DAX expressions, field-parameter choices, calculation groups and items, sort-by columns, hierarchy levels, relationship endpoints, static Power Query references, and a privacy-minimised inventory of common M connector families. It does not yet inspect bookmark-captured semantic state, complete dynamic M, or detailed external data-source lineage.

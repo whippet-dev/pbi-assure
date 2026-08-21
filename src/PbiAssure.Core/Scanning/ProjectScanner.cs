@@ -14,6 +14,8 @@ public static class ProjectScanner
     {
         ArgumentNullException.ThrowIfNull(source);
 
+        ProjectInputEligibility.EnsureSupported(source);
+
         var artifacts = new List<ArtifactInventory>();
         AddProjectFiles(source, artifacts);
         AddArtifactDirectories(source, artifacts);

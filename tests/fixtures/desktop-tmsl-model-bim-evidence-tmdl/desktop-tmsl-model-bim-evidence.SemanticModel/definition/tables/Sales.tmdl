@@ -1,0 +1,37 @@
+table Sales
+	lineageTag: 26ed1ef8-9ae6-43bb-b9b7-2ea44095c6ba
+
+	measure 'Total Amount' = SUM(Sales[Amount])
+		formatString: 0
+		lineageTag: 40ce8e3b-8ada-4c76-966b-aa6f06f56641
+
+	column ID
+		dataType: int64
+		formatString: 0
+		lineageTag: 8bcef1fb-a490-4662-a236-a7b42e4d9abb
+		summarizeBy: count
+		sourceColumn: ID
+
+		annotation SummarizationSetBy = Automatic
+
+	column Amount
+		dataType: int64
+		formatString: 0
+		lineageTag: da6acbe3-9f58-4860-b71d-dd6ecb15e643
+		summarizeBy: sum
+		sourceColumn: Amount
+
+		annotation SummarizationSetBy = Automatic
+
+	partition Sales = m
+		mode: import
+		source =
+				let
+				  Source = Table.FromRows(Json.Document(Binary.Decompress(Binary.FromText("i45WMlTSUTIyVorViVYyAjJNjI3AbGMg2xTMMgGyDA1NwGxTuChIKVAsFgA=", BinaryEncoding.Base64), Compression.Deflate)), let _t = ((type nullable text) meta [Serialized.Text = true]) in type table [ID = _t, Amount = _t]),
+				  #"Changed column type" = Table.TransformColumnTypes(Source, {{"ID", Int64.Type}, {"Amount", Int64.Type}}, "en-US")
+				in
+				  #"Changed column type"
+
+	annotation PBI_NavigationStepName = Navigation
+
+	annotation PBI_ResultType = Table

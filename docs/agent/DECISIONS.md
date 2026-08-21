@@ -341,6 +341,17 @@ Established by `tests/fixtures/desktop-udf-references`, which also records what 
 Established by
 [the encountered PBIR schema compatibility review](../reviews/encountered-pbir-schema-compatibility-policy.md).
 
+### Local semantic-model input formats
+
+- **A recognised local model that PBI Assure cannot read must stop before normal assurance output.** A
+  current Desktop-authored PBIP can retain its semantic model as TMSL `model.bim`; this release supports
+  local TMDL `definition/` models only. Do not emit incomplete inventory, an Analysis coverage substitute
+  or a normal Finding from the unread model. Reject before parsing/rules/output, and reject a local model
+  containing both `model.bim` and `definition/` as ambiguous. Remote `byConnection` is a distinct existing
+  boundary and must not be treated as a local TMSL model.
+
+Established by [the TMSL Desktop evidence review](../reviews/tmsl-model-bim-desktop-evidence-2026-08-21.md).
+
 ### Generated model objects
 
 - Power BI-generated Auto Date/Time tables are identified **only** by the explicit TMDL annotations
