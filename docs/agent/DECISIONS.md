@@ -314,6 +314,11 @@ Established by `tests/fixtures/desktop-semantic-constructs`.
   not turn it into a semantic dependency without trustworthy source-model metadata. Do not bind a remote
   report to a convenient local model or use synthetic traversal to claim support for a state Desktop did
   not produce validly.
+- **A valid report-level measure is not expression-resolvable against a local model merely because both
+  concepts can exist in Power BI.** In the tested Desktop transition from a live connection to **Add a
+  local model**, Desktop migrated valid report measures into local TMDL measures rather than preserving
+  the mixed state. Treat those local measures through the ordinary model-DAX path; do not manufacture a
+  synthetic report-measure/local-model join.
 
 Established by `tests/fixtures/desktop-udf-references`, which also records what it does not prove.
 

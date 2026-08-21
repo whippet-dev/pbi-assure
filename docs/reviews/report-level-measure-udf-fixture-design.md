@@ -36,6 +36,56 @@ The result differs materially from the Microsoft documentation that motivated th
 The project and its preserved before-reopen copy contain the same 14 files and 106,274 bytes. SHA-256
 comparison found **zero changed, added or removed files** after close, reopen and save. [verified]
 
+## Follow-up: live connection converted to a local model
+
+On 2026-08-21, the same synthetic published source model was used for a second controlled Desktop
+experiment. It was published to a normal workspace rather than My workspace because the latter did not
+offer **Make changes to this model** for composite conversion. A new live-connected report defined two
+valid report measures before conversion:
+
+```dax
+Report Total Control = [Total Amount]
+Report Total Plus One = [Report Total Control] + 1
+```
+
+Cards returned 1,250 and 1,251. The report was saved as PBIP and its live-connected baseline was retained
+outside the repository. Desktop then used **Make changes to this model → Add a local model**. Both
+calculations remained valid, both Cards retained their values, and TMDL view became available for the new
+local/composite semantic model. [reported manual observation]
+
+The persisted local-model TMDL showed that Desktop had migrated the valid report measures into ordinary
+local model measures:
+
+```tmdl
+measure 'Report Total Control' =
+    [Total Amount]
+
+measure 'Report Total Plus One' =
+    [Report Total Control] + 1
+```
+
+The source measure was represented as an external-measure proxy equivalent to:
+
+```tmdl
+measure 'Total Amount' = EXTERNALMEASURE(
+    "Total Amount",
+    INTEGER,
+    "DirectQuery to AS - desktop-udf-references"
+)
+```
+
+The remote Sales table was DirectQuery to the published semantic model. Model Explorer showed the three
+measures above; Functions showed zero, so the source-model `Doubled` UDF was not surfaced into the local
+semantic model. After save, full close and reopen, the Cards still returned 1,250 and 1,251 and both
+former report measures remained local TMDL measures. [reported manual observation; persisted TMDL shape
+inspected from the external Desktop project]
+
+This does not establish that every Desktop version or architecture makes the same transition. It does
+establish the narrower result needed here: the tested Desktop path from a live-connected report to **Add a
+local model** migrates valid report measures into the local semantic-model definition rather than retaining
+them as `reportExtensions.json` measures alongside a trustworthy local model. [verified from the
+Desktop-authored project]
+
 ## Result
 
 PBI Assure already captures a report-level measure's complete DAX `Expression` from
@@ -56,10 +106,12 @@ valid control is written as `expression: "[Total Amount]"` with one
 `references.measures` entry naming `Sales[Total Amount]`. `Doubled` appears nowhere else in the report.
 [verified by Power BI Desktop-authored evidence]
 
-No production implementation is now justified. The real report is `byConnection`, carries no source
-model definition, and cannot be bound by PBI Assure's offline scanner. More importantly, the only UDF
-expression in the evidence was rejected by Desktop; parsing its persisted text into a dependency would
-promote an invalid authored expression into a confident graph edge.
+No production implementation is now justified. The real live-connected report is `byConnection`, carries
+no source-model definition, and cannot be bound by PBI Assure's offline scanner. More importantly, the
+only UDF expression in that report was rejected by Desktop; parsing its persisted text into a dependency
+would promote an invalid authored expression into a confident graph edge. The tested conversion route does
+not supply the missing mixed state: valid report measures become ordinary local model measures, which
+already follow the existing model-DAX analysis path.
 
 ## Current code path
 
@@ -78,7 +130,7 @@ promote an invalid authored expression into a confident graph edge.
 7. **It never reads `measure.Expression`.** A direct UDF call, table/column reference, or any other
    expression-only dependency therefore creates no edge.
 
-## Previously plausible implementation path — now parked
+## Previously plausible implementation path — parked
 
 The code could technically analyse an expression for a report already bound to a local model:
 
@@ -92,8 +144,9 @@ The code could technically analyse an expression for a report already bound to a
 That path is not a truthful product capability for the evidence observed. Desktop created report measures
 only in the live-connected report; the scanner has no local model there. The valid direct model-measure
 reference is already represented structurally, while the expression-only UDF call is an invalid measure
-Desktop preserved after rejecting it. Synthetic local traversal would prove only that code can join two
-hand-arranged inputs, not that PBI Assure supports a real PBIP state.
+Desktop preserved after rejecting it. The later **Add a local model** experiment moved the valid measures
+into the semantic model instead of retaining them as report measures. Synthetic local traversal would prove
+only that code can join two hand-arranged inputs, not that PBI Assure supports a real PBIP state.
 
 No new DAX parser, UDF resolver, graph traversal, usage state or confidence state is indicated.
 
@@ -204,17 +257,23 @@ semantic-model identifier (the `initial catalog` and `semanticmodelid` values ar
 authentication secrets, but they are persistent organization/service metadata. `.pbi/localSettings.json`
 also contains the usual machine-specific encrypted `securityBindingsSignature`.
 
-The raw project is therefore retained as external evidence and is **not committed**. Removing only the
-standard `.pbi` file would still expose the tenant/model identifiers; replacing them would make the
-project a sanitised derivative rather than untouched Desktop evidence. A partial collection of the safe
-JSON files would not be a valid PBIP fixture and adds no executable test value while the feature is
-parked.
+The raw live-connected baseline and converted composite projects are therefore retained as external
+evidence and are **not committed**. Removing only standard `.pbi` files would still expose tenant/model
+identifiers; replacing them would make the projects sanitised derivatives rather than untouched Desktop
+evidence. A partial collection of safe-looking JSON/TMDL files would not be a valid PBIP fixture and adds
+no executable test value while this feature remains parked.
 
 ## Recommendation
 
-Do not implement report-level measure → UDF traversal for the current offline scanner. Reconsider it only
-if PBI Assure gains trustworthy access to the source model metadata for `byConnection` reports, or a
-future Desktop-authored local `byPath` fixture proves a valid report-measure state.
+Do not implement report-level measure expression parsing or report-measure → UDF traversal for the current
+offline scanner. Structured `references.measures` remains the trusted evidence for genuine live-connected
+report measures. Do not treat arbitrary persisted expression text as model dependencies without a
+trustworthy bound source model. When Desktop converts the report to a local/composite model, valid
+calculations become ordinary model measures and already follow the existing model-DAX path.
+
+`EXTERNALMEASURE` is now a Desktop-authored observation of a remote measure proxy in that local composite
+model. It is not implemented, is not a product defect, and has no inferred semantics beyond this evidence.
+Keep it as a future evidence item rather than expanding this parked report-measure slice.
 
 General report-measure expression parsing is also not currently worth implementing. The valid dependency
 observed here is already represented by `references.measures`; expression parsing adds no truthful

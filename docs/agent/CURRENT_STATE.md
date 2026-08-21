@@ -66,8 +66,8 @@ required independently of Auto Date/Time. Custom polling M is retained without g
 
 The JSON inventory is additively versioned at `0.24`; CSV and Findings are unchanged. No folding,
 refresh-health, Service partition or real-time default is inferred. See
-[the evidence review](../reviews/incremental-refresh-policy-evidence-2026-08-21.md). The next recommended
-task is the bounded structured `USERELATIONSHIP` call extractor already scoped by its evidence review.
+[the evidence review](../reviews/incremental-refresh-policy-evidence-2026-08-21.md). The bounded
+`USERELATIONSHIP` extractor is now complete.
 
 ## Inactive relationship / USERELATIONSHIP evidence
 
@@ -84,7 +84,7 @@ relationships therefore show **Activated by report-used DAX**, **Referenced only
 **No USERELATIONSHIP call found in analysed DAX**; active relationships remain visually normal. The
 metadata is additive in JSON schema `0.25`; CSV, Findings and semantic usage states are unchanged. See
 [the evidence review](../reviews/userelationship-inactive-relationship-evidence-2026-08-21.md). The next
-recommended task is the report-level measure DAX dependency gap.
+report-level measure DAX dependency gap is now evidence-closed and remains parked.
 
 ## Bookmark semantic-usage evidence
 
@@ -319,7 +319,7 @@ unanalysed files are the always-present three — verified against three Desktop
 |---|---|
 | Whether `dataSources.tmdl` is ever emitted by current Desktop | Not observed in any fixture [verified]. Impact left `DependencyEffectUnknown`; costs nothing while absent |
 | Whether a *translated* culture file names model objects, and whether Q&A synonyms constitute usage | **Open.** Needs a Desktop fixture containing translations and synonyms |
-| **Where a UDF is called from outside the model definition** | **Report-measure path investigated and parked.** In Desktop 2.157.879.0 a live-connected report exposed no source UDFs and rejected `Doubled()` [reported manual observation], although the rejected expression persisted in `reportExtensions.json` with no references or unrecognised marker [verified in Desktop-authored bytes]. The valid `[Total Amount]` control had a structured measure reference. The report is `byConnection`, contains no source model, and cannot truthfully support offline UDF resolution. Do not implement synthetic traversal; reconsider only with source-model metadata or a valid Desktop-authored local shape. Visual calculations remain unread. See [the evidence review](../reviews/report-level-measure-udf-fixture-design.md). |
+| **Where a UDF is called from outside the model definition** | **Report-measure path evidence-closed and parked.** In Desktop 2.157.879.0 a live-connected report exposed no source UDFs and rejected `Doubled()` [reported manual observation], although the rejected expression persisted in `reportExtensions.json` with no references or unrecognised marker [verified in Desktop-authored bytes]. The valid `[Total Amount]` control had a structured measure reference. In the later tested **Add a local model** transition, valid report measures migrated into ordinary local TMDL measures rather than remaining report-owned alongside a local model; the remote measure appeared as `EXTERNALMEASURE`. Do not implement synthetic traversal or expression parsing without trustworthy bound source metadata. Visual calculations remain unread. See [the evidence review](../reviews/report-level-measure-udf-fixture-design.md). |
 | Whether a UDF name can be namespaced with dots | Not observed. `DaxReferenceExtractor` does not treat `.` as an identifier character, so a dotted name would not tokenise as one identifier |
 | Multi-parameter UDFs, other parameter type hints, `VAR`/`RETURN` or multi-line bodies | Not observed. Every function in `desktop-udf-references` is one line, and only one takes a parameter at all |
 | Perspective `includeAll`, `perspectiveHierarchy` and perspective sets in real Desktop output | Implemented from Microsoft-documented syntax for the first two; no fixture emits any of them |

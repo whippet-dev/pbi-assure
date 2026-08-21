@@ -198,10 +198,10 @@ The product backlog was freshly re-ranked on 2026-08-20 after the schema, naviga
 evidence work. The decision and the scored top five are in
 [the product-value re-rank](../reviews/product-value-rerank-2026-08-20.md).
 
-**Next recommended task: investigate the report-level measure DAX dependency gap.** Report-level measure
-expressions may call DAX UDFs, but their authored expressions do not yet enter the same dependency path as
-ordinary model measures. Start from the documented Desktop evidence process; do not infer remote-model
-dependencies from report metadata alone.
+**Next recommended task: explain role/perspective structural usage.** This is the remaining small,
+fixture-backed presentation improvement: existing structural classifications are correct, but their
+user-facing “Why” text does not yet name the role filter or perspective that requires the object. Keep it
+presentation-only; do not alter usage states, reachability or confidence.
 
 Bookmark-only graph edges also remain parked: paired Desktop fixtures prove that stale/inert bookmark
 snapshots can retain field references after the live carrier is removed, and effective carriers were already
@@ -211,7 +211,9 @@ found through normal live metadata. See
 The existing role/perspective
 "Why" presentation gap remains a safe small task between evidence slices, but is not higher product value.
 
-Connector expansion and report-level-measure → UDF traversal remain parked on the evidence already recorded;
+Connector expansion and report-level-measure → UDF traversal remain parked on the evidence already recorded.
+The tested **Add a local model** path migrated valid report measures into local model measures rather than
+preserving a local/report-measure mixed state; `EXTERNALMEASURE` is retained only as future evidence.
 `PBI-ACCESS-001` remains unchanged pending independently authored intent evidence. Visual-calculation parsing
 is not a current top-five task.
 
@@ -243,9 +245,10 @@ blocking rather than merely sequenced:
 ## Missing evidence
 
 - Role-security forms beyond the committed Desktop fixtures — cross-table filters, other OLS permission shapes
-- A Desktop-authored local/bound report-measure shape, or trustworthy source-model metadata for a
-  `byConnection` report. The observed live-connect UDF expression was rejected and is not a valid
-  dependency fixture. See [the evidence review](../reviews/report-level-measure-udf-fixture-design.md).
+- Trustworthy source-model metadata for a `byConnection` report, or a separately observed Desktop state
+  that genuinely retains valid report measures alongside a bound local model. The tested **Add a local
+  model** transition did not do so: it migrated valid measures into local TMDL measures. See
+  [the evidence review](../reviews/report-level-measure-udf-fixture-design.md).
 - Whether a *translated* culture file names model objects, and whether Q&A synonyms constitute usage
 - Whether `dataSources.tmdl` is ever emitted by current Desktop
 - Independently authored, author-labelled `PBI-ACCESS-001` examples, particularly decorative shapes,
