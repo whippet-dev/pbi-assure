@@ -23,6 +23,11 @@ the existing graph/reachability evidence: role-filter targets say which persiste
 them, and perspective targets say which perspective includes them. This is presentation-only; it does
 not change classification, reachability, confidence, Findings, CSV or the inventory schema.
 
+The current evidence-led backlog is re-ranked in
+[product-value-rerank-2026-08-21.md](../reviews/product-value-rerank-2026-08-21.md). The selected next
+step is a Desktop-authored investigation of whether current Power BI Desktop still emits a TMSL
+`model.bim` semantic-model project; it is not parser implementation.
+
 ## Verified at the current product state
 
 - `dotnet build PbiAssure.slnx` — **succeeded, 0 warnings, 0 errors** [verified]. `TreatWarningsAsErrors`

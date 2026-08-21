@@ -207,9 +207,12 @@ snapshots can retain field references after the live carrier is removed, and eff
 found through normal live metadata. See
 [the bookmark evidence review](../reviews/bookmark-semantic-usage-evidence-2026-08-21.md).
 
-**Next recommended task: re-rank the evidence-led backlog before selecting another implementation
-slice.** The remaining headline candidates either need new Desktop evidence or are deliberately parked;
-do not begin one opportunistically from this handover.
+**Next recommended task: investigate TMSL `model.bim` input coverage with a current
+Desktop-authored experiment.** The current scanner recognises this whole-model alternative but does not
+parse it, so first determine whether ordinary current Desktop workflows still emit it and whether it is a
+material user path. This is evidence/fixture work only; do not implement a TMSL parser from the format
+name or a hand-authored file. See the
+[2026-08-21 re-rank](../reviews/product-value-rerank-2026-08-21.md).
 
 Connector expansion and report-level-measure → UDF traversal remain parked on the evidence already recorded.
 The tested **Add a local model** path migrated valid report measures into local model measures rather than
