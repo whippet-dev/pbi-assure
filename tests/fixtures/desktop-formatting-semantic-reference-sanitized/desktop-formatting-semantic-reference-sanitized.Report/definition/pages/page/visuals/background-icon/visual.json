@@ -1,0 +1,31 @@
+{
+  "name": "background-icon",
+  "visual": {
+    "visualType": "tableEx",
+    "objects": {
+      "values": [{
+        "properties": {
+          "icon": {
+            "value": { "expr": { "Conditional": { "Cases": [{
+              "Condition": { "Comparison": {
+                "Left": { "Measure": { "Expression": { "SourceRef": { "Entity": "EvidenceData" } }, "Property": "Conditional Icon Only" } },
+                "Right": { "Literal": { "Value": "0D" } }
+              } },
+              "Value": { "Literal": { "Value": "'CircleGreenBlackBackgroundPatternFill'" } }
+            }] } } }
+          }
+        }
+      }]
+    },
+    "visualContainerObjects": {
+      "background": [{
+        "properties": {
+          "color": { "solid": { "color": { "expr": { "Measure": {
+            "Expression": { "SourceRef": { "Entity": "EvidenceData" } },
+            "Property": "Background Colour Only"
+          } } } } }
+        }
+      }]
+    }
+  }
+}

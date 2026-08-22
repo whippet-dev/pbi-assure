@@ -1,0 +1,25 @@
+{
+  "name": "title-colour", "visual": {
+    "visualType": "clusteredColumnChart",
+    "objects": {
+      "dataPoint": [
+        { "properties": {
+          "fill": { "solid": { "color": { "expr": { "Measure": {
+            "Expression": { "SourceRef": { "Entity": "EvidenceData" } },
+            "Property": "Conditional Colour Only"
+          } } } } }
+        } }
+      ]
+    },
+    "visualContainerObjects": {
+      "title": [
+        { "properties": {
+          "text": { "expr": { "Measure": {
+            "Expression": { "SourceRef": { "Entity": "EvidenceData" } },
+            "Property": "Dynamic Title Only"
+          } } }
+        } }
+      ]
+    }
+  }
+}

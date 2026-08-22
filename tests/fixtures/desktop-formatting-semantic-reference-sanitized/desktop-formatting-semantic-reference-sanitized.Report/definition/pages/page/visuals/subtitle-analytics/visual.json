@@ -1,0 +1,21 @@
+{
+  "name": "subtitle-analytics", "visual": {
+    "visualType": "lineChart",
+    "objects": {
+      "y1AxisReferenceLine": [{ "properties": { "value": { "expr": { "Measure": {
+        "Expression": { "SourceRef": { "Entity": "EvidenceData" } }, "Property": "Reference Line Only"
+      } } } } }],
+      "error": [{ "properties": { "errorRange": { "explicit": {
+        "lowerBound": { "expr": { "Measure": {
+          "Expression": { "SourceRef": { "Entity": "EvidenceData" } }, "Property": "Error Bar Lower Only"
+        } } },
+        "upperBound": { "expr": { "Measure": {
+          "Expression": { "SourceRef": { "Entity": "EvidenceData" } }, "Property": "Error Bar Upper Only"
+        } } }
+      } } } }]
+    },
+    "visualContainerObjects": { "subTitle": [{ "properties": { "text": { "expr": { "Measure": {
+      "Expression": { "SourceRef": { "Entity": "EvidenceData" } }, "Property": "Dynamic Subtitle Only"
+    } } } } }] }
+  }
+}

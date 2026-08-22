@@ -1,0 +1,13 @@
+table EvidenceData
+    column Category
+        dataType: string
+
+    measure 'Dynamic Title Only' = "DYNAMIC TITLE REFERENCE"
+    measure 'Dynamic Subtitle Only' = "DYNAMIC SUBTITLE REFERENCE"
+    measure 'Conditional Colour Only' = "#E6007E"
+    measure 'Background Colour Only' = "#FFF2CC"
+    measure 'Reference Line Only' = 25
+    measure 'Error Bar Upper Only' = 35
+    measure 'Error Bar Lower Only' = 15
+    measure 'Conditional Icon Only' = 1
+    measure 'Unused Measure Control' = 999

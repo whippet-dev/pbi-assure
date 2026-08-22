@@ -34,6 +34,11 @@ The mobile semantic-reference slice is now complete: mobile-only formatting expr
 ordinary direct semantic usage, while layout-only state remains outside the product surface. See
 [the evidence review](mobile-semantic-reference-desktop-evidence-2026-08-22.md).
 
+The desktop formatting semantic-reference audit is evidence-banked with no implementation required:
+the existing generic PBIR extractor already covers the tested title, subtitle, conditional-colour,
+background, analytics and conditional-icon shapes. See
+[the evidence review](desktop-formatting-semantic-reference-evidence-2026-08-22.md).
+
 The previous ranking is substantially complete: OLS, incremental refresh, inactive-relationship
 activation, the role/perspective explanation and the relevant schema work are now delivered. Bookmark
 semantic usage and report-level-measure expression parsing were investigated and deliberately parked.

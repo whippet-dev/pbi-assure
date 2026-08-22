@@ -32,6 +32,14 @@ same visual's normal direct-usage path. Position-only mobile state has no effect
 presentation inventory, JSON schema change, CSV change or Finding was added. See
 [the evidence review](../reviews/mobile-semantic-reference-desktop-evidence-2026-08-22.md).
 
+## Desktop formatting semantic references
+
+The Desktop-authored formatting/analytics evidence fixture confirms that dynamic title/subtitle,
+conditional colours/background, reference lines, error-bar bounds and rule-based icons all already use
+the generic PBIR extraction path correctly. The sanitised regression fixture pins eight `DirectlyUsed`
+measures and one unused control; no implementation change was needed. See
+[the evidence review](../reviews/desktop-formatting-semantic-reference-evidence-2026-08-22.md).
+
 ## Verified at the current product state
 
 - `dotnet build PbiAssure.slnx` — **succeeded, 0 warnings, 0 errors** [verified]. `TreatWarningsAsErrors`

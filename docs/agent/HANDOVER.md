@@ -225,6 +225,11 @@ outside the product surface: there is no mobile inventory, output, CSV or Findin
 [the evidence review](../reviews/mobile-semantic-reference-desktop-evidence-2026-08-22.md). Do not begin
 the next backlog candidate without new evidence.
 
+**Desktop formatting semantic-reference audit is evidence-banked.** Dynamic titles/subtitles, conditional
+colours/background, analytics lines/error bars and rule-based icons already flow through existing PBIR
+field-reference extraction. The sanitised fixture and review confirm no implementation is required; do
+not reopen these tested shapes without a new persisted expression form.
+
 Connector expansion and report-level-measure → UDF traversal remain parked on the evidence already recorded.
 The tested **Add a local model** path migrated valid report measures into local model measures rather than
 preserving a local/report-measure mixed state; `EXTERNALMEASURE` is retained only as future evidence.
