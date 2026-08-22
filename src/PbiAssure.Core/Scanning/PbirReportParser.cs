@@ -437,7 +437,25 @@ internal static class PbirReportParser
                     Position: parsedPosition));
         }
 
-        return new ParsedContainer(ParseVisual(visualRoot, visualPath, name, schemaUri, parentGroupName, parsedPosition, theme), null);
+        var mobilePath = ProjectFilePaths.Combine(ProjectFilePaths.GetDirectoryName(visualPath), "mobile.json");
+        VisualFieldReference[] mobileReferences = [];
+        if (source.FileExists(mobilePath))
+        {
+            using var mobileDocument = OpenJsonDocument(source, mobilePath);
+            schemaObservations.Add(PbirSchemaObservationFactory.Create(
+                ReportSchemaArtifactKinds.VisualContainerMobileState, mobilePath, mobileDocument.RootElement));
+            mobileReferences = PbirFieldReferenceExtractor.Extract(mobileDocument.RootElement);
+        }
+
+        return new ParsedContainer(ParseVisual(
+            visualRoot,
+            visualPath,
+            name,
+            schemaUri,
+            parentGroupName,
+            parsedPosition,
+            theme,
+            mobileReferences), null);
     }
 
     private static VisualInventory ParseVisual(
@@ -447,15 +465,18 @@ internal static class PbirReportParser
         string? schemaUri,
         string? parentGroupName,
         VisualPosition position,
-        ThemeInventory theme)
+        ThemeInventory theme,
+        IReadOnlyList<VisualFieldReference> mobileReferences)
     {
         var visualType = TryGetObject(visualRoot, "visual", out var visualElement)
             ? GetString(visualElement, "visualType")
             : null;
         var onCanvasText = PbirVisualTextParser.Parse(visualElement);
-        var referenceClassification = PbirVisualReferenceClassifier.Classify(
-            visualRoot,
-            PbirFieldReferenceExtractor.Extract(visualRoot));
+        var references = PbirFieldReferenceExtractor.Extract(visualRoot)
+            .Concat(mobileReferences)
+            .Distinct()
+            .ToArray();
+        var referenceClassification = PbirVisualReferenceClassifier.Classify(visualRoot, references);
         var persistedFormatting = ThemeFormattingComparisonAnalyzer.Apply(
             visualType,
             PbirVisualFormattingParser.Parse(visualRoot, referenceClassification.Selectors),

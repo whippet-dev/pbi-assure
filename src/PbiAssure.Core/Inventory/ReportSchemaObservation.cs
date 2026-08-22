@@ -28,6 +28,8 @@ public static class ReportSchemaArtifactKinds
 
     public const string VisualContainer = "VisualContainer";
 
+    public const string VisualContainerMobileState = "VisualContainerMobileState";
+
     public const string BookmarksMetadata = "BookmarksMetadata";
 
     public const string Bookmark = "Bookmark";

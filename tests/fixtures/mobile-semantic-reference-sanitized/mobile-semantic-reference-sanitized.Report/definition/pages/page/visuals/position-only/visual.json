@@ -1,0 +1,6 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/visualContainer/2.12.0/schema.json",
+  "name": "position-only",
+  "position": { "x": 210, "y": 0, "z": 0, "width": 200, "height": 100 },
+  "visual": { "visualType": "card" }
+}

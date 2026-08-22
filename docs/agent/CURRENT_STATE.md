@@ -23,6 +23,15 @@ The current evidence-led backlog is re-ranked in
 `alternateOf` aggregation mappings are now fixture-backed structural dependencies. The next evidence-led
 candidate is mobile-layout assurance scope; aggregation metadata is not runtime-performance evidence.
 
+## Mobile semantic references
+
+Desktop can persist a mobile-only formatting expression in a visual's sibling `mobile.json`. PBI Assure
+now passes that root through the existing field-reference extractor and merges its references into the
+same visual's normal direct-usage path. Position-only mobile state has no effect. The exact observed
+`visualContainerMobileState/2.7.0` declaration is recorded as a verified schema observation; no mobile
+presentation inventory, JSON schema change, CSV change or Finding was added. See
+[the evidence review](../reviews/mobile-semantic-reference-desktop-evidence-2026-08-22.md).
+
 ## Verified at the current product state
 
 - `dotnet build PbiAssure.slnx` — **succeeded, 0 warnings, 0 errors** [verified]. `TreatWarningsAsErrors`

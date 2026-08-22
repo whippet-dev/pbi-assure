@@ -121,6 +121,101 @@ public sealed class VisualReferenceClassificationTests
     }
 
     [Fact]
+    public void MobileOnlyFormattingMeasureIsDirectlyUsedWithoutChangingVisualPresentationInventory()
+    {
+        var inventory = ScanModel(
+            """
+            table MobileEvidence
+                column Category
+                    dataType: string
+                measure 'Mobile Only Title' = COUNT(MobileEvidence[Category])
+                measure 'Unused Measure Control' = 1
+            """,
+            """
+            { "name": "visual", "visual": { "visualType": "card" } }
+            """,
+            File("Report.Report/definition/pages/page/visuals/visual/mobile.json", MobileTitleReference()));
+
+        var visual = Visual(inventory);
+        var mobileTitle = Usage(inventory, "Mobile Only Title", "MobileEvidence");
+        var unusedControl = Usage(inventory, "Unused Measure Control", "MobileEvidence");
+
+        Assert.Equal(SemanticUsageStates.DirectlyUsed, mobileTitle.UsageState);
+        Assert.Equal(SemanticUsageStates.ApparentlyUnused, unusedControl.UsageState);
+        var reference = Assert.Single(visual.FieldReferences);
+        Assert.Equal(UsageContexts.Formatting, reference.UsageContext);
+        Assert.Equal(VisualReferenceOrigins.FormattingPropertyExpression, reference.ReferenceOrigin);
+        Assert.Equal(VisualReferenceRelevance.Active, reference.ReferenceRelevance);
+        Assert.Equal(1, visual.FieldReferenceCount);
+        Assert.Null(visual.Position.X);
+        Assert.Contains(Assert.Single(inventory.Reports).SchemaObservations, observation =>
+            observation.ArtifactKind == ReportSchemaArtifactKinds.VisualContainerMobileState &&
+            observation.State == ReportSchemaObservationStates.VerifiedExact);
+    }
+
+    [Fact]
+    public void PositionOnlyMobileStateCreatesNoSemanticReference()
+    {
+        var inventory = Scan(
+            ["Value"],
+            """
+            { "name": "visual", "visual": { "visualType": "card" } }
+            """,
+            File("Report.Report/definition/pages/page/visuals/visual/mobile.json", """
+            { "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/visualContainerMobileState/2.7.0/schema.json", "position": { "x": 1, "y": 2, "width": 100, "height": 100 } }
+            """));
+
+        Assert.Empty(Visual(inventory).FieldReferences);
+        Assert.Equal(SemanticUsageStates.ApparentlyUnused, Usage(inventory, "Value").UsageState);
+    }
+
+    [Fact]
+    public void EquivalentDesktopAndMobileFormattingReferencesRemainOneSemanticUsageRow()
+    {
+        var inventory = ScanModel(
+            """
+            table MobileEvidence
+                column Category
+                    dataType: string
+                measure 'Mobile Only Title' = COUNT(MobileEvidence[Category])
+            """,
+            """
+            {
+              "name": "visual",
+              "visual": {
+                "visualType": "card",
+                "objects": {
+                  "title": [{
+                    "properties": {
+                      "text": { "expr": { "Measure": {
+                        "Expression": { "SourceRef": { "Entity": "MobileEvidence" } },
+                        "Property": "Mobile Only Title"
+                      } } }
+                    }
+                  }]
+                }
+              }
+            }
+            """,
+            File("Report.Report/definition/pages/page/visuals/visual/mobile.json", MobileTitleReference()));
+
+        Assert.Equal(SemanticUsageStates.DirectlyUsed, Usage(inventory, "Mobile Only Title", "MobileEvidence").UsageState);
+        Assert.Single(inventory.SemanticObjectUsages, usage => usage.Table == "MobileEvidence" && usage.ObjectName == "Mobile Only Title");
+    }
+
+    [Fact]
+    public void SanitisedMobileSemanticReferenceFixturePinsTheUsageBoundary()
+    {
+        var inventory = ProjectScanner.Scan(Path.Combine(
+            RepositoryRoot(), "tests", "fixtures", "mobile-semantic-reference-sanitized"));
+
+        Assert.Equal(SemanticUsageStates.DirectlyUsed, Usage(inventory, "Mobile Only Title", "MobileEvidence").UsageState);
+        Assert.Equal(SemanticUsageStates.ApparentlyUnused, Usage(inventory, "Unused Measure Control", "MobileEvidence").UsageState);
+        Assert.Equal(1, Assert.Single(Assert.Single(Assert.Single(inventory.Reports).Pages).Visuals,
+            visual => visual.Name == "mobile-title").FieldReferenceCount);
+    }
+
+    [Fact]
     public void ActiveEvidenceWinsOverPersistedSelectorForResolvedCategory()
     {
         var inventory = Scan(["Date", "Value", "Category"], ActiveAndStaleCategoryVisual());
@@ -385,11 +480,11 @@ public sealed class VisualReferenceClassificationTests
         Assert.DoesNotContain("MatchedProjectionQueryRef", json, StringComparison.Ordinal);
     }
 
-    private static ProjectInventory Scan(string[] modelColumns, string visualJson)
+    private static ProjectInventory Scan(string[] modelColumns, string visualJson, params ProjectFileContent[] additionalFiles)
     {
         var columns = string.Join(Environment.NewLine, modelColumns.Select(column =>
             $"    column {column}\n        dataType: string"));
-        return ScanModel($"table TestData\n{columns}\n", visualJson);
+        return ScanModel($"table TestData\n{columns}\n", visualJson, additionalFiles);
     }
 
     private static ProjectInventory ScanModel(
@@ -425,6 +520,39 @@ public sealed class VisualReferenceClassificationTests
 
     private static AssuranceFinding[] ModelErrors(ProjectInventory inventory) =>
         inventory.Findings.Where(finding => finding.RuleId == "PBI-MODEL-001").ToArray();
+
+    private static string MobileTitleReference() =>
+        """
+        {
+          "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/visualContainerMobileState/2.7.0/schema.json",
+          "position": { "x": 10, "y": 20, "width": 100, "height": 100 },
+          "visualContainerObjects": {
+            "title": [{
+              "properties": {
+                "text": { "expr": { "Measure": {
+                  "Expression": { "SourceRef": { "Entity": "MobileEvidence" } },
+                  "Property": "Mobile Only Title"
+                } } }
+              }
+            }]
+          }
+        }
+        """;
+
+    private static string RepositoryRoot()
+    {
+        for (var directory = new DirectoryInfo(AppContext.BaseDirectory);
+             directory is not null;
+             directory = directory.Parent)
+        {
+            if (System.IO.File.Exists(Path.Combine(directory.FullName, "PbiAssure.slnx")))
+            {
+                return directory.FullName;
+            }
+        }
+
+        throw new DirectoryNotFoundException("Could not locate the PBI Assure repository root.");
+    }
 
     private static string LiveLineSelectorVisual() =>
         """

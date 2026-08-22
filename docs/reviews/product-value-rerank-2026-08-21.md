@@ -30,7 +30,9 @@ the configured aggregation and detail columns. This protects exact resolved endp
 `ApparentlyUnused` without claiming a runtime aggregation hit, improved performance or Power BI Service
 behaviour. See [the evidence review](aggregation-alternateof-desktop-evidence-2026-08-21.md).
 
-The next evidence-led candidate is **mobile-layout assurance scope**.
+The mobile semantic-reference slice is now complete: mobile-only formatting expressions participate in
+ordinary direct semantic usage, while layout-only state remains outside the product surface. See
+[the evidence review](mobile-semantic-reference-desktop-evidence-2026-08-22.md).
 
 The previous ranking is substantially complete: OLS, incremental refresh, inactive-relationship
 activation, the role/perspective explanation and the relevant schema work are now delivered. Bookmark
@@ -46,7 +48,7 @@ orders discovery work; it is not a promise that every candidate should be implem
 |---:|---|---:|---:|---:|---:|---:|---:|---:|---|
 | 1 | TMSL `model.bim` input coverage | 5 | 5 | 5 | 5 | 5 | 5 | 5 | Complete: safe local input gate |
 | 2 | Aggregation mappings (`alternateOf`) | 4 | 4 | 5 | 5 | 5 | 4 | 5 | Complete: bounded structural mapping support |
-| 3 | Mobile-layout evidence and assurance scope | 4 | 4 | 1 | 3 | 2 | 5 | 3 | **Next:** Desktop fixture/investigation |
+| 3 | Mobile semantic references | 4 | 4 | 5 | 5 | 5 | 5 | 5 | Complete: direct usage only |
 | 4 | KPI and detail-rows DAX dependencies | 3 | 3 | 2 | 5 | 4 | 3 | 5 | Combined Desktop fixture |
 | 5 | Culture/Q&A linguistic metadata boundary | 3 | 2 | 2 | 3 | 3 | 3 | 4 | Desktop fixture |
 | 6 | Visual-calculation dependency evidence | 3 | 3 | 1 | 2 | 1 | 3 | 2 | Keep evidence-bounded |
@@ -96,7 +98,7 @@ or imply query acceleration, refresh performance or Service behaviour from metad
 
 **Approximate size:** delivered. **Action:** complete; do not broaden into aggregation performance analysis.
 
-### 3. Mobile-layout evidence and assurance scope
+### 3. Mobile semantic references — complete
 
 **Problem and user outcome.** PBI Assure's accessibility and layout-facing evidence is based on ordinary
 report pages. A separately persisted mobile layout could mean that the mobile experience has different
@@ -104,16 +106,15 @@ placement, tab order or visual participation that is not represented by the curr
 coverage review has no committed fixture proving the PBIR shape or whether mobile layouts can introduce
 a unique semantic/accessibility outcome. [verified in repository]
 
-**Evidence and treatment.** Use a minimal Desktop-authored page with a deliberately different mobile
-layout, a mobile-only visibility/placement control if Desktop permits one, and an accessibility-relevant
-tab-order control. First determine whether it represents the same visual inventory or independent
-metadata, then decide whether PBI Assure should inventory it, add neutral coverage or make a bounded
-accessibility check.
+**Evidence and treatment.** A Desktop save/close/reopen/save fixture establishes sibling `mobile.json`
+and a mobile-only dynamic title expression. The existing field-reference extractor now reads that
+expression through the normal visual usage path; position-only state is ignored. No mobile-specific
+inventory or assurance surface was introduced.
 
 **Risk.** Do not assume responsive placement itself is an assurance defect, or create a mobile rule
 without a user-impactful persisted condition.
 
-**Approximate size:** investigation small; implementation medium/large. **Action:** create Desktop fixture/investigate.
+**Approximate size:** delivered. **Action:** complete; do not broaden into mobile-layout assurance.
 
 ### 4. KPI and detail-rows DAX dependencies
 

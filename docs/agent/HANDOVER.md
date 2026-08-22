@@ -218,9 +218,12 @@ Aggregation mappings are now complete. A Desktop-authored evidence project estab
 and direct-use precedence. The feature proves deliberate model structure only — not runtime aggregation
 selection, performance or Service behaviour. See [the evidence review](../reviews/aggregation-alternateof-desktop-evidence-2026-08-21.md).
 
-**Next recommended task: mobile-layout assurance scope.** Create a minimal Desktop-authored fixture with
-a deliberately different mobile layout and accessibility-relevant control, then determine whether it is
-separate persisted inventory or only presentation metadata before designing any assurance behaviour.
+**Mobile semantic-reference support is complete.** A sibling `mobile.json` is read only for active
+semantic expressions, which merge into the visual's existing direct-usage evidence. Mobile layout remains
+outside the product surface: there is no mobile inventory, output, CSV or Finding. The exact
+`visualContainerMobileState/2.7.0` schema is fixture-backed; see
+[the evidence review](../reviews/mobile-semantic-reference-desktop-evidence-2026-08-22.md). Do not begin
+the next backlog candidate without new evidence.
 
 Connector expansion and report-level-measure → UDF traversal remain parked on the evidence already recorded.
 The tested **Add a local model** path migrated valid report measures into local model measures rather than

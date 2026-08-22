@@ -23,6 +23,9 @@ internal static class PbirSchemaObservationFactory
             // Both versions below are retained by committed, Desktop-authored PBIP fixtures. Exact
             // evidence is deliberately version-specific; a different version is still unverified.
             [ReportSchemaArtifactKinds.VisualContainer] = new("visualContainer", "2.11.0", "2.12.0"),
+            // The mobile-only title in the Desktop-authored mobile semantic-reference fixture
+            // establishes this exact persisted state schema. Its layout metadata remains inventory-free.
+            [ReportSchemaArtifactKinds.VisualContainerMobileState] = new("visualContainerMobileState", "2.7.0"),
             // Desktop-authored bookmark evidence fixtures establish these exact versions. A different
             // version remains recognised but unverified; no semantic-version compatibility is assumed.
             [ReportSchemaArtifactKinds.BookmarksMetadata] = new("bookmarksMetadata", "1.0.0"),

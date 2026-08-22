@@ -1,0 +1,14 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/visualContainerMobileState/2.7.0/schema.json",
+  "position": { "x": 0, "y": 0, "z": 0, "width": 200, "height": 100 },
+  "visualContainerObjects": {
+    "title": [{
+      "properties": {
+        "text": { "expr": { "Measure": {
+          "Expression": { "SourceRef": { "Entity": "MobileEvidence" } },
+          "Property": "Mobile Only Title"
+        } } }
+      }
+    }]
+  }
+}

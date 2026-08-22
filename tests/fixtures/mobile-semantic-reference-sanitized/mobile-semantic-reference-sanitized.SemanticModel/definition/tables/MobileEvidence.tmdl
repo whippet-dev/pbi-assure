@@ -1,0 +1,7 @@
+table MobileEvidence
+    column Category
+        dataType: string
+
+    measure 'Mobile Only Title' = COUNT(MobileEvidence[Category])
+
+    measure 'Unused Measure Control' = 1
