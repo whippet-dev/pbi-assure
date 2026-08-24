@@ -255,6 +255,12 @@ colours/background, analytics lines/error bars and rule-based icons already flow
 field-reference extraction. The sanitised fixture and review confirm no implementation is required; do
 not reopen these tested shapes without a new persisted expression form.
 
+**KPI and Detail Rows remain evidence-gated.** The parser currently retains neither `kpi` nor
+`detailRowsDefinition`; its existing DAX graph path can support a narrow future implementation. A local
+sample shows a KPI target/status shape but is not isolated or save/reopen provenance, and no Detail Rows
+block was found. Do not manufacture a fixture or change production analysis: create the combined
+Desktop-authored save/reopen fixture specified in [the investigation](../reviews/kpi-detail-rows-semantic-dependency-investigation-2026-08-24.md) first.
+
 Connector expansion and report-level-measure → UDF traversal remain parked on the evidence already recorded.
 The tested **Add a local model** path migrated valid report measures into local model measures rather than
 preserving a local/report-measure mixed state; `EXTERNALMEASURE` is retained only as future evidence.
