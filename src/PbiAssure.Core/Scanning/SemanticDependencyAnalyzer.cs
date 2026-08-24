@@ -522,14 +522,33 @@ internal static class SemanticDependencyAnalyzer
 
         foreach (var measure in table.Measures)
         {
+            var source = Target(table.Name, measure.Name, SemanticObjectTypes.Measure);
             AddDaxDependencies(
                 model,
                 table,
-                Target(table.Name, measure.Name, SemanticObjectTypes.Measure),
+                source,
                 measure.Expression,
                 lookup,
                 dependencies,
                 unresolved);
+
+            foreach (var expression in new[]
+                     {
+                         measure.Kpi?.TargetExpression,
+                         measure.Kpi?.StatusExpression,
+                         measure.Kpi?.TrendExpression,
+                         measure.DetailRowsDefinitionExpression,
+                     }.Where(expression => !string.IsNullOrWhiteSpace(expression)))
+            {
+                AddDaxDependencies(
+                    model,
+                    table,
+                    source,
+                    expression!,
+                    lookup,
+                    dependencies,
+                    unresolved);
+            }
         }
 
         foreach (var hierarchy in table.Hierarchies)

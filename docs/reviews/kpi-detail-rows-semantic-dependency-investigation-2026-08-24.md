@@ -1,7 +1,7 @@
 # KPI and Detail Rows semantic-dependency investigation
 
-**Date:** 2026-08-24 · **Against commit:** `8c55be3` · **Status:** evidence incomplete; no
-production change, fixture or classification contract added.
+**Date:** 2026-08-24 · **Against commit:** `8c55be3` · **Status:** historical investigation. Its
+evidence gap was closed later the same day; see [the Desktop evidence review](kpi-detail-rows-desktop-evidence-2026-08-24.md).
 
 ## Question
 
@@ -87,6 +87,7 @@ and graph extension using existing DAX reachability.
 
 ## Conclusion
 
-The parser gap is confirmed in the repository, and a local sample makes KPI persistence plausible, but
-the necessary Desktop-authored, isolated evidence for classification and for Detail Rows is absent.
-Implementation is **not justified yet**.
+At the investigated commit, implementation was **not justified yet**. The later supplied round-tripped
+Desktop fixture closes that evidence gap for measure-owned KPI and Detail Rows only; its resulting
+implementation and bounded unsupported table-owned form are recorded in
+[the Desktop evidence review](kpi-detail-rows-desktop-evidence-2026-08-24.md).

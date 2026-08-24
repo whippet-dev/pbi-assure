@@ -12,7 +12,7 @@ evidenced · **[design decision]** a choice, not a fact.
 |---|---|
 | Remote | `whippet-dev/pbi-assure` |
 | Branch | `master` (also the default branch) |
-| Last verified product state | This commit — effective visibility in accessibility findings |
+| Last verified product state | This commit — KPI and measure Detail Rows dependencies |
 | Working tree | Expected clean of tracked modifications. Untracked local review documents may be present |
 
 `master` may have moved past that commit for documentation-only changes. Re-verify and update this
@@ -20,8 +20,9 @@ section whenever a commit changes build, test or behaviour — not for every com
 
 The current evidence-led backlog is re-ranked in
 [product-value-rerank-2026-08-21.md](../reviews/product-value-rerank-2026-08-21.md). Explicit TMDL
-`alternateOf` aggregation mappings are now fixture-backed structural dependencies. The next evidence-led
-candidate is mobile-layout assurance scope; aggregation metadata is not runtime-performance evidence.
+`alternateOf` aggregation mappings and measure KPI/Detail Rows expressions are now fixture-backed
+dependencies. Table-owned Detail Rows remains evidence-gated; aggregation metadata is not
+runtime-performance evidence.
 
 ## Mobile semantic references
 
@@ -39,6 +40,20 @@ conditional colours/background, reference lines, error-bar bounds and rule-based
 the generic PBIR extraction path correctly. The sanitised regression fixture pins eight `DirectlyUsed`
 measures and one unused control; no implementation change was needed. See
 [the evidence review](../reviews/desktop-formatting-semantic-reference-evidence-2026-08-22.md).
+
+## KPI and measure Detail Rows dependencies
+
+The round-tripped Desktop fixture `desktop-kpi-detailrows-evidence-final` proves measure-owned `kpi`
+`targetExpression`, `statusExpression` and `trendExpression`, plus a measure-owned multiline
+`detailRowsDefinition`. PBI Assure retains those exact expression shapes only in process and sends them
+through the existing DAX dependency path using the owner measure as source [verified by Desktop evidence].
+
+The resulting ordinary `Dax` edges make metadata-only targets **Indirectly used** when the owner is
+report-used; the existing **Why: Referenced by …** path explains them. There is no new usage state,
+structural root, report section, JSON schema or CSV change [design decision]. The parsed expressions are
+`JsonIgnore` implementation data; the existing dependency inventory holds the resolved edge evidence.
+Only measure-owned Detail Rows is supported. Table-owned Detail Rows remains unobserved and unsupported.
+See [the evidence review](../reviews/kpi-detail-rows-desktop-evidence-2026-08-24.md).
 
 ## Effective visibility in accessibility findings
 
@@ -74,8 +89,8 @@ are in-process only, so JSON schema `0.26`, JSON output shape, CSV and the five 
 
 - `dotnet build PbiAssure.slnx` — **succeeded, 0 warnings, 0 errors** [verified]. `TreatWarningsAsErrors`
   is on, so warnings fail the build.
-- Core and privacy validation — **519 core + 2 privacy end-to-end tests passed**, 0 failed [verified].
-  The focused semantic dependency/date-fixture selection passed 84/84.
+- Core and privacy validation — **523 core + 2 privacy end-to-end tests passed**, 0 failed [verified].
+  The focused KPI/Detail Rows, TMDL-expression and semantic-dependency selection passed 30/30.
 - CI (`.github/workflows/ci.yml`) — **green** [verified], confirmed complete (not queued) for the
   pre-feature baseline `0c1af3c`. Runs restore, build, a Playwright Chromium install, then the whole
   solution test suite on `windows-latest`.
@@ -386,7 +401,7 @@ unanalysed files are the always-present three — verified against three Desktop
 |---|---|
 | Whether `dataSources.tmdl` is ever emitted by current Desktop | Not observed in any fixture [verified]. Impact left `DependencyEffectUnknown`; costs nothing while absent |
 | Whether a *translated* culture file names model objects, and whether Q&A synonyms constitute usage | **Open.** Needs a Desktop fixture containing translations and synonyms |
-| Whether KPI and Detail Rows metadata creates model dependencies in current Desktop | **Open.** The parser retains neither block; a local KPI sample exposes target/status syntax but is not isolated or provenance-backed, and no local Detail Rows block was observed. A combined Desktop save/reopen fixture is required before implementation. See [the investigation](../reviews/kpi-detail-rows-semantic-dependency-investigation-2026-08-24.md). |
+| Whether table-owned Detail Rows metadata creates model dependencies in current Desktop | **Open.** The committed Desktop evidence establishes measure-owned `detailRowsDefinition` only. Do not infer or implement a table-owned form without a separately saved/reopened fixture. |
 | **Where a UDF is called from outside the model definition** | **Report-measure path evidence-closed and parked.** In Desktop 2.157.879.0 a live-connected report exposed no source UDFs and rejected `Doubled()` [reported manual observation], although the rejected expression persisted in `reportExtensions.json` with no references or unrecognised marker [verified in Desktop-authored bytes]. The valid `[Total Amount]` control had a structured measure reference. In the later tested **Add a local model** transition, valid report measures migrated into ordinary local TMDL measures rather than remaining report-owned alongside a local model; the remote measure appeared as `EXTERNALMEASURE`. Do not implement synthetic traversal or expression parsing without trustworthy bound source metadata. Visual calculations remain unread. See [the evidence review](../reviews/report-level-measure-udf-fixture-design.md). |
 | Whether a UDF name can be namespaced with dots | Not observed. `DaxReferenceExtractor` does not treat `.` as an identifier character, so a dotted name would not tokenise as one identifier |
 | Multi-parameter UDFs, other parameter type hints, `VAR`/`RETURN` or multi-line bodies | Not observed. Every function in `desktop-udf-references` is one line, and only one takes a parameter at all |

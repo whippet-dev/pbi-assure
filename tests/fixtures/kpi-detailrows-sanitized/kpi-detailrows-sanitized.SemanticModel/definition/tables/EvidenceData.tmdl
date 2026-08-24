@@ -1,0 +1,51 @@
+table EvidenceData
+
+    measure 'KPI Base' = SUM(EvidenceData[Amount])
+        formatString: 0
+
+        kpi
+            targetExpression = 'EvidenceData'[KPI Target Only]
+            statusExpression = 'EvidenceData'[KPI Status Only]
+            trendExpression = 'EvidenceData'[KPI Trend Only]
+
+    measure 'KPI Target Only' = 100
+        formatString: 0
+
+    measure 'KPI Status Only' = 1
+        formatString: 0
+
+    measure 'KPI Trend Only' = -1
+        formatString: 0
+
+    measure 'Detail Rows Base' = SUM(EvidenceData[Amount])
+        formatString: 0
+
+        detailRowsDefinition =
+            SELECTCOLUMNS(
+                EvidenceData,
+                "Detail Rows Only",
+                EvidenceData[Detail Rows Only]
+            )
+
+    measure 'Unused Measure Control' = 999
+        formatString: 0
+
+    column Category
+        dataType: string
+        sourceColumn: Category
+
+    column Amount
+        dataType: int64
+        sourceColumn: Amount
+
+    column 'Detail Rows Only'
+        dataType: string
+        sourceColumn: Detail Rows Only
+
+    column 'Unused Column Control'
+        dataType: string
+        sourceColumn: Unused Column Control
+
+    partition EvidenceData = m
+        mode: import
+        source = #table({}, {})

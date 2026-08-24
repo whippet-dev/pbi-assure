@@ -255,11 +255,12 @@ colours/background, analytics lines/error bars and rule-based icons already flow
 field-reference extraction. The sanitised fixture and review confirm no implementation is required; do
 not reopen these tested shapes without a new persisted expression form.
 
-**KPI and Detail Rows remain evidence-gated.** The parser currently retains neither `kpi` nor
-`detailRowsDefinition`; its existing DAX graph path can support a narrow future implementation. A local
-sample shows a KPI target/status shape but is not isolated or save/reopen provenance, and no Detail Rows
-block was found. Do not manufacture a fixture or change production analysis: create the combined
-Desktop-authored save/reopen fixture specified in [the investigation](../reviews/kpi-detail-rows-semantic-dependency-investigation-2026-08-24.md) first.
+**KPI and measure Detail Rows dependencies are complete.** The round-tripped Desktop fixture establishes
+all three measure KPI expression properties and a measure-owned multiline `detailRowsDefinition`.
+PBI Assure keeps those expressions in process only and feeds their references through the ordinary DAX
+graph path, so metadata-only targets become `IndirectlyUsed` from a report-used owner with the normal
+**Why: Referenced by …** explanation. JSON schema `0.26`, JSON shape, CSV, Findings and the five usage
+states are unchanged. The sanitised fixture and boundary are in [the evidence review](../reviews/kpi-detail-rows-desktop-evidence-2026-08-24.md). Do not add table-owned Detail Rows without new Desktop evidence.
 
 Connector expansion and report-level-measure → UDF traversal remain parked on the evidence already recorded.
 The tested **Add a local model** path migrated valid report measures into local model measures rather than

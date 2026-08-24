@@ -124,7 +124,15 @@ internal static class TmdlSemanticModelParser
                     Name: measureName,
                     Expression: ReadExpression(lines, index, endIndex, measureExpression) ?? string.Empty,
                     FormatString: FindProperty(lines, index, endIndex, "formatString"),
-                    IsHidden: HasFlag(lines, index, endIndex, "isHidden")));
+                    IsHidden: HasFlag(lines, index, endIndex, "isHidden"))
+                {
+                    Kpi = ParseKpi(lines, index, endIndex),
+                    DetailRowsDefinitionExpression = ReadAssignmentExpression(
+                        lines,
+                        index,
+                        endIndex,
+                        "detailRowsDefinition"),
+                });
             }
             else if (TryParseDeclaration(lines[index].Trimmed, "hierarchy", out var hierarchyName, out _))
             {
@@ -222,6 +230,30 @@ internal static class TmdlSemanticModelParser
             return new SemanticAggregationMappingInventory(
                 BaseColumnReference: FindProperty(lines, index, alternateOfEnd, "baseColumn"),
                 Summarization: FindProperty(lines, index, alternateOfEnd, "summarization"));
+        }
+
+        return null;
+    }
+
+    private static SemanticKpiInventory? ParseKpi(
+        IReadOnlyList<TmdlLine> lines,
+        int measureDeclarationIndex,
+        int measureEndIndex)
+    {
+        var kpiIndent = ChildIndent(lines, measureDeclarationIndex, measureEndIndex);
+        for (var index = measureDeclarationIndex + 1; index < measureEndIndex; index++)
+        {
+            if (lines[index].Indent != kpiIndent ||
+                !string.Equals(lines[index].Trimmed, "kpi", StringComparison.OrdinalIgnoreCase))
+            {
+                continue;
+            }
+
+            var kpiEndIndex = FindBlockEnd(lines, index, measureEndIndex);
+            return new SemanticKpiInventory(
+                TargetExpression: ReadAssignmentExpression(lines, index, kpiEndIndex, "targetExpression"),
+                StatusExpression: ReadAssignmentExpression(lines, index, kpiEndIndex, "statusExpression"),
+                TrendExpression: ReadAssignmentExpression(lines, index, kpiEndIndex, "trendExpression"));
         }
 
         return null;

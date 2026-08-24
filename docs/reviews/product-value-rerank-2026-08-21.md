@@ -39,6 +39,11 @@ the existing generic PBIR extractor already covers the tested title, subtitle, c
 background, analytics and conditional-icon shapes. See
 [the evidence review](desktop-formatting-semantic-reference-evidence-2026-08-22.md).
 
+KPI and measure Detail Rows dependency support is now complete. A round-tripped Desktop fixture
+establishes the three measure-KPI expressions and a measure-owned `detailRowsDefinition`; their DAX
+references now use the ordinary graph path, with no new usage state or output contract. See
+[the evidence review](kpi-detail-rows-desktop-evidence-2026-08-24.md).
+
 The previous ranking is substantially complete: OLS, incremental refresh, inactive-relationship
 activation, the role/perspective explanation and the relevant schema work are now delivered. Bookmark
 semantic usage and report-level-measure expression parsing were investigated and deliberately parked.
@@ -54,7 +59,7 @@ orders discovery work; it is not a promise that every candidate should be implem
 | 1 | TMSL `model.bim` input coverage | 5 | 5 | 5 | 5 | 5 | 5 | 5 | Complete: safe local input gate |
 | 2 | Aggregation mappings (`alternateOf`) | 4 | 4 | 5 | 5 | 5 | 4 | 5 | Complete: bounded structural mapping support |
 | 3 | Mobile semantic references | 4 | 4 | 5 | 5 | 5 | 5 | 5 | Complete: direct usage only |
-| 4 | KPI and detail-rows DAX dependencies | 3 | 3 | 2 | 5 | 4 | 3 | 5 | Combined Desktop fixture |
+| 4 | KPI and measure Detail Rows DAX dependencies | 3 | 3 | 5 | 5 | 4 | 3 | 5 | Complete: bounded measure metadata support |
 | 5 | Culture/Q&A linguistic metadata boundary | 3 | 2 | 2 | 3 | 3 | 3 | 4 | Desktop fixture |
 | 6 | Visual-calculation dependency evidence | 3 | 3 | 1 | 2 | 1 | 3 | 2 | Keep evidence-bounded |
 | 7 | `EXTERNALMEASURE` consequence check | 2 | 3 | 2 | 3 | 2 | 3 | 3 | Focused investigation |
@@ -121,22 +126,22 @@ without a user-impactful persisted condition.
 
 **Approximate size:** delivered. **Action:** complete; do not broaden into mobile-layout assurance.
 
-### 4. KPI and detail-rows DAX dependencies
+### 4. KPI and measure Detail Rows DAX dependencies — complete
 
-**Problem and user outcome.** A KPI can name target, status and trend expressions; detail rows can name
-DAX used for drill-to-detail. If a referenced object appears nowhere else, it can be classified as
-apparently unused despite explicit model metadata referring to it. The older coverage review identifies
-both as contained DAX-shaped dependency sources. [inferred; not yet Desktop-fixture-backed]
+**Problem and user outcome.** A KPI can name target, status and trend expressions; measure Detail Rows
+can name DAX used for drill-to-detail. If a referenced object appears nowhere else, it can be classified
+as apparently unused despite explicit model metadata referring to it.
 
-**Evidence and treatment.** One deliberately small Desktop model can test both constructs and preserve
-the exact TMDL locations, save/reopen form and a control object used only through each construct. If the
-shape is explicit, reuse the existing DAX extraction and graph paths rather than creating new usage
-semantics.
+**Evidence and treatment.** The retained Desktop fixture establishes all three measure-KPI expression
+properties and a multiline measure-owned `detailRowsDefinition`, including a save/close/reopen cycle and
+successful `DETAILROWS` invocation. The existing DAX extraction and graph paths now retain the exact
+references, without a new usage state. The committed fixture is sanitised and pins the metadata-only
+targets and controls.
 
-**Risk.** Do not combine this with broad model-property parsing. Only persisted expressions that
-unambiguously name model objects should become edges.
+**Risk.** Do not combine this with broad model-property parsing or infer table-owned Detail Rows. Only
+the observed measure-owned expressions become edges.
 
-**Approximate size:** small/medium after evidence. **Action:** create combined Desktop fixture.
+**Approximate size:** delivered. **Action:** complete; do not broaden without new Desktop evidence.
 
 ### 5. Culture/Q&A linguistic metadata boundary
 

@@ -1,0 +1,24 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/visualContainer/2.12.0/schema.json",
+  "name": "detail-rows-base",
+  "position": { "x": 0, "y": 290, "z": 1, "height": 280, "width": 280, "tabOrder": 1 },
+  "visual": {
+    "visualType": "cardVisual",
+    "query": {
+      "queryState": {
+        "Data": {
+          "projections": [
+            {
+              "field": {
+                "Measure": {
+                  "Expression": { "SourceRef": { "Entity": "EvidenceData" } },
+                  "Property": "Detail Rows Base"
+                }
+              }
+            }
+          ]
+        }
+      }
+    }
+  }
+}
