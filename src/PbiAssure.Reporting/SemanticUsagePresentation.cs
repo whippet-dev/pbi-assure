@@ -26,6 +26,12 @@ internal static class SemanticUsagePresentation
         // StructurallyRequired.
         if (usage.UsageState == SemanticUsageStates.StructurallyRequired)
         {
+            if (usage.StructuralRequirementProvenance ==
+                StructuralRequirementProvenances.SystemGeneratedAutoDateTime)
+            {
+                return "Required only by Power BI-generated Auto Date/Time structure";
+            }
+
             var refreshPolicy = incoming.FirstOrDefault(dependency =>
                 dependency.DependencyKind == SemanticDependencyKinds.IncrementalRefreshPolicy);
             if (refreshPolicy is not null)
@@ -33,8 +39,12 @@ internal static class SemanticUsagePresentation
                 return $"Needed by the {refreshPolicy.FromTable} incremental refresh change-detection setting";
             }
 
-            var relationship = incoming.FirstOrDefault(dependency =>
-                dependency.DependencyKind == SemanticDependencyKinds.RelationshipEndpoint);
+            var relationship = incoming
+                .Where(dependency => dependency.DependencyKind == SemanticDependencyKinds.RelationshipEndpoint)
+                .OrderBy(dependency => dependency.StructuralProvenance ==
+                                      StructuralRequirementProvenances.SystemGeneratedAutoDateTime)
+                .ThenBy(dependency => dependency.FromObjectName, StringComparer.OrdinalIgnoreCase)
+                .FirstOrDefault();
             if (relationship is not null)
             {
                 var otherEndpoint = inventory.SemanticDependencies.FirstOrDefault(dependency =>

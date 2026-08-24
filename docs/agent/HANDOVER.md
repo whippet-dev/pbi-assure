@@ -5,6 +5,19 @@ Tactical entry point for an incoming coding agent. Read this first, then
 
 ## What just happened
 
+Auto Date/Time relationship provenance is now distinct without weakening model structure. A relationship
+whose target is an exactly annotated `__PBI_LocalDateTable` retains both endpoint edges and creates a
+system-generated root path. An object reachable only from that path remains `StructurallyRequired`, but
+its HTML explanation says **Required only by Power BI-generated Auto Date/Time structure**. Any ordinary
+relationship or other structural root preserves normal structural presentation. Name-shaped, hidden or
+template-only tables are not sufficient. The marker is internal-only; JSON schema/output shape, CSV and
+the five usage states are unchanged. Model-level Auto Date/Time state, variations and `joinOnDateBehavior`
+remain intentionally out of scope because the target table marker is enough for this bounded distinction.
+
+Validation: the focused semantic dependency/date-fixture selection passed **84/84**, the full Core suite
+passed **519/519**, both privacy end-to-end tests passed, and the Release build completed with 0 warnings
+and 0 errors.
+
 Accessibility findings now follow Power BI Desktop's effective canvas visibility. Desktop 2.157.879.0
 runtime evidence showed that hidden items are filtered, their components are not retained, and descendants
 of a hidden group are likewise unavailable for focus. The shared group hierarchy resolver now combines an

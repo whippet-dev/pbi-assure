@@ -12,6 +12,7 @@ internal static class SemanticDependencyAnalyzer
         var dependencies = new List<SemanticDependencyEdge>();
         var unresolved = new List<UnresolvedSemanticDependency>();
         var structuralRoots = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var systemGeneratedStructuralRoots = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         var reportMeasureNodes = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         var reportMeasureRoots = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         var userRelationshipCalls = new List<UserRelationshipCallCandidate>();
@@ -22,7 +23,14 @@ internal static class SemanticDependencyAnalyzer
 
         foreach (var model in semanticModels)
         {
-            AnalyzeModel(model, initialUsages, dependencies, unresolved, structuralRoots, functionNodes);
+            AnalyzeModel(
+                model,
+                initialUsages,
+                dependencies,
+                unresolved,
+                structuralRoots,
+                systemGeneratedStructuralRoots,
+                functionNodes);
             userRelationshipCalls.AddRange(CollectUserRelationshipCalls(model));
         }
 
@@ -32,7 +40,8 @@ internal static class SemanticDependencyAnalyzer
 
         var distinctDependencies = dependencies.Distinct().ToArray();
         var classifiedUsages = ClassifyObjects(
-            initialUsages, distinctDependencies, structuralRoots, reportMeasureNodes, reportMeasureRoots,
+            initialUsages, distinctDependencies, structuralRoots, systemGeneratedStructuralRoots,
+            reportMeasureNodes, reportMeasureRoots,
             functionNodes, out var reachability);
         var tableUsages = ClassifyTables(
             semanticModels, classifiedUsages, distinctDependencies, structuralRoots,
@@ -141,6 +150,7 @@ internal static class SemanticDependencyAnalyzer
         List<SemanticDependencyEdge> dependencies,
         List<UnresolvedSemanticDependency> unresolved,
         ISet<string> structuralRoots,
+        ISet<string> systemGeneratedStructuralRoots,
         ISet<string> functionNodes)
     {
         var usages = allUsages
@@ -170,6 +180,9 @@ internal static class SemanticDependencyAnalyzer
         foreach (var relationship in model.Relationships)
         {
             var source = Target(string.Empty, relationship.Name, SemanticObjectTypes.Relationship);
+            var structuralProvenance = IsGeneratedAutoDateTimeRelationship(model, relationship)
+                ? StructuralRequirementProvenances.SystemGeneratedAutoDateTime
+                : null;
             AddStructuralEndpoint(
                 model,
                 relationship,
@@ -180,7 +193,9 @@ internal static class SemanticDependencyAnalyzer
                 lookup,
                 dependencies,
                 unresolved,
-                structuralRoots);
+                structuralRoots,
+                systemGeneratedStructuralRoots,
+                structuralProvenance);
             AddStructuralEndpoint(
                 model,
                 relationship,
@@ -191,7 +206,9 @@ internal static class SemanticDependencyAnalyzer
                 lookup,
                 dependencies,
                 unresolved,
-                structuralRoots);
+                structuralRoots,
+                systemGeneratedStructuralRoots,
+                structuralProvenance);
         }
 
         AnalyzeRoles(model, lookup, dependencies, unresolved, structuralRoots);
@@ -1147,7 +1164,9 @@ internal static class SemanticDependencyAnalyzer
         ModelLookup lookup,
         List<SemanticDependencyEdge> dependencies,
         List<UnresolvedSemanticDependency> unresolved,
-        ISet<string> structuralRoots)
+        ISet<string> structuralRoots,
+        ISet<string> systemGeneratedStructuralRoots,
+        string? structuralProvenance)
     {
         if (lookup.TryResolveQualified(
                 table,
@@ -1156,14 +1175,21 @@ internal static class SemanticDependencyAnalyzer
                 out var reason,
                 out var resolutionOutcome))
         {
-            dependencies.Add(CreateEdge(
+            var edge = CreateEdge(
                 model.Name,
                 source,
                 target,
                 SemanticDependencyKinds.RelationshipEndpoint,
                 evidencePath,
-                $"{table}[{column}]"));
+                $"{table}[{column}]");
+            dependencies.Add(structuralProvenance is null
+                ? edge
+                : edge with { StructuralProvenance = structuralProvenance });
             structuralRoots.Add(NodeKey(model.Name, target));
+            if (structuralProvenance is not null)
+            {
+                systemGeneratedStructuralRoots.Add(NodeKey(model.Name, target));
+            }
         }
         else
         {
@@ -1182,6 +1208,7 @@ internal static class SemanticDependencyAnalyzer
         IReadOnlyList<SemanticObjectUsage> usages,
         IReadOnlyList<SemanticDependencyEdge> dependencies,
         IReadOnlySet<string> structuralRoots,
+        IReadOnlySet<string> systemGeneratedStructuralRoots,
         IReadOnlySet<string> reportMeasureNodes,
         IReadOnlySet<string> reportMeasureRoots,
         IReadOnlySet<string> functionNodes,
@@ -1207,6 +1234,10 @@ internal static class SemanticDependencyAnalyzer
         directRoots.UnionWith(reportMeasureRoots);
         var directlyReachable = Traverse(directRoots, adjacency);
         var structurallyReachable = Traverse(structuralRoots, adjacency);
+        var systemGeneratedStructurallyReachable = Traverse(systemGeneratedStructuralRoots, adjacency);
+        var userAuthoredStructurallyReachable = Traverse(
+            UserAuthoredStructuralRoots(structuralRoots, systemGeneratedStructuralRoots, dependencies),
+            adjacency);
         var incomingTargets = dependencies
             .Where(edge => knownNodes.Contains(NodeKey(edge.SemanticModel, Source(edge))))
             .Select(edge => NodeKey(edge.SemanticModel, Target(edge)))
@@ -1229,9 +1260,70 @@ internal static class SemanticDependencyAnalyzer
                             : incomingTargets.Contains(key)
                                 ? SemanticUsageStates.UsedOnlyByUnusedBranch
                                 : SemanticUsageStates.ApparentlyUnused;
-                return usage with { UsageState = state };
+                var structuralProvenance = state == SemanticUsageStates.StructurallyRequired &&
+                                           systemGeneratedStructurallyReachable.Contains(key) &&
+                                           !userAuthoredStructurallyReachable.Contains(key)
+                    ? StructuralRequirementProvenances.SystemGeneratedAutoDateTime
+                    : null;
+                return usage with
+                {
+                    UsageState = state,
+                    StructuralRequirementProvenance = structuralProvenance,
+                };
             })
             .ToArray();
+    }
+
+    private static bool IsGeneratedAutoDateTimeRelationship(
+        SemanticModelInventory model,
+        SemanticRelationshipInventory relationship) =>
+        model.Tables.Any(table =>
+            string.Equals(table.Name, relationship.ToTable, StringComparison.OrdinalIgnoreCase) &&
+            string.Equals(
+                table.SystemGeneratedKind,
+                SystemGeneratedSemanticTableKinds.AutoDateTimeLocalTable,
+                StringComparison.Ordinal));
+
+    private static HashSet<string> UserAuthoredStructuralRoots(
+        IReadOnlySet<string> structuralRoots,
+        IReadOnlySet<string> systemGeneratedStructuralRoots,
+        IReadOnlyList<SemanticDependencyEdge> dependencies)
+    {
+        // A node can be a root for both reasons, so subtracting the system set alone would incorrectly
+        // erase a genuine relationship (or another structural producer) that targets the same object.
+        // Re-add the targets/sources of every existing user-authored root producer from its retained
+        // dependency evidence; field-parameter metadata roots cannot overlap a date-column root.
+        var roots = structuralRoots
+            .Except(systemGeneratedStructuralRoots, StringComparer.OrdinalIgnoreCase)
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+        foreach (var dependency in dependencies)
+        {
+            var isUserAuthoredRoot = dependency.DependencyKind switch
+            {
+                SemanticDependencyKinds.RelationshipEndpoint => dependency.StructuralProvenance !=
+                    StructuralRequirementProvenances.SystemGeneratedAutoDateTime,
+                SemanticDependencyKinds.IncrementalRefreshPolicy or
+                SemanticDependencyKinds.TablePermission or
+                SemanticDependencyKinds.ObjectLevelPermission or
+                SemanticDependencyKinds.PerspectiveMember => true,
+                SemanticDependencyKinds.AggregationMapping => true,
+                SemanticDependencyKinds.FunctionCall => dependency.FromObjectType == SemanticObjectTypes.Role,
+                _ => false,
+            };
+
+            if (!isUserAuthoredRoot)
+            {
+                continue;
+            }
+
+            var root = dependency.DependencyKind == SemanticDependencyKinds.AggregationMapping
+                ? Source(dependency)
+                : Target(dependency);
+            roots.Add(NodeKey(dependency.SemanticModel, root));
+        }
+
+        return roots;
     }
 
     /// <summary>

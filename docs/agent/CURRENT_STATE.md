@@ -56,12 +56,26 @@ items in the same immediate scope, and cautiously explains that an equal-ranked 
 `PBI-ACCESS-003` is unchanged. Group `isHidden` is retained only for this in-process analysis, so JSON
 schema `0.26`, CSV and report rendering are unchanged.
 
+## Auto Date/Time structural provenance
+
+Desktop evidence establishes that `__PBI_LocalDateTable = true` is the reliable marker for a generated
+local date table, and that its relationship endpoints are real model structure with distinct system
+provenance [verified by Desktop evidence]. PBI Assure therefore retains every relationship edge and the
+existing `StructurallyRequired` state. When a relationship's **target** is an exactly marked local date
+table, its roots are additionally tracked as `SystemGeneratedAutoDateTime`; table names, hidden state,
+template markers and model-level Auto Date/Time state are not used for this slice.
+
+An object reached only from those generated roots now shows **Why: Required only by Power BI-generated
+Auto Date/Time structure** [design decision]. Any user-authored relationship or other structural root
+still wins and leaves the normal structural presentation intact. The edge-level and usage-level provenance
+are in-process only, so JSON schema `0.26`, JSON output shape, CSV and the five usage states are unchanged.
+
 ## Verified at the current product state
 
 - `dotnet build PbiAssure.slnx` — **succeeded, 0 warnings, 0 errors** [verified]. `TreatWarningsAsErrors`
   is on, so warnings fail the build.
-- Core and privacy validation — **518 core + 2 privacy end-to-end tests passed**, 0 failed [verified].
-  The focused accessibility/tab-order selection passed 65/65.
+- Core and privacy validation — **519 core + 2 privacy end-to-end tests passed**, 0 failed [verified].
+  The focused semantic dependency/date-fixture selection passed 84/84.
 - CI (`.github/workflows/ci.yml`) — **green** [verified], confirmed complete (not queued) for the
   pre-feature baseline `0c1af3c`. Runs restore, build, a Playwright Chromium install, then the whole
   solution test suite on `windows-latest`.

@@ -120,7 +120,7 @@ public sealed class UsageReasonSelectionTests
     // ---- 3. Structural reasons must not regress ------------------------------------------------
 
     [Fact]
-    public void StructuralReasonsAreStillStructural()
+    public void SystemOnlyAutoDateStructureHasDistinctUserFacingProvenance()
     {
         var inventory = ScanFixture("desktop-semantic-constructs");
         var date = Assert.Single(
@@ -130,8 +130,7 @@ public sealed class UsageReasonSelectionTests
 
         var reason = ReasonForIn(HtmlReportRenderer.Render(inventory), "Sales", "Date");
 
-        Assert.NotNull(reason);
-        Assert.Contains("relationship", reason, StringComparison.OrdinalIgnoreCase);
+        Assert.Equal("Why: Required only by Power BI-generated Auto Date/Time structure", reason);
     }
 
     [Fact]

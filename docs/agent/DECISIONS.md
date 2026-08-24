@@ -381,5 +381,10 @@ Established by [the aggregation mapping evidence review](../reviews/aggregation-
 - Power BI-generated Auto Date/Time tables are identified **only** by the explicit TMDL annotations
   `__PBI_LocalDateTable` or `__PBI_TemplateDateTable`. A hidden table, a matching-looking name or an
   unused object is not evidence. Do not add name-matching fallbacks.
-- Generated artefacts can make an otherwise unused column structurally required — for example a Date
-  column reached through an auto date-table relationship.
+- Generated Auto Date/Time relationships are real model structure, but a relationship whose target is
+  an exactly marked `__PBI_LocalDateTable` has distinct system provenance [verified by Desktop evidence].
+  The dependency edge remains; it must not be removed or treated as nonexistent.
+- System-only structural reachability is not presented identically to user-authored structural
+  reachability [design decision]. Keep the existing five usage states. When no user-authored structural
+  root also reaches an object, explain it as required only by Power BI-generated Auto Date/Time structure;
+  an ordinary relationship or any other user-authored structural root preserves normal presentation.

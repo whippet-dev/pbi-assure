@@ -2213,6 +2213,100 @@ public sealed class ProjectScannerTests : IDisposable
         });
     }
 
+    [Fact]
+    public void ScanDistinguishesSystemGeneratedAutoDateStructureFromUserAuthoredRelationships()
+    {
+        WriteFile("DateProvenance.pbip", "{}");
+        WriteFile(Path.Combine("DateProvenance.SemanticModel", "definition.pbism"), "{}");
+        WriteFile(Path.Combine("DateProvenance.SemanticModel", "definition", "tables", "Fact.tmdl"),
+            """
+            table Fact
+                column AutoOnly
+                    dataType: dateTime
+                column AutoAndUser
+                    dataType: dateTime
+                column OrdinaryKey
+                    dataType: int64
+                column NameOnlyKey
+                    dataType: int64
+            """);
+        WriteFile(Path.Combine("DateProvenance.SemanticModel", "definition", "tables", "LocalDateTable_AutoOnly.tmdl"),
+            """
+            table LocalDateTable_AutoOnly
+                column Date
+                    dataType: dateTime
+                annotation __PBI_LocalDateTable = true
+            """);
+        WriteFile(Path.Combine("DateProvenance.SemanticModel", "definition", "tables", "LocalDateTable_AutoAndUser.tmdl"),
+            """
+            table LocalDateTable_AutoAndUser
+                column Date
+                    dataType: dateTime
+                annotation __PBI_LocalDateTable = true
+            """);
+        WriteFile(Path.Combine("DateProvenance.SemanticModel", "definition", "tables", "LocalDateTable_Impostor.tmdl"),
+            """
+            table LocalDateTable_Impostor
+                column Date
+                    dataType: int64
+            """);
+        WriteFile(Path.Combine("DateProvenance.SemanticModel", "definition", "tables", "Dim.tmdl"),
+            """
+            table Dim
+                column Date
+                    dataType: dateTime
+                column Key
+                    dataType: int64
+            """);
+        WriteFile(Path.Combine("DateProvenance.SemanticModel", "definition", "relationships.tmdl"),
+            """
+            relationship generated-only
+                fromColumn: Fact.AutoOnly
+                toColumn: LocalDateTable_AutoOnly.Date
+
+            relationship generated-plus-user
+                fromColumn: Fact.AutoAndUser
+                toColumn: LocalDateTable_AutoAndUser.Date
+
+            relationship genuine-date
+                fromColumn: Fact.AutoAndUser
+                toColumn: Dim.Date
+
+            relationship ordinary
+                fromColumn: Fact.OrdinaryKey
+                toColumn: Dim.Key
+
+            relationship name-only-impostor
+                fromColumn: Fact.NameOnlyKey
+                toColumn: LocalDateTable_Impostor.Date
+            """);
+
+        var result = ProjectScanner.Scan(testRoot);
+        var model = Assert.Single(result.SemanticModels);
+        SemanticObjectUsage Usage(string column) => Assert.Single(result.SemanticObjectUsages, usage =>
+            usage.Table == "Fact" && usage.ObjectName == column);
+
+        Assert.Equal(
+            StructuralRequirementProvenances.SystemGeneratedAutoDateTime,
+            Usage("AutoOnly").StructuralRequirementProvenance);
+        Assert.Equal(SemanticUsageStates.StructurallyRequired, Usage("AutoOnly").UsageState);
+
+        Assert.Equal(SemanticUsageStates.StructurallyRequired, Usage("AutoAndUser").UsageState);
+        Assert.Null(Usage("AutoAndUser").StructuralRequirementProvenance);
+        Assert.Equal(SemanticUsageStates.StructurallyRequired, Usage("OrdinaryKey").UsageState);
+        Assert.Null(Usage("OrdinaryKey").StructuralRequirementProvenance);
+
+        Assert.All(
+            model.Tables.Where(table => table.Name is "LocalDateTable_AutoOnly" or "LocalDateTable_AutoAndUser"),
+            table => Assert.Equal(SystemGeneratedSemanticTableKinds.AutoDateTimeLocalTable, table.SystemGeneratedKind));
+        Assert.False(model.Tables.Single(table => table.Name == "LocalDateTable_Impostor").IsSystemGenerated);
+        Assert.Equal(SemanticUsageStates.StructurallyRequired, Usage("NameOnlyKey").UsageState);
+        Assert.Null(Usage("NameOnlyKey").StructuralRequirementProvenance);
+        Assert.DoesNotContain(result.SemanticDependencies, edge =>
+            edge.FromObjectName == "name-only-impostor" &&
+            edge.StructuralProvenance == StructuralRequirementProvenances.SystemGeneratedAutoDateTime);
+    }
+
     public void Dispose()
     {
         var allowedRoot = Path.GetFullPath(Path.Combine(Path.GetTempPath(), "PbiAssure.Tests"));

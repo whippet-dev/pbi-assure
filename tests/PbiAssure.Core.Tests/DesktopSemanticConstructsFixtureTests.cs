@@ -1,3 +1,4 @@
+using System.Text.Json;
 using PbiAssure.Core.Inventory;
 using PbiAssure.Core.Scanning;
 
@@ -156,18 +157,28 @@ public sealed class DesktopSemanticConstructsFixtureTests
     }
 
     /// <summary>
-    /// The auto date-table relationship Desktop generated makes the Date column structurally required.
-    /// This pins the established generated-artefact semantics against real Desktop output rather than a
-    /// hand-built model.
+    /// The auto date-table relationship Desktop generated remains a structural dependency, but its
+    /// source-column requirement has system-generated rather than user-authored provenance.
     /// </summary>
     [Fact]
-    public void TheAutoDateTableRelationshipMakesTheSourceDateColumnStructurallyRequired()
+    public void TheAutoDateTableRelationshipRetainsSystemGeneratedStructuralProvenance()
     {
+        var inventory = ScanFixture();
         var usage = Assert.Single(
-            ScanFixture().SemanticObjectUsages,
+            inventory.SemanticObjectUsages,
             u => u.Table == "Sales" && u.ObjectName == "Date");
 
         Assert.Equal(SemanticUsageStates.StructurallyRequired, usage.UsageState);
+        Assert.Equal(
+            StructuralRequirementProvenances.SystemGeneratedAutoDateTime,
+            usage.StructuralRequirementProvenance);
+        Assert.Contains(inventory.SemanticDependencies, edge =>
+            edge.DependencyKind == SemanticDependencyKinds.RelationshipEndpoint &&
+            edge.ToTable == "Sales" && edge.ToObjectName == "Date" &&
+            edge.StructuralProvenance == StructuralRequirementProvenances.SystemGeneratedAutoDateTime);
+        var json = JsonSerializer.Serialize(inventory);
+        Assert.DoesNotContain("\"StructuralRequirementProvenance\"", json, StringComparison.Ordinal);
+        Assert.DoesNotContain("\"StructuralProvenance\"", json, StringComparison.Ordinal);
     }
 
     // ---- Helpers ----------------------------------------------------------------------------
