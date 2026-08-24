@@ -12,7 +12,7 @@ evidenced · **[design decision]** a choice, not a fact.
 |---|---|
 | Remote | `whippet-dev/pbi-assure` |
 | Branch | `master` (also the default branch) |
-| Last verified product state | `b47881424e4b320cefa45161f3a3c72ab39b2fe8` — semantic aggregation mappings |
+| Last verified product state | This commit — effective visibility in accessibility findings |
 | Working tree | Expected clean of tracked modifications. Untracked local review documents may be present |
 
 `master` may have moved past that commit for documentation-only changes. Re-verify and update this
@@ -40,11 +40,28 @@ the generic PBIR extraction path correctly. The sanitised regression fixture pin
 measures and one unused control; no implementation change was needed. See
 [the evidence review](../reviews/desktop-formatting-semantic-reference-evidence-2026-08-22.md).
 
+## Effective visibility in accessibility findings
+
+Power BI Desktop 2.157.879.0 runtime evidence shows that a hidden canvas item is filtered from its shown
+siblings, does not retain a rendered component, and cannot receive focus. The same behavior applies to
+every descendant of a hidden group [verified]. PBI Assure therefore defines an item as effectively visible
+only when the item itself and every resolved ancestor group are not hidden [design decision]. Missing,
+ambiguous or cyclic ancestry remains conservatively ineligible rather than being treated as page-root
+content.
+
+The shared group hierarchy resolver now computes effective visibility for both groups and visuals.
+`PBI-ACCESS-001` 1.1.0 checks missing alt text only for effectively visible visuals in keyboard
+navigation. `PBI-ACCESS-002` 1.2.0 compares explicit non-negative ranks only among effectively visible
+items in the same immediate scope, and cautiously explains that an equal-ranked item may be skipped.
+`PBI-ACCESS-003` is unchanged. Group `isHidden` is retained only for this in-process analysis, so JSON
+schema `0.26`, CSV and report rendering are unchanged.
+
 ## Verified at the current product state
 
 - `dotnet build PbiAssure.slnx` — **succeeded, 0 warnings, 0 errors** [verified]. `TreatWarningsAsErrors`
   is on, so warnings fail the build.
-- `dotnet test PbiAssure.slnx` — **508 core + 2 privacy end-to-end tests passed**, 0 failed [verified].
+- Core and privacy validation — **518 core + 2 privacy end-to-end tests passed**, 0 failed [verified].
+  The focused accessibility/tab-order selection passed 65/65.
 - CI (`.github/workflows/ci.yml`) — **green** [verified], confirmed complete (not queued) for the
   pre-feature baseline `0c1af3c`. Runs restore, build, a Playwright Chromium install, then the whole
   solution test suite on `windows-latest`.

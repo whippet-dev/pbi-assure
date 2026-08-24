@@ -5,11 +5,11 @@ namespace PbiAssure.Core.Assurance;
 internal sealed class MissingAltTextRule : IAssuranceRule
 {
     private const string RuleId = "PBI-ACCESS-001";
-    private const string RuleVersion = "1.0.0";
+    private const string RuleVersion = "1.1.0";
 
     public IEnumerable<AssuranceFinding> Evaluate(ProjectInventory inventory)
     {
-        return VisualRuleContexts.Read(inventory)
+        return VisualRuleContexts.ReadEffectivelyVisible(inventory)
             .Where(context => context.Visual.IsInTabOrder && !context.Visual.Accessibility.HasAltText)
             .Select(context => new AssuranceFinding(
                 RuleId,

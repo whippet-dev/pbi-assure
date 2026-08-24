@@ -43,6 +43,17 @@ public sealed class VisualGroupSupportTests
     }
 
     [Fact]
+    public void ParsesGroupHiddenStateWithoutAddingItToSerializedInventory()
+    {
+        var inventory = Scan(Group("group-a", 0, isHidden: true));
+        var group = Assert.Single(Page(inventory).VisualGroups);
+        var json = JsonSerializer.Serialize(group);
+
+        Assert.True(group.IsHidden);
+        Assert.DoesNotContain("\"IsHidden\"", json, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void GroupsDoNotInflateVisualCounts()
     {
         var inventory = Scan(Group("group-a", 0), Visual("visual-a", 1));
@@ -95,6 +106,18 @@ public sealed class VisualGroupSupportTests
     }
 
     [Fact]
+    public void HiddenAncestorMakesNestedVisualIneffectivelyVisible()
+    {
+        var page = Page(Scan(
+            Group("outer", 0, isHidden: true),
+            Group("inner", 1, parent: "outer"),
+            Visual("child", 2, parent: "inner")));
+
+        Assert.False(VisualGroupHierarchyResolver.Resolve(page).Single(item => item.Name == "inner").IsEffectivelyVisible);
+        Assert.False(VisualGroupHierarchyResolver.Resolve(page).Single(item => item.Name == "child").IsEffectivelyVisible);
+    }
+
+    [Fact]
     public void MissingParentIsInvalidRatherThanRoot()
     {
         var scope = ScopeFor(Scan(Visual("child", 0, parent: "missing")), "child");
@@ -134,9 +157,47 @@ public sealed class VisualGroupSupportTests
     {
         var finding = Assert.Single(TabFindings(Scan(Visual("one", 5), Visual("two", 5))));
 
-        Assert.Equal("1.1.0", finding.RuleVersion);
+        Assert.Equal("1.2.0", finding.RuleVersion);
         Assert.Null(finding.VisualGroup);
         Assert.Contains("page root", finding.Message, StringComparison.Ordinal);
+        Assert.Contains("may be skipped", finding.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void DirectlyHiddenItemsDoNotProduceDuplicateRankFindings()
+    {
+        var inventory = Scan(
+            Group("hidden-group", 5, isHidden: true),
+            Visual("hidden-visual", 5, isHidden: true),
+            Visual("visible-visual", 5));
+
+        Assert.Empty(TabFindings(inventory));
+    }
+
+    [Fact]
+    public void DescendantsOfHiddenGroupDoNotProduceDuplicateRankFindings()
+    {
+        var inventory = Scan(
+            Group("outer", 0, isHidden: true),
+            Group("inner", 1, parent: "outer"),
+            Visual("one", 5, parent: "inner"),
+            Visual("two", 5, parent: "inner"));
+
+        Assert.Empty(TabFindings(inventory));
+    }
+
+    [Fact]
+    public void MissingAltTextOnlyAppliesToEffectivelyVisibleVisuals()
+    {
+        var inventory = Scan(
+            Group("hidden-group", 0, isHidden: true),
+            Visual("hidden-child", 1, parent: "hidden-group"),
+            Visual("directly-hidden", 2, isHidden: true),
+            Visual("visible", 3));
+
+        var finding = Assert.Single(inventory.Findings, item => item.RuleId == "PBI-ACCESS-001");
+        Assert.Equal("1.1.0", finding.RuleVersion);
+        Assert.Equal("visible", finding.Visual);
     }
 
     [Fact]
@@ -394,8 +455,8 @@ public sealed class VisualGroupSupportTests
         throw new DirectoryNotFoundException("Could not locate the PBI Assure repository root.");
     }
 
-    private static ContainerJson Visual(string name, int? tabOrder, string? parent = null) =>
-        Container(name, tabOrder, parent, "\"visual\": { \"visualType\": \"card\" }");
+    private static ContainerJson Visual(string name, int? tabOrder, string? parent = null, bool isHidden = false) =>
+        Container(name, tabOrder, parent, "\"visual\": { \"visualType\": \"card\" }", isHidden: isHidden);
 
     private static ContainerJson UnknownContainer(string name, int? tabOrder, string? parent = null) =>
         Container(name, tabOrder, parent, null);
@@ -409,7 +470,8 @@ public sealed class VisualGroupSupportTests
         double? x = null,
         double? y = null,
         double? width = null,
-        double? height = null)
+        double? height = null,
+        bool isHidden = false)
     {
         var groupProperties = new List<string>();
         if (displayName is not null)
@@ -421,7 +483,7 @@ public sealed class VisualGroupSupportTests
             groupProperties.Add($"\"groupMode\": {JsonSerializer.Serialize(groupMode)}");
         }
 
-        return Container(name, tabOrder, parent, $"\"visualGroup\": {{ {string.Join(", ", groupProperties)} }}", x, y, width, height);
+        return Container(name, tabOrder, parent, $"\"visualGroup\": {{ {string.Join(", ", groupProperties)} }}", x, y, width, height, isHidden);
     }
 
     private static ContainerJson Container(
@@ -432,12 +494,17 @@ public sealed class VisualGroupSupportTests
         double? x = null,
         double? y = null,
         double? width = null,
-        double? height = null)
+        double? height = null,
+        bool isHidden = false)
     {
         var properties = new List<string> { $"\"name\": {JsonSerializer.Serialize(name)}" };
         if (parent is not null)
         {
             properties.Add($"\"parentGroupName\": {JsonSerializer.Serialize(parent)}");
+        }
+        if (isHidden)
+        {
+            properties.Add("\"isHidden\": true");
         }
 
         var position = new List<string>();

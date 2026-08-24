@@ -966,11 +966,14 @@ public sealed class ProjectScannerTests : IDisposable
             finding.RuleId == "PBI-ACCESS-003" && finding.Visual == "image");
         Assert.Equal(2, result.Findings.Count(finding => finding.RuleId == "PBI-ACCESS-004"));
         Assert.All(
-            result.Findings.Where(finding => finding.RuleId != "PBI-ACCESS-002"),
+            result.Findings.Where(finding => finding.RuleId is not ("PBI-ACCESS-001" or "PBI-ACCESS-002")),
             finding => Assert.Equal("1.0.0", finding.RuleVersion));
         Assert.All(
-            result.Findings.Where(finding => finding.RuleId == "PBI-ACCESS-002"),
+            result.Findings.Where(finding => finding.RuleId == "PBI-ACCESS-001"),
             finding => Assert.Equal("1.1.0", finding.RuleVersion));
+        Assert.All(
+            result.Findings.Where(finding => finding.RuleId == "PBI-ACCESS-002"),
+            finding => Assert.Equal("1.2.0", finding.RuleVersion));
         Assert.All(
             result.Findings.Where(finding => finding.RuleId is "PBI-ACCESS-003" or "PBI-ACCESS-004"),
             finding => Assert.Equal(AssessmentTypes.ReviewRequired, finding.AssessmentType));

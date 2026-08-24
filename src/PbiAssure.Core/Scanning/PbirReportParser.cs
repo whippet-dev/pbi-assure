@@ -434,7 +434,10 @@ internal static class PbirReportParser
                     ParentGroupName: parentGroupName,
                     RelativePath: visualPath,
                     SchemaUri: schemaUri,
-                    Position: parsedPosition));
+                    Position: parsedPosition)
+                {
+                    IsHidden = GetBoolean(visualRoot, "isHidden") ?? false,
+                });
         }
 
         var mobilePath = ProjectFilePaths.Combine(ProjectFilePaths.GetDirectoryName(visualPath), "mobile.json");

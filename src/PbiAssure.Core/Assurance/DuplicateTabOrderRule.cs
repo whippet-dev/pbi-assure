@@ -5,7 +5,7 @@ namespace PbiAssure.Core.Assurance;
 internal sealed class DuplicateTabOrderRule : IAssuranceRule
 {
     private const string RuleId = "PBI-ACCESS-002";
-    private const string RuleVersion = "1.1.0";
+    private const string RuleVersion = "1.2.0";
 
     public IEnumerable<AssuranceFinding> Evaluate(ProjectInventory inventory)
     {
@@ -14,7 +14,7 @@ internal sealed class DuplicateTabOrderRule : IAssuranceRule
             foreach (var page in report.Pages)
             {
                 var duplicates = VisualGroupHierarchyResolver.Resolve(page)
-                    .Where(container => container.IsComparable && container.Position.TabOrder is >= 0)
+                    .Where(container => container.IsEffectivelyVisible && container.Position.TabOrder is >= 0)
                     .GroupBy(container => new ScopeKey(container.ParentGroup?.Name))
                     .SelectMany(scope => scope
                         .GroupBy(container => container.Position.TabOrder!.Value)
@@ -31,7 +31,7 @@ internal sealed class DuplicateTabOrderRule : IAssuranceRule
                         RuleVersion,
                         AssuranceCategories.Accessibility,
                         FindingSeverities.Warning,
-                        $"{duplicate.Containers.Count()} page items share explicit tab-order rank {duplicate.Containers.Key} within {scopeDescription}.",
+                        $"{duplicate.Containers.Count()} page items share explicit tab-order rank {duplicate.Containers.Key} within {scopeDescription}. An equal-ranked item may be skipped during keyboard navigation.",
                         "Assign a unique, intentional tab order that follows the page's logical reading sequence.",
                         report.Name,
                         page.Name,

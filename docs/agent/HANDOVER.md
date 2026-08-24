@@ -5,6 +5,18 @@ Tactical entry point for an incoming coding agent. Read this first, then
 
 ## What just happened
 
+Accessibility findings now follow Power BI Desktop's effective canvas visibility. Desktop 2.157.879.0
+runtime evidence showed that hidden items are filtered, their components are not retained, and descendants
+of a hidden group are likewise unavailable for focus. The shared group hierarchy resolver now combines an
+item's direct `isHidden` state with every resolved ancestor; missing, ambiguous and cyclic ancestry stays
+conservatively ineligible. `PBI-ACCESS-001` 1.1.0 and `PBI-ACCESS-002` 1.2.0 consume that result, while
+immediate group scoping and nested hierarchy are unchanged. Duplicate-rank copy now says only that an
+equal-ranked item may be skipped. `PBI-ACCESS-003`, JSON schema `0.26`, CSV and rendering are unchanged.
+
+Validation: the focused accessibility/tab-order selection passed **65/65**, the full core suite passed
+**518/518**, both privacy end-to-end tests passed, and the Release build completed with 0 warnings and
+0 errors.
+
 The paired Desktop-authored incremental-refresh fixtures now prove the load-bearing distinction between
 parameter filtering and a configured policy. Both tables use `RangeStart`/`RangeEnd`; only the configured
 table has a persisted `refreshPolicy`. PBI Assure retains that explicit table-owned policy in additive JSON
@@ -233,8 +245,9 @@ not reopen these tested shapes without a new persisted expression form.
 Connector expansion and report-level-measure → UDF traversal remain parked on the evidence already recorded.
 The tested **Add a local model** path migrated valid report measures into local model measures rather than
 preserving a local/report-measure mixed state; `EXTERNALMEASURE` is retained only as future evidence.
-`PBI-ACCESS-001` remains unchanged pending independently authored intent evidence. Visual-calculation parsing
-is not a current top-five task.
+`PBI-ACCESS-001`'s decorative-intent handling remains unchanged pending independently authored intent
+evidence. Its effective-visibility applicability is now settled separately. Visual-calculation parsing is
+not a current top-five task.
 
 ## Do not do yet
 
@@ -247,9 +260,10 @@ is not a current top-five task.
   fixed contract and widening it deserves its own decision
 - Report-level measure expression parsing or report-measure → UDF traversal without trustworthy source
   model metadata. A persisted expression in a remote report is not proof of a valid dependency.
-- Changes to `PBI-ACCESS-001` without independently authored, author-labelled evidence. The local sample
-  measurement found only 13 plausible decorative candidates among 216 representative findings; 22 text
-  boxes remain metadata-uncertain. See [the measurement](../reviews/access-001-alt-text-measurement.md).
+- Decorative visual-type exemptions in `PBI-ACCESS-001` without independently authored, author-labelled
+  evidence. The local sample measurement found only 13 plausible decorative candidates among 216
+  representative findings; 22 text boxes remain metadata-uncertain. See
+  [the measurement](../reviews/access-001-alt-text-measurement.md).
 - The pre-existing `dotnet format` whitespace cleanup
 
 Reasons are recorded in [CURRENT_STATE.md](CURRENT_STATE.md) and [DECISIONS.md](DECISIONS.md). Two are
@@ -257,9 +271,9 @@ blocking rather than merely sequenced:
 
 1. **The culture impact value rests on a design decision**, not an observation — translations are treated
    as describing objects rather than consuming them. Everything built on qualification inherits that.
-2. **`PBI-ACCESS-001` needs better intent evidence before it changes.** The local sample measurement did
-   not support a blanket visual-type exemption. Collect independently authored, author-labelled decorative
-   examples before changing the rule.
+2. **`PBI-ACCESS-001` needs better intent evidence before its decorative handling changes.** The local
+   sample measurement did not support a blanket visual-type exemption. Collect independently authored,
+   author-labelled decorative examples before changing that part of the rule.
 
 ## Missing evidence
 

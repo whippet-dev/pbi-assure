@@ -18,4 +18,23 @@ internal static class VisualRuleContexts
                 item.page,
                 visual)));
     }
+
+    public static IEnumerable<VisualRuleContext> ReadEffectivelyVisible(ProjectInventory inventory)
+    {
+        foreach (var report in inventory.Reports)
+        {
+            foreach (var page in report.Pages)
+            {
+                var effectivelyVisiblePaths = VisualGroupHierarchyResolver.Resolve(page)
+                    .Where(container => !container.IsGroup && container.IsEffectivelyVisible)
+                    .Select(container => container.RelativePath)
+                    .ToHashSet(StringComparer.Ordinal);
+
+                foreach (var visual in page.Visuals.Where(visual => effectivelyVisiblePaths.Contains(visual.RelativePath)))
+                {
+                    yield return new VisualRuleContext(report, page, visual);
+                }
+            }
+        }
+    }
 }

@@ -207,6 +207,19 @@ Confirmed experimentally in Power BI Desktop and pinned by tests and fixtures.
 - Group-aware tab ordering is required.
 - Friendly positions such as `1.3.1` represent nested, grouped tab order.
 
+### Effective canvas visibility
+
+- A canvas item is effectively visible only when its own `isHidden` is false and every ancestor group's
+  `isHidden` is false [design decision grounded in verified Desktop runtime behavior]. Desktop filters
+  hidden items from shown siblings, does not keep their components rendered, and applies the same focus
+  exclusion through a hidden group ancestor.
+- Accessibility rules that depend on current canvas focus eligibility must consume the shared hierarchy
+  resolver's effective visibility, not inspect a visual's direct `IsHidden` alone. Missing, ambiguous or
+  cyclic group ancestry is conservatively ineligible because effective visibility cannot be established.
+- This evidence changes `PBI-ACCESS-001` and `PBI-ACCESS-002`. It does not justify a decorative
+  visual-type exemption in `PBI-ACCESS-001`, and `PBI-ACCESS-003` remains unchanged pending separately
+  scoped evidence.
+
 ### Tab order
 
 - `position.tabOrder >= 0` → **included**, with that explicit rank.
