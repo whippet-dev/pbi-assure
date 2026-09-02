@@ -5,6 +5,18 @@ Tactical entry point for an incoming coding agent. Read this first, then
 
 ## What just happened
 
+The first **Export Builder provenance** slice is complete, but there is no export surface yet. Core now
+derives normalized direct semantic usage records and v1 object summaries for non-system-generated Columns
+and Measures only. They retain semantic identity/state/confidence, report path, persisted page/visual IDs,
+visual type, context/role and raw source evidence without reconstructing data from HTML or legacy CSV text.
+`UserFacing` is a separate export-only three-state value: active projections/tooltip data/drillthrough and
+active rendered formatting are **Yes**; filter-only, sort-only and selector-supporting evidence are **No**;
+direct `Other` is **Unclear**. Yes has object-level precedence over Unclear. Hidden canvas/group state is
+intentionally irrelevant to this feature; the existing effective-visibility logic is accessibility-only.
+No JSON schema, CSV, CLI/Desktop/browser UI or semantic classification changed. The next Export Builder
+task can add Reporting-owned request/preset/CSV rendering over this Core result; do not expand the legacy
+`SemanticUsageCsvRenderer`.
+
 Accessibility findings are now a supporting review rather than part of the main assurance surface. The
 renderer partitions existing `Accessibility` category findings in-process: the top-level **Accessibility
 review** navigation/section starts with an existing-rule summary (affected visuals, items or pages) and

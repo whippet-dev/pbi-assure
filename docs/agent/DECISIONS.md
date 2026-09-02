@@ -100,6 +100,13 @@ Not every report merits committing; only those carrying durable project state.
 - **Keep the five semantic usage states.** `DirectlyUsed` → `IndirectlyUsed` → `StructurallyRequired` →
   `UsedOnlyByUnusedBranch` → `ApparentlyUnused`, applied as first-match precedence. Uncertainty is
   expressed on an **orthogonal** axis, never as a sixth state, so existing consumers keep working.
+- **User-facing provenance is not semantic usage.** The Export Builder's `UserFacing` value is a separate
+  direct-report-evidence interpretation with `Yes`, `No` and `Unclear`, and must never alter dependency
+  analysis or the five states. `No` means no qualifying direct evidence was found, not that an object can
+  never reach a user. Active projections, tooltip data, drillthrough and active rendered formatting are
+  Yes; filter-only, sort-only and selector-supporting evidence are No; direct `Other` is Unclear. Yes
+  takes precedence over Unclear at object level. Saved hidden visual/group state is deliberately excluded:
+  the established effective-visibility rule concerns accessibility/focus, not all runtime report states.
 - **Positive classifications are preserved under known referential limitations as a deliberate
   conservative product rule** — not as an eternal proof. Every construct known today only *adds*
   references, so skipped metadata cannot retract evidence already collected. That reasoning does **not**

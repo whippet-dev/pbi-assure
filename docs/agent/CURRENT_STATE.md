@@ -24,6 +24,24 @@ The current evidence-led backlog is re-ranked in
 dependencies. Table-owned Detail Rows remains evidence-gated; aggregation metadata is not
 runtime-performance evidence.
 
+## Export Builder provenance foundation
+
+The first Export Builder slice is in Core only: `DirectUsageProvenanceAnalyzer` derives deterministic,
+v1-eligible (**Columns** and **Measures**, excluding system-generated objects) normalized direct-report
+provenance and object summaries from the existing `ProjectInventory`. It retains semantic model/table/object
+identity, semantic usage/confidence, report name and path, persisted page/visual IDs, visual type,
+usage context/role, artifact/evidence paths, direct-usage counts and distinct report/page/visual counts.
+It is in-process only: JSON schema remains `0.26`; no CSV renderer, browser/desktop UI, preset or legacy
+semantic-usage CSV behaviour changed.
+
+`UserFacing` is export-only provenance, never a sixth semantic usage state. Its values are **Yes**, **No**
+and **Unclear**. Active projections, tooltip data, drillthrough and active rendered formatting are Yes;
+filter-only, sort-only and selector-supporting evidence are No; direct `Other` evidence is Unclear. Yes
+wins over Unclear at object level. Hidden visual/group state is deliberately not applied: the existing
+effective-visibility rule is accessibility/focus evidence, not a report-runtime visibility conclusion.
+`No` means only that no qualifying direct evidence was found, never that an object cannot be exposed to a
+user. See `DirectUsageProvenanceAnalyzerTests` for the exact tested boundary.
+
 ## Mobile semantic references
 
 Desktop can persist a mobile-only formatting expression in a visual's sibling `mobile.json`. PBI Assure
