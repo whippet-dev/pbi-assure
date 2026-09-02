@@ -5,17 +5,28 @@ Tactical entry point for an incoming coding agent. Read this first, then
 
 ## What just happened
 
-The first **Export Builder provenance** slice is complete, but there is no export surface yet. Core now
-derives normalized direct semantic usage records and v1 object summaries for non-system-generated Columns
+The first two **Export Builder** implementation slices are complete, but there is no browser/desktop UI or
+CLI surface yet. Core derives normalized direct semantic usage records and v1 object summaries for non-system-generated Columns
 and Measures only. They retain semantic identity/state/confidence, report path, persisted page/visual IDs,
 visual type, context/role and raw source evidence without reconstructing data from HTML or legacy CSV text.
 `UserFacing` is a separate export-only three-state value: active projections/tooltip data/drillthrough and
 active rendered formatting are **Yes**; filter-only, sort-only and selector-supporting evidence are **No**;
 direct `Other` is **Unclear**. Yes has object-level precedence over Unclear. Hidden canvas/group state is
 intentionally irrelevant to this feature; the existing effective-visibility logic is accessibility-only.
-No JSON schema, CSV, CLI/Desktop/browser UI or semantic classification changed. The next Export Builder
-task can add Reporting-owned request/preset/CSV rendering over this Core result; do not expand the legacy
-`SemanticUsageCsvRenderer`.
+Reporting now provides fixed `DataCatalogue` and `UsageMapping` requests/renderers over that Core result.
+The Data catalogue emits one eligible object per row (including zero-use objects) with the documented
+default counts/contexts and optional labels/roles/reason. Usage mapping emits one normalized direct record
+logical usage per row and retains every direct context, including filter/sort/Other. Low-level parser evidence
+is grouped by semantic identity plus report/page/visual IDs/context/role: `EvidenceCount`, `ArtifactPaths`
+and `EvidencePaths` recover it in advanced columns; default rows are not duplicated just because one usage
+has several JSON evidence paths. Data-catalogue `DirectUsageCount` uses that logical grouping; its other
+location counts remain machine-identity based. Usage mapping has a friendly **Visual** label using the
+established title/on-canvas-text/visual-type fallback, while `VisualId` remains its machine identity.
+`ExportPresetCatalog` validates fixed allowed columns and defaults, rejects invalid/duplicate selections, and the shared CSV writer preserves
+legacy comma/CRLF/RFC escaping/formula-neutralisation. The legacy `SemanticUsageCsvRenderer` remains
+byte-compatible with its prior header and behaviour. No JSON schema, CLI/Desktop/browser UI or semantic
+classification changed. The next task should add UI only, reusing these Reporting contracts rather than
+adding export mechanics to Core or changing the legacy CSV.
 
 Accessibility findings are now a supporting review rather than part of the main assurance surface. The
 renderer partitions existing `Accessibility` category findings in-process: the top-level **Accessibility

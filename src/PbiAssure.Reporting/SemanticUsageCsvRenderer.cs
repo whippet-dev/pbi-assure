@@ -27,7 +27,7 @@ public static class SemanticUsageCsvRenderer
         ArgumentNullException.ThrowIfNull(inventory);
 
         var csv = new StringBuilder();
-        AppendRow(csv, Header);
+        CsvWriter.AppendRow(csv, Header);
         foreach (var usage in inventory.SemanticObjectUsages
                      .Where(usage => !inventory.IsSystemGeneratedSemanticObject(usage))
                      .OrderBy(usage => usage.SemanticModel, StringComparer.OrdinalIgnoreCase)
@@ -54,7 +54,7 @@ public static class SemanticUsageCsvRenderer
                 .OrderBy(location => location, StringComparer.OrdinalIgnoreCase)
                 .ToArray();
 
-            AppendRow(csv,
+            CsvWriter.AppendRow(csv,
             [
                 DescribeReport(inventory, usage.SemanticModel),
                 usage.Table,
@@ -73,44 +73,6 @@ public static class SemanticUsageCsvRenderer
         }
 
         return csv.ToString();
-    }
-
-    private static void AppendRow(StringBuilder csv, IEnumerable<string?> values)
-    {
-        var first = true;
-        foreach (var value in values)
-        {
-            if (!first)
-            {
-                csv.Append(',');
-            }
-
-            var text = NeutralizeSpreadsheetFormula(value ?? string.Empty);
-            if (text.IndexOfAny([',', '"', '\r', '\n']) >= 0)
-            {
-                csv.Append('"').Append(text.Replace("\"", "\"\"", StringComparison.Ordinal)).Append('"');
-            }
-            else
-            {
-                csv.Append(text);
-            }
-
-            first = false;
-        }
-
-        csv.Append("\r\n");
-    }
-
-    private static string NeutralizeSpreadsheetFormula(string value)
-    {
-        if (value.Length == 0)
-        {
-            return value;
-        }
-
-        return value[0] is '=' or '+' or '-' or '@' or '\t' or '\r' or '\n'
-            ? "'" + value
-            : value;
     }
 
     private static string DescribeReport(ProjectInventory inventory, string semanticModel)
@@ -148,7 +110,7 @@ public static class SemanticUsageCsvRenderer
 
         if (visual is not null)
         {
-            parts.Add(VisualDisplayName(visual));
+            parts.Add(VisualPresentation.DisplayName(visual));
         }
         else if (location.UsageContext == UsageContexts.Drillthrough)
         {
@@ -193,23 +155,6 @@ public static class SemanticUsageCsvRenderer
                 : HumanizeIdentifier(role!)));
     }
 
-    private static string VisualDisplayName(VisualInventory visual)
-    {
-        if (visual.Accessibility.TitleIsVisible != false &&
-            !visual.Accessibility.TitleTextIsDynamic &&
-            !string.IsNullOrWhiteSpace(visual.Accessibility.TitleText))
-        {
-            return visual.Accessibility.TitleText;
-        }
-
-        if (!visual.OnCanvasTextIsDynamic && IsUsefulVisualText(visual.OnCanvasText))
-        {
-            return visual.OnCanvasText!;
-        }
-
-        return HumanizeVisualType(visual.VisualType);
-    }
-
     private static string PowerQueryRoleLabel(string usageKind) => usageKind switch
     {
         PowerQueryColumnUsageKinds.MergeKey => "Merge key",
@@ -238,28 +183,6 @@ public static class SemanticUsageCsvRenderer
         .Where(value => !string.IsNullOrWhiteSpace(value))
         .Distinct(StringComparer.OrdinalIgnoreCase)
         .OrderBy(value => value, StringComparer.OrdinalIgnoreCase));
-
-    private static bool IsUsefulVisualText(string? value) =>
-        !string.IsNullOrWhiteSpace(value) && value.Count(char.IsLetterOrDigit) >= 2;
-
-    private static string HumanizeVisualType(string? visualType)
-    {
-        if (string.IsNullOrWhiteSpace(visualType))
-        {
-            return "Unknown visual type";
-        }
-
-        return visualType switch
-        {
-            "barChart" => "Bar chart",
-            "card" => "Card",
-            "columnChart" => "Column chart",
-            "pivotTable" => "Matrix",
-            "slicer" => "Slicer",
-            "tableEx" => "Table",
-            _ => HumanizeIdentifier(visualType),
-        };
-    }
 
     private static string HumanizeIdentifier(string value)
     {

@@ -31,8 +31,17 @@ v1-eligible (**Columns** and **Measures**, excluding system-generated objects) n
 provenance and object summaries from the existing `ProjectInventory`. It retains semantic model/table/object
 identity, semantic usage/confidence, report name and path, persisted page/visual IDs, visual type,
 usage context/role, artifact/evidence paths, direct-usage counts and distinct report/page/visual counts.
-It is in-process only: JSON schema remains `0.26`; no CSV renderer, browser/desktop UI, preset or legacy
-semantic-usage CSV behaviour changed.
+Reporting now consumes that in-process result through two fixed, non-UI CSV presets: **Data catalogue**
+(one eligible object per row, including zero-use objects) and **Usage mapping** (one normalized direct
+logical usage per row). Parser-level direct evidence remains retained but is grouped for export by semantic
+identity plus `ReportPath`/`PageId`/`VisualId`/context/role; its sorted advanced `EvidenceCount`,
+`ArtifactPaths` and `EvidencePaths` remain recoverable. Data-catalogue `DirectUsageCount` uses the same
+logical usage count, while report/page/visual counts remain machine-identity based. Usage mapping also
+has a presentation-only **Visual** label using the existing deterministic title/on-canvas-text/visual-type
+fallback; it never replaces `VisualId` for identity. `ExportRequest`, `ExportPreset` and `ExportPresetCatalog` validate fixed allowed/default
+columns; CSV writing is shared with the legacy renderer and preserves comma/CRLF/RFC quoting and
+spreadsheet-formula neutralisation. The legacy semantic-usage CSV, its header and its CLI/Desktop behaviour
+remain unchanged. JSON schema remains `0.26`; there is still no browser/desktop UI or CLI switch.
 
 `UserFacing` is export-only provenance, never a sixth semantic usage state. Its values are **Yes**, **No**
 and **Unclear**. Active projections, tooltip data, drillthrough and active rendered formatting are Yes;
