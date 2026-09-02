@@ -171,10 +171,20 @@ public sealed class PrivacyWorkflowTests(PrivacyE2EFixture fixture)
         Assert.Contains("Segoe UI", fontFamily, StringComparison.OrdinalIgnoreCase);
         await report.Locator("a[href='#findings']").ClickAsync();
         var findingSearch = report.Locator("#finding-search");
-        await findingSearch.FillAsync("PBIASSURE_NO_MATCH_7F3C2A");
-        await report.Locator("#finding-empty-state:not([hidden])")
+        if (await findingSearch.CountAsync() > 0)
+        {
+            await findingSearch.FillAsync("PBIASSURE_NO_MATCH_7F3C2A");
+            await report.Locator("#finding-empty-state:not([hidden])")
+                .WaitForAsync(new LocatorWaitForOptions { State = WaitForSelectorState.Visible });
+            await findingSearch.FillAsync(string.Empty);
+            return;
+        }
+
+        await report.Locator("a[href='#accessibility-review']").ClickAsync();
+        await report.Locator("#accessibility-review-heading")
             .WaitForAsync(new LocatorWaitForOptions { State = WaitForSelectorState.Visible });
-        await findingSearch.FillAsync(string.Empty);
+        Assert.True(await report.Locator(
+            "#accessibility-review .accessibility-summary, #accessibility-review .section-empty-state").CountAsync() > 0);
     }
 
     private async Task AssertViewerHeadersAsync()

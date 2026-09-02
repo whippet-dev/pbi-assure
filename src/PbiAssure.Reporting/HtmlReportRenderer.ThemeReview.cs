@@ -180,7 +180,7 @@ public static partial class HtmlReportRenderer
     {
         var observations = inventory.Reports.Sum(report => report.ThemeReview.AccessibilityObservations.Count);
         html.AppendLine("      <section class=\"theme-review-group\" aria-labelledby=\"theme-accessibility-heading\">");
-        html.AppendLine("        <h3 id=\"theme-accessibility-heading\">Accessibility review</h3>");
+        html.AppendLine("        <h3 id=\"theme-accessibility-heading\">Theme accessibility coverage</h3>");
         if (observations == 0)
             html.AppendLine("        <p class=\"theme-empty-state\">Automated theme accessibility checks are not available yet. Contrast will be reported only when PBI Assure can determine the colours used by Power BI reliably.</p>");
         html.AppendLine("      </section>");

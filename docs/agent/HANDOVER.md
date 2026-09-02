@@ -5,6 +5,15 @@ Tactical entry point for an incoming coding agent. Read this first, then
 
 ## What just happened
 
+Accessibility findings are now a supporting review rather than part of the main assurance surface. The
+renderer partitions existing `Accessibility` category findings in-process: the top-level **Accessibility
+review** navigation/section starts with an existing-rule summary (affected visuals, items or pages) and
+then preserves every individual finding's location, suggested action and technical evidence. The main
+**Findings** section, its catalogue/filter surface and Assurance headline counts contain only
+non-accessibility findings. Empty primary and accessibility states are independent. This is explicitly
+not a WCAG compliance verdict. Rule IDs/versions, effective-visibility/group/tab-order semantics,
+analyzers, JSON schema/output and CSV are unchanged.
+
 Auto Date/Time relationship provenance is now distinct without weakening model structure. A relationship
 whose target is an exactly annotated `__PBI_LocalDateTable` retains both endpoint edges and creates a
 system-generated root path. An object reachable only from that path remains `StructurallyRequired`, but

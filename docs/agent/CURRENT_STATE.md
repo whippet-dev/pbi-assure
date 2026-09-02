@@ -12,7 +12,7 @@ evidenced · **[design decision]** a choice, not a fact.
 |---|---|
 | Remote | `whippet-dev/pbi-assure` |
 | Branch | `master` (also the default branch) |
-| Last verified product state | This commit — KPI and measure Detail Rows dependencies |
+| Last verified product state | This commit — separate Accessibility review from main findings |
 | Working tree | Expected clean of tracked modifications. Untracked local review documents may be present |
 
 `master` may have moved past that commit for documentation-only changes. Re-verify and update this
@@ -71,6 +71,19 @@ items in the same immediate scope, and cautiously explains that an equal-ranked 
 `PBI-ACCESS-003` is unchanged. Group `isHidden` is retained only for this in-process analysis, so JSON
 schema `0.26`, CSV and report rendering are unchanged.
 
+## Accessibility review presentation
+
+Accessibility rules, rule IDs, versions, finding data and effective-visibility semantics are unchanged.
+The HTML renderer now presents findings whose existing category is `Accessibility` in a separate
+top-level **Accessibility review** section. It groups current observations by existing rule before
+showing the same location, suggested-action and technical-evidence details for each one. The main
+**Findings** section and Assurance summary counts include only non-accessibility findings; the separate
+review states that it supports manual WCAG and assistive-technology testing and is not a compliance
+verdict [design decision].
+
+This is a presentation-only partition performed while rendering. JSON schema/output, JSON finding data,
+CSV, the analyzer and the existing accessibility checks are unchanged.
+
 ## Auto Date/Time structural provenance
 
 Desktop evidence establishes that `__PBI_LocalDateTable = true` is the reliable marker for a generated
@@ -89,8 +102,8 @@ are in-process only, so JSON schema `0.26`, JSON output shape, CSV and the five 
 
 - `dotnet build PbiAssure.slnx` — **succeeded, 0 warnings, 0 errors** [verified]. `TreatWarningsAsErrors`
   is on, so warnings fail the build.
-- Core and privacy validation — **523 core + 2 privacy end-to-end tests passed**, 0 failed [verified].
-  The focused KPI/Detail Rows, TMDL-expression and semantic-dependency selection passed 30/30.
+- Core and privacy validation — **524 core + 2 privacy end-to-end tests passed**, 0 failed [verified].
+  The focused HTML renderer/theme/accessibility selection passed 62/62.
 - CI (`.github/workflows/ci.yml`) — **green** [verified], confirmed complete (not queued) for the
   pre-feature baseline `0c1af3c`. Runs restore, build, a Playwright Chromium install, then the whole
   solution test suite on `windows-latest`.

@@ -128,7 +128,7 @@ public sealed class ThemeReviewTests
         Assert.Contains("Theme status", html, StringComparison.Ordinal);
         Assert.Contains("Significant theme deviations", html, StringComparison.Ordinal);
         Assert.Contains("Consistency review", html, StringComparison.Ordinal);
-        Assert.Contains("Accessibility review", html, StringComparison.Ordinal);
+        Assert.Contains("Theme accessibility coverage", html, StringComparison.Ordinal);
         Assert.Contains("Theme contents", html, StringComparison.Ordinal);
         Assert.Contains("Formatting details", html, StringComparison.Ordinal);
         Assert.Contains("<summary>Supporting theme details</summary>", html, StringComparison.Ordinal);

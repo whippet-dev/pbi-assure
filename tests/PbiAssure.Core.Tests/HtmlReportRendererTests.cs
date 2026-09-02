@@ -31,12 +31,14 @@ public sealed class HtmlReportRendererTests : IDisposable
         Assert.Contains("class=\"section-navigator\" aria-label=\"Report sections\"", html, StringComparison.Ordinal);
         Assert.Contains("data-section-target=\"summary\"", html, StringComparison.Ordinal);
         Assert.Contains("data-section-target=\"findings\"", html, StringComparison.Ordinal);
+        Assert.Contains("data-section-target=\"accessibility-review\"", html, StringComparison.Ordinal);
         Assert.Contains("data-section-target=\"reports\"", html, StringComparison.Ordinal);
         Assert.Contains("data-section-target=\"power-query\"", html, StringComparison.Ordinal);
         Assert.Contains("data-section-target=\"relationships\"", html, StringComparison.Ordinal);
         Assert.Contains("data-section-target=\"semantic-usage\"", html, StringComparison.Ordinal);
         Assert.Contains("<small>Overview and key counts</small>", html, StringComparison.Ordinal);
-        Assert.Contains("<small>Issues and review items</small>", html, StringComparison.Ordinal);
+        Assert.Contains("<small>Primary issues and review items</small>", html, StringComparison.Ordinal);
+        Assert.Contains("<small>Supporting accessibility analysis</small>", html, StringComparison.Ordinal);
         Assert.Contains("<small>Model objects and usage</small>", html, StringComparison.Ordinal);
         Assert.Contains("<small>Design and theme review</small>", html, StringComparison.Ordinal);
         Assert.True(html.IndexOf("data-section-target=\"semantic-usage\"", StringComparison.Ordinal) <
@@ -153,9 +155,63 @@ public sealed class HtmlReportRendererTests : IDisposable
         var html = HtmlReportRenderer.Render(inventory with { Findings = [] });
 
         Assert.Contains("section-empty-state section-empty-success\" role=\"note\"", html, StringComparison.Ordinal);
-        Assert.Contains("<strong>No automated findings</strong>", html, StringComparison.Ordinal);
+        Assert.Contains("<strong>No primary assurance findings</strong>", html, StringComparison.Ordinal);
+        Assert.Contains("<strong>No accessibility observations</strong>", html, StringComparison.Ordinal);
         Assert.Contains("Manual review is still recommended.", html, StringComparison.Ordinal);
         Assert.Contains("class=\"finding-empty-state investigation-empty-state\" role=\"status\" aria-live=\"polite\"", html, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void RenderSeparatesAccessibilityReviewFromPrimaryFindingsAndPreservesItsEvidence()
+    {
+        CreateSampleProject();
+
+        var inventory = ProjectScanner.Scan(testRoot);
+        var mainFinding = new AssuranceFinding(
+            "PBI-NAV-001", "1.0.0", AssuranceCategories.Navigation, FindingSeverities.Error,
+            "Primary navigation issue.", "Repair the navigation target.",
+            "Assurance", "overview", "Overview", "sales-card", null, null, null,
+            "Assurance.Report/definition/pages/overview/visuals/sales-card/visual.json", ["$.visual.visualLink"],
+            AssessmentTypes.Finding, null);
+        var missingAltText = new AssuranceFinding(
+            "PBI-ACCESS-001", "1.1.0", AssuranceCategories.Accessibility, FindingSeverities.Warning,
+            "Missing alt text only.", "Add concise alt text.",
+            "Assurance", "overview", "Overview", "sales-card", null, null, null,
+            "Assurance.Report/definition/pages/overview/visuals/sales-card/visual.json", ["$.visual..altText (not found)"],
+            AssessmentTypes.Finding, null);
+        var duplicateTabOrder = new AssuranceFinding(
+            "PBI-ACCESS-002", "1.2.0", AssuranceCategories.Accessibility, FindingSeverities.Warning,
+            "Duplicate tab-order concern only.", "Assign a unique tab order.",
+            "Assurance", "overview", "Overview", null, null, null, null,
+            "Assurance.Report/definition/pages/overview", ["sales-card#$.position.tabOrder", "other-card#$.position.tabOrder"],
+            AssessmentTypes.Finding, null);
+
+        var html = HtmlReportRenderer.Render(inventory with { Findings = [mainFinding, missingAltText, duplicateTabOrder] });
+        var findings = ExtractTopLevelSection(html, "findings");
+        var accessibility = ExtractTopLevelSection(html, "accessibility-review");
+        var assurance = ExtractSummaryGroup(html, "summary-group-assurance");
+
+        Assert.Contains("Primary navigation issue.", findings, StringComparison.Ordinal);
+        Assert.DoesNotContain("Missing alt text only.", findings, StringComparison.Ordinal);
+        Assert.DoesNotContain("PBI-ACCESS-001", findings, StringComparison.Ordinal);
+        Assert.Equal(1, CountOccurrences(findings, "class=\"finding-card\""));
+
+        Assert.Contains("Issue summary", accessibility, StringComparison.Ordinal);
+        Assert.Contains("Missing alt text", accessibility, StringComparison.Ordinal);
+        Assert.Contains("1 affected visual", accessibility, StringComparison.Ordinal);
+        Assert.Contains("Duplicate tab order", accessibility, StringComparison.Ordinal);
+        Assert.Contains("2 affected items", accessibility, StringComparison.Ordinal);
+        Assert.Contains("Missing alt text only.", accessibility, StringComparison.Ordinal);
+        Assert.Contains("Add concise alt text.", accessibility, StringComparison.Ordinal);
+        Assert.Contains("$.visual..altText (not found)", accessibility, StringComparison.Ordinal);
+        Assert.Contains("id=\"accessibility-finding-1\"", accessibility, StringComparison.Ordinal);
+        Assert.Equal(2, CountOccurrences(accessibility, "class=\"accessibility-finding-card\""));
+        Assert.Contains("does not prove WCAG conformance", accessibility, StringComparison.Ordinal);
+
+        AssertMetric(assurance, "Errors", 1);
+        AssertMetric(assurance, "Warnings", 0);
+        AssertMetric(assurance, "Review required", 0);
+        AssertMetric(assurance, "Total findings", 1);
     }
 
     [Fact]
@@ -180,7 +236,13 @@ public sealed class HtmlReportRendererTests : IDisposable
                 RuleId = "PBI-TEST-002",
                 Severity = FindingSeverities.Warning,
                 AssessmentType = AssessmentTypes.ReviewRequired,
-                Category = "Accessibility",
+                Category = AssuranceCategories.ModelIntegrity,
+                Visual = "sales-card",
+            },
+            original with
+            {
+                RuleId = "PBI-ACCESS-001",
+                Category = AssuranceCategories.Accessibility,
                 Visual = "sales-card",
             },
         };
@@ -221,11 +283,14 @@ public sealed class HtmlReportRendererTests : IDisposable
         var html = HtmlReportRenderer.Render(inventory);
         var missingBookmarkCount = inventory.Findings.Count(finding => finding.RuleId == "PBI-NAV-001");
         var zeroFindingRule = AssuranceRuleCatalog.ActiveRules.First(rule =>
+            rule.Category != AssuranceCategories.Accessibility &&
             inventory.Findings.All(finding => !string.Equals(finding.RuleId, rule.RuleId, StringComparison.Ordinal)));
         Assert.True(missingBookmarkCount > 0);
 
         Assert.Contains("<details class=\"section-help rule-catalogue\"><summary>Checks in PBI Assure", html, StringComparison.Ordinal);
-        Assert.Equal(AssuranceRuleCatalog.ActiveRules.Count, CountOccurrences(html, "class=\"rule-catalogue-item\""));
+        Assert.Equal(
+            AssuranceRuleCatalog.ActiveRules.Count(rule => rule.Category != AssuranceCategories.Accessibility),
+            CountOccurrences(html, "class=\"rule-catalogue-item\""));
         Assert.Contains("value=\"PBI-NAV-001\">PBI-NAV-001 &#x2014; Bookmark target missing</option>", html, StringComparison.Ordinal);
         Assert.Contains("<code>PBI-NAV-001</code><span aria-hidden=\"true\"> — </span>Bookmark target missing", html, StringComparison.Ordinal);
         Assert.Contains("Checks saved bookmark-action targets for bookmarks that do not exist.", html, StringComparison.Ordinal);
@@ -259,6 +324,7 @@ public sealed class HtmlReportRendererTests : IDisposable
             {
                 RuleId = $"PBI-SCALE-{index:D4}",
                 Message = $"Synthetic finding {index}",
+                Category = AssuranceCategories.Navigation,
             })
             .ToArray();
 
@@ -365,12 +431,14 @@ public sealed class HtmlReportRendererTests : IDisposable
 
         Assert.Contains("<h3 id=\"summary-assurance-heading\">Assurance</h3>", assurance, StringComparison.Ordinal);
         Assert.Contains("aria-describedby=\"summary-assurance-help\"", assurance, StringComparison.Ordinal);
-        Assert.Contains("Findings from automated checks", assurance, StringComparison.Ordinal);
+        Assert.Contains("Findings from non-accessibility automated checks", assurance, StringComparison.Ordinal);
         Assert.Contains("Start with errors, then warnings", assurance, StringComparison.Ordinal);
-        AssertMetric(assurance, "Errors", inventory.ErrorFindingCount);
-        AssertMetric(assurance, "Warnings", inventory.WarningFindingCount);
-        AssertMetric(assurance, "Review required", inventory.ReviewRequiredCount);
-        AssertMetric(assurance, "Total findings", inventory.FindingCount);
+        var mainFindings = inventory.Findings.Where(finding => finding.Category != AssuranceCategories.Accessibility).ToArray();
+        AssertMetric(assurance, "Errors", mainFindings.Count(finding => finding.Severity == FindingSeverities.Error));
+        AssertMetric(assurance, "Warnings", mainFindings.Count(finding => finding.Severity == FindingSeverities.Warning));
+        AssertMetric(assurance, "Review required", mainFindings.Count(finding => finding.AssessmentType == AssessmentTypes.ReviewRequired));
+        AssertMetric(assurance, "Total findings", mainFindings.Length);
+        Assert.Contains("Accessibility observations are counted separately", assurance, StringComparison.Ordinal);
         Assert.Contains("Higher-confidence issues that would normally merit attention.", assurance, StringComparison.Ordinal);
         Assert.Contains("they are not necessarily defects", assurance, StringComparison.Ordinal);
 
@@ -414,12 +482,13 @@ public sealed class HtmlReportRendererTests : IDisposable
 
         var html = HtmlReportRenderer.Render(ProjectScanner.Scan(testRoot));
 
-        Assert.Equal(9, html.Split("<p class=\"section-intro\">", StringSplitOptions.None).Length - 1);
+        Assert.Equal(10, html.Split("<p class=\"section-intro\">", StringSplitOptions.None).Length - 1);
         Assert.Contains("Start here for the overall assurance result", html, StringComparison.Ordinal);
         Assert.Contains("Keep these limits in mind", html, StringComparison.Ordinal);
         Assert.Contains("See which queries load data into the model", html, StringComparison.Ordinal);
         Assert.Contains("report-format metadata that PBI Assure has not verified exactly", html, StringComparison.Ordinal);
-        Assert.Contains("Issues and review points found by automated checks", html, StringComparison.Ordinal);
+        Assert.Contains("Non-accessibility issues and review points found by automated checks", html, StringComparison.Ordinal);
+        Assert.Contains("Supporting analysis of the existing automated accessibility checks", html, StringComparison.Ordinal);
         Assert.Contains("How to use findings", html, StringComparison.Ordinal);
         Assert.Contains("Suggested action gives a practical next step", html, StringComparison.Ordinal);
         Assert.Contains("Browse the report page by page and visual by visual", html, StringComparison.Ordinal);
@@ -680,6 +749,16 @@ public sealed class HtmlReportRendererTests : IDisposable
         var end = html.IndexOf("</section>", start, StringComparison.Ordinal);
         Assert.True(end > start, $"Summary group {cssClass} was not closed.");
         return html[start..(end + "</section>".Length)];
+    }
+
+    private static string ExtractTopLevelSection(string html, string id)
+    {
+        var startMarker = $"    <section id=\"{id}\"";
+        var start = html.IndexOf(startMarker, StringComparison.Ordinal);
+        Assert.True(start >= 0, $"Top-level section {id} was not rendered.");
+        var end = html.IndexOf("\n    </section>", start, StringComparison.Ordinal);
+        Assert.True(end > start, $"Top-level section {id} was not closed.");
+        return html[start..(end + "\n    </section>".Length)];
     }
 
     private static void AssertMetric(string groupHtml, string label, int value)

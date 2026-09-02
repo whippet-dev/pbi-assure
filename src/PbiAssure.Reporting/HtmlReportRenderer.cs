@@ -16,17 +16,20 @@ public static partial class HtmlReportRenderer
         // Built once and threaded through: the model summary, the navigation entry and every
         // object-level marker all read from the same result.
         var coverage = AnalysisCoveragePresentation.Build(inventory);
+        var mainFindings = inventory.Findings.Where(IsMainFinding).ToArray();
+        var accessibilityFindings = inventory.Findings.Where(IsAccessibilityFinding).ToArray();
         AppendDocumentStart(html, inventory, coverage);
-        AppendSummary(html, inventory, coverage);
+        AppendSummary(html, inventory, coverage, mainFindings);
         AppendAnalysisCoverage(html, coverage);
         AppendScope(html);
-        AppendFindings(html, inventory);
+        AppendFindings(html, inventory, mainFindings);
         AppendReportInventory(html, inventory);
         AppendPowerQueryLineage(html, inventory);
         AppendRelationships(html, inventory);
         AppendRowLevelSecurity(html, inventory, coverage);
         AppendSemanticUsage(html, inventory, coverage);
         AppendThemeReview(html, inventory);
+        AppendAccessibilityReview(html, inventory, accessibilityFindings);
         AppendDocumentEnd(html, inventory);
         return html.ToString();
     }
@@ -68,7 +71,7 @@ public static partial class HtmlReportRenderer
             AppendSectionNavigationItem(html, "analysis-coverage", "Analysis coverage", "What was and was not checked");
         }
 
-        AppendSectionNavigationItem(html, "findings", "Findings", "Issues and review items");
+        AppendSectionNavigationItem(html, "findings", "Findings", "Primary issues and review items");
         AppendSectionNavigationItem(html, "reports", "Report pages", "Pages, visuals and fields");
         AppendSectionNavigationItem(html, "power-query", "Power Query", "Queries, sources and dependencies");
         AppendSectionNavigationItem(html, "relationships", "Model relationships", "Table connections and filtering");
@@ -79,6 +82,7 @@ public static partial class HtmlReportRenderer
 
         AppendSectionNavigationItem(html, "semantic-usage", "Semantic model", "Model objects and usage");
         AppendSectionNavigationItem(html, "theme-review", "Theme Review", "Design and theme review");
+        AppendSectionNavigationItem(html, "accessibility-review", "Accessibility review", "Supporting accessibility analysis");
         html.AppendLine("        </ul>");
         html.AppendLine("      </nav>");
         html.AppendLine("    </div>");
@@ -89,7 +93,8 @@ public static partial class HtmlReportRenderer
     private static void AppendSummary(
         StringBuilder html,
         ProjectInventory inventory,
-        AnalysisCoverage coverage)
+        AnalysisCoverage coverage,
+        AssuranceFinding[] mainFindings)
     {
         html.AppendLine("    <section id=\"summary\" class=\"report-section\" data-report-section=\"summary\" aria-labelledby=\"summary-heading\">");
         html.AppendLine("      <h2 id=\"summary-heading\" tabindex=\"-1\">Assurance summary</h2>");
@@ -97,18 +102,19 @@ public static partial class HtmlReportRenderer
         html.AppendLine("      <div class=\"summary-groups\">");
         html.AppendLine("        <section class=\"summary-group summary-group-assurance\" aria-labelledby=\"summary-assurance-heading\" aria-describedby=\"summary-assurance-help\">");
         html.AppendLine("          <h3 id=\"summary-assurance-heading\">Assurance</h3>");
-        html.AppendLine("          <p id=\"summary-assurance-help\" class=\"group-explanation\">Findings from automated checks across the report, semantic model and Power Query. Start with errors, then warnings and items that need a person to review them.</p>");
+        html.AppendLine("          <p id=\"summary-assurance-help\" class=\"group-explanation\">Findings from non-accessibility automated checks across the report, semantic model and Power Query. Start with errors, then warnings and items that need a person to review them.</p>");
         html.AppendLine("      <dl class=\"metrics\">");
-        AppendMetric(html, "Errors", inventory.ErrorFindingCount, "metric-error");
-        AppendMetric(html, "Warnings", inventory.WarningFindingCount, "metric-warning");
-        AppendMetric(html, "Review required", inventory.ReviewRequiredCount, "metric-review");
-        AppendMetric(html, "Total findings", inventory.FindingCount);
+        AppendMetric(html, "Errors", mainFindings.Count(finding => finding.Severity == FindingSeverities.Error), "metric-error");
+        AppendMetric(html, "Warnings", mainFindings.Count(finding => finding.Severity == FindingSeverities.Warning), "metric-warning");
+        AppendMetric(html, "Review required", mainFindings.Count(finding => finding.AssessmentType == AssessmentTypes.ReviewRequired), "metric-review");
+        AppendMetric(html, "Total findings", mainFindings.Length);
         html.AppendLine("      </dl>");
         AppendSummaryDefinitions(html, "What these finding numbers mean", [
             ("Errors", "Higher-confidence issues that would normally merit attention."),
             ("Warnings", "Potential problems, good-practice concerns or lower-confidence issues worth reviewing."),
             ("Review required", "Situations that need human judgement or contextual review; they are not necessarily defects."),
-            ("Total findings", "All issues and review items found by the automated checks.")]);
+            ("Total findings", "All non-accessibility issues and review items found by the automated checks.")]);
+        html.AppendLine("          <p class=\"group-explanation\">Accessibility observations are counted separately in Accessibility review so that they remain available without dominating the main assurance summary.</p>");
         html.AppendLine("        </section>");
         html.AppendLine("        <section class=\"summary-group summary-group-project\" aria-labelledby=\"summary-project-heading\" aria-describedby=\"summary-project-help\">");
         html.AppendLine("          <h3 id=\"summary-project-heading\">Project</h3>");
@@ -573,6 +579,125 @@ public static partial class HtmlReportRenderer
         html.AppendLine("    </section>");
     }
 
+    private static void AppendAccessibilityReview(
+        StringBuilder html,
+        ProjectInventory inventory,
+        AssuranceFinding[] findings)
+    {
+        html.AppendLine("    <section id=\"accessibility-review\" class=\"report-section\" data-report-section=\"accessibility-review\" aria-labelledby=\"accessibility-review-heading\">");
+        html.AppendLine("      <h2 id=\"accessibility-review-heading\" tabindex=\"-1\">Accessibility review</h2>");
+        html.AppendLine("      <p class=\"section-intro\">Supporting analysis of the existing automated accessibility checks. Review the affected visuals and pages alongside manual WCAG and assistive-technology testing.</p>");
+        html.AppendLine("      <div class=\"accessibility-boundary\" role=\"note\"><strong>Review support, not a compliance verdict</strong><p>PBI Assure identifies selected metadata concerns; it does not prove WCAG conformance or replace testing with assistive technology.</p></div>");
+
+        if (findings.Length == 0)
+        {
+            AppendSectionEmptyState(html, "No accessibility observations", "PBI Assure did not identify any observations from its current accessibility checks. Manual accessibility review is still recommended.", "success");
+            html.AppendLine("    </section>");
+            return;
+        }
+
+        var findingItems = findings.Select(finding => CreateFindingRenderItem(inventory, finding)).ToArray();
+        html.AppendLine("      <section class=\"accessibility-summary\" aria-labelledby=\"accessibility-summary-heading\">");
+        html.AppendLine("        <h3 id=\"accessibility-summary-heading\">Issue summary</h3>");
+        html.AppendLine("        <p class=\"group-explanation\">Observations are grouped by the existing check before their individual evidence. The counts describe affected visuals, items or pages where that is known from the rule's retained evidence.</p>");
+        html.AppendLine("        <div class=\"accessibility-summary-list\">");
+        foreach (var group in findingItems
+                     .Select((item, index) => new IndexedFinding(item, index))
+                     .GroupBy(item => item.Item.Finding.RuleId, StringComparer.OrdinalIgnoreCase)
+                     .OrderBy(group => group.Key, StringComparer.Ordinal))
+        {
+            var first = group.First();
+            var rule = AssuranceRuleCatalog.Find(group.Key);
+            var count = AccessibilityAffectedItemCount(group.Select(item => item.Item.Finding));
+            html.Append("          <article class=\"accessibility-summary-card\"><h4><code>")
+                .Append(Encode(group.Key)).Append("</code><span aria-hidden=\"true\"> — </span>")
+                .Append(Encode(rule?.FriendlyName ?? group.Key)).AppendLine("</h4>");
+            html.Append("            <p><a href=\"#").Append(FindingAnchor("accessibility-finding", first.Index)).Append("\">")
+                .Append(count.ToString("N0", CultureInfo.InvariantCulture)).Append(' ')
+                .Append(Encode(AccessibilityAffectedItemLabel(group.Key, count))).AppendLine("</a></p>");
+            html.AppendLine("          </article>");
+        }
+        html.AppendLine("        </div>");
+        html.AppendLine("      </section>");
+        html.AppendLine("      <section aria-labelledby=\"accessibility-details-heading\">");
+        html.AppendLine("        <h3 id=\"accessibility-details-heading\">Affected items</h3>");
+        html.AppendLine("        <p class=\"group-explanation\">Expand an observation for its location, suggested action and retained technical evidence.</p>");
+        AppendDetailsControls(html, "accessibility-finding-list", "accessibility observations");
+        html.AppendLine("        <div id=\"accessibility-finding-list\" class=\"card-list\">");
+        for (var index = 0; index < findingItems.Length; index++)
+        {
+            AppendFindingCard(
+                html,
+                inventory,
+                findingItems[index],
+                FindingAnchor("accessibility-finding", index),
+                "accessibility-finding-card",
+                "          ");
+        }
+        html.AppendLine("        </div>");
+        html.AppendLine("      </section>");
+        html.AppendLine("    </section>");
+    }
+
+    private static void AppendFindingCard(
+        StringBuilder html,
+        ProjectInventory inventory,
+        FindingRenderItem item,
+        string anchor,
+        string cssClass,
+        string indent)
+    {
+        var finding = item.Finding;
+        var context = item.Context;
+        html.Append(indent).Append("<details id=\"").Append(anchor).Append("\" class=\"").Append(cssClass).Append("\" data-severity=\"")
+            .Append(Encode(finding.Severity)).Append("\" data-filter-severity=\"").Append(Encode(item.FilterSeverity))
+            .Append("\" data-filter-rule=\"").Append(Encode(finding.RuleId))
+            .Append("\" data-filter-category=\"").Append(Encode(finding.Category))
+            .Append("\" data-filter-page=\"").Append(Encode(item.PageKey ?? string.Empty))
+            .Append("\" data-filter-visual=\"").Append(Encode(item.VisualKey ?? string.Empty))
+            .Append("\" data-filter-table=\"").Append(Encode(item.TableKey ?? string.Empty))
+            .Append("\" data-filter-object-type=\"").Append(Encode(item.ObjectType ?? string.Empty))
+            .Append("\" data-filter-usage-state=\"").Append(Encode(item.UsageState ?? string.Empty))
+            .Append("\" data-search-text=\"").Append(Encode(item.SearchText)).AppendLine("\">");
+        html.Append(indent).Append("  <summary><span class=\"badge ").Append(SeverityClass(finding.Severity))
+            .Append("\">").Append(Encode(finding.Severity)).Append("</span><span class=\"summary-copy\"><strong>")
+            .Append(Encode(FriendlyFindingMessage(finding, context))).Append("</strong>");
+        AppendFindingLocationSummary(html, finding, context);
+        html.Append(indent).AppendLine("  </span></summary>");
+        html.Append(indent).AppendLine("  <div class=\"card-body\">");
+        AppendFindingLocation(html, inventory, finding);
+        html.Append(indent).AppendLine("    <h3>Suggested action</h3>");
+        html.Append(indent).Append("    <p>").Append(Encode(finding.Recommendation)).AppendLine("</p>");
+        if (finding.ReferenceUrl is not null && IsSafeHttpUrl(finding.ReferenceUrl))
+        {
+            html.Append(indent).Append("    <p><a href=\"").Append(Encode(finding.ReferenceUrl))
+                .AppendLine("\">Open supporting guidance</a></p>");
+        }
+
+        AppendEvidence(html, finding);
+        html.Append(indent).AppendLine("  </div>");
+        html.Append(indent).AppendLine("</details>");
+    }
+
+    private static int AccessibilityAffectedItemCount(IEnumerable<AssuranceFinding> findings)
+    {
+        var items = findings.ToArray();
+        return items.All(finding => string.Equals(finding.RuleId, "PBI-ACCESS-002", StringComparison.OrdinalIgnoreCase))
+            ? items.Sum(finding => finding.EvidencePaths.Count)
+            : items.Length;
+    }
+
+    private static string AccessibilityAffectedItemLabel(string ruleId, int count)
+    {
+        return ruleId switch
+        {
+            "PBI-ACCESS-001" or "PBI-ACCESS-003" or "PBI-ACCESS-004" => Pluralize(count, "affected visual", "affected visuals"),
+            "PBI-ACCESS-002" => Pluralize(count, "affected item", "affected items"),
+            "PBI-ACCESS-005" => Pluralize(count, "affected page", "affected pages"),
+            _ => Pluralize(count, "affected item", "affected items"),
+        };
+    }
+
     private static void AppendDataSourceSummary(StringBuilder html, ProjectInventory inventory)
     {
         html.AppendLine("      <h3>Data sources</h3>");
@@ -675,21 +800,24 @@ public static partial class HtmlReportRenderer
         _ => 2,
     };
 
-    private static void AppendFindings(StringBuilder html, ProjectInventory inventory)
+    private static void AppendFindings(
+        StringBuilder html,
+        ProjectInventory inventory,
+        AssuranceFinding[] findings)
     {
         html.AppendLine("    <section id=\"findings\" class=\"report-section\" data-report-section=\"findings\" aria-labelledby=\"findings-heading\">");
         html.AppendLine("      <h2 id=\"findings-heading\" tabindex=\"-1\">Findings</h2>");
-        html.AppendLine("      <p class=\"section-intro\">Issues and review points found by automated checks. Expand one to see where it occurs and what to do next.</p>");
+        html.AppendLine("      <p class=\"section-intro\">Non-accessibility issues and review points found by automated checks. Expand one to see where it occurs and what to do next.</p>");
         html.AppendLine("      <details class=\"section-help\"><summary>How to use findings</summary><p>A finding is an automated observation, not a verdict on the whole report. Its location shows where PBI Assure found it and Suggested action gives a practical next step. Items marked Review required can be intentional, depending on your report's context.</p></details>");
-        AppendRuleCatalogue(html, inventory);
-        if (inventory.Findings.Count == 0)
+        AppendRuleCatalogue(html, findings, includeAccessibility: false);
+        if (findings.Length == 0)
         {
-            AppendSectionEmptyState(html, "No automated findings", "PBI Assure did not identify any issues or review items in its current checks. Manual review is still recommended.", "success");
+            AppendSectionEmptyState(html, "No primary assurance findings", "PBI Assure did not identify non-accessibility issues or review items in its current checks. Accessibility observations, if any, are shown separately in Accessibility review. Manual review is still recommended.", "success");
             html.AppendLine("    </section>");
             return;
         }
 
-        var findingItems = inventory.Findings.Select(finding => CreateFindingRenderItem(inventory, finding)).ToArray();
+        var findingItems = findings.Select(finding => CreateFindingRenderItem(inventory, finding)).ToArray();
         html.AppendLine("      <div class=\"finding-investigation\">");
         html.AppendLine("        <div class=\"finding-search\"><label for=\"finding-search\">Search findings</label><input id=\"finding-search\" type=\"search\" autocomplete=\"off\" placeholder=\"Search messages, rules, pages, visuals or model objects\"></div>");
         html.AppendLine("        <details class=\"finding-filter-panel\"><summary>More filters <span id=\"finding-active-filter-count\" class=\"active-filter-count\" hidden></span></summary>");
@@ -711,7 +839,7 @@ public static partial class HtmlReportRenderer
         html.AppendLine("      </div>");
         html.AppendLine("      <div class=\"finding-results-row\">");
         html.Append("        <p id=\"finding-filter-status\" class=\"filter-status\" role=\"status\" aria-live=\"polite\" aria-atomic=\"true\" tabindex=\"-1\">")
-            .Append(inventory.Findings.Count.ToString("N0", CultureInfo.InvariantCulture)).AppendLine(" findings</p>");
+            .Append(findings.Length.ToString("N0", CultureInfo.InvariantCulture)).AppendLine(" findings</p>");
         html.AppendLine("        <button id=\"finding-clear-filters\" type=\"button\" hidden>Clear search and filters</button>");
         html.AppendLine("      </div>");
         html.AppendLine("      <div id=\"finding-active-filters\" class=\"filter-chips\" aria-label=\"Active finding filters\" hidden></div>");
@@ -720,51 +848,26 @@ public static partial class HtmlReportRenderer
         html.AppendLine("      <div id=\"finding-list\" class=\"card-list\">");
         for (var index = 0; index < findingItems.Length; index++)
         {
-            var item = findingItems[index];
-            var finding = item.Finding;
-            var context = item.Context;
-            html.Append("        <details id=\"").Append(FindingAnchor(index)).Append("\" class=\"finding-card\" data-severity=\"")
-                .Append(Encode(finding.Severity)).Append("\" data-filter-severity=\"").Append(Encode(item.FilterSeverity))
-                .Append("\" data-filter-rule=\"").Append(Encode(finding.RuleId))
-                .Append("\" data-filter-category=\"").Append(Encode(finding.Category))
-                .Append("\" data-filter-page=\"").Append(Encode(item.PageKey ?? string.Empty))
-                .Append("\" data-filter-visual=\"").Append(Encode(item.VisualKey ?? string.Empty))
-                .Append("\" data-filter-table=\"").Append(Encode(item.TableKey ?? string.Empty))
-                .Append("\" data-filter-object-type=\"").Append(Encode(item.ObjectType ?? string.Empty))
-                .Append("\" data-filter-usage-state=\"").Append(Encode(item.UsageState ?? string.Empty))
-                .Append("\" data-search-text=\"").Append(Encode(item.SearchText)).AppendLine("\">");
-            html.Append("          <summary><span class=\"badge ").Append(SeverityClass(finding.Severity))
-                .Append("\">").Append(Encode(finding.Severity)).Append("</span><span class=\"summary-copy\"><strong>")
-                .Append(Encode(FriendlyFindingMessage(finding, context))).Append("</strong>");
-            AppendFindingLocationSummary(html, finding, context);
-            html.AppendLine("</span></summary>");
-            html.AppendLine("          <div class=\"card-body\">");
-            AppendFindingLocation(html, inventory, finding);
-            html.AppendLine("            <h3>Suggested action</h3>");
-            html.Append("            <p>").Append(Encode(finding.Recommendation)).AppendLine("</p>");
-            if (finding.ReferenceUrl is not null && IsSafeHttpUrl(finding.ReferenceUrl))
-            {
-                html.Append("            <p><a href=\"").Append(Encode(finding.ReferenceUrl))
-                    .AppendLine("\">Open supporting guidance</a></p>");
-            }
-
-            AppendEvidence(html, finding);
-            html.AppendLine("          </div>");
-            html.AppendLine("        </details>");
+            AppendFindingCard(html, inventory, findingItems[index], FindingAnchor(index), "finding-card", "        ");
         }
 
         html.AppendLine("      </div>");
         html.AppendLine("    </section>");
     }
 
-    private static void AppendRuleCatalogue(StringBuilder html, ProjectInventory inventory)
+    private static void AppendRuleCatalogue(
+        StringBuilder html,
+        AssuranceFinding[] findings,
+        bool includeAccessibility)
     {
-        var counts = inventory.Findings
+        var counts = findings
             .GroupBy(finding => finding.RuleId, StringComparer.OrdinalIgnoreCase)
             .ToDictionary(group => group.Key, group => group.Count(), StringComparer.OrdinalIgnoreCase);
         html.AppendLine("      <details class=\"section-help rule-catalogue\"><summary>Checks in PBI Assure <span class=\"rule-catalogue-hint\">Rule catalogue</span></summary>");
         html.AppendLine("        <p>PBI Assure runs these automated checks. No findings from a check does not prove full compliance.</p>");
-        foreach (var category in AssuranceRuleCatalog.ActiveRules.GroupBy(rule => rule.Category))
+        foreach (var category in AssuranceRuleCatalog.ActiveRules
+                     .Where(rule => includeAccessibility == IsAccessibilityCategory(rule.Category))
+                     .GroupBy(rule => rule.Category))
         {
             var categoryId = category.Key.ToLowerInvariant();
             html.Append("        <section class=\"rule-category\" aria-labelledby=\"rule-category-")
@@ -1462,7 +1565,7 @@ public static partial class HtmlReportRenderer
             {
                 html.Append("                    <li><span class=\"badge ").Append(SeverityClass(item.Finding.Severity))
                     .Append("\">").Append(Encode(item.Finding.Severity)).Append("</span> <a href=\"#")
-                    .Append(FindingAnchor(item.Index)).Append("\">")
+                    .Append(FindingAnchor(inventory, item.Finding, item.Index)).Append("\">")
                     .Append(Encode(FriendlyFindingMessage(item.Finding, new VisualContext(report, page, visual))))
                     .AppendLine("</a></li>");
             }
@@ -2389,9 +2492,30 @@ public static partial class HtmlReportRenderer
         html.AppendLine("</dd></div>");
     }
 
-    private static string FindingAnchor(int index)
+    private static bool IsAccessibilityFinding(AssuranceFinding finding) =>
+        IsAccessibilityCategory(finding.Category);
+
+    private static bool IsMainFinding(AssuranceFinding finding) =>
+        !IsAccessibilityFinding(finding);
+
+    private static bool IsAccessibilityCategory(string category) =>
+        string.Equals(category, AssuranceCategories.Accessibility, StringComparison.OrdinalIgnoreCase);
+
+    private static string FindingAnchor(int index) => FindingAnchor("finding", index);
+
+    private static string FindingAnchor(string prefix, int index)
     {
-        return $"finding-{index + 1}";
+        return $"{prefix}-{index + 1}";
+    }
+
+    private static string FindingAnchor(ProjectInventory inventory, AssuranceFinding finding, int originalIndex)
+    {
+        Func<AssuranceFinding, bool> predicate = IsAccessibilityFinding(finding)
+            ? IsAccessibilityFinding
+            : IsMainFinding;
+        var sectionPrefix = IsAccessibilityFinding(finding) ? "accessibility-finding" : "finding";
+        var sectionIndex = inventory.Findings.Take(originalIndex + 1).Count(predicate) - 1;
+        return FindingAnchor(sectionPrefix, sectionIndex);
     }
 
     private static string FriendlyFindingMessage(AssuranceFinding finding, VisualContext? context)
@@ -3201,6 +3325,8 @@ public static partial class HtmlReportRenderer
 
     private sealed record FindingFacetOption(string Value, string Label);
 
+    private sealed record IndexedFinding(FindingRenderItem Item, int Index);
+
     private sealed record FindingRenderItem(
         AssuranceFinding Finding,
         VisualContext? Context,
@@ -3454,6 +3580,14 @@ public static partial class HtmlReportRenderer
     .rule-catalogue-item { display: flex; min-width: 0; flex-direction: column; align-items: flex-start; padding: .7rem; border: 1px solid #d7dee5; border-radius: .3rem; background: #fff; overflow-wrap: anywhere; }
     .rule-catalogue-item h4 { margin: 0; font-size: .95rem; }
     .rule-catalogue-item p { margin: .35rem 0 0; color: var(--muted); }
+    .accessibility-boundary { max-width: 68rem; margin: 1rem 0; padding: .75rem .85rem; border-left: .35rem solid var(--info); background: var(--info-bg); overflow-wrap: anywhere; }
+    .accessibility-boundary p { margin: .25rem 0 0; }
+    .accessibility-summary { margin: 1.25rem 0; }
+    .accessibility-summary h3 { margin-bottom: .25rem; }
+    .accessibility-summary-list { display: grid; min-width: 0; grid-template-columns: repeat(auto-fit, minmax(min(100%, 17rem), 1fr)); gap: .65rem; margin-top: .75rem; }
+    .accessibility-summary-card { min-width: 0; padding: .7rem .8rem; border: 1px solid #d7dee5; border-radius: .35rem; background: #fff; overflow-wrap: anywhere; }
+    .accessibility-summary-card h4 { margin: 0; font-size: .95rem; }
+    .accessibility-summary-card p { margin: .4rem 0 0; font-weight: 700; }
     .rule-finding-count { min-height: 0; margin-top: auto; padding: .45rem 0 0; border: 0; background: transparent; text-align: left; text-decoration: underline; }
     .rule-finding-count:hover { background: transparent; text-decoration-thickness: .14em; }
     .rule-finding-count-empty { padding-top: .15rem; font-size: .9rem; }
@@ -3483,19 +3617,19 @@ public static partial class HtmlReportRenderer
     button:hover { background: var(--info-bg); }
     .details-controls { display: flex; flex-wrap: wrap; gap: .5rem; margin: .75rem 0; }
     .card-list, .page-list, .relationship-list, .semantic-table-list, .visual-list { display: grid; min-width: 0; grid-template-columns: minmax(0, 1fr); gap: .75rem; }
-    .finding-card, .page-card, .relationship-card, .visual-card, .semantic-table { min-width: 0; max-width: 100%; margin: 0; border: 1px solid var(--border); border-radius: .45rem; background: #fff; overflow: clip; }
+    .finding-card, .accessibility-finding-card, .page-card, .relationship-card, .visual-card, .semantic-table { min-width: 0; max-width: 100%; margin: 0; border: 1px solid var(--border); border-radius: .45rem; background: #fff; overflow: clip; }
     .page-card { border-color: #91a2b3; box-shadow: 0 1px 3px rgb(24 34 48 / 10%); }
     .visual-card { background: #f9fbfc; }
-    .finding-card[data-severity="Error"] { border-left: .45rem solid var(--error); }
-    .finding-card[data-severity="Warning"] { border-left: .45rem solid #a66b00; }
-    .finding-card[data-severity="Information"] { border-left: .45rem solid var(--info); }
-    .finding-card > summary, .page-card > summary, .relationship-card > summary, .visual-card > summary, .semantic-table > summary { display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem; padding: .9rem 1rem; color: var(--text); }
-    .finding-card > summary::after, .page-card > summary::after, .relationship-card > summary::after, .visual-card > summary::after, .semantic-table > summary::after { align-self: center; content: "+"; color: var(--link); font-size: 1.35rem; font-weight: 800; line-height: 1; }
-    .finding-card[open] > summary::after, .page-card[open] > summary::after, .relationship-card[open] > summary::after, .visual-card[open] > summary::after, .semantic-table[open] > summary::after { content: "−"; }
-    .finding-card > summary { justify-content: flex-start; }
+    .finding-card[data-severity="Error"], .accessibility-finding-card[data-severity="Error"] { border-left: .45rem solid var(--error); }
+    .finding-card[data-severity="Warning"], .accessibility-finding-card[data-severity="Warning"] { border-left: .45rem solid #a66b00; }
+    .finding-card[data-severity="Information"], .accessibility-finding-card[data-severity="Information"] { border-left: .45rem solid var(--info); }
+    .finding-card > summary, .accessibility-finding-card > summary, .page-card > summary, .relationship-card > summary, .visual-card > summary, .semantic-table > summary { display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem; padding: .9rem 1rem; color: var(--text); }
+    .finding-card > summary::after, .accessibility-finding-card > summary::after, .page-card > summary::after, .relationship-card > summary::after, .visual-card > summary::after, .semantic-table > summary::after { align-self: center; content: "+"; color: var(--link); font-size: 1.35rem; font-weight: 800; line-height: 1; }
+    .finding-card[open] > summary::after, .accessibility-finding-card[open] > summary::after, .page-card[open] > summary::after, .relationship-card[open] > summary::after, .visual-card[open] > summary::after, .semantic-table[open] > summary::after { content: "−"; }
+    .finding-card > summary, .accessibility-finding-card > summary { justify-content: flex-start; }
     .page-card > summary { padding: 1rem 1.1rem; background: #f4f7fa; }
     .visual-card > summary { padding: .8rem .9rem; }
-    .finding-card[open] > summary, .page-card[open] > summary, .relationship-card[open] > summary, .visual-card[open] > summary, .semantic-table[open] > summary { border-bottom: 1px solid var(--border); }
+    .finding-card[open] > summary, .accessibility-finding-card[open] > summary, .page-card[open] > summary, .relationship-card[open] > summary, .visual-card[open] > summary, .semantic-table[open] > summary { border-bottom: 1px solid var(--border); }
     .summary-copy { display: flex; min-width: 0; flex: 1; flex-direction: column; gap: .15rem; overflow-wrap: anywhere; }
     .summary-copy > strong, .visual-name > strong { font-size: 1.05rem; color: var(--text); }
     .summary-copy > span:not(.kicker), .visual-name .secondary { color: var(--muted); font-weight: 450; }
@@ -3503,7 +3637,7 @@ public static partial class HtmlReportRenderer
     .summary-metadata > span { min-width: 0; overflow-wrap: anywhere; }
     .summary-metadata > span:not(:last-child)::after { content: " ·"; color: var(--muted); font-weight: 450; }
     .summary-metadata strong { color: var(--text); font-weight: 700; }
-    .finding-card .summary-metadata strong, .page-card .summary-metadata strong { color: inherit; font-weight: 600; }
+    .finding-card .summary-metadata strong, .accessibility-finding-card .summary-metadata strong, .page-card .summary-metadata strong { color: inherit; font-weight: 600; }
     .kicker { color: var(--link); font-size: .78rem; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; }
     .count-pill { align-self: center; padding: .2rem .5rem; border-radius: 999px; background: #e4eaf0; color: #344054; font-size: .84rem; font-weight: 750; white-space: nowrap; }
     .card-body, .page-body, .visual-body { min-width: 0; max-width: 100%; padding: 1rem; }
@@ -3610,7 +3744,7 @@ public static partial class HtmlReportRenderer
     .model-block + .model-block { margin-top: 2rem; }
     .model-block h3 { margin-bottom: .65rem; }
     .system-generated-table { border-style: dashed; background: #fafbfc; }
-    .semantic-table[hidden], .semantic-object[hidden], .finding-card[hidden], .page-card[hidden], .visual-card[hidden], .theme-visual-card[hidden], .theme-governance-card[hidden] { display: none; }
+    .semantic-table[hidden], .semantic-object[hidden], .finding-card[hidden], .accessibility-finding-card[hidden], .page-card[hidden], .visual-card[hidden], .theme-visual-card[hidden], .theme-governance-card[hidden] { display: none; }
     .badge { display: inline-block; max-width: 100%; flex: 0 0 auto; padding: .2rem .45rem; border: 1px solid currentColor; border-radius: .2rem; font-weight: 700; white-space: nowrap; }
     .badge-error { color: var(--error); background: var(--error-bg); }
     .badge-warning { color: var(--warning); background: var(--warning-bg); }
@@ -3650,7 +3784,7 @@ public static partial class HtmlReportRenderer
       .finding-investigation { padding: .75rem; }
       .finding-facet-grid { grid-template-columns: 1fr; }
       .rule-catalogue-list { grid-template-columns: 1fr; }
-      .finding-card > summary, .page-card > summary, .relationship-card > summary, .visual-card > summary, .semantic-table > summary { gap: .6rem; padding: .75rem; }
+      .finding-card > summary, .accessibility-finding-card > summary, .page-card > summary, .relationship-card > summary, .visual-card > summary, .semantic-table > summary { gap: .6rem; padding: .75rem; }
       .card-body, .page-body, .visual-body { padding: .75rem; }
       .power-query-card > summary { flex-wrap: wrap; }
       .query-card-body { padding: .7rem .75rem .75rem; }
