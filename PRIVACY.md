@@ -43,7 +43,12 @@ is required.
 
 PBI Assure does not require an account and does not create application-managed cookies. It does not use
 `localStorage`, `sessionStorage` or IndexedDB to store selected projects or results. Project data is held
-in browser memory while the page is open. Selecting another project replaces the active project state,
+in browser memory while the page is open.
+
+One non-project preference is stored. Choosing Light or Dark appearance writes the key
+`pbiassure-appearance` to `localStorage` so the application and the reports it generates keep the
+appearance you picked; choosing System removes it. It holds only the string `light` or `dark`, and no
+project content or analysis result is written to browser storage. Selecting another project replaces the active project state,
 and closing or reloading the page ends the application session. Browser and operating-system memory
 cannot be guaranteed to be securely zeroised.
 

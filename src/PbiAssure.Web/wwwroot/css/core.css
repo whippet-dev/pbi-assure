@@ -61,9 +61,9 @@
   --pa-focus-contrast: #ffffff;
 
   /* Severity family: findings. */
-  --pa-error: #b42318;
-  --pa-error-soft: #fef3f2;
-  --pa-error-line: #fbcfca;
+  --pa-error: #b0192e;
+  --pa-error-soft: #fef2f4;
+  --pa-error-line: #f8cbd3;
   --pa-warning: #b54708;
   --pa-warning-soft: #fffaeb;
   --pa-warning-line: #f5dda0;
@@ -419,9 +419,12 @@ input[type="checkbox"], input[type="radio"] { width: auto; min-height: 0; accent
 
 /* Counts print on a hairline-divided rail rather than in boxes: the same information in roughly
    half the vertical space, and the eye reads a row of numbers instead of a row of cards. */
+/* Each cell draws its own 1px ring and the rings overlap in the 1px gap, so the rail keeps its
+   dividers when the cells wrap onto a second row on a narrow screen. */
 .metrics {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(8rem, 1fr));
+  gap: 1px;
   margin: 0;
   border: 1px solid var(--pa-line);
   border-radius: var(--pa-r2);
@@ -429,14 +432,17 @@ input[type="checkbox"], input[type="radio"] { width: auto; min-height: 0; accent
   overflow: clip;
 }
 
+/* A column flex so the value sits on the bottom edge of the cell. Labels wrap to different
+   heights, and without this the numbers along a rail no longer share a baseline. */
 .metric {
+  display: flex;
   min-width: 0;
+  flex-direction: column;
   margin: 0;
   padding: 0.5rem 0.75rem 0.625rem;
-  border-left: 1px solid var(--pa-line);
+  background: var(--pa-surface);
+  box-shadow: 0 0 0 1px var(--pa-line);
 }
-
-.metric:first-child { border-left: 0; }
 
 .metric dt, .metric > span {
   display: flex;
@@ -450,7 +456,8 @@ input[type="checkbox"], input[type="radio"] { width: auto; min-height: 0; accent
 
 .metric dd, .metric > strong {
   display: block;
-  margin: 0.0625rem 0 0;
+  margin: auto 0 0;
+  padding-top: 0.0625rem;
   color: var(--pa-text);
   font-family: var(--pa-font-display);
   font-size: var(--pa-t-xl);

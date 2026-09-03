@@ -80,9 +80,9 @@ public static class DesignSystem
           --pa-focus-contrast: #ffffff;
 
           /* Severity family: findings. */
-          --pa-error: #b42318;
-          --pa-error-soft: #fef3f2;
-          --pa-error-line: #fbcfca;
+          --pa-error: #b0192e;
+          --pa-error-soft: #fef2f4;
+          --pa-error-line: #f8cbd3;
           --pa-warning: #b54708;
           --pa-warning-soft: #fffaeb;
           --pa-warning-line: #f5dda0;
@@ -438,9 +438,12 @@ public static class DesignSystem
 
         /* Counts print on a hairline-divided rail rather than in boxes: the same information in roughly
            half the vertical space, and the eye reads a row of numbers instead of a row of cards. */
+        /* Each cell draws its own 1px ring and the rings overlap in the 1px gap, so the rail keeps its
+           dividers when the cells wrap onto a second row on a narrow screen. */
         .metrics {
           display: grid;
           grid-template-columns: repeat(auto-fit, minmax(8rem, 1fr));
+          gap: 1px;
           margin: 0;
           border: 1px solid var(--pa-line);
           border-radius: var(--pa-r2);
@@ -448,14 +451,17 @@ public static class DesignSystem
           overflow: clip;
         }
 
+        /* A column flex so the value sits on the bottom edge of the cell. Labels wrap to different
+           heights, and without this the numbers along a rail no longer share a baseline. */
         .metric {
+          display: flex;
           min-width: 0;
+          flex-direction: column;
           margin: 0;
           padding: 0.5rem 0.75rem 0.625rem;
-          border-left: 1px solid var(--pa-line);
+          background: var(--pa-surface);
+          box-shadow: 0 0 0 1px var(--pa-line);
         }
-
-        .metric:first-child { border-left: 0; }
 
         .metric dt, .metric > span {
           display: flex;
@@ -469,7 +475,8 @@ public static class DesignSystem
 
         .metric dd, .metric > strong {
           display: block;
-          margin: 0.0625rem 0 0;
+          margin: auto 0 0;
+          padding-top: 0.0625rem;
           color: var(--pa-text);
           font-family: var(--pa-font-display);
           font-size: var(--pa-t-xl);
@@ -976,6 +983,7 @@ public static class DesignSystem
         }
 
         .card-body, .page-body, .visual-body { min-width: 0; max-width: 100%; padding: 0.75rem 0.875rem 0.875rem; }
+        .card-body > p, .page-body > p, .visual-body > p { max-width: 82ch; }
         .card-body > :first-child, .page-body > :first-child, .visual-body > :first-child { margin-top: 0; }
         .card-body h3, .page-body h3, .visual-body h4 { margin: 1rem 0 0.375rem; font-size: var(--pa-t-sm); }
         .card-body > h3:first-child, .page-body > h3:first-child, .visual-body > h4:first-child { margin-top: 0; }
@@ -1389,7 +1397,9 @@ public static class DesignSystem
 
         /* --------------------------------------------------------------- findings */
 
-        .finding-location { display: grid; gap: 0.375rem; margin: 0; font-size: var(--pa-t-xs); }
+        /* Label/value pairs pack into columns on a wide card instead of stacking into a tall ladder
+           with a long empty gutter beside it. */
+        .finding-location { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 21rem), 1fr)); gap: 0.375rem 1.5rem; margin: 0; font-size: var(--pa-t-xs); }
         .finding-location div { display: grid; min-width: 0; grid-template-columns: minmax(4.5rem, auto) minmax(0, 1fr); gap: 0.625rem; }
         .finding-location dt { color: var(--pa-text-3); font-weight: 650; }
         .finding-location dd { margin: 0; overflow-wrap: anywhere; }
@@ -1398,7 +1408,7 @@ public static class DesignSystem
         .technical-details { min-width: 0; max-width: 100%; margin-top: 0.875rem; padding-top: 0.375rem; border-top: 1px solid var(--pa-line); color: var(--pa-text-2); font-size: var(--pa-t-xs); overflow-wrap: anywhere; }
         .technical-details > summary { font-size: var(--pa-t-2xs); }
         .technical-details pre { max-width: 100%; overflow-x: auto; }
-        .technical-list { display: grid; gap: 0.3125rem; padding: 0; }
+        .technical-list { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 24rem), 1fr)); gap: 0.3125rem 1.5rem; padding: 0; }
         .technical-list div { display: grid; min-width: 0; grid-template-columns: minmax(6rem, auto) minmax(0, 1fr); gap: 0.625rem; }
         .technical-list dt { color: var(--pa-text-3); font-weight: 650; }
         .technical-list dd, .facts dd { min-width: 0; margin: 0; overflow-wrap: anywhere; }
