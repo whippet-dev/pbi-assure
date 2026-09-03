@@ -54,7 +54,7 @@ public static partial class HtmlReportRenderer
         html.AppendLine("  <a class=\"skip-link\" href=\"#main-content\">Skip to main content</a>");
         html.AppendLine("  <header class=\"site-header\">");
         html.AppendLine("    <div class=\"content\">");
-        html.AppendLine("      <p class=\"eyebrow\">Power BI metadata assurance</p>");
+        html.AppendLine("      <p class=\"eyebrow\">PBI Assure · Model intelligence</p>");
         html.Append("      <h1>").Append(Encode(projectName)).AppendLine("</h1>");
         html.AppendLine("      <p class=\"lede\">A read-only review of this Power BI project.</p>");
         html.AppendLine("      <dl class=\"report-meta\">");
@@ -62,6 +62,9 @@ public static partial class HtmlReportRenderer
         AppendDefinition(html, "Inventory schema", inventory.SchemaVersion);
         AppendDefinition(html, "Source project", DisplayPath(inventory.RootPath));
         html.AppendLine("      </dl>");
+        html.AppendLine("    </div>");
+        html.AppendLine("  </header>");
+        html.AppendLine("  <div class=\"content report-workspace\">");
         html.AppendLine("      <nav class=\"section-navigator\" aria-label=\"Report sections\">");
         html.AppendLine("        <ul class=\"section-nav\">");
         AppendSectionNavigationItem(html, "summary", "Summary", "Overview and key counts");
@@ -84,9 +87,7 @@ public static partial class HtmlReportRenderer
         AppendSectionNavigationItem(html, "accessibility-review", "Accessibility review", "Supporting accessibility analysis");
         html.AppendLine("        </ul>");
         html.AppendLine("      </nav>");
-        html.AppendLine("    </div>");
-        html.AppendLine("  </header>");
-        html.AppendLine("  <main id=\"main-content\" class=\"content\" tabindex=\"-1\">");
+        html.AppendLine("  <main id=\"main-content\" class=\"report-content\" tabindex=\"-1\">");
     }
 
     private static void AppendSummary(
@@ -2778,6 +2779,7 @@ public static partial class HtmlReportRenderer
     private static void AppendDocumentEnd(StringBuilder html, ProjectInventory inventory)
     {
         html.AppendLine("  </main>");
+        html.AppendLine("  </div>");
         html.AppendLine("  <footer class=\"site-footer\"><div class=\"content\">");
         html.Append("    <p>PBI Assure inventory schema ").Append(Encode(inventory.SchemaVersion))
             .AppendLine(". Generated locally from Power BI project metadata.</p>");
@@ -3447,22 +3449,23 @@ public static partial class HtmlReportRenderer
     code { overflow-wrap: anywhere; font-size: .92em; }
     .skip-link { position: absolute; left: .75rem; top: -5rem; z-index: 10; padding: .75rem 1rem; background: #111827; color: #fff; font-weight: 700; }
     .skip-link:focus { top: .75rem; }
-    .content { width: min(82rem, calc(100% - 2rem)); margin-inline: auto; }
-    .site-header { background: #15324b; color: #fff; padding: 2.5rem 0 1.5rem; }
+    .content { width: min(96rem, calc(100% - 2rem)); margin-inline: auto; }
+    .report-content, .section-navigator { min-width: 0; }
+    .site-header { background: #15324b; color: #fff; padding: 1rem 0; }
     .site-header code { color: #fff; }
     .site-header a { color: #fff; }
     .eyebrow { margin: 0 0 .25rem; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
-    h1 { margin: 0; font-size: clamp(2rem, 5vw, 3.25rem); line-height: 1.1; }
+    h1 { margin: 0; font-size: clamp(1.5rem, 2.5vw, 2rem); line-height: 1.2; }
     h2 { margin-top: 0; font-size: 1.7rem; }
     h3 { margin-top: 2rem; }
-    .lede { max-width: 70rem; }
-    .report-meta { display: flex; flex-wrap: wrap; gap: .75rem 1.5rem; margin: 1rem 0; padding: 0; }
+    .lede { max-width: 70rem; margin: .25rem 0 .5rem; }
+    .report-meta { display: flex; flex-wrap: wrap; gap: .25rem 1.25rem; margin: 0; padding: 0; font-size: .875rem; }
     .report-meta div { display: flex; min-width: 0; max-width: 100%; flex-wrap: wrap; gap: .4rem; }
     .report-meta dt { font-weight: 700; }
     .report-meta dd { min-width: 0; margin: 0; overflow-wrap: anywhere; }
     .section-nav { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 11rem), 1fr)); gap: .6rem; margin: 1.25rem 0 0; padding: 0; list-style: none; }
-    .section-nav a { display: grid; min-width: 0; min-height: 4.25rem; align-content: center; gap: .15rem; padding: .65rem .75rem; border: 1px solid rgb(255 255 255 / 55%); border-radius: .35rem; color: #fff; text-decoration: none; }
-    .section-nav a:hover, .section-nav a[aria-current="page"] { background: rgb(255 255 255 / 16%); border-color: #fff; }
+    .section-nav a { display: grid; min-width: 0; min-height: 3.5rem; align-content: center; gap: .15rem; padding: .5rem .65rem; border: 1px solid var(--border); border-radius: .35rem; background: var(--surface); color: var(--link); text-decoration: none; }
+    .section-nav a:hover, .section-nav a[aria-current="page"] { background: #e5edf5; border-color: var(--link); }
     .section-nav a > span { font-weight: 750; }
     .section-nav small { color: inherit; font-size: .82rem; opacity: .9; overflow-wrap: anywhere; }
     main > section { min-width: 0; margin: 1.5rem 0; padding: 1.5rem; background: var(--surface); border: 1px solid var(--border); border-radius: .4rem; }
@@ -3769,12 +3772,19 @@ public static partial class HtmlReportRenderer
     .technical-details { min-width: 0; max-width: 100%; overflow-wrap: anywhere; }
     .technical-details pre { max-width: 100%; overflow-x: auto; }
     .site-footer { padding: 1.5rem 0; color: var(--muted); }
-    @media (min-width: 64rem) {
-      /* Balance nine destinations into three rows; optional security roles wrap naturally. */
-      .section-nav { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    @media (min-width: 72rem) {
+      .report-workspace { display: grid; grid-template-columns: 13rem minmax(0, 1fr); gap: 1.25rem; align-items: start; }
+      .section-navigator { position: sticky; top: 1rem; max-height: calc(100vh - 2rem); overflow-y: auto; margin-top: 1.5rem; padding: .4rem; }
+      .section-nav { grid-template-columns: minmax(0, 1fr); gap: .3rem; margin: 0; }
+      .section-nav a { min-height: 2.75rem; }
+      .section-nav small { display: none; }
+      .section-nav a[data-section-target="findings"], .section-nav a[data-section-target="theme-review"] { margin-top: .75rem; }
     }
     @media (max-width: 45rem) {
       .content { width: min(100% - 1rem, 82rem); }
+      .section-nav { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .section-nav a { min-height: 2.75rem; }
+      .section-nav small { display: none; }
       main > section { padding: 1rem .65rem; }
       .filters { display: block; }
       .filters div + div { margin-top: .8rem; }
@@ -3796,6 +3806,7 @@ public static partial class HtmlReportRenderer
     }
     @media print {
       body { background: #fff; }
+      .report-workspace { display: block; }
       .skip-link, .section-navigator, .filters, .filter-status, .details-controls, .finding-investigation, .finding-results-row, .filter-chips, .finding-empty-state, .info-tooltip { display: none; }
       .report-section[hidden] { display: block !important; }
       main > section { break-inside: avoid; border-color: #777; }
@@ -3853,7 +3864,7 @@ public static partial class HtmlReportRenderer
         if (focus) {
           const heading = document.querySelector(`[data-report-section="${sectionName}"] h2`);
           heading?.focus({ preventScroll: true });
-          heading?.scrollIntoView({ block: 'start' });
+          window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
         }
         return true;
       };

@@ -41,8 +41,8 @@ public sealed class HtmlReportRendererTests : IDisposable
         Assert.Contains("<small>Supporting accessibility analysis</small>", html, StringComparison.Ordinal);
         Assert.Contains("<small>Model objects and usage</small>", html, StringComparison.Ordinal);
         Assert.Contains("<small>Design and theme review</small>", html, StringComparison.Ordinal);
-        Assert.True(html.IndexOf("data-section-target=\"semantic-usage\"", StringComparison.Ordinal) <
-            html.IndexOf("data-section-target=\"theme-review\"", StringComparison.Ordinal));
+        Assert.True(html.IndexOf("<a href=\"#semantic-usage\"", StringComparison.Ordinal) <
+            html.IndexOf("<a href=\"#theme-review\"", StringComparison.Ordinal));
         Assert.True(html.IndexOf("id=\"semantic-usage\"", StringComparison.Ordinal) <
             html.IndexOf("id=\"theme-review\"", StringComparison.Ordinal));
         Assert.Contains("class=\"report-section\" data-report-section=\"summary\"", html, StringComparison.Ordinal);
@@ -88,6 +88,11 @@ public sealed class HtmlReportRendererTests : IDisposable
         Assert.Contains("@media print", html, StringComparison.Ordinal);
         Assert.Contains(".report-section[hidden] { display: block !important; }", html, StringComparison.Ordinal);
         Assert.Contains("const activateSection = (sectionName, options = {})", html, StringComparison.Ordinal);
+        Assert.Contains("heading?.focus({ preventScroll: true });", html, StringComparison.Ordinal);
+        Assert.Contains("window.scrollTo({ top: 0, left: 0, behavior: 'instant' });", html, StringComparison.Ordinal);
+        Assert.DoesNotContain("heading?.scrollIntoView", html, StringComparison.Ordinal);
+        Assert.Contains("activateSection(link.dataset.sectionTarget, { focus: true, updateFragment: true });", html, StringComparison.Ordinal);
+        Assert.Contains("requestAnimationFrame(() => target.scrollIntoView({ block: 'start' }));", html, StringComparison.Ordinal);
         Assert.Contains("const revealFragmentTarget = (fragment, options = {})", html, StringComparison.Ordinal);
         Assert.Contains("revealDetails(target);", html, StringComparison.Ordinal);
         Assert.Contains("if (!initialFragment || !revealFragmentTarget(initialFragment)) activateSection('summary');", html, StringComparison.Ordinal);
@@ -751,7 +756,7 @@ public sealed class HtmlReportRendererTests : IDisposable
         var catalogueBefore = PbiAssure.Reporting.Exports.DataCatalogueCsvRenderer.Render(inventory);
         var mappingBefore = PbiAssure.Reporting.Exports.UsageMappingCsvRenderer.Render(inventory);
         var html = HtmlReportRenderer.Render(inventory);
-        var targets = System.Text.RegularExpressions.Regex.Matches(html, "data-section-target=\"([^\"]+)\"")
+        var targets = System.Text.RegularExpressions.Regex.Matches(html, "<a [^>]*data-section-target=\"([^\"]+)\"")
             .Select(match => match.Groups[1].Value).ToArray();
         string[] expected = ["summary", "semantic-usage", "power-query", "relationships", "reports",
             "findings", "analysis-coverage", "theme-review", "accessibility-review"];
@@ -772,12 +777,33 @@ public sealed class HtmlReportRendererTests : IDisposable
         Assert.Equal(["semantic", "project", "power-query", "assurance"], groups);
         Assert.DoesNotContain(".summary-group-assurance", html, StringComparison.Ordinal);
         Assert.Contains(".summary-group .metric dd { font-size: 1.65rem; }", html, StringComparison.Ordinal);
-        Assert.Contains(".section-nav { grid-template-columns: repeat(3, minmax(0, 1fr)); }", html, StringComparison.Ordinal);
+        Assert.Contains("grid-template-columns: 13rem minmax(0, 1fr)", html, StringComparison.Ordinal);
         Assert.DoesNotContain("Eight tiles", html, StringComparison.Ordinal);
         Assert.Equal(jsonBefore, System.Text.Json.JsonSerializer.Serialize(inventory));
         Assert.Equal(legacyBefore, SemanticUsageCsvRenderer.Render(inventory));
         Assert.Equal(catalogueBefore, PbiAssure.Reporting.Exports.DataCatalogueCsvRenderer.Render(inventory));
         Assert.Equal(mappingBefore, PbiAssure.Reporting.Exports.UsageMappingCsvRenderer.Render(inventory));
+    }
+
+    [Fact]
+    public void RenderPlacesStickyDesktopNavigationBesideContentWithNarrowAndPrintFallbacks()
+    {
+        CreateSampleProject();
+        var html = HtmlReportRenderer.Render(ProjectScanner.Scan(testRoot));
+        var headerEnd = html.IndexOf("</header>", StringComparison.Ordinal);
+        var workspace = html.IndexOf("<div class=\"content report-workspace\">", StringComparison.Ordinal);
+        var navigation = html.IndexOf("<nav class=\"section-navigator\"", StringComparison.Ordinal);
+        var main = html.IndexOf("<main id=\"main-content\" class=\"report-content\" tabindex=\"-1\">", StringComparison.Ordinal);
+        Assert.True(headerEnd > 0 && workspace > headerEnd && navigation > workspace && main > navigation);
+        Assert.Contains("</main>\n  </div>\n  <footer", html.Replace("\r\n", "\n", StringComparison.Ordinal), StringComparison.Ordinal);
+        Assert.Contains("@media (min-width: 72rem)", html, StringComparison.Ordinal);
+        Assert.Contains("position: sticky; top: 1rem; max-height: calc(100vh - 2rem); overflow-y: auto", html, StringComparison.Ordinal);
+        Assert.Contains("repeat(auto-fit, minmax(min(100%, 11rem), 1fr))", html, StringComparison.Ordinal);
+        Assert.Contains(".section-nav { grid-template-columns: repeat(2, minmax(0, 1fr)); }", html, StringComparison.Ordinal);
+        Assert.Contains(".report-content, .section-navigator { min-width: 0; }", html, StringComparison.Ordinal);
+        Assert.Contains(".report-workspace { display: block; }", html, StringComparison.Ordinal);
+        Assert.Contains("a[aria-current=\"page\"]", html, StringComparison.Ordinal);
+        Assert.Contains("a:focus-visible, button:focus-visible", html, StringComparison.Ordinal);
     }
 
     [Fact]
