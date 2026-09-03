@@ -61,7 +61,7 @@ public sealed class PrivacyWorkflowTests(PrivacyE2EFixture fixture)
         monitor.Begin("Information");
         await AssertInformationPopupPreservesPageAsync(page);
         Assert.Equal(counts, await ReadAssuranceCountsAsync(page));
-        Assert.True(await page.GetByRole(AriaRole.Button, new() { Name = "Export CSV", Exact = true }).IsVisibleAsync());
+        Assert.True(await page.GetByRole(AriaRole.Button, new() { Name = "Export data", Exact = true }).IsVisibleAsync());
         Assert.Empty(monitor.ExternalEvents());
         Assert.Empty(monitor.CanaryLeaks());
         Assert.Empty(monitor.UnexpectedEvents());
@@ -118,6 +118,7 @@ public sealed class PrivacyWorkflowTests(PrivacyE2EFixture fixture)
             page.GetByRole(AriaRole.Button, new() { Name = "Download HTML report", Exact = true }).ClickAsync());
         var htmlPath = Path.Combine(outputRoot, htmlDownload.SuggestedFilename);
         await htmlDownload.SaveAsAsync(htmlPath);
+        await page.Locator("details.legacy-output > summary").ClickAsync();
         var csvDownload = await page.RunAndWaitForDownloadAsync(() =>
             page.GetByRole(AriaRole.Button, new() { Name = "Download semantic usage CSV", Exact = true }).ClickAsync());
         var csvPath = Path.Combine(outputRoot, csvDownload.SuggestedFilename);
@@ -178,6 +179,7 @@ public sealed class PrivacyWorkflowTests(PrivacyE2EFixture fixture)
             page.GetByRole(AriaRole.Button, new() { Name = "Download HTML report", Exact = true }).ClickAsync());
         var htmlPath = Path.Combine(outputRoot, htmlDownload.SuggestedFilename);
         await htmlDownload.SaveAsAsync(htmlPath);
+        await page.Locator("details.legacy-output > summary").ClickAsync();
         var csvDownload = await page.RunAndWaitForDownloadAsync(() =>
             page.GetByRole(AriaRole.Button, new() { Name = "Download semantic usage CSV", Exact = true }).ClickAsync());
         var csvPath = Path.Combine(outputRoot, csvDownload.SuggestedFilename);
@@ -231,7 +233,7 @@ public sealed class PrivacyWorkflowTests(PrivacyE2EFixture fixture)
         await page.Locator("[data-pbiassure-app-ready='true']")
             .WaitForAsync(new LocatorWaitForOptions { State = WaitForSelectorState.Visible });
         await page.WaitForLoadStateAsync(LoadState.NetworkIdle);
-        Assert.Equal(0, await page.GetByRole(AriaRole.Button, new() { Name = "Export CSV", Exact = true }).CountAsync());
+        Assert.Equal(0, await page.GetByRole(AriaRole.Button, new() { Name = "Export data", Exact = true }).CountAsync());
     }
 
     private async Task SelectFixtureAndScanAsync(IPage page)
@@ -256,7 +258,7 @@ public sealed class PrivacyWorkflowTests(PrivacyE2EFixture fixture)
     private static async Task OpenAndExerciseReportAsync(IPage page)
     {
         var popup = await page.RunAndWaitForPopupAsync(() =>
-            page.GetByRole(AriaRole.Button, new() { Name = "Open HTML report", Exact = true }).ClickAsync());
+            page.GetByRole(AriaRole.Button, new() { Name = "Open interactive report", Exact = true }).ClickAsync());
         await popup.GetByRole(AriaRole.Heading, new() { Name = PrivacyCanaries.ProjectName, Exact = true })
             .WaitForAsync(new LocatorWaitForOptions { State = WaitForSelectorState.Visible });
         Assert.Contains("/report-viewer", popup.Url, StringComparison.Ordinal);
@@ -269,7 +271,7 @@ public sealed class PrivacyWorkflowTests(PrivacyE2EFixture fixture)
     {
         if (!await page.GetByRole(AriaRole.Heading, new() { Name = "Export CSV", Exact = true }).IsVisibleAsync())
         {
-            await page.GetByRole(AriaRole.Button, new() { Name = "Export CSV", Exact = true }).ClickAsync();
+            await page.GetByRole(AriaRole.Button, new() { Name = "Export data", Exact = true }).ClickAsync();
         }
 
         await page.GetByRole(AriaRole.Radio, new() { Name = preset, Exact = true }).CheckAsync();

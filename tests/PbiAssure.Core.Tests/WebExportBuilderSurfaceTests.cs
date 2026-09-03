@@ -9,7 +9,7 @@ public sealed class WebExportBuilderSurfaceTests
         var home = File.ReadAllText(Path.Combine(root, "src", "PbiAssure.Web", "Pages", "Home.razor"));
         var panel = File.ReadAllText(Path.Combine(root, "src", "PbiAssure.Web", "Shared", "ExportCsvPanel.razor"));
 
-        Assert.Contains(">Export CSV</button>", home, StringComparison.Ordinal);
+        Assert.Contains(">Export data</button>", home, StringComparison.Ordinal);
         Assert.Contains(">Download semantic usage CSV</button>", home, StringComparison.Ordinal);
         Assert.Contains("@if (exportPanelOpen && selection is not null)", home, StringComparison.Ordinal);
         Assert.Contains("exportPanelKey++", home, StringComparison.Ordinal);

@@ -56,6 +56,12 @@ button:focus-visible, summary:focus-visible, a:focus-visible { outline: 3px soli
 .project-metrics { grid-template-columns: repeat(5, minmax(0, 1fr)); }
 .power-query-metrics { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 .downloads { display: flex; flex-wrap: wrap; gap: 0.75rem; margin-top: 1.25rem; }
+.output-actions { display: grid; gap: 1rem; margin-top: 1.25rem; }
+.output-actions h3 { margin: 0; }
+.output-action { display: grid; justify-items: start; gap: 0.4rem; }
+.output-action p { color: #38516f; line-height: 1.4; }
+.output-actions .legacy-output { max-width: 48rem; margin: 0; }
+.legacy-output .output-action { margin-top: 0.75rem; }
 .export-panel { display: grid; gap: 1rem; max-width: 48rem; margin-top: 0.85rem; padding: 1rem; border: 1px solid #ccd7e5; border-radius: 0.5rem; background: #fff; }
 .export-panel-heading { display: flex; align-items: start; justify-content: space-between; gap: 1rem; }
 .export-panel-heading h3 { margin: 0 0 0.25rem; }
