@@ -221,6 +221,16 @@ public sealed class PrivacyWorkflowTests(PrivacyE2EFixture fixture)
 
     private static async Task ExerciseReportContentAsync(IPage report)
     {
+        await report.Locator("a[href='#summary']").ClickAsync();
+        await report.GetByRole(AriaRole.Heading, new() { Name = "Summary", Exact = true })
+            .WaitForAsync(new LocatorWaitForOptions { State = WaitForSelectorState.Visible });
+        var limits = report.Locator("#summary details.scope");
+        Assert.Null(await limits.GetAttributeAsync("open"));
+        await limits.Locator("summary").PressAsync("Enter");
+        Assert.NotNull(await limits.GetAttributeAsync("open"));
+        Assert.Contains("It does not mean the object is safe to delete.", await limits.InnerTextAsync(), StringComparison.Ordinal);
+        await limits.Locator("summary").PressAsync("Enter");
+        Assert.Null(await limits.GetAttributeAsync("open"));
         var fontFamily = await report.EvaluateAsync<string>("() => getComputedStyle(document.body).fontFamily");
         Assert.Contains("Segoe UI", fontFamily, StringComparison.OrdinalIgnoreCase);
         await report.Locator("a[href='#findings']").ClickAsync();

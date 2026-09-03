@@ -20,14 +20,13 @@ public static partial class HtmlReportRenderer
         var accessibilityFindings = inventory.Findings.Where(IsAccessibilityFinding).ToArray();
         AppendDocumentStart(html, inventory, coverage);
         AppendSummary(html, inventory, coverage, mainFindings);
-        AppendAnalysisCoverage(html, coverage);
-        AppendScope(html);
-        AppendFindings(html, inventory, mainFindings);
-        AppendReportInventory(html, inventory);
+        AppendSemanticUsage(html, inventory, coverage);
         AppendPowerQueryLineage(html, inventory);
         AppendRelationships(html, inventory);
         AppendRowLevelSecurity(html, inventory, coverage);
-        AppendSemanticUsage(html, inventory, coverage);
+        AppendReportInventory(html, inventory);
+        AppendFindings(html, inventory, mainFindings);
+        AppendAnalysisCoverage(html, coverage);
         AppendThemeReview(html, inventory);
         AppendAccessibilityReview(html, inventory, accessibilityFindings);
         AppendDocumentEnd(html, inventory);
@@ -66,13 +65,7 @@ public static partial class HtmlReportRenderer
         html.AppendLine("      <nav class=\"section-navigator\" aria-label=\"Report sections\">");
         html.AppendLine("        <ul class=\"section-nav\">");
         AppendSectionNavigationItem(html, "summary", "Summary", "Overview and key counts");
-        if (coverage.HasCoverage)
-        {
-            AppendSectionNavigationItem(html, "analysis-coverage", "Analysis coverage", "What was and was not checked");
-        }
-
-        AppendSectionNavigationItem(html, "findings", "Findings", "Primary issues and review items");
-        AppendSectionNavigationItem(html, "reports", "Report pages", "Pages, visuals and fields");
+        AppendSectionNavigationItem(html, "semantic-usage", "Semantic model", "Model objects and usage");
         AppendSectionNavigationItem(html, "power-query", "Power Query", "Queries, sources and dependencies");
         AppendSectionNavigationItem(html, "relationships", "Model relationships", "Table connections and filtering");
         if (inventory.SemanticModels.Any(model => model.Roles.Count > 0))
@@ -80,7 +73,13 @@ public static partial class HtmlReportRenderer
             AppendSectionNavigationItem(html, "row-level-security", "Security roles", "Roles, filters and object permissions");
         }
 
-        AppendSectionNavigationItem(html, "semantic-usage", "Semantic model", "Model objects and usage");
+        AppendSectionNavigationItem(html, "reports", "Report pages", "Pages, visuals and fields");
+        AppendSectionNavigationItem(html, "findings", "Findings", "Issues and review items");
+        if (coverage.HasCoverage)
+        {
+            AppendSectionNavigationItem(html, "analysis-coverage", "Analysis coverage", "What was and was not checked");
+        }
+
         AppendSectionNavigationItem(html, "theme-review", "Theme Review", "Design and theme review");
         AppendSectionNavigationItem(html, "accessibility-review", "Accessibility review", "Supporting accessibility analysis");
         html.AppendLine("        </ul>");
@@ -97,24 +96,35 @@ public static partial class HtmlReportRenderer
         AssuranceFinding[] mainFindings)
     {
         html.AppendLine("    <section id=\"summary\" class=\"report-section\" data-report-section=\"summary\" aria-labelledby=\"summary-heading\">");
-        html.AppendLine("      <h2 id=\"summary-heading\" tabindex=\"-1\">Assurance summary</h2>");
-        html.AppendLine("      <p class=\"section-intro\">Start here for the overall assurance result, the size of the project and how its model objects are being used.</p>");
+        html.AppendLine("      <h2 id=\"summary-heading\" tabindex=\"-1\">Summary</h2>");
+        html.AppendLine("      <p class=\"section-intro\">Start here for model usage, project structure, Power Query context and assurance observations.</p>");
         html.AppendLine("      <div class=\"summary-groups\">");
-        html.AppendLine("        <section class=\"summary-group summary-group-assurance\" aria-labelledby=\"summary-assurance-heading\" aria-describedby=\"summary-assurance-help\">");
-        html.AppendLine("          <h3 id=\"summary-assurance-heading\">Assurance</h3>");
-        html.AppendLine("          <p id=\"summary-assurance-help\" class=\"group-explanation\">Findings from non-accessibility automated checks across the report, semantic model and Power Query. Start with errors, then warnings and items that need a person to review them.</p>");
+        html.AppendLine("        <section class=\"summary-group summary-group-semantic\" aria-labelledby=\"summary-semantic-heading\" aria-describedby=\"summary-semantic-help\">");
+        html.AppendLine("          <h3 id=\"summary-semantic-heading\">Semantic usage</h3>");
+        html.AppendLine("          <p id=\"summary-semantic-help\" class=\"group-explanation\">How columns, measures and other objects in your model are used by the report and by one another.</p>");
         html.AppendLine("      <dl class=\"metrics\">");
-        AppendMetric(html, "Errors", mainFindings.Count(finding => finding.Severity == FindingSeverities.Error), "metric-error");
-        AppendMetric(html, "Warnings", mainFindings.Count(finding => finding.Severity == FindingSeverities.Warning), "metric-warning");
-        AppendMetric(html, "Review required", mainFindings.Count(finding => finding.AssessmentType == AssessmentTypes.ReviewRequired), "metric-review");
-        AppendMetric(html, "Total findings", mainFindings.Length);
+        AppendMetric(html, "Directly used", inventory.DeveloperSemanticObjectCountForState(SemanticUsageStates.DirectlyUsed));
+        AppendMetric(html, "Indirectly used", inventory.DeveloperSemanticObjectCountForState(SemanticUsageStates.IndirectlyUsed));
+        AppendMetric(html, "Structurally required", inventory.DeveloperSemanticObjectCountForState(SemanticUsageStates.StructurallyRequired));
+        AppendMetric(html, "Only used by unused items", inventory.DeveloperSemanticObjectCountForState(SemanticUsageStates.UsedOnlyByUnusedBranch));
+        AppendMetric(html, "Apparently unused", inventory.DeveloperApparentlyUnusedSemanticObjectCount, "metric-unused");
         html.AppendLine("      </dl>");
-        AppendSummaryDefinitions(html, "What these finding numbers mean", [
-            ("Errors", "Higher-confidence issues that would normally merit attention."),
-            ("Warnings", "Potential problems, good-practice concerns or lower-confidence issues worth reviewing."),
-            ("Review required", "Situations that need human judgement or contextual review; they are not necessarily defects."),
-            ("Total findings", "All non-accessibility issues and review items found by the automated checks.")]);
-        html.AppendLine("          <p class=\"group-explanation\">Accessibility observations are counted separately in Accessibility review so that they remain available without dominating the main assurance summary.</p>");
+        html.AppendLine("          <p class=\"summary-caution\"><strong>Check apparently unused objects before removing them:</strong> PBI Assure could not find anything in this project that uses them. External reports, other models or dynamic behaviour may still depend on them.</p>");
+        if (coverage.QualifiedObjectCount > 0)
+        {
+            html.Append("          <p class=\"summary-coverage-note\">PBI Assure could not check every source of usage in this project, so ")
+                .Append(coverage.QualifiedObjectCount.ToString(CultureInfo.InvariantCulture)).Append(' ')
+                .Append(Pluralize(coverage.QualifiedObjectCount, "of these results is", "of these results are"))
+                .Append(" marked <span class=\"confidence-flag confidence-flag-sample\">")
+                .Append(CoverageMarkerLabel)
+                .AppendLine("</span>. <a href=\"#analysis-coverage\">Review analysis coverage</a>.</p>");
+        }
+        AppendSummaryDefinitions(html, "What these usage states mean", [
+            ("Directly used", "Used somewhere in the report, such as a visual, filter, tooltip or drillthrough setting."),
+            ("Indirectly used", "Not used directly in the report, but needed by something that is."),
+            ("Structurally required", "Needed for the model to work, for example in a relationship, hierarchy or sort-by setting."),
+            ("Only used by unused items", "Only used by other model items that themselves have no detected report usage."),
+            ("Apparently unused", "PBI Assure could not find anything in this project that uses it. Check before removing it because external reports and dynamic behaviour may not be visible here.")]);
         html.AppendLine("        </section>");
         html.AppendLine("        <section class=\"summary-group summary-group-project\" aria-labelledby=\"summary-project-heading\" aria-describedby=\"summary-project-help\">");
         html.AppendLine("          <h3 id=\"summary-project-heading\">Project</h3>");
@@ -161,32 +171,21 @@ public static partial class HtmlReportRenderer
                 ("Data source types", "Different types of recognised data sources used by those queries. This is not the number of individual connections.")]);
             html.AppendLine("        </section>");
         }
-        html.AppendLine("        <section class=\"summary-group summary-group-semantic\" aria-labelledby=\"summary-semantic-heading\" aria-describedby=\"summary-semantic-help\">");
-        html.AppendLine("          <h3 id=\"summary-semantic-heading\">Semantic usage</h3>");
-        html.AppendLine("          <p id=\"summary-semantic-help\" class=\"group-explanation\">How columns, measures and other objects in your model are used by the report and by one another.</p>");
+        html.AppendLine("        <section class=\"summary-group summary-group-assurance\" aria-labelledby=\"summary-assurance-heading\" aria-describedby=\"summary-assurance-help\">");
+        html.AppendLine("          <h3 id=\"summary-assurance-heading\">Assurance</h3>");
+        html.AppendLine("          <p id=\"summary-assurance-help\" class=\"group-explanation\">Findings from non-accessibility automated checks across the report, semantic model and Power Query. Start with errors, then warnings and items that need a person to review them.</p>");
         html.AppendLine("      <dl class=\"metrics\">");
-        AppendMetric(html, "Directly used", inventory.DeveloperSemanticObjectCountForState(SemanticUsageStates.DirectlyUsed));
-        AppendMetric(html, "Indirectly used", inventory.DeveloperSemanticObjectCountForState(SemanticUsageStates.IndirectlyUsed));
-        AppendMetric(html, "Structurally required", inventory.DeveloperSemanticObjectCountForState(SemanticUsageStates.StructurallyRequired));
-        AppendMetric(html, "Only used by unused items", inventory.DeveloperSemanticObjectCountForState(SemanticUsageStates.UsedOnlyByUnusedBranch));
-        AppendMetric(html, "Apparently unused", inventory.DeveloperApparentlyUnusedSemanticObjectCount, "metric-unused");
+        AppendMetric(html, "Errors", mainFindings.Count(finding => finding.Severity == FindingSeverities.Error), "metric-error");
+        AppendMetric(html, "Warnings", mainFindings.Count(finding => finding.Severity == FindingSeverities.Warning), "metric-warning");
+        AppendMetric(html, "Review required", mainFindings.Count(finding => finding.AssessmentType == AssessmentTypes.ReviewRequired), "metric-review");
+        AppendMetric(html, "Total findings", mainFindings.Length);
         html.AppendLine("      </dl>");
-        html.AppendLine("          <p class=\"summary-caution\"><strong>Check apparently unused objects before removing them:</strong> PBI Assure could not find anything in this project that uses them. External reports, other models or dynamic behaviour may still depend on them.</p>");
-        if (coverage.QualifiedObjectCount > 0)
-        {
-            html.Append("          <p class=\"summary-coverage-note\">PBI Assure could not check every source of usage in this project, so ")
-                .Append(coverage.QualifiedObjectCount.ToString(CultureInfo.InvariantCulture)).Append(' ')
-                .Append(Pluralize(coverage.QualifiedObjectCount, "of these results is", "of these results are"))
-                .Append(" marked <span class=\"confidence-flag confidence-flag-sample\">")
-                .Append(CoverageMarkerLabel)
-                .AppendLine("</span>. <a href=\"#analysis-coverage\">Review analysis coverage</a>.</p>");
-        }
-        AppendSummaryDefinitions(html, "What these usage states mean", [
-            ("Directly used", "Used somewhere in the report, such as a visual, filter, tooltip or drillthrough setting."),
-            ("Indirectly used", "Not used directly in the report, but needed by something that is."),
-            ("Structurally required", "Needed for the model to work, for example in a relationship, hierarchy or sort-by setting."),
-            ("Only used by unused items", "Only used by other model items that themselves have no detected report usage."),
-            ("Apparently unused", "PBI Assure could not find anything in this project that uses it. Check before removing it because external reports and dynamic behaviour may not be visible here.")]);
+        AppendSummaryDefinitions(html, "What these finding numbers mean", [
+            ("Errors", "Higher-confidence issues that would normally merit attention."),
+            ("Warnings", "Potential problems, good-practice concerns or lower-confidence issues worth reviewing."),
+            ("Review required", "Situations that need human judgement or contextual review; they are not necessarily defects."),
+            ("Total findings", "All non-accessibility issues and review items found by the automated checks.")]);
+        html.AppendLine("          <p class=\"group-explanation\">Accessibility observations are counted separately in Accessibility review so that they remain available without dominating the main assurance summary.</p>");
         html.AppendLine("        </section>");
         html.AppendLine("      </div>");
         html.Append("      <p class=\"summary-note\"><strong>").Append(inventory.DeveloperApparentlyUnusedSemanticObjectCount.ToString(CultureInfo.InvariantCulture))
@@ -197,6 +196,7 @@ public static partial class HtmlReportRenderer
         }
         html.AppendLine("</p>");
         html.AppendLine("      <p><a href=\"#semantic-usage\">Review semantic-model candidates</a></p>");
+        AppendScope(html);
         html.AppendLine("    </section>");
     }
 
@@ -205,7 +205,7 @@ public static partial class HtmlReportRenderer
     ///
     /// Two decisions shape this section. First, it is only rendered when something was actually left
     /// unanalysed: a panel announcing that there is nothing to report would be reassurance nobody asked
-    /// for, and the standing caveats already live in the scope section below it. Second, the
+    /// for, and the standing caveats already live in the Summary disclosure. Second, the
     /// limitations that cannot affect a usage conclusion are disclosed but tucked into a details
     /// element, because a real Desktop model records six of those and one that matters — showing all
     /// seven with equal weight would bury the one worth reading.
@@ -470,8 +470,8 @@ public static partial class HtmlReportRenderer
 
     private static void AppendScope(StringBuilder html)
     {
-        html.AppendLine("    <section class=\"scope report-section\" data-report-section=\"summary\" aria-labelledby=\"scope-heading\">");
-        html.AppendLine("      <h2 id=\"scope-heading\">Things PBI Assure cannot always detect</h2>");
+        html.AppendLine("    <details class=\"scope section-help\" aria-labelledby=\"scope-heading\">");
+        html.AppendLine("      <summary id=\"scope-heading\">Important limits before acting on this report</summary>");
         html.AppendLine("      <p class=\"section-intro\">Keep these limits in mind before changing or removing anything.</p>");
         html.AppendLine("      <ul>");
         html.AppendLine("        <li><strong>Apparently unused</strong> means PBI Assure found no use within this project. It does not mean the object is safe to delete.</li>");
@@ -481,7 +481,7 @@ public static partial class HtmlReportRenderer
         html.AppendLine("        <li>Accessibility findings support manual WCAG and assistive-technology testing; they do not prove that the report conforms.</li>");
         html.AppendLine("        <li>PBI Assure performs read-only analysis of the selected Power BI project.</li>");
         html.AppendLine("      </ul>");
-        html.AppendLine("    </section>");
+        html.AppendLine("    </details>");
     }
 
     private static void AppendPowerQueryLineage(StringBuilder html, ProjectInventory inventory)
@@ -3470,8 +3470,6 @@ public static partial class HtmlReportRenderer
     .summary-group { min-width: 0; }
     .summary-group h3 { display: flex; align-items: center; gap: .75rem; margin: 0 0 .65rem; color: var(--muted); font-size: .88rem; letter-spacing: .06em; text-transform: uppercase; }
     .summary-group h3::after { height: 1px; flex: 1; background: #d7dee5; content: ""; }
-    .summary-group-assurance { padding: .85rem; border: 2px solid #91a2b3; border-radius: .35rem; background: #f7fafc; }
-    .summary-group-assurance h3 { color: #15324b; }
     .section-intro { max-width: 68rem; margin: -.35rem 0 1rem; color: var(--muted); }
     .group-explanation { max-width: 64rem; margin: -.2rem 0 .7rem; color: var(--muted); font-size: .92rem; }
     .section-empty-state { display: grid; max-width: 68rem; gap: .2rem; margin: .75rem 0; padding: .8rem .9rem; border: 1px solid #bdc9d5; border-left: .35rem solid #66788a; border-radius: .3rem; background: #f7f9fb; overflow-wrap: anywhere; }
@@ -3480,8 +3478,8 @@ public static partial class HtmlReportRenderer
     .section-empty-unavailable { border-left-color: var(--info); background: var(--info-bg); }
     .metrics { display: grid; grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr)); gap: .7rem; margin: 0; }
     .metric { padding: 1rem; border: 1px solid var(--border); border-left: .5rem solid #66788a; border-radius: .25rem; }
-    .summary-group-project .metric, .summary-group-semantic .metric { padding: .75rem .85rem; }
-    .summary-group-project .metric dd, .summary-group-semantic .metric dd { font-size: 1.65rem; }
+    .summary-group .metric { padding: .75rem .85rem; }
+    .summary-group .metric dd { font-size: 1.65rem; }
     .metric dt { color: var(--muted); font-weight: 700; }
     .metric dd { margin: .15rem 0 0; font-size: 2rem; font-weight: 750; }
     .metric-error { border-left-color: var(--error); }
@@ -3772,9 +3770,8 @@ public static partial class HtmlReportRenderer
     .technical-details pre { max-width: 100%; overflow-x: auto; }
     .site-footer { padding: 1.5rem 0; color: var(--muted); }
     @media (min-width: 64rem) {
-      /* Eight tiles never fit one row inside the 82rem content width without cramping them, so wrap
-         deliberately into balanced rows instead of leaving one tile orphaned. */
-      .section-nav { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+      /* Balance nine destinations into three rows; optional security roles wrap naturally. */
+      .section-nav { grid-template-columns: repeat(3, minmax(0, 1fr)); }
     }
     @media (max-width: 45rem) {
       .content { width: min(100% - 1rem, 82rem); }

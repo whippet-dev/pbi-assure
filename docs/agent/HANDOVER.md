@@ -5,6 +5,26 @@ Tactical entry point for an incoming coding agent. Read this first, then
 
 ## What just happened
 
+The **HTML information-architecture** slice is pending review and must remain uncommitted. Navigation
+and body now prioritize Summary -> Semantic model -> Power Query -> Model relationships -> Report pages
+-> Findings -> Analysis coverage -> Theme Review -> Accessibility review. Conditional Security roles
+remains after relationships; coverage remains conditional. Summary groups are Semantic usage -> Project
+-> Power Query -> Assurance, with balanced metric sizing and no Assurance-only panel emphasis.
+
+The six scope caveats are preserved in a Summary disclosure, **Important limits before acting on this
+report**; the apparently-unused caution remains visible outside it. Desktop navigation uses three
+columns for the current nine tiles. Existing IDs, finding content/counts, specialist boundaries, mobile
+auto-fit, filters, JSON and exports remain unchanged. Exports remain app actions, not report sections.
+
+The ignored local artifact is `artifacts/sales-returns-ia-review.html`. Code/source inspection and an old
+Release comparison confirmed identical non-Summary section bodies and IDs; sample counts still match
+65/15/7/9/34 semantic usage and 2/12/13/27 Assurance. **Visual review is still needed:** the Browser tool
+blocked the local-file URL, and no alternate route was used. Do not claim this sample was visually reviewed.
+
+Validation: focused reporting **52/52**, full Core **559/559**, privacy E2E **2/2**, Release **0 warnings /
+0 errors**, `git diff --check` passed. Privacy coverage now exercises the Summary disclosure with Enter
+in the existing online/offline report workflow. No formatter-baseline cleanup.
+
 The **description retention** slice was approved and committed at `998adb0`. The sanitised model-only
 fixture `tests/fixtures/desktop-descriptions-sanitized` preserves Desktop-authored Table/Column/Measure
 description blocks and neighbouring undescribed controls. Phil confirmed normal-UI authoring and a
@@ -19,7 +39,7 @@ Column/Measure inventory metadata keyed by model/table/name/type. No inference o
 becomes blank, and the shared CSV writer preserves/quotes multiline content. Defaults are unchanged.
 Usage Mapping, legacy CSV, JSON `0.26`, semantic analysis and UserFacing are unchanged. Both Export
 Builder shells consume Reporting's allowed/default columns automatically; no frontend changes were
-needed. Keep this follow-up uncommitted for review and do not make Description default-on.
+needed. This follow-up was committed at `a2e8c6b`; do not make Description default-on.
 
 Optional-column validation: focused **34/34**, full Core **557/557**, Release **0 warnings / 0 errors**,
 `git diff --check` passed. Default catalogue, Usage Mapping, legacy CSV and JSON were byte-compared

@@ -37,7 +37,7 @@ public sealed class HtmlReportRendererTests : IDisposable
         Assert.Contains("data-section-target=\"relationships\"", html, StringComparison.Ordinal);
         Assert.Contains("data-section-target=\"semantic-usage\"", html, StringComparison.Ordinal);
         Assert.Contains("<small>Overview and key counts</small>", html, StringComparison.Ordinal);
-        Assert.Contains("<small>Primary issues and review items</small>", html, StringComparison.Ordinal);
+        Assert.Contains("<small>Issues and review items</small>", html, StringComparison.Ordinal);
         Assert.Contains("<small>Supporting accessibility analysis</small>", html, StringComparison.Ordinal);
         Assert.Contains("<small>Model objects and usage</small>", html, StringComparison.Ordinal);
         Assert.Contains("<small>Design and theme review</small>", html, StringComparison.Ordinal);
@@ -483,7 +483,7 @@ public sealed class HtmlReportRendererTests : IDisposable
         var html = HtmlReportRenderer.Render(ProjectScanner.Scan(testRoot));
 
         Assert.Equal(10, html.Split("<p class=\"section-intro\">", StringSplitOptions.None).Length - 1);
-        Assert.Contains("Start here for the overall assurance result", html, StringComparison.Ordinal);
+        Assert.Contains("Start here for model usage, project structure, Power Query context and assurance observations.", html, StringComparison.Ordinal);
         Assert.Contains("Keep these limits in mind", html, StringComparison.Ordinal);
         Assert.Contains("See which queries load data into the model", html, StringComparison.Ordinal);
         Assert.Contains("report-format metadata that PBI Assure has not verified exactly", html, StringComparison.Ordinal);
@@ -509,7 +509,7 @@ public sealed class HtmlReportRendererTests : IDisposable
         Assert.Equal("Go to details", button.OnCanvasText);
         Assert.False(button.OnCanvasTextIsDynamic);
 
-        Assert.Contains("Assurance summary", html, StringComparison.Ordinal);
+        Assert.Contains(">Summary</h2>", html, StringComparison.Ordinal);
         Assert.Contains("Indirectly used", html, StringComparison.Ordinal);
         Assert.Contains("Structurally required", html, StringComparison.Ordinal);
         Assert.Contains("Only used by unused items", html, StringComparison.Ordinal);
@@ -526,7 +526,7 @@ public sealed class HtmlReportRendererTests : IDisposable
         Assert.Contains("class=\"badge badge-unused-branch\">Only used by unused items</span>", html, StringComparison.Ordinal);
         Assert.Contains("class=\"badge badge-unused\">Apparently unused</span>", html, StringComparison.Ordinal);
         Assert.Contains("It does not mean the object is safe to delete", html, StringComparison.Ordinal);
-        Assert.Contains("Things PBI Assure cannot always detect", html, StringComparison.Ordinal);
+        Assert.Contains("Important limits before acting on this report", html, StringComparison.Ordinal);
         Assert.Contains("some bookmark state", html, StringComparison.Ordinal);
         Assert.Contains("Report pages", html, StringComparison.Ordinal);
         Assert.Contains("Uses semantic model Assurance; its definition is available in this project.", html, StringComparison.Ordinal);
@@ -739,6 +739,74 @@ public sealed class HtmlReportRendererTests : IDisposable
         {
             Directory.Delete(resolvedTestRoot, recursive: true);
         }
+    }
+
+    [Fact]
+    public void RenderPrioritizesModelIntelligenceAndPreservesNavigationTargets()
+    {
+        CreateSampleProject();
+        var inventory = ProjectScanner.Scan(testRoot);
+        var jsonBefore = System.Text.Json.JsonSerializer.Serialize(inventory);
+        var legacyBefore = SemanticUsageCsvRenderer.Render(inventory);
+        var catalogueBefore = PbiAssure.Reporting.Exports.DataCatalogueCsvRenderer.Render(inventory);
+        var mappingBefore = PbiAssure.Reporting.Exports.UsageMappingCsvRenderer.Render(inventory);
+        var html = HtmlReportRenderer.Render(inventory);
+        var targets = System.Text.RegularExpressions.Regex.Matches(html, "data-section-target=\"([^\"]+)\"")
+            .Select(match => match.Groups[1].Value).ToArray();
+        string[] expected = ["summary", "semantic-usage", "power-query", "relationships", "reports",
+            "findings", "analysis-coverage", "theme-review", "accessibility-review"];
+        Assert.Equal(expected, targets);
+        var previous = -1;
+        foreach (var target in targets)
+        {
+            var section = html.IndexOf($"<section id=\"{target}\"", StringComparison.Ordinal);
+            Assert.True(section > previous, $"Section {target} must follow navigation order.");
+            Assert.Contains($"href=\"#{target}\"", html, StringComparison.Ordinal);
+            previous = section;
+        }
+
+        var summary = html[html.IndexOf("<section id=\"summary\"", StringComparison.Ordinal)..
+            html.IndexOf("<section id=\"semantic-usage\"", StringComparison.Ordinal)];
+        var groups = System.Text.RegularExpressions.Regex.Matches(summary, "<h3 id=\"summary-([^\"]+)-heading\"")
+            .Select(match => match.Groups[1].Value).ToArray();
+        Assert.Equal(["semantic", "project", "power-query", "assurance"], groups);
+        Assert.DoesNotContain(".summary-group-assurance", html, StringComparison.Ordinal);
+        Assert.Contains(".summary-group .metric dd { font-size: 1.65rem; }", html, StringComparison.Ordinal);
+        Assert.Contains(".section-nav { grid-template-columns: repeat(3, minmax(0, 1fr)); }", html, StringComparison.Ordinal);
+        Assert.DoesNotContain("Eight tiles", html, StringComparison.Ordinal);
+        Assert.Equal(jsonBefore, System.Text.Json.JsonSerializer.Serialize(inventory));
+        Assert.Equal(legacyBefore, SemanticUsageCsvRenderer.Render(inventory));
+        Assert.Equal(catalogueBefore, PbiAssure.Reporting.Exports.DataCatalogueCsvRenderer.Render(inventory));
+        Assert.Equal(mappingBefore, PbiAssure.Reporting.Exports.UsageMappingCsvRenderer.Render(inventory));
+    }
+
+    [Fact]
+    public void RenderKeepsAllScopeCaveatsInSummaryDisclosure()
+    {
+        CreateSampleProject();
+        var html = HtmlReportRenderer.Render(ProjectScanner.Scan(testRoot));
+        var summary = html[html.IndexOf("<section id=\"summary\"", StringComparison.Ordinal)..
+            html.IndexOf("<section id=\"semantic-usage\"", StringComparison.Ordinal)];
+        Assert.DoesNotContain("Things PBI Assure cannot always detect", html, StringComparison.Ordinal);
+        Assert.DoesNotContain("scope report-section", html, StringComparison.Ordinal);
+        Assert.Contains("<details class=\"scope section-help\" aria-labelledby=\"scope-heading\">", summary, StringComparison.Ordinal);
+        Assert.Contains("<summary id=\"scope-heading\">Important limits before acting on this report</summary>", summary, StringComparison.Ordinal);
+        string[] caveats =
+        [
+            "<strong>Apparently unused</strong> means PBI Assure found no use within this project. It does not mean the object is safe to delete.",
+            "A model table can look unused in the report while its Power Query is still needed by another query.",
+            "Power Query dependencies built dynamically may not be detected, including column lists or query names created while the query runs.",
+            "Uses outside this project, some bookmark state and details hidden inside a data source may not be visible to PBI Assure.",
+            "Accessibility findings support manual WCAG and assistive-technology testing; they do not prove that the report conforms.",
+            "PBI Assure performs read-only analysis of the selected Power BI project.",
+        ];
+        foreach (var caveat in caveats)
+        {
+            Assert.Contains($"<li>{caveat}</li>", summary, StringComparison.Ordinal);
+        }
+
+        Assert.Contains("Check apparently unused objects before removing them:", summary, StringComparison.Ordinal);
+        Assert.Contains("Accessibility observations are counted separately", summary, StringComparison.Ordinal);
     }
 
     private static string ExtractSummaryGroup(string html, string cssClass)

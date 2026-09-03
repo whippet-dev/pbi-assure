@@ -12,8 +12,8 @@ evidenced · **[design decision]** a choice, not a fact.
 |---|---|
 | Remote | `whippet-dev/pbi-assure` |
 | Branch | `master` (also the default branch) |
-| Last verified product state | Description retention committed at `998adb0`; optional catalogue Description pending review |
-| Working tree | Optional Data Catalogue Description slice is uncommitted; re-check before committing. |
+| Last verified product state | Optional catalogue Description committed at `a2e8c6b`; HTML hierarchy refocus pending review |
+| Working tree | HTML information-architecture slice is uncommitted; re-check before committing. |
 
 `master` may have moved past that commit for documentation-only changes. Re-verify and update this
 section whenever a commit changes build, test or behaviour — not for every commit.
@@ -23,6 +23,28 @@ The current evidence-led backlog is re-ranked in
 `alternateOf` aggregation mappings and measure KPI/Detail Rows expressions are now fixture-backed
 dependencies. Table-owned Detail Rows remains evidence-gated; aggregation metadata is not
 runtime-performance evidence.
+
+## HTML information hierarchy
+
+The generated report now leads with model intelligence: navigation and section order are Summary,
+Semantic model, Power Query, Model relationships, Report pages, Findings, Analysis coverage, Theme Review,
+Accessibility review. Existing conditional Security roles stays after relationships; Analysis coverage
+still appears only when applicable. Summary groups are Semantic usage, Project, Power Query (when present),
+then Assurance. Assurance no longer has a unique panel treatment or larger metric typography.
+
+All six standing caveats moved intact into the Summary's **Important limits before acting on this report**
+disclosure. The apparently-unused caution remains visible without opening it. All existing IDs are
+retained, including `scope-heading`. Nine navigation tiles use three desktop columns; narrower auto-fit
+and focus behaviour are unchanged. No analysis, finding, export, JSON, Web/Desktop shell or rule changes.
+
+Sales & Returns review: `artifacts/sales-returns-ia-review.html` (ignored local output). Source inspection
+and pre-change Release comparison verified all eight non-Summary section bodies and the complete ID set
+unchanged. Semantic counts remain 65/15/7/9/34; Assurance remains 2/12/13/27. Interactive visual review
+of this sample remains pending: the Browser tool blocked its local-file URL; no workaround was attempted.
+
+Validation: focused reporting **52/52**, full Core **559/559**, privacy online/offline **2/2** (including
+keyboard opening/closing of the Summary disclosure in the existing report workflow), Release build
+**0 warnings / 0 errors**, and `git diff --check` passed. Formatter baseline was not touched.
 
 ## Semantic descriptions (in-process only)
 
@@ -38,7 +60,7 @@ content spaces and empty lines, joining logical lines with LF. All three propert
 JSON schema remains `0.26`; semantic classification, provenance and HTML are unchanged.
 The retention slice was committed at `998adb0`. No missing-description rule is introduced.
 
-The follow-up slice now exposes **Description** only as an optional Data Catalogue column, off by
+The follow-up slice, committed at `a2e8c6b`, exposes **Description** only as an optional Data Catalogue column, off by
 default. Reporting resolves Column/Measure metadata by model/table/name/type without adding metadata to
 usage records. Null descriptions become empty fields; LF and content spaces flow through the shared
 CSV writer. Default catalogue columns/output, Usage Mapping and legacy CSV remain unchanged. Both Web

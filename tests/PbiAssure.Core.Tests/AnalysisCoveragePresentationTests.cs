@@ -381,7 +381,7 @@ public sealed class AnalysisCoveragePresentationTests
     }
 
     /// <summary>
-    /// Eight navigation tiles do not fit one row inside the report's content width without cramping, so
+    /// Nine navigation tiles use three columns inside the report's content width, so
     /// desktop wrapping is made deliberate and balanced rather than leaving a single orphaned tile.
     /// </summary>
     [Fact]
@@ -390,7 +390,7 @@ public sealed class AnalysisCoveragePresentationTests
         var html = RenderFixture("desktop-semantic-constructs");
 
         Assert.Contains("@media (min-width: 64rem) {", html, StringComparison.Ordinal);
-        Assert.Contains(".section-nav { grid-template-columns: repeat(4, minmax(0, 1fr)); }", html, StringComparison.Ordinal);
+        Assert.Contains(".section-nav { grid-template-columns: repeat(3, minmax(0, 1fr)); }", html, StringComparison.Ordinal);
         // Narrower widths keep the existing auto-fit behaviour.
         Assert.Contains(".section-nav { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 11rem), 1fr));",
             html, StringComparison.Ordinal);
@@ -408,7 +408,7 @@ public sealed class AnalysisCoveragePresentationTests
         Assert.Contains("id=\"semantic-usage\"", html, StringComparison.Ordinal);
         Assert.Contains("class=\"semantic-table\"", html, StringComparison.Ordinal);
         Assert.Contains("How usage classification works", html, StringComparison.Ordinal);
-        Assert.Contains("Things PBI Assure cannot always detect", html, StringComparison.Ordinal);
+        Assert.Contains("Important limits before acting on this report", html, StringComparison.Ordinal);
     }
 
     /// <summary>
