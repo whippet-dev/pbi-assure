@@ -1,0 +1,126 @@
+@using Microsoft.JSInterop
+@using PbiAssure.Core.Inventory
+@using PbiAssure.Reporting.Exports
+@inject IJSRuntime JS
+
+<section class="export-panel" aria-labelledby="export-csv-title">
+    <div class="export-panel-heading">
+        <div>
+            <h3 id="export-csv-title">Export CSV</h3>
+            <p>Choose a catalogue or report-usage view from this local scan.</p>
+        </div>
+        <button class="secondary-button" @onclick="CloseAsync">Close</button>
+    </div>
+
+    <fieldset class="export-preset-options">
+        <legend>Preset</legend>
+        @foreach (var preset in Presets)
+        {
+            var id = $"export-preset-{preset}";
+            <label for="@id">
+                <input id="@id" type="radio" name="export-preset" checked="@(selectedPreset == preset)"
+                       @onchange="() => SelectPreset(preset)" />
+                @PresetLabel(preset)
+            </label>
+        }
+    </fieldset>
+
+    <p class="export-description">@PresetDescription(selectedPreset)</p>
+    <p class="export-help">User-facing means PBI Assure found direct report evidence that contributes to report presentation or intentional user interaction. It is separate from semantic usage classification.</p>
+
+    <fieldset class="export-column-options">
+        <legend>Columns</legend>
+        @foreach (var column in AllowedColumns)
+        {
+            var id = $"export-column-{column.Id}";
+            <label for="@id">
+                <input id="@id" type="checkbox" checked="@selectedColumns.Contains(column.Id)"
+                       @onchange="() => ToggleColumn(column.Id)" />
+                @column.Header
+            </label>
+        }
+    </fieldset>
+
+    <div class="export-actions">
+        <button class="secondary-button" @onclick="ResetToDefaults">Select defaults</button>
+        <button @onclick="DownloadAsync" disabled="@(selectedColumns.Count == 0)">Download CSV</button>
+    </div>
+    @if (!string.IsNullOrWhiteSpace(message))
+    {
+        <p class="message" role="status">@message</p>
+    }
+</section>
+
+@code {
+    private static readonly ExportPreset[] Presets = [ExportPreset.DataCatalogue, ExportPreset.UsageMapping];
+    private ExportPreset selectedPreset = ExportPreset.DataCatalogue;
+    private HashSet<string> selectedColumns = [];
+    private string? message;
+
+    [Parameter, EditorRequired] public ProjectInventory Inventory { get; set; } = default!;
+    [Parameter, EditorRequired] public string ProjectDisplayName { get; set; } = string.Empty;
+    [Parameter] public EventCallback OnClose { get; set; }
+
+    private IReadOnlyList<ExportColumnDefinition> AllowedColumns => ExportPresetCatalog.GetAllowedColumns(selectedPreset);
+
+    protected override void OnInitialized() => ResetToDefaults();
+
+    private void SelectPreset(ExportPreset preset)
+    {
+        selectedPreset = preset;
+        ResetToDefaults();
+    }
+
+    private void ToggleColumn(string id)
+    {
+        if (!selectedColumns.Add(id)) selectedColumns.Remove(id);
+        message = null;
+    }
+
+    private void ResetToDefaults()
+    {
+        selectedColumns = ExportPresetCatalog.GetDefaultColumnIds(selectedPreset).ToHashSet(StringComparer.Ordinal);
+        message = null;
+    }
+
+    private async Task DownloadAsync()
+    {
+        if (selectedColumns.Count == 0)
+        {
+            message = "Choose at least one column before downloading.";
+            return;
+        }
+
+        try
+        {
+            var csv = ExportCsvRenderer.Render(Inventory, new ExportRequest(selectedPreset, selectedColumns.ToArray()));
+            await JS.InvokeVoidAsync("pbiAssureDownload.save", BrowserDownloadFileNames.ExportCsv(ProjectDisplayName, selectedPreset),
+                "text/csv;charset=utf-8", "\uFEFF" + csv);
+            message = $"{PresetLabel(selectedPreset)} CSV generated and downloaded locally.";
+        }
+        catch (ArgumentException)
+        {
+            message = "The selected columns are not available for this export. Select defaults and try again.";
+        }
+        catch (Exception)
+        {
+            message = "The CSV could not be generated or downloaded.";
+        }
+    }
+
+    private async Task CloseAsync() => await OnClose.InvokeAsync();
+
+    private static string PresetLabel(ExportPreset preset) => preset switch
+    {
+        ExportPreset.DataCatalogue => "Data catalogue",
+        ExportPreset.UsageMapping => "Usage mapping",
+        _ => throw new ArgumentOutOfRangeException(nameof(preset), preset, "Unsupported export preset."),
+    };
+
+    private static string PresetDescription(ExportPreset preset) => preset switch
+    {
+        ExportPreset.DataCatalogue => "One row per model column or measure, including usage state, user-facing evidence and report/page/visual counts.",
+        ExportPreset.UsageMapping => "One row per logical direct report usage, showing where and how a model column or measure is used.",
+        _ => throw new ArgumentOutOfRangeException(nameof(preset), preset, "Unsupported export preset."),
+    };
+}

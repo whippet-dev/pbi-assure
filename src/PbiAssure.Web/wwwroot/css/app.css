@@ -38,6 +38,15 @@ button:focus-visible, summary:focus-visible, a:focus-visible { outline: 3px soli
 .project-metrics { grid-template-columns: repeat(5, minmax(0, 1fr)); }
 .power-query-metrics { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 .downloads { display: flex; flex-wrap: wrap; gap: 0.75rem; margin-top: 1.25rem; }
+.export-panel { display: grid; gap: 1rem; max-width: 48rem; margin-top: 0.85rem; padding: 1rem; border: 1px solid #ccd7e5; border-radius: 0.5rem; background: #fff; }
+.export-panel-heading { display: flex; align-items: start; justify-content: space-between; gap: 1rem; }
+.export-panel-heading h3 { margin: 0 0 0.25rem; }
+.export-panel-heading p, .export-description, .export-help { color: #38516f; line-height: 1.4; }
+.export-help { font-size: 0.9rem; }
+.export-preset-options, .export-column-options { display: grid; gap: 0.55rem; margin: 0; padding: 0.8rem 1rem 1rem; border: 1px solid #dce5ef; border-radius: 0.3rem; }
+.export-preset-options legend, .export-column-options legend { padding: 0 0.25rem; color: #15253d; font-weight: 700; }
+.export-preset-options label, .export-column-options label { display: flex; align-items: center; gap: 0.5rem; }
+.export-actions { display: flex; flex-wrap: wrap; gap: 0.75rem; }
 .metric { min-width: 0; padding: 1rem; border-radius: 0.45rem; background: #eaf0f6; }
 .metric span { display: block; color: #38516f; font-size: 0.9rem; overflow-wrap: anywhere; }
 .metric strong { display: block; margin-top: 0.25rem; font-size: 1.5rem; }
@@ -53,6 +62,7 @@ button:focus-visible, summary:focus-visible, a:focus-visible { outline: 3px soli
 @media (max-width: 34rem) {
     main { padding: 2rem 1rem 1.5rem; }
     .guidance-panel, .picker, .selection { padding: 1rem; }
+    .export-panel-heading { align-items: stretch; flex-direction: column; }
     .project-metrics, .power-query-metrics { grid-template-columns: minmax(0, 1fr); }
     .project-metrics .metric:last-child { grid-column: auto; }
 }

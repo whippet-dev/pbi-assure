@@ -37,12 +37,16 @@ public sealed class PrivacyWorkflowTests(PrivacyE2EFixture fixture)
         var htmlPath = Path.Combine(outputRoot, htmlDownload.SuggestedFilename);
         await htmlDownload.SaveAsAsync(htmlPath);
         var csvDownload = await page.RunAndWaitForDownloadAsync(() =>
-            page.GetByRole(AriaRole.Button, new() { Name = "Download semantic CSV", Exact = true }).ClickAsync());
+            page.GetByRole(AriaRole.Button, new() { Name = "Download semantic usage CSV", Exact = true }).ClickAsync());
         var csvPath = Path.Combine(outputRoot, csvDownload.SuggestedFilename);
         await csvDownload.SaveAsAsync(csvPath);
+        var dataCataloguePath = await DownloadExportAsync(page, outputRoot, "Data catalogue", "data-catalogue");
+        var usageMappingPath = await DownloadExportAsync(page, outputRoot, "Usage mapping", "usage-mapping");
 
         Assert.Contains(PrivacyCanaries.ProjectName, await File.ReadAllTextAsync(htmlPath), StringComparison.Ordinal);
         Assert.Contains(PrivacyCanaries.ModelName, await File.ReadAllTextAsync(csvPath), StringComparison.Ordinal);
+        await AssertBrowserCsvAsync(dataCataloguePath);
+        await AssertBrowserCsvAsync(usageMappingPath);
         Assert.Empty(monitor.ExternalEvents());
         Assert.Empty(monitor.CanaryLeaks());
         Assert.Empty(monitor.UnexpectedEvents());
@@ -65,6 +69,8 @@ public sealed class PrivacyWorkflowTests(PrivacyE2EFixture fixture)
             Viewer = "passed",
             Html = Path.GetFileName(htmlPath),
             Csv = Path.GetFileName(csvPath),
+            DataCatalogueCsv = Path.GetFileName(dataCataloguePath),
+            UsageMappingCsv = Path.GetFileName(usageMappingPath),
             TimestampUtc = DateTimeOffset.UtcNow,
         });
     }
@@ -91,14 +97,18 @@ public sealed class PrivacyWorkflowTests(PrivacyE2EFixture fixture)
         var htmlPath = Path.Combine(outputRoot, htmlDownload.SuggestedFilename);
         await htmlDownload.SaveAsAsync(htmlPath);
         var csvDownload = await page.RunAndWaitForDownloadAsync(() =>
-            page.GetByRole(AriaRole.Button, new() { Name = "Download semantic CSV", Exact = true }).ClickAsync());
+            page.GetByRole(AriaRole.Button, new() { Name = "Download semantic usage CSV", Exact = true }).ClickAsync());
         var csvPath = Path.Combine(outputRoot, csvDownload.SuggestedFilename);
         await csvDownload.SaveAsAsync(csvPath);
+        var dataCataloguePath = await DownloadExportAsync(page, outputRoot, "Data catalogue", "data-catalogue");
+        var usageMappingPath = await DownloadExportAsync(page, outputRoot, "Usage mapping", "usage-mapping");
 
         Assert.True(File.Exists(htmlPath));
         Assert.True(File.Exists(csvPath));
         Assert.Contains(PrivacyCanaries.ProjectName, await File.ReadAllTextAsync(htmlPath), StringComparison.Ordinal);
         Assert.Contains(PrivacyCanaries.ModelName, await File.ReadAllTextAsync(csvPath), StringComparison.Ordinal);
+        await AssertBrowserCsvAsync(dataCataloguePath);
+        await AssertBrowserCsvAsync(usageMappingPath);
 
         monitor.Begin("Offline report");
         var standaloneReport = await context.NewPageAsync();
@@ -126,6 +136,8 @@ public sealed class PrivacyWorkflowTests(PrivacyE2EFixture fixture)
             Scan = "passed",
             Html = Path.GetFileName(htmlPath),
             Csv = Path.GetFileName(csvPath),
+            DataCatalogueCsv = Path.GetFileName(dataCataloguePath),
+            UsageMappingCsv = Path.GetFileName(usageMappingPath),
             Viewer = "downloaded standalone report opened and exercised locally while offline",
             TimestampUtc = DateTimeOffset.UtcNow,
         });
@@ -137,6 +149,7 @@ public sealed class PrivacyWorkflowTests(PrivacyE2EFixture fixture)
         await page.Locator("[data-pbiassure-app-ready='true']")
             .WaitForAsync(new LocatorWaitForOptions { State = WaitForSelectorState.Visible });
         await page.WaitForLoadStateAsync(LoadState.NetworkIdle);
+        Assert.Equal(0, await page.GetByRole(AriaRole.Button, new() { Name = "Export CSV", Exact = true }).CountAsync());
     }
 
     private async Task SelectFixtureAndScanAsync(IPage page)
@@ -163,6 +176,47 @@ public sealed class PrivacyWorkflowTests(PrivacyE2EFixture fixture)
         Assert.DoesNotContain("report-viewer.html", popup.Url, StringComparison.Ordinal);
         await ExerciseReportContentAsync(popup);
         await popup.CloseAsync();
+    }
+
+    private static async Task<string> DownloadExportAsync(IPage page, string outputRoot, string preset, string filenameSuffix)
+    {
+        if (!await page.GetByRole(AriaRole.Heading, new() { Name = "Export CSV", Exact = true }).IsVisibleAsync())
+        {
+            await page.GetByRole(AriaRole.Button, new() { Name = "Export CSV", Exact = true }).ClickAsync();
+        }
+
+        await page.GetByRole(AriaRole.Radio, new() { Name = preset, Exact = true }).CheckAsync();
+        await page.GetByText(preset == "Data catalogue"
+                ? "One row per model column or measure, including usage state, user-facing evidence and report/page/visual counts."
+                : "One row per logical direct report usage, showing where and how a model column or measure is used.",
+            new() { Exact = true }).WaitForAsync(new LocatorWaitForOptions { State = WaitForSelectorState.Visible });
+        if (preset == "Data catalogue")
+        {
+            var optional = page.GetByRole(AriaRole.Checkbox, new() { Name = "ReportNames", Exact = true });
+            Assert.False(await optional.IsCheckedAsync());
+            await optional.CheckAsync();
+            Assert.True(await optional.IsCheckedAsync());
+            await optional.UncheckAsync();
+            Assert.False(await optional.IsCheckedAsync());
+        }
+        else
+        {
+            Assert.True(await page.Locator("#export-column-Report").IsCheckedAsync());
+            Assert.Equal(0, await page.Locator("#export-column-DirectUsageCount").CountAsync());
+        }
+        var download = await page.RunAndWaitForDownloadAsync(() =>
+            page.GetByRole(AriaRole.Button, new() { Name = "Download CSV", Exact = true }).ClickAsync());
+        Assert.EndsWith($".{filenameSuffix}.csv", download.SuggestedFilename, StringComparison.Ordinal);
+        var path = Path.Combine(outputRoot, download.SuggestedFilename);
+        await download.SaveAsAsync(path);
+        return path;
+    }
+
+    private static async Task AssertBrowserCsvAsync(string path)
+    {
+        var bytes = await File.ReadAllBytesAsync(path);
+        Assert.True(bytes.Length >= 3 && bytes[0] == 0xEF && bytes[1] == 0xBB && bytes[2] == 0xBF);
+        Assert.Contains(PrivacyCanaries.ModelName, await File.ReadAllTextAsync(path), StringComparison.Ordinal);
     }
 
     private static async Task ExerciseReportContentAsync(IPage report)

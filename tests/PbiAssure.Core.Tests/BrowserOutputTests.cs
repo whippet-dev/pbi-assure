@@ -1,6 +1,7 @@
 using System.Text;
 using PbiAssure.Core.Scanning;
 using PbiAssure.Reporting;
+using PbiAssure.Reporting.Exports;
 using PbiAssure.Web;
 
 namespace PbiAssure.Core.Tests;
@@ -12,6 +13,8 @@ public sealed class BrowserOutputTests
     {
         Assert.Equal("Sales Returns.pbiassure.html", BrowserDownloadFileNames.Html("Sales: Returns"));
         Assert.Equal("Sales Returns.semantic-usage.csv", BrowserDownloadFileNames.SemanticUsageCsv("Sales: Returns"));
+        Assert.Equal("Sales Returns.data-catalogue.csv", BrowserDownloadFileNames.ExportCsv("Sales: Returns", ExportPreset.DataCatalogue));
+        Assert.Equal("Sales Returns.usage-mapping.csv", BrowserDownloadFileNames.ExportCsv("Sales: Returns", ExportPreset.UsageMapping));
         Assert.Equal("pbi-assure.pbiassure.html", BrowserDownloadFileNames.Html("<>"));
     }
 

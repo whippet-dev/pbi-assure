@@ -126,8 +126,14 @@
             <div class="downloads">
                 <button @onclick="OpenHtmlAsync" disabled="@isBusy">Open HTML report</button>
                 <button @onclick="DownloadHtmlAsync" disabled="@isBusy">Download HTML report</button>
-                <button @onclick="DownloadCsvAsync" disabled="@isBusy">Download semantic CSV</button>
+                <button @onclick="() => exportPanelOpen = !exportPanelOpen" disabled="@isBusy">Export CSV</button>
+                <button @onclick="DownloadCsvAsync" disabled="@isBusy">Download semantic usage CSV</button>
             </div>
+            @if (exportPanelOpen && selection is not null)
+            {
+                <ExportCsvPanel @key="exportPanelKey" Inventory="@inventory" ProjectDisplayName="@selection.DisplayName"
+                                OnClose="() => exportPanelOpen = false" />
+            }
             <p class="sensitivity"><strong>Before sharing the HTML report:</strong> it contains detailed project metadata and full Power Query M expressions. Review it for sensitive information first; it is not a redacted export.</p>
             @if (!string.IsNullOrWhiteSpace(outputMessage))
             {
@@ -151,6 +157,8 @@
     private TimeSpan? csvRenderElapsed;
     private long htmlLength;
     private long csvLength;
+    private bool exportPanelOpen;
+    private int exportPanelKey;
 
     private int UsageCount(string state) => inventory?.DeveloperSemanticObjectCountForState(state) ?? 0;
 
@@ -184,6 +192,8 @@
         outputMessage = null;
         inventory = null;
         selection = null;
+        exportPanelOpen = false;
+        exportPanelKey++;
         try
         {
             var stopwatch = Stopwatch.StartNew();
@@ -246,6 +256,8 @@
             fileReadElapsed = readStopwatch.Elapsed;
             var scanStopwatch = Stopwatch.StartNew();
             inventory = ProjectScanner.Scan(new InMemoryProjectFileSource(selection.DisplayName, files));
+            exportPanelOpen = false;
+            exportPanelKey++;
             scanElapsed = scanStopwatch.Elapsed;
             htmlRenderElapsed = null;
             csvRenderElapsed = null;

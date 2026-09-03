@@ -1,3 +1,5 @@
+using PbiAssure.Reporting.Exports;
+
 namespace PbiAssure.Web;
 
 public static class BrowserDownloadFileNames
@@ -5,6 +7,13 @@ public static class BrowserDownloadFileNames
     public static string Html(string projectDisplayName) => $"{BaseName(projectDisplayName)}.pbiassure.html";
 
     public static string SemanticUsageCsv(string projectDisplayName) => $"{BaseName(projectDisplayName)}.semantic-usage.csv";
+
+    public static string ExportCsv(string projectDisplayName, ExportPreset preset) => preset switch
+    {
+        ExportPreset.DataCatalogue => $"{BaseName(projectDisplayName)}.data-catalogue.csv",
+        ExportPreset.UsageMapping => $"{BaseName(projectDisplayName)}.usage-mapping.csv",
+        _ => throw new ArgumentOutOfRangeException(nameof(preset), preset, "Unsupported export preset."),
+    };
 
     private static string BaseName(string value)
     {

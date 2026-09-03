@@ -25,8 +25,13 @@ established title/on-canvas-text/visual-type fallback, while `VisualId` remains 
 `ExportPresetCatalog` validates fixed allowed columns and defaults, rejects invalid/duplicate selections, and the shared CSV writer preserves
 legacy comma/CRLF/RFC escaping/formula-neutralisation. The legacy `SemanticUsageCsvRenderer` remains
 byte-compatible with its prior header and behaviour. No JSON schema, CLI/Desktop/browser UI or semantic
-classification changed. The next task should add UI only, reusing these Reporting contracts rather than
-adding export mechanics to Core or changing the legacy CSV.
+classification changed. The Web app now provides the first transient UI only: after a successful scan,
+**Export CSV** opens a compact fieldset-based panel for Data catalogue or Usage mapping. It gets all
+allowed/default columns from `ExportPresetCatalog`, resets selection on preset or scan changes, calls
+`ExportCsvRenderer`, and downloads BOM-prefixed project-named CSVs through the existing local browser
+download path. **Download semantic usage CSV** remains separately labelled and unchanged. No Desktop UI,
+CLI switch, JSON/schema change, saved settings or further presets were added. The next export task may add
+Desktop UI only; do not duplicate Reporting contracts or move export mechanics into Core.
 
 Accessibility findings are now a supporting review rather than part of the main assurance surface. The
 renderer partitions existing `Accessibility` category findings in-process: the top-level **Accessibility

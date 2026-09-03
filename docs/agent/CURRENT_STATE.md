@@ -40,8 +40,12 @@ logical usage count, while report/page/visual counts remain machine-identity bas
 has a presentation-only **Visual** label using the existing deterministic title/on-canvas-text/visual-type
 fallback; it never replaces `VisualId` for identity. `ExportRequest`, `ExportPreset` and `ExportPresetCatalog` validate fixed allowed/default
 columns; CSV writing is shared with the legacy renderer and preserves comma/CRLF/RFC quoting and
-spreadsheet-formula neutralisation. The legacy semantic-usage CSV, its header and its CLI/Desktop behaviour
-remain unchanged. JSON schema remains `0.26`; there is still no browser/desktop UI or CLI switch.
+spreadsheet-formula neutralisation. The Web app now exposes a transient **Export CSV** action after a
+successful scan: its compact, keyboard-operable panel takes presets and default/allowed columns directly
+from Reporting, resets to defaults when presets/scans change, and downloads BOM-prefixed project-named
+`data-catalogue.csv` or `usage-mapping.csv` files through the existing local browser mechanism. The legacy
+semantic-usage CSV remains separately available as **Download semantic usage CSV**; its header and
+CLI/Desktop behaviour remain unchanged. JSON schema remains `0.26`; there is still no Desktop UI or CLI switch.
 
 `UserFacing` is export-only provenance, never a sixth semantic usage state. Its values are **Yes**, **No**
 and **Unclear**. Active projections, tooltip data, drillthrough and active rendered formatting are Yes;
