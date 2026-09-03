@@ -13,7 +13,7 @@ public sealed class SupportedProjectInputSurfaceTests
 
         Assert.Contains("Check or prepare your Power BI project", browser, StringComparison.Ordinal);
         Assert.Contains("model.bim</code> (TMSL) is not supported yet", browser, StringComparison.Ordinal);
-        Assert.Contains("For full assurance of a local semantic model", alwaysVisibleIntro, StringComparison.Ordinal);
+        Assert.Contains("For supported local semantic-model analysis", alwaysVisibleIntro, StringComparison.Ordinal);
         Assert.Contains("PBIR and TMDL", alwaysVisibleIntro, StringComparison.Ordinal);
         Assert.Contains(".SemanticModel/definition/", alwaysVisibleIntro, StringComparison.Ordinal);
         Assert.Contains("Local <code>model.bim</code> (TMSL) models are not supported", alwaysVisibleIntro, StringComparison.Ordinal);

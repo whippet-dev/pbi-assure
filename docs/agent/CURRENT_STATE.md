@@ -12,8 +12,8 @@ evidenced · **[design decision]** a choice, not a fact.
 |---|---|
 | Remote | `whippet-dev/pbi-assure` |
 | Branch | `master` (also the default branch) |
-| Last verified product state | Optional catalogue Description committed at `a2e8c6b`; HTML hierarchy refocus pending review |
-| Working tree | HTML information-architecture slice is uncommitted; re-check before committing. |
+| Last verified product state | HTML hierarchy refocus committed and pushed at `8f09c27`; Web newcomer orientation pending review |
+| Working tree | Web newcomer-orientation slice is uncommitted; re-check before committing. |
 
 `master` may have moved past that commit for documentation-only changes. Re-verify and update this
 section whenever a commit changes build, test or behaviour — not for every commit.
@@ -23,6 +23,32 @@ The current evidence-led backlog is re-ranked in
 `alternateOf` aggregation mappings and measure KPI/Detail Rows expressions are now fixture-backed
 dependencies. Table-owned Detail Rows remains evidence-gated; aggregation metadata is not
 runtime-performance evidence.
+
+## Web newcomer orientation
+
+**[design decision]** Analyse remains `/`, with a compact model-intelligence introduction and the
+existing picker/preparation workflow. `/about` (**What PBI Assure does**) explains the shipped areas,
+outputs, workflow, limitations and bounded privacy model. A shared ordinary-link navigation identifies
+the current page. With selection, inventory or busy state on Analyse, the information link explicitly
+opens in a new tab; it never transfers project state. Otherwise navigation is same-tab. Standard
+`FocusOnNavigate` targets the page heading. No storage or shared scan-state service was introduced.
+
+**[verified]** Both pages were visually reviewed on the locally published build at 1440×1000 and
+390×844: picker remains accessible, output descriptions are distinct, limitations/privacy are visible
+sections, and no horizontal overflow was detected. Direct route, keyboard focus, selected-project and
+completed-scan preservation are covered by browser tests. The test host now applies SPA fallback after
+static files, preserving the isolated HTML viewer route. Scan/export network expectations are unchanged.
+
+Validation: focused Web **15/15**, full Core **562/562**, privacy/navigation E2E **4/4**, Release **0 warnings /
+0 errors**, `git diff --check` passed. Local privacy evidence remains under ignored `artifacts/privacy-e2e`.
+Build-server reuse was disabled for the test invocation to avoid a local publish/output-stream stall;
+no build configuration was changed. Browser visual review used the published build after the Debug
+development host encountered rebuilt-asset fetch failures.
+
+**Next deliberate task, not implemented:** Web post-scan summary still uses aggregate findings including
+accessibility and the older Assurance-first order; generated HTML excludes accessibility from Assurance
+headlines and leads with model intelligence. Post-scan actions, counts, exports, generated HTML, analysis,
+JSON `0.26` and the formatter baseline are unchanged in this newcomer slice.
 
 ## HTML information hierarchy
 

@@ -1,0 +1,89 @@
+@page "/about"
+
+<PageTitle>What PBI Assure does — PBI Assure</PageTitle>
+
+<article class="shell information-page" aria-labelledby="about-title">
+    <AppNavigation IsInformationPage="true" />
+    <header>
+        <p class="eyebrow">PBI Assure · Model intelligence</p>
+        <h1 id="about-title" tabindex="-1">What PBI Assure does</h1>
+        <p>A practical guide to understanding your project and using the evidence it contains.</p>
+    </header>
+
+    <section aria-labelledby="what-is">
+        <h2 id="what-is">What is PBI Assure?</h2>
+        <p>PBI Assure is a read-only analyser of structured Power BI project metadata. It helps you explore an unfamiliar project and understand its semantic model — the tables, fields and calculations behind the report — with evidence of where objects are used and what depends on them.</p>
+    </section>
+
+    <section aria-labelledby="understand">
+        <h2 id="understand">What can it help me understand?</h2>
+        <ul>
+            <li>Find model objects with no detected usage. <strong>Apparently unused</strong> means no use was found in the scanned project, not permission to delete.</li>
+            <li>Explore <strong>semantic usage</strong>: objects used directly by the report, needed indirectly by another object, or required by model structure.</li>
+            <li>Trace where fields and measures are used across report pages and visuals, and follow their semantic dependencies.</li>
+            <li>Understand Power Query dependencies, review model relationships, and inspect report, page and visual metadata.</li>
+        </ul>
+        <p>Selected findings, Theme Review and Accessibility review provide supporting checks alongside this model intelligence.</p>
+    </section>
+
+    <section aria-labelledby="analyses">
+        <h2 id="analyses">What does it analyse?</h2>
+        <dl class="information-definitions">
+            <div><dt>Semantic model</dt><dd>Objects and retained metadata, their usage classifications, and the dependency evidence behind them.</dd></div>
+            <div><dt>Power Query</dt><dd>Queries that prepare data, detected query dependencies and recognised data-source references.</dd></div>
+            <div><dt>Model relationships</dt><dd>Connections between tables and their persisted settings.</dd></div>
+            <div><dt>Report pages and visuals</dt><dd>Report structure, visual metadata and detected references to the model.</dd></div>
+            <div><dt>Selected quality reviews</dt><dd>Findings highlight supported issues and items for human review. Theme Review examines supported theme properties; Accessibility review highlights supported concerns such as alternative text and tab order. Neither specialist review is comprehensive.</dd></div>
+        </dl>
+    </section>
+
+    <section aria-labelledby="outputs">
+        <h2 id="outputs">What do I get after a scan?</h2>
+        <div class="information-outputs">
+            <div class="information-output">
+                <h3>Interactive HTML report — start here</h3>
+                <p>Explore semantic usage, dependency evidence, Power Query, relationships and the report/page/visual inventory, with findings and specialist reviews alongside them. Open it in the browser or download it for later review.</p>
+            </div>
+            <div class="information-output">
+                <h3>Data Catalogue CSV</h3>
+                <p>Reusable metadata for documentation, catalogues and governance: one row per eligible developer-authored column or measure, including objects with zero detected usage. Choose semantic usage, confidence, user-facing evidence, usage counts and contexts, and optional metadata such as Description.</p>
+            </div>
+            <div class="information-output">
+                <h3>Usage Mapping CSV</h3>
+                <p>Answer “where and how is this field used?” with one row per logical direct report usage: a report location and context/role, rather than a separate row for every piece of supporting evidence. Includes report, page and visual provenance where applicable, user-facing evidence and optional technical provenance.</p>
+            </div>
+        </div>
+        <p><strong>UserFacing</strong> describes whether qualifying direct report-presentation or intentional-interaction evidence was found. It is separate from semantic usage: directly used does not automatically mean Yes. No means no qualifying evidence was found, not proof that users can never encounter the object; Unclear means the retained direct context cannot be classified confidently.</p>
+        <p class="secondary-output">The existing fixed <strong>semantic usage CSV</strong> also remains available as a legacy technical/compatibility export.</p>
+    </section>
+
+    <section aria-labelledby="workflow">
+        <h2 id="workflow">Typical workflow</h2>
+        <ol>
+            <li>Prepare and select a supported structured Power BI project. Analyse includes preparation guidance.</li>
+            <li>Run the analysis.</li>
+            <li>Start with the interactive HTML report.</li>
+            <li>Export catalogue or usage metadata when useful.</li>
+            <li>Review the evidence in context before making changes.</li>
+            <li>Check generated files for sensitive metadata before sharing.</li>
+        </ol>
+    </section>
+
+    <section class="information-panel" aria-labelledby="limitations">
+        <h2 id="limitations">Important limitations</h2>
+        <ul>
+            <li><strong>Apparently unused does not mean safe to delete.</strong> PBI Assure sees the scanned project, not every external report or service dependency.</li>
+            <li>Dynamic metadata and dependencies may limit certainty. Some Power BI constructs and formats have partial or version-specific coverage; review the evidence and coverage notes.</li>
+            <li>Accessibility analysis supports manual review; it is not a WCAG compliance verdict. Theme Review is bounded and partial, not comprehensive compliance analysis.</li>
+            <li>Metadata analysis does not validate runtime data correctness, refresh success or data quality.</li>
+        </ul>
+    </section>
+
+    <section class="information-panel" aria-labelledby="privacy">
+        <h2 id="privacy">Privacy and read-only analysis</h2>
+        <p>Selected project metadata is processed in your browser. Normal project selection and scanning are read-only: PBI Assure does not modify the selected source project. The application code does not upload selected project content or generated results as part of scanning or export.</p>
+        <p>Projects and results are held in application memory, not application-managed persistent browser storage. Leaving or reloading Analyse loses that working state; secure memory deletion is not guaranteed. Downloads may contain sensitive metadata, so review them before sharing.</p>
+        <p>Loading the website requires normal site/runtime requests, and online HTML viewing can request a static same-origin viewer shell. Hosting infrastructure can receive ordinary request metadata. Offline scanning has been tested after the application has loaded; this is not a promise of zero network traffic or offline first-load availability.</p>
+        <p><a href="https://github.com/whippet-dev/pbi-assure/blob/master/PRIVACY.md" target="_blank" rel="noopener noreferrer">Read the detailed privacy statement (opens in new tab)</a>.</p>
+    </section>
+</article>

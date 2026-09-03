@@ -60,6 +60,19 @@ internal sealed class PrivacyTestHost : IAsyncDisposable
             ServeUnknownFileTypes = true,
             DefaultContentType = "application/octet-stream",
         });
+        // Apply SPA fallback only after static files, so the viewer rewrite still serves its shell.
+        app.Run(async context =>
+        {
+            if (HttpMethods.IsGet(context.Request.Method) && !Path.HasExtension(context.Request.Path.Value))
+            {
+                context.Response.ContentType = "text/html";
+                await context.Response.SendFileAsync(Path.Combine(publishedRoot, "index.html"));
+            }
+            else
+            {
+                context.Response.StatusCode = StatusCodes.Status404NotFound;
+            }
+        });
         await app.StartAsync();
 
         var addresses = app.Services

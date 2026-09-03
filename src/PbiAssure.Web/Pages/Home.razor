@@ -7,21 +7,28 @@
 @using PbiAssure.Reporting
 @inject IJSRuntime JS
 
-<PageTitle>PBI Assure</PageTitle>
+<PageTitle>Analyse — PBI Assure</PageTitle>
 
 <section class="shell" aria-labelledby="page-title" data-pbiassure-app-ready="true">
+    <AppNavigation HasActiveProject="@(selection is not null || inventory is not null || isBusy)" />
     <header>
-        <p class="eyebrow">Browser assurance</p>
-        <h1 id="page-title">PBI Assure</h1>
-        <p>Choose a Power BI project, then run the existing assurance scanner in this browser.</p>
+        <p class="eyebrow">PBI Assure · Model intelligence</p>
+        <h1 id="page-title" tabindex="-1">Understand your Power BI project</h1>
+        <p>PBI Assure performs read-only analysis of Power BI project metadata, helping developers and analysts understand how the semantic model — your tables, fields and calculations — fits together with Power Query and the report.</p>
+        <ul class="orientation-outcomes">
+            <li>Find model objects with no detected usage</li>
+            <li>Trace where fields and measures are used</li>
+            <li>Understand model and Power Query dependencies</li>
+            <li>Export catalogue and usage metadata</li>
+        </ul>
     </header>
 
-    <p class="supported-input">For full assurance of a local semantic model, use a PBIP project with PBIR and TMDL (<code>.SemanticModel/definition/</code>). Local <code>model.bim</code> (TMSL) models are not supported by this version yet.</p>
+    <p class="supported-input">For supported local semantic-model analysis, use a PBIP project with PBIR and TMDL (<code>.SemanticModel/definition/</code>). Local <code>model.bim</code> (TMSL) models are not supported by this version yet.</p>
 
     <details class="guidance-panel">
         <summary>Check or prepare your Power BI project</summary>
         <div class="guidance-content">
-            <p>PBI Assure provides full assurance for a Power BI Project (PBIP) that uses the enhanced report format (PBIR) and the TMDL semantic model format.</p>
+            <p>The supported project structure is a Power BI Project (PBIP) that uses the enhanced report format (PBIR) and the TMDL semantic model format.</p>
             <ol>
                 <li>Open the PBIX in Power BI Desktop.</li>
                 <li>In <strong>File &gt; Options and settings &gt; Options &gt; Preview features</strong>, enable <strong>Power BI Project (.pbip) save option</strong> if it is shown.</li>

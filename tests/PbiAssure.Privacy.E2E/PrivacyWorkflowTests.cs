@@ -10,6 +10,77 @@ public sealed class PrivacyWorkflowTests(PrivacyE2EFixture fixture)
     private static readonly JsonSerializerOptions EvidenceJsonOptions = new() { WriteIndented = true };
 
     [Fact(Timeout = 240_000)]
+    public async Task InformationRouteAndKeyboardNavigationWorkWithoutProjectState()
+    {
+        await using var context = await fixture.Browser.NewContextAsync();
+        var page = await context.NewPageAsync();
+        await page.GotoAsync(fixture.BaseUrl + "/about");
+        var heading = page.GetByRole(AriaRole.Heading, new() { Name = "What PBI Assure does", Exact = true });
+        await heading.WaitForAsync();
+        Assert.Equal("What PBI Assure does — PBI Assure", await page.TitleAsync());
+        var navigation = page.GetByRole(AriaRole.Navigation, new() { Name = "Application" });
+        Assert.Equal("page", await navigation.GetByRole(AriaRole.Link, new() { Name = "What PBI Assure does", Exact = true }).GetAttributeAsync("aria-current"));
+        await navigation.GetByRole(AriaRole.Link, new() { Name = "Analyse", Exact = true }).FocusAsync();
+        await page.Keyboard.PressAsync("Enter");
+        await page.WaitForFunctionAsync("document.activeElement?.id === 'page-title'");
+        Assert.Equal("page", await navigation.GetByRole(AriaRole.Link, new() { Name = "Analyse", Exact = true }).GetAttributeAsync("aria-current"));
+        var info = navigation.GetByRole(AriaRole.Link, new() { Name = "What PBI Assure does", Exact = true });
+        Assert.Null(await info.GetAttributeAsync("target"));
+        await info.FocusAsync();
+        Assert.Equal("solid", await info.EvaluateAsync<string>("element => getComputedStyle(element).outlineStyle"));
+        await page.Keyboard.PressAsync("Enter");
+        await page.WaitForFunctionAsync("document.activeElement?.id === 'about-title'");
+        Assert.Single(context.Pages);
+    }
+
+    [Fact(Timeout = 240_000)]
+    public async Task InformationOpensSeparatelyAndPreservesSelectedProjectAndScan()
+    {
+        await using var context = await fixture.Browser.NewContextAsync();
+        var page = await context.NewPageAsync();
+        var monitor = new PrivacyNetworkMonitor(context, fixture.BaseUrl);
+        await LoadUntilReadyAsync(page);
+        await SelectFixtureAsync(page);
+        monitor.Begin("Information");
+        await AssertInformationPopupPreservesPageAsync(page);
+        monitor.Begin("Scan");
+        await page.GetByRole(AriaRole.Button, new() { Name = "Run assurance", Exact = true }).ClickAsync();
+        await page.GetByRole(AriaRole.Heading, new() { Name = "Assurance summary", Exact = true }).WaitForAsync();
+        var counts = await ReadAssuranceCountsAsync(page);
+        monitor.Begin("Information");
+        await AssertInformationPopupPreservesPageAsync(page);
+        Assert.Equal(counts, await ReadAssuranceCountsAsync(page));
+        Assert.True(await page.GetByRole(AriaRole.Button, new() { Name = "Export CSV", Exact = true }).IsVisibleAsync());
+        Assert.Empty(monitor.ExternalEvents());
+        Assert.Empty(monitor.CanaryLeaks());
+        Assert.Empty(monitor.UnexpectedEvents());
+        Assert.All(monitor.Events.Where(item => item.Phase == "Information"), item =>
+        {
+            Assert.Equal("GET", item.Method);
+            var path = new Uri(item.Url).AbsolutePath;
+            Assert.True(path == "/about" || path == "/css/app.css" || path == "/project-picker.js" ||
+                path == "/download.js" || path.StartsWith("/_framework/", StringComparison.Ordinal), item.Url);
+        });
+    }
+
+    private async Task AssertInformationPopupPreservesPageAsync(IPage page)
+    {
+        var link = page.GetByRole(AriaRole.Link, new() { Name = "What PBI Assure does (opens in new tab)", Exact = true });
+        Assert.Equal("_blank", await link.GetAttributeAsync("target"));
+        Assert.Equal("noopener noreferrer", await link.GetAttributeAsync("rel"));
+        await link.FocusAsync();
+        var popup = await page.RunAndWaitForPopupAsync(() => page.Keyboard.PressAsync("Enter"));
+        await popup.GetByRole(AriaRole.Heading, new() { Name = "What PBI Assure does", Exact = true }).WaitForAsync();
+        await popup.WaitForLoadStateAsync(LoadState.NetworkIdle);
+        Assert.Equal(fixture.BaseUrl + "/about", popup.Url);
+        Assert.True(await popup.EvaluateAsync<bool>("window.opener === null"));
+        Assert.DoesNotContain(PrivacyCanaries.ProjectName, await popup.Locator("body").InnerTextAsync(), StringComparison.Ordinal);
+        await popup.CloseAsync();
+        Assert.Equal(fixture.BaseUrl + "/", page.Url);
+        Assert.True(await page.GetByText($"Selected project: {PrivacyCanaries.ProjectName}", new() { Exact = true }).IsVisibleAsync());
+    }
+
+    [Fact(Timeout = 240_000)]
     public async Task OnlineWorkflowProducesNoUnexpectedPostStartupNetworkTraffic()
     {
         await using var context = await fixture.Browser.NewContextAsync(new BrowserNewContextOptions
@@ -154,16 +225,21 @@ public sealed class PrivacyWorkflowTests(PrivacyE2EFixture fixture)
 
     private async Task SelectFixtureAndScanAsync(IPage page)
     {
+        await SelectFixtureAsync(page);
+        await page.GetByRole(AriaRole.Button, new() { Name = "Run assurance", Exact = true }).ClickAsync();
+        await page.GetByRole(AriaRole.Heading, new() { Name = "Assurance summary", Exact = true })
+            .WaitForAsync(new LocatorWaitForOptions { State = WaitForSelectorState.Visible });
+        Assert.Contains("Your model objects", await page.Locator("main").InnerTextAsync(), StringComparison.Ordinal);
+    }
+
+    private async Task SelectFixtureAsync(IPage page)
+    {
         await page.Locator("details.picker-help > summary").ClickAsync();
         var chooser = await page.RunAndWaitForFileChooserAsync(() =>
             page.GetByRole(AriaRole.Button, new() { Name = "Use alternative folder picker", Exact = true }).ClickAsync());
         await chooser.SetFilesAsync(fixture.FixtureDirectory);
         await page.GetByText($"Selected project: {PrivacyCanaries.ProjectName}", new() { Exact = true })
             .WaitForAsync(new LocatorWaitForOptions { State = WaitForSelectorState.Visible });
-        await page.GetByRole(AriaRole.Button, new() { Name = "Run assurance", Exact = true }).ClickAsync();
-        await page.GetByRole(AriaRole.Heading, new() { Name = "Assurance summary", Exact = true })
-            .WaitForAsync(new LocatorWaitForOptions { State = WaitForSelectorState.Visible });
-        Assert.Contains("Your model objects", await page.Locator("main").InnerTextAsync(), StringComparison.Ordinal);
     }
 
     private static async Task OpenAndExerciseReportAsync(IPage page)

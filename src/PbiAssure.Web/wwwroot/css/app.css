@@ -2,6 +2,23 @@
 body { margin: 0; }
 main { max-width: 56rem; margin: 0 auto; padding: 3rem 1.25rem 2rem; }
 .shell { display: grid; gap: 1.5rem; }
+.app-navigation { display: flex; flex-wrap: wrap; gap: 0.5rem 1.25rem; align-items: baseline; }
+.app-navigation a, .information-page a { color: #075a46; }
+.app-navigation a { padding: 0.3rem 0; text-underline-offset: 0.25rem; }
+.app-navigation a[aria-current="page"] { font-weight: 700; text-decoration-thickness: 3px; }
+.navigation-note { font-size: 0.85rem; }
+.orientation-outcomes { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.4rem 1.75rem; margin: 0.3rem 0 0; padding-left: 1.2rem; font-size: 0.95rem; }
+.information-page { line-height: 1.55; }
+.information-page section { display: grid; gap: 0.8rem; }
+.information-page h2 { margin: 0; }
+.information-page ul, .information-page ol { display: grid; gap: 0.5rem; margin: 0; padding-left: 1.35rem; }
+.information-definitions { display: grid; gap: 0.8rem; margin: 0; }
+.information-definitions dt { font-weight: 700; }
+.information-definitions dd { margin: 0; }
+.information-outputs { display: grid; gap: 0.75rem; }
+.information-output, .information-panel { padding: 1.1rem 1.25rem; border: 1px solid #ccd7e5; border-radius: 0.5rem; background: #fff; }
+.information-output h3 { margin: 0 0 0.4rem; }
+.secondary-output { color: #38516f; font-size: 0.95rem; }
 h1, h2, p { margin: 0; }
 h1 { font-size: 2.2rem; }
 h2 { margin-bottom: 0.8rem; }
@@ -60,6 +77,7 @@ button:focus-visible, summary:focus-visible, a:focus-visible { outline: 3px soli
     .project-metrics .metric:last-child { grid-column: 1 / -1; }
 }
 @media (max-width: 34rem) {
+    .orientation-outcomes { grid-template-columns: minmax(0, 1fr); }
     main { padding: 2rem 1rem 1.5rem; }
     .guidance-panel, .picker, .selection { padding: 1rem; }
     .export-panel-heading { align-items: stretch; flex-direction: column; }

@@ -5,7 +5,27 @@ Tactical entry point for an incoming coding agent. Read this first, then
 
 ## What just happened
 
-The **HTML information-architecture** slice is pending review and must remain uncommitted. Navigation
+The **Web newcomer-orientation** slice is implemented and must remain **uncommitted for review**.
+Analyse `/` has a compact introduction and four outcomes above the unchanged preparation/picker flow.
+The new `/about` page explains the product, supported analysis, outputs, workflow, limitations and privacy.
+`Shared/AppNavigation.razor` uses ordinary links with current-page semantics; information opens in a
+clearly labelled new tab when Home has a selection, inventory or busy state. No persistence or new state
+service. `App.razor` uses standard heading focus on route changes.
+
+Focused Web **15/15**, full Core **562/562**, privacy/navigation **4/4**, Release **0 warnings / 0 errors**
+and diff check passed. Desktop/mobile visual review of the published local Web build is complete at
+1440×1000 and 390×844. Privacy evidence: zero scan/export requests and no unexpected/external requests
+or canary leaks; online HTML viewing retains its three static viewer requests. The new navigation tests
+also check static-only information-page requests, keyboard focus and retention of selected/scanned state.
+The test-only host's SPA fallback must remain after static-file handling, or it intercepts the viewer.
+Use `MSBUILDDISABLENODEREUSE=1` and `DOTNET_CLI_USE_MSBUILD_SERVER=0` in the local test process if publish
+output streams stall; these are invocation settings, not repository configuration changes.
+
+**Next task to decide separately:** Web summary-count/order alignment. Home still includes accessibility
+in its aggregate findings and uses Assurance-first ordering, unlike generated HTML. This is deliberately
+unchanged, as are post-scan actions, all exports, Core/Reporting and JSON `0.26`. No formatter cleanup.
+
+The approved **HTML information-architecture** slice was committed and pushed at `8f09c27`. Navigation
 and body now prioritize Summary -> Semantic model -> Power Query -> Model relationships -> Report pages
 -> Findings -> Analysis coverage -> Theme Review -> Accessibility review. Conditional Security roles
 remains after relationships; coverage remains conditional. Summary groups are Semantic usage -> Project

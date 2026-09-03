@@ -1,0 +1,17 @@
+<nav class="app-navigation" aria-label="Application">
+    <a href="" aria-current="@(IsInformationPage ? null : "page")">Analyse</a>
+    <a href="about" aria-current="@(IsInformationPage ? "page" : null)"
+       target="@(HasActiveProject ? "_blank" : null)"
+       rel="@(HasActiveProject ? "noopener noreferrer" : null)">
+        What PBI Assure does
+        @if (HasActiveProject)
+        {
+            <span class="navigation-note">(opens in new tab)</span>
+        }
+    </a>
+</nav>
+
+@code {
+    [Parameter] public bool IsInformationPage { get; set; }
+    [Parameter] public bool HasActiveProject { get; set; }
+}
