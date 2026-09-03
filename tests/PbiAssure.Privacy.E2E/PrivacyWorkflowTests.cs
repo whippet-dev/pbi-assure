@@ -14,6 +14,16 @@ public sealed class PrivacyWorkflowTests(PrivacyE2EFixture fixture)
     {
         await using var context = await fixture.Browser.NewContextAsync();
         var page = await context.NewPageAsync();
+        await LoadUntilReadyAsync(page);
+        await page.WaitForFunctionAsync("document.activeElement?.id === 'page-title'");
+        Assert.Equal("none", await page.Locator("#page-title").EvaluateAsync<string>("element => getComputedStyle(element).outlineStyle"));
+        await page.Keyboard.PressAsync("Tab");
+        Assert.True(await page.Locator("details.guidance-panel > summary").EvaluateAsync<bool>("element => element.matches(':focus-visible')"));
+        Assert.Equal("3px", await page.Locator("details.guidance-panel > summary").EvaluateAsync<string>("element => getComputedStyle(element).outlineWidth"));
+        await page.Keyboard.PressAsync("Tab");
+        var picker = page.GetByRole(AriaRole.Button, new() { Name = "Choose Power BI project", Exact = true });
+        Assert.True(await picker.EvaluateAsync<bool>("element => element.matches(':focus-visible')"));
+        Assert.Equal("3px", await picker.EvaluateAsync<string>("element => getComputedStyle(element).outlineWidth"));
         await page.GotoAsync(fixture.BaseUrl + "/about");
         var heading = page.GetByRole(AriaRole.Heading, new() { Name = "What PBI Assure does", Exact = true });
         await heading.WaitForAsync();
@@ -30,6 +40,7 @@ public sealed class PrivacyWorkflowTests(PrivacyE2EFixture fixture)
         Assert.Equal("solid", await info.EvaluateAsync<string>("element => getComputedStyle(element).outlineStyle"));
         await page.Keyboard.PressAsync("Enter");
         await page.WaitForFunctionAsync("document.activeElement?.id === 'about-title'");
+        Assert.Equal("none", await heading.EvaluateAsync<string>("element => getComputedStyle(element).outlineStyle"));
         Assert.Single(context.Pages);
     }
 

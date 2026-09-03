@@ -21,6 +21,7 @@ main { max-width: 56rem; margin: 0 auto; padding: 3rem 1.25rem 2rem; }
 .secondary-output { color: #38516f; font-size: 0.95rem; }
 h1, h2, p { margin: 0; }
 h1 { font-size: 2.2rem; }
+h1#page-title[tabindex="-1"]:focus, h1#about-title[tabindex="-1"]:focus { outline: none; }
 h2 { margin-bottom: 0.8rem; }
 .eyebrow, .diagnostic { color: #586b82; font-size: 0.9rem; }
 header, .picker, .selection, .metrics { display: grid; gap: 0.65rem; }
