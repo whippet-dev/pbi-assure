@@ -1,3 +1,5 @@
+using System.Text.RegularExpressions;
+
 namespace PbiAssure.Core.Tests;
 
 public sealed class WebNewcomerOrientationTests
@@ -34,7 +36,7 @@ public sealed class WebNewcomerOrientationTests
             Assert.Contains($">{heading}</h2>", about, StringComparison.Ordinal);
         }
 
-        foreach (var fact in new[] { "Interactive HTML report — start here", "Data Catalogue CSV", "Usage Mapping CSV", "zero detected usage", "optional metadata such as Description", "one row per logical direct report usage", "legacy technical/compatibility export", "Apparently unused does not mean safe to delete", "not a WCAG compliance verdict", "partial or version-specific coverage", "does not validate runtime data correctness", "directly used does not automatically mean Yes", "No means no qualifying evidence was found", "application-managed persistent browser storage", "secure memory deletion is not guaranteed", "normal site/runtime requests", "static same-origin viewer shell", "ordinary request metadata", "after the application has loaded", "PRIVACY.md" })
+        foreach (var fact in new[] { "Interactive HTML report", "Start here", "Data Catalogue CSV", "Usage Mapping CSV", "zero detected usage", "optional metadata such as Description", "one row per logical direct report usage", "legacy technical/compatibility export", "Apparently unused does not mean safe to delete", "not a WCAG compliance verdict", "partial or version-specific coverage", "does not validate runtime data correctness", "directly used does not automatically mean Yes", "No means no qualifying evidence was found", "application-managed persistent browser storage", "secure memory deletion is not guaranteed", "normal site/runtime requests", "static same-origin viewer shell", "ordinary request metadata", "after the application has loaded", "PRIVACY.md" })
         {
             Assert.Contains(fact, about, StringComparison.Ordinal);
         }
@@ -59,9 +61,45 @@ public sealed class WebNewcomerOrientationTests
         Assert.Contains("(opens in new tab)", navigation, StringComparison.Ordinal);
         Assert.Contains("<AppNavigation IsInformationPage=\"true\" />", ReadWeb("Pages/About.razor"), StringComparison.Ordinal);
         Assert.Contains("<FocusOnNavigate RouteData=\"routeData\" Selector=\"h1\" />", ReadWeb("App.razor"), StringComparison.Ordinal);
-        Assert.Contains("a:focus-visible", ReadWeb("wwwroot/css/app.css"), StringComparison.Ordinal);
+        // The focus treatment is shared with the generated report, so it lives in the design-system core
+        // stylesheet that index.html links alongside app.css.
+        Assert.Contains("a:focus-visible", ReadWeb("wwwroot/css/core.css"), StringComparison.Ordinal);
         Assert.DoesNotContain("role=\"tab", navigation, StringComparison.Ordinal);
         Assert.DoesNotContain("@inject", navigation, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// index.html sets <c>&lt;base href="/"&gt;</c>, so a fragment-only href resolves against the site
+    /// root rather than the current address: <c>#outputs</c> means <c>/#outputs</c>, which is Analyse.
+    /// Every jump link must name its own route, and every one must point at a section that exists.
+    /// </summary>
+    [Fact]
+    public void InformationPageJumpLinksStayOnTheInformationRoute()
+    {
+        var about = ReadWeb("Pages/About.razor");
+        var contents = ExtractBetween(about, "<nav class=\"page-contents\"", "</nav>");
+        var targets = Regex.Matches(contents, "href=\"(?<href>[^\"]+)\"")
+            .Select(match => match.Groups["href"].Value)
+            .ToArray();
+
+        Assert.NotEmpty(targets);
+        foreach (var target in targets)
+        {
+            Assert.StartsWith("about#", target, StringComparison.Ordinal);
+            Assert.DoesNotContain("/#", target, StringComparison.Ordinal);
+            Assert.Contains($"id=\"{target["about#".Length..]}\"", about, StringComparison.Ordinal);
+        }
+
+        Assert.Contains("<base href=\"/\" />", ReadWeb("wwwroot/index.html"), StringComparison.Ordinal);
+    }
+
+    private static string ExtractBetween(string value, string start, string end)
+    {
+        var from = value.IndexOf(start, StringComparison.Ordinal);
+        Assert.True(from >= 0, $"Could not find '{start}'.");
+        var to = value.IndexOf(end, from, StringComparison.Ordinal);
+        Assert.True(to > from, $"Could not find '{end}' after '{start}'.");
+        return value[from..to];
     }
 
     private static string ReadWeb(string relativePath)

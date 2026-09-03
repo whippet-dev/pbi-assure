@@ -16,6 +16,9 @@
 /download.js
   Cache-Control: no-cache
 
+/appearance.js
+  Cache-Control: no-cache
+
 /report-viewer.html
   ! Content-Security-Policy
   Content-Security-Policy: default-src 'none'; base-uri 'none'; object-src 'none'; script-src 'self' 'unsafe-inline'; style-src 'unsafe-inline'; connect-src 'none'; img-src 'self' data:; font-src 'none'; media-src 'none'; frame-src 'none'; worker-src 'none'; form-action 'none'; frame-ancestors 'none'

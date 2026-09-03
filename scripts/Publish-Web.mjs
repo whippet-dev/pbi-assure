@@ -57,6 +57,10 @@ const assetVersionInputs = [
     "src/PbiAssure.Web/wwwroot/index.html",
     "src/PbiAssure.Web/wwwroot/project-picker.js",
     "src/PbiAssure.Web/wwwroot/download.js",
+    "src/PbiAssure.Web/wwwroot/appearance.js",
+    "src/PbiAssure.Web/wwwroot/favicon.svg",
+    "src/PbiAssure.Web/wwwroot/css/core.css",
+    "src/PbiAssure.Web/wwwroot/css/app.css",
     "src/PbiAssure.Web/wwwroot/report-viewer.html",
     "src/PbiAssure.Web/wwwroot/report-viewer.js"
 ];
@@ -83,6 +87,10 @@ const requiredFiles = [
     "index.html",
     "_headers",
     "download.js",
+    "appearance.js",
+    "favicon.svg",
+    join("css", "core.css"),
+    join("css", "app.css"),
     "report-viewer.html",
     "report-viewer.js",
     join("_framework", "blazor.webassembly.js")

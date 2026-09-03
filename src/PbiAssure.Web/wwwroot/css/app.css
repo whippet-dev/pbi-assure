@@ -1,93 +1,444 @@
-:root { color-scheme: light; font-family: system-ui, sans-serif; color: #15253d; background: #f7f9fc; }
-body { margin: 0; }
-main { max-width: 56rem; margin: 0 auto; padding: 3rem 1.25rem 2rem; }
-.shell { display: grid; gap: 1.5rem; }
-.app-navigation { display: flex; flex-wrap: wrap; gap: 0.5rem 1.25rem; align-items: baseline; }
-.app-navigation a, .information-page a { color: #075a46; }
-.app-navigation a { padding: 0.3rem 0; text-underline-offset: 0.25rem; }
-.app-navigation a[aria-current="page"] { font-weight: 700; text-decoration-thickness: 3px; }
-.navigation-note { font-size: 0.85rem; }
-.orientation-outcomes { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.4rem 1.75rem; margin: 0.3rem 0 0; padding-left: 1.2rem; font-size: 0.95rem; }
-.information-page { line-height: 1.55; }
-.information-page section { display: grid; gap: 0.8rem; }
-.information-page h2 { margin: 0; }
-.information-page ul, .information-page ol { display: grid; gap: 0.5rem; margin: 0; padding-left: 1.35rem; }
-.information-definitions { display: grid; gap: 0.8rem; margin: 0; }
-.information-definitions dt { font-weight: 700; }
-.information-definitions dd { margin: 0; }
-.information-outputs { display: grid; gap: 0.75rem; }
-.information-output, .information-panel { padding: 1.1rem 1.25rem; border: 1px solid #ccd7e5; border-radius: 0.5rem; background: #fff; }
-.information-output h3 { margin: 0 0 0.4rem; }
-.secondary-output { color: #38516f; font-size: 0.95rem; }
+/* PBI Assure browser application.
+   Layered on css/core.css, which holds the design tokens and the primitives shared with the
+   generated HTML report. This file only describes the application's own layout and emphasis:
+   a slightly more spacious rhythm than the report, and a filled primary action. */
+
+/* ------------------------------------------------------------------ shell */
+
+body { min-height: 100vh; }
+
+.app-bar {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  border-bottom: 1px solid var(--pa-line);
+  background: var(--pa-surface);
+}
+
+.app-bar-inner {
+  display: flex;
+  width: min(68rem, 100%);
+  align-items: center;
+  gap: 1.25rem;
+  margin-inline: auto;
+  min-height: 3rem;
+  padding: 0.375rem 1.25rem;
+}
+
+.app-navigation { display: flex; flex: 1; flex-wrap: wrap; gap: 0.25rem; align-items: center; }
+
+.app-navigation a {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.3125rem 0.5rem;
+  border-radius: var(--pa-r2);
+  color: var(--pa-text-2);
+  font-size: var(--pa-t-sm);
+  font-weight: 550;
+  text-decoration: none;
+  transition: background var(--pa-fast) var(--pa-ease), color var(--pa-fast) var(--pa-ease);
+}
+
+.app-navigation a:hover { background: var(--pa-surface-2); color: var(--pa-text); }
+.app-navigation a[aria-current="page"] { background: var(--pa-accent-soft); color: var(--pa-accent); font-weight: 600; }
+.navigation-note { color: var(--pa-text-3); font-size: var(--pa-t-2xs); font-weight: 400; }
+
+/* The app bar spans the viewport, so the reading column lives on .shell rather than on main. */
+main { display: block; }
+.shell { display: grid; width: min(68rem, 100%); gap: 1.75rem; margin-inline: auto; padding: 2rem 1.25rem 2.5rem; }
+
+.app-footer {
+  width: min(68rem, 100%);
+  margin: 0 auto;
+  padding: 1rem 1.25rem 2rem;
+  border-top: 1px solid var(--pa-line);
+  color: var(--pa-text-3);
+  font-size: var(--pa-t-2xs);
+}
+
+.app-footer p { margin: 0; }
+.app-footer a { color: var(--pa-text-2); }
+.app-footer a:hover { color: var(--pa-accent); }
+
+/* ------------------------------------------------------------- page header */
+
+.page-header { display: grid; gap: 0.5rem; }
+.page-header-compact { gap: 0.25rem; }
+/* The project name is the page identity once one is selected, so it stays the largest thing on the
+   page and the summary heading steps down beneath it. */
+.page-header-compact h1 { font-size: var(--pa-t-2xl); letter-spacing: -0.02em; overflow-wrap: anywhere; }
+.page-header-compact .eyebrow { margin-bottom: 0.0625rem; }
+.results > h2 { font-size: var(--pa-t-xl); }
 h1, h2, p { margin: 0; }
-h1 { font-size: 2.2rem; }
+h1 { font-size: var(--pa-t-3xl); letter-spacing: -0.025em; }
 h1#page-title[tabindex="-1"]:focus, h1#about-title[tabindex="-1"]:focus { outline: none; }
-h2 { margin-bottom: 0.8rem; }
-.eyebrow, .diagnostic { color: #586b82; font-size: 0.9rem; }
-header, .picker, .selection, .metrics { display: grid; gap: 0.65rem; }
-h3 { margin: 1.25rem 0 0.65rem; font-size: 1rem; }
-.picker, .selection { padding: 1.25rem; border: 1px solid #ccd7e5; border-radius: 0.5rem; background: #fff; }
-button { width: fit-content; padding: 0.65rem 1rem; border: 0; border-radius: 0.3rem; background: #075a46; color: #fff; font: inherit; font-weight: 700; cursor: pointer; }
-button:disabled { opacity: 0.6; cursor: wait; }
-button:focus-visible, summary:focus-visible, a:focus-visible { outline: 3px solid #e48a00; outline-offset: 3px; }
-.picker-actions { display: flex; flex-wrap: wrap; gap: 0.75rem; }
-.secondary-button { border: 1px solid #075a46; background: #fff; color: #075a46; }
-.privacy, .supported-input { color: #38516f; font-size: 0.95rem; }
-.privacy a { color: #075a46; }
-.guidance-panel, .picker-help, .summary-help { border: 1px solid #ccd7e5; border-radius: 0.5rem; background: #fff; }
-.guidance-panel { padding: 0.9rem 1.25rem; }
-.picker-help, .summary-help { padding: 0.65rem 0.85rem; }
-.guidance-panel summary, .picker-help summary, .summary-help summary { color: #075a46; font-weight: 700; cursor: pointer; }
-.guidance-content, .picker-help-content, .summary-help > p { display: grid; gap: 0.8rem; margin-top: 1rem; max-width: 48rem; }
-.guidance-content ol { display: grid; gap: 0.5rem; margin: 0; padding-left: 1.35rem; }
-.guidance-content p { line-height: 1.45; }
-.folder-example { width: fit-content; max-width: 100%; padding: 0.75rem; overflow-x: auto; border: 1px solid #dce5ef; border-radius: 0.3rem; background: #f5f8fb; color: #263d59; line-height: 1.5; }
-.guidance-links { color: #38516f; font-size: 0.95rem; }
-.guidance-links a { color: #075a46; }
+h2 { margin-bottom: 0.75rem; font-size: var(--pa-t-2xl); }
+h3 { margin: 1.5rem 0 0.625rem; font-size: var(--pa-t-lg); }
+.page-lede { max-width: 72ch; color: var(--pa-text-2); }
+.diagnostic { color: var(--pa-text-3); font-size: var(--pa-t-2xs); font-variant-numeric: tabular-nums; }
+
+/* The four outcomes are the first concrete thing a newcomer reads, so they are set as a marked
+   two-column list rather than as prose or as four padded tiles. */
+.orientation-outcomes {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.375rem 2rem;
+  margin: 0.25rem 0 0;
+  padding: 0;
+  list-style: none;
+  font-size: var(--pa-t-sm);
+}
+
+.orientation-outcomes li { display: flex; align-items: baseline; gap: 0.5rem; color: var(--pa-text-2); }
+.orientation-outcomes li::before { flex: 0 0 auto; color: var(--pa-accent); content: "—"; font-weight: 600; }
+
+.supported-input, .privacy, .metrics-note { max-width: 78ch; color: var(--pa-text-2); font-size: var(--pa-t-sm); }
+.supported-input code, .privacy code { color: var(--pa-text); }
+.metrics-note, .supported-input { font-size: var(--pa-t-xs); }
+
+/* --------------------------------------------------------------- surfaces */
+
+/* The picker and the selected-project summary are genuine workspaces, so they get a surface.
+   Everything else uses type, space and hairlines. */
+.picker, .fatal-message {
+  display: grid;
+  max-width: 46rem;
+  gap: 0.75rem;
+  padding: 1.25rem;
+  border: 1px solid var(--pa-line);
+  border-radius: var(--pa-r3);
+  background: var(--pa-surface);
+}
+
+.picker-actions { display: flex; flex-wrap: wrap; gap: 0.625rem; }
+.picker button { font-size: var(--pa-t-md); min-height: 2.375rem; padding: 0.375rem 0.875rem; }
+
+/* Once a project is chosen its identity and its two actions are a status bar, not a card of
+   stacked facts. The same three values in roughly a quarter of the height. */
+.project-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem 1.25rem;
+  padding: 0.5rem 0.5rem 0.5rem 0.875rem;
+  border: 1px solid var(--pa-line);
+  border-left: 3px solid var(--pa-accent);
+  border-radius: var(--pa-r2);
+  background: var(--pa-surface);
+}
+
+.project-bar-identity { display: flex; min-width: 0; flex-wrap: wrap; align-items: center; gap: 0.25rem 0.75rem; }
+.project-bar-facts { margin: 0; color: var(--pa-text-2); font-size: var(--pa-t-xs); font-variant-numeric: tabular-nums; white-space: nowrap; }
+
+.project-bar-actions { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+.project-bar-actions button { min-height: 2rem; padding: 0.25rem 0.75rem; }
+
+/* Actions size to their label. Without this a button that is a direct child of one of the
+   grid panels stretches the full width of the panel. */
+button { justify-self: start; background: var(--pa-accent); border-color: var(--pa-accent); color: var(--pa-on-accent); }
+button:hover { background: var(--pa-accent-hover); border-color: var(--pa-accent-hover); color: var(--pa-on-accent); }
+button:disabled:hover { background: var(--pa-accent); border-color: var(--pa-accent); color: var(--pa-on-accent); }
+.secondary-button, .secondary-button:disabled:hover { background: var(--pa-surface); border-color: var(--pa-line-strong); color: var(--pa-text); }
+.secondary-button:hover { border-color: var(--pa-accent-line); background: var(--pa-accent-soft); color: var(--pa-accent-hover); }
+.button-link { background: var(--pa-accent); border-color: var(--pa-accent); color: var(--pa-on-accent); }
+.button-link:hover { background: var(--pa-accent-hover); border-color: var(--pa-accent-hover); color: var(--pa-on-accent); text-decoration: none; }
+
+/* ------------------------------------------------------------ disclosures */
+
+.guidance-panel, .picker-help, .summary-help {
+  border: 1px solid var(--pa-line);
+  border-radius: var(--pa-r2);
+  background: var(--pa-surface);
+}
+
+.setup-support { display: grid; gap: 0.5rem; max-width: 52rem; }
+.setup-support-compact { grid-template-columns: repeat(auto-fit, minmax(min(100%, 17rem), 1fr)); max-width: none; }
+.setup-support-compact > details { align-self: start; }
+.setup-support-compact > details > summary { font-size: var(--pa-t-xs); }
+
+.guidance-panel { padding: 0.625rem 0.875rem; }
+.picker-help, .summary-help { padding: 0.5rem 0.75rem; }
+.guidance-panel > summary, .picker-help > summary, .summary-help > summary { display: flex; align-items: center; gap: 0.5rem; font-size: var(--pa-t-sm); }
+
+.guidance-panel > summary::after, .picker-help > summary::after, .summary-help > summary::after {
+  width: 0.875rem;
+  height: 0.875rem;
+  margin-left: auto;
+  background: currentColor;
+  content: "";
+  mask: var(--pa-icon-chevron) center / contain no-repeat;
+  -webkit-mask: var(--pa-icon-chevron) center / contain no-repeat;
+  transition: transform var(--pa-fast) var(--pa-ease);
+}
+
+.guidance-panel[open] > summary::after, .picker-help[open] > summary::after, .summary-help[open] > summary::after { transform: rotate(90deg); }
+
+.guidance-content, .picker-help-content, .summary-help > p { display: grid; gap: 0.75rem; margin-top: 0.75rem; max-width: 78ch; color: var(--pa-text-2); font-size: var(--pa-t-sm); }
+.guidance-content { max-width: none; }
+.guidance-content ol { display: grid; gap: 0.375rem; margin: 0; padding-left: 1.25rem; }
+.guidance-content p { line-height: 1.5; }
+.guidance-content strong, .summary-help strong { color: var(--pa-text); }
+
+/* The worked example belongs beside the steps it illustrates, not stacked under them. */
+.guidance-steps { display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr); gap: 0.75rem 1.75rem; align-items: start; }
+.guidance-example { display: grid; gap: 0.375rem; }
+.guidance-caption { margin: 0; font-size: var(--pa-t-xs); }
+.guidance-intro { margin: 0; max-width: 82ch; font-size: var(--pa-t-xs); }
+
+.guidance-warning {
+  margin: 0;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--pa-warning-line);
+  border-left: 3px solid var(--pa-warning);
+  border-radius: var(--pa-r2);
+  background: var(--pa-warning-soft);
+  font-size: var(--pa-t-xs);
+}
+
+.guidance-warning strong { color: var(--pa-warning); }
+
+.folder-example {
+  max-width: 100%;
+  padding: 0.5rem 0.75rem;
+  overflow-x: auto;
+  border: 1px solid var(--pa-line);
+  border-radius: var(--pa-r2);
+  background: var(--pa-surface-2);
+  color: var(--pa-text-2);
+  font-size: var(--pa-t-2xs);
+  line-height: 1.5;
+}
+
+.guidance-links { color: var(--pa-text-3); font-size: var(--pa-t-xs); }
 .picker-help-content { align-items: start; }
-.summary-help { margin: 0.65rem 0; color: #38516f; font-size: 0.95rem; }
-.summary-help dl { display: grid; gap: 0.7rem; margin: 1rem 0 0; }
-.summary-help dl div { display: grid; gap: 0.15rem; }
-.summary-help dt { color: #15253d; font-weight: 700; }
-.summary-help dd { margin: 0; line-height: 1.4; }
-.sensitivity { max-width: 48rem; color: #5d3a00; font-size: 0.95rem; }
-.message { padding: 0.8rem 1rem; border-left: 4px solid #ad4b00; background: #fff4e7; }
+.summary-help { margin: 0.625rem 0; color: var(--pa-text-2); font-size: var(--pa-t-sm); }
+.summary-help dl { display: grid; gap: 0.5rem; margin: 0.875rem 0 0.125rem; }
+.summary-help dl div { display: grid; gap: 0.0625rem; }
+.summary-help dt { color: var(--pa-text); font-size: var(--pa-t-sm); font-weight: 600; }
+.summary-help dd { margin: 0; color: var(--pa-text-2); font-size: var(--pa-t-sm); line-height: 1.45; }
+
+/* ------------------------------------------------------------------ counts */
+
 .metrics { grid-template-columns: repeat(auto-fit, minmax(8rem, 1fr)); }
 .project-metrics { grid-template-columns: repeat(5, minmax(0, 1fr)); }
 .power-query-metrics { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-.downloads { display: flex; flex-wrap: wrap; gap: 0.75rem; margin-top: 1.25rem; }
-.output-actions { display: grid; gap: 1rem; margin-top: 1.25rem; }
-.output-actions h3 { margin: 0; }
-.output-action { display: grid; justify-items: start; gap: 0.4rem; }
-.output-action p { color: #38516f; line-height: 1.4; }
-.output-actions .legacy-output { max-width: 48rem; margin: 0; }
-.legacy-output .output-action { margin-top: 0.75rem; }
-.export-panel { display: grid; gap: 1rem; max-width: 48rem; margin-top: 0.85rem; padding: 1rem; border: 1px solid #ccd7e5; border-radius: 0.5rem; background: #fff; }
-.export-panel-heading { display: flex; align-items: start; justify-content: space-between; gap: 1rem; }
-.export-panel-heading h3 { margin: 0 0 0.25rem; }
-.export-panel-heading p, .export-description, .export-help { color: #38516f; line-height: 1.4; }
-.export-help { font-size: 0.9rem; }
-.export-preset-options, .export-column-options { display: grid; gap: 0.55rem; margin: 0; padding: 0.8rem 1rem 1rem; border: 1px solid #dce5ef; border-radius: 0.3rem; }
-.export-preset-options legend, .export-column-options legend { padding: 0 0.25rem; color: #15253d; font-weight: 700; }
-.export-preset-options label, .export-column-options label { display: flex; align-items: center; gap: 0.5rem; }
-.export-actions { display: flex; flex-wrap: wrap; gap: 0.75rem; }
-.metric { min-width: 0; padding: 1rem; border-radius: 0.45rem; background: #eaf0f6; }
-.metric span { display: block; color: #38516f; font-size: 0.9rem; overflow-wrap: anywhere; }
-.metric strong { display: block; margin-top: 0.25rem; font-size: 1.5rem; }
-.app-footer { max-width: 56rem; margin: 0 auto; padding: 0 1.25rem 2rem; color: #586b82; font-size: 0.9rem; }
-.app-footer a { color: #075a46; }
-.fatal-message { display: grid; gap: 1rem; padding: 1.25rem; border: 1px solid #ccd7e5; border-radius: 0.5rem; background: #fff; }
-.button-link { width: fit-content; padding: 0.65rem 1rem; border-radius: 0.3rem; background: #075a46; color: #fff; font-weight: 700; text-decoration: none; }
-#blazor-error-ui { display: none; }
-@media (max-width: 46rem) {
-    .project-metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-    .project-metrics .metric:last-child { grid-column: 1 / -1; }
+.metric span { overflow-wrap: anywhere; }
+
+/* ------------------------------------------------------------- next steps */
+
+.output-actions { display: grid; gap: 0.625rem; margin-top: 1.75rem; }
+.output-actions h3 { margin: 0 0 0.125rem; }
+
+/* The recommended next step reads as one banner row; the two supporting outputs sit beside each
+   other underneath. Reading order still runs report, export, download, legacy. */
+.output-primary {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 1rem;
+  padding: 0.625rem 0.875rem;
+  border: 1px solid var(--pa-accent-line);
+  border-radius: var(--pa-r2);
+  background: var(--pa-accent-soft);
 }
+
+.output-primary button { min-height: 2.375rem; padding: 0.375rem 0.875rem; font-size: var(--pa-t-md); }
+.output-primary p { margin: 0; max-width: 62ch; color: var(--pa-text-2); font-size: var(--pa-t-sm); }
+
+.output-secondary { display: grid; grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr); gap: 0.625rem; }
+
+/* While the export workspace is open its card carries the accent, so the panel below it reads as
+   belonging to that action rather than floating after both. */
+.output-secondary .output-action:has(button[aria-expanded="true"]) { border-color: var(--pa-accent-line); }
+
+.output-secondary .output-action {
+  display: grid;
+  justify-items: start;
+  gap: 0.375rem;
+  padding: 0.75rem 0.875rem;
+  border: 1px solid var(--pa-line);
+  border-radius: var(--pa-r2);
+  background: var(--pa-surface);
+}
+
+.output-action { display: grid; justify-items: start; gap: 0.375rem; }
+.output-action p { margin: 0; max-width: 62ch; color: var(--pa-text-2); font-size: var(--pa-t-sm); line-height: 1.45; }
+.output-actions .legacy-output { margin: 0; }
+.legacy-output .output-action { margin-top: 0.5rem; }
+.downloads { display: flex; flex-wrap: wrap; gap: 0.625rem; margin-top: 1.25rem; }
+
+.sensitivity {
+  max-width: 82ch;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--pa-line);
+  border-left: 3px solid var(--pa-warning);
+  border-radius: var(--pa-r2);
+  background: var(--pa-surface);
+  color: var(--pa-text-2);
+  font-size: var(--pa-t-xs);
+}
+
+.sensitivity strong { color: var(--pa-warning); }
+
+.message {
+  padding: 0.625rem 0.875rem;
+  border: 1px solid var(--pa-line);
+  border-left: 3px solid var(--pa-info);
+  border-radius: var(--pa-r2);
+  background: var(--pa-surface);
+  font-size: var(--pa-t-sm);
+}
+
+/* --------------------------------------------------------- export builder */
+
+.export-panel {
+  display: grid;
+  gap: 0.75rem;
+  max-width: 58rem;
+  margin-top: 0.25rem;
+  padding: 0.875rem 1rem 1rem;
+  border: 1px solid var(--pa-line);
+  border-radius: var(--pa-r3);
+  background: var(--pa-surface);
+  box-shadow: var(--pa-shadow-1);
+}
+
+.export-panel-heading { display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding-bottom: 0.625rem; border-bottom: 1px solid var(--pa-line); }
+.export-panel-heading h3 { margin: 0; font-size: var(--pa-t-md); }
+.export-close { min-height: 1.875rem; padding: 0.1875rem 0.625rem; font-size: var(--pa-t-2xs); }
+.export-description { margin: 0.5rem 0 0; color: var(--pa-text-2); font-size: var(--pa-t-xs); line-height: 1.45; }
+.export-help { margin: 0.625rem 0 0; padding-top: 0.5rem; border-top: 1px solid var(--pa-line); color: var(--pa-text-2); font-size: var(--pa-t-2xs); line-height: 1.45; }
+.export-config { display: grid; grid-template-columns: minmax(0, 17rem) minmax(0, 1fr); gap: 1rem; align-items: start; }
+
+.export-preset-options, .export-column-options {
+  display: block;
+  min-width: 0;
+  margin: 0;
+  padding: 0.625rem 0.75rem 0.75rem;
+  border: 1px solid var(--pa-line);
+  border-radius: var(--pa-r2);
+}
+
+.export-preset-choices { display: grid; gap: 0.3125rem; }
+.export-column-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 11rem), 1fr)); gap: 0.3125rem 1rem; }
+.export-column-count { margin-left: 0.375rem; color: var(--pa-text-3); font-size: var(--pa-t-3xs); font-variant-numeric: tabular-nums; letter-spacing: 0; text-transform: none; }
+
+.export-preset-options legend, .export-column-options legend { padding: 0 0.375rem; color: var(--pa-text-3); font-size: var(--pa-t-3xs); font-weight: 650; letter-spacing: 0.09em; text-transform: uppercase; }
+.export-preset-options label, .export-column-options label { display: flex; align-items: center; gap: 0.5rem; margin: 0; color: var(--pa-text); font-size: var(--pa-t-sm); font-weight: 400; }
+.export-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 0.625rem; padding-top: 0.75rem; border-top: 1px solid var(--pa-line); }
+
+/* -------------------------------------------------------- information page */
+
+/* A reading page, so it takes a document measure rather than the full application column that
+   Analyse needs for its counts. */
+.information-page { max-width: 58rem; line-height: 1.6; }
+.information-page section { display: grid; gap: 0.75rem; }
+.information-page h2 { margin: 0; }
+.information-page > section + section { margin-top: 0.5rem; padding-top: 1.5rem; border-top: 1px solid var(--pa-line); }
+.information-page h2 { scroll-margin-top: 4rem; }
+.information-page p, .information-page li { max-width: 78ch; color: var(--pa-text-2); }
+.information-page strong { color: var(--pa-text); }
+.information-page ul, .information-page ol { display: grid; gap: 0.5rem; margin: 0; padding-left: 1.25rem; }
+.information-definitions { display: grid; gap: 0.75rem; margin: 0; }
+.information-definitions div { display: grid; grid-template-columns: minmax(9rem, 12rem) minmax(0, 1fr); gap: 1rem; }
+.information-definitions dt { color: var(--pa-text); font-weight: 600; }
+.information-definitions dd { margin: 0; color: var(--pa-text-2); }
+
+/* Three outputs read as a set, so they sit as columns rather than three full-width blocks the
+   reader has to scroll past one at a time. */
+.information-outputs { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 15rem), 1fr)); gap: 0.625rem; align-items: start; }
+
+.information-output {
+  display: grid;
+  align-content: start;
+  gap: 0.125rem;
+  height: 100%;
+  padding: 0.75rem 0.875rem 0.875rem;
+  border: 1px solid var(--pa-line);
+  border-radius: var(--pa-r2);
+  background: var(--pa-surface);
+}
+
+.information-output-primary { border-color: var(--pa-accent-line); background: var(--pa-accent-soft); }
+.information-output-kicker { margin: 0; color: var(--pa-text-3); font-size: var(--pa-t-3xs); font-weight: 650; letter-spacing: 0.08em; text-transform: uppercase; }
+.information-output-primary .information-output-kicker { color: var(--pa-accent); }
+.information-output h3 { margin: 0 0 0.1875rem; font-size: var(--pa-t-sm); }
+.information-output p { margin: 0; max-width: none; font-size: var(--pa-t-xs); }
+.secondary-output { color: var(--pa-text-3); font-size: var(--pa-t-sm); }
+
+/* A single-line jump list, not a sidebar. */
+.page-contents { display: flex; flex-wrap: wrap; gap: 0.25rem 0.375rem; margin-top: 0.375rem; }
+
+.page-contents a {
+  padding: 0.125rem 0.5rem;
+  border: 1px solid var(--pa-line);
+  border-radius: 999px;
+  background: var(--pa-surface);
+  color: var(--pa-text-2);
+  font-size: var(--pa-t-2xs);
+  font-weight: 550;
+  text-decoration: none;
+  transition: border-color var(--pa-fast) var(--pa-ease), color var(--pa-fast) var(--pa-ease);
+}
+
+.page-contents a:hover { border-color: var(--pa-accent-line); background: var(--pa-accent-soft); color: var(--pa-accent); }
+
+/* The definition a reader acts on, marked so it is not just another paragraph. */
+.information-definition {
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--pa-line);
+  border-left: 3px solid var(--pa-info);
+  border-radius: var(--pa-r2);
+  background: var(--pa-surface);
+  font-size: var(--pa-t-sm);
+}
+
+.information-workflow ol { grid-template-columns: repeat(auto-fit, minmax(min(100%, 17rem), 1fr)); gap: 0.4375rem 1.75rem; }
+
+.information-panel {
+  padding: 1.125rem 1.25rem;
+  border: 1px solid var(--pa-line);
+  border-radius: var(--pa-r3);
+  background: var(--pa-surface);
+}
+
+/* ------------------------------------------------------------------ errors */
+
+.fatal-message { gap: 1rem; }
+#blazor-error-ui { display: none; }
+
+/* ------------------------------------------------------------------ layout */
+
+@media (max-width: 46rem) {
+  /* Two-column workspaces need real room; below a tablet width they read better stacked. */
+  .guidance-steps { grid-template-columns: minmax(0, 1fr); }
+  .export-config { grid-template-columns: minmax(0, 1fr); }
+  .output-secondary { grid-template-columns: minmax(0, 1fr); }
+  .project-metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .project-metrics .metric:last-child { grid-column: 1 / -1; }
+  .information-definitions div { grid-template-columns: minmax(0, 1fr); gap: 0.125rem; }
+}
+
 @media (max-width: 34rem) {
-    .orientation-outcomes { grid-template-columns: minmax(0, 1fr); }
-    main { padding: 2rem 1rem 1.5rem; }
-    .guidance-panel, .picker, .selection { padding: 1rem; }
-    .export-panel-heading { align-items: stretch; flex-direction: column; }
-    .project-metrics, .power-query-metrics { grid-template-columns: minmax(0, 1fr); }
-    .project-metrics .metric:last-child { grid-column: auto; }
+  /* The bar cannot hold brand, both destinations and the appearance control on one line, so the
+     navigation takes a row of its own rather than wrapping into a ragged three-line block. */
+  .app-bar-inner { flex-wrap: wrap; padding-bottom: 0.5rem; }
+  .app-navigation { order: 3; flex-basis: 100%; gap: 0.375rem; }
+  .brand { flex: 1; }
+  .orientation-outcomes { grid-template-columns: minmax(0, 1fr); }
+  .shell { padding: 1.5rem 1rem 2rem; }
+  .app-bar-inner { padding: 0.375rem 1rem; }
+  .app-footer { padding: 1rem 1rem 1.5rem; }
+  h1 { font-size: var(--pa-t-2xl); }
+  h2 { font-size: var(--pa-t-xl); }
+  .page-header-compact h1 { font-size: var(--pa-t-xl); }
+  .results > h2 { font-size: var(--pa-t-lg); }
+  .guidance-panel, .picker, .export-panel, .information-panel { padding: 1rem; }
+  .project-bar { align-items: stretch; flex-direction: column; }
+  .project-bar-actions button { flex: 1; }
+  .project-metrics, .power-query-metrics { grid-template-columns: minmax(0, 1fr); }
+  .project-metrics .metric:last-child { grid-column: auto; }
+  .metrics { grid-template-columns: repeat(auto-fit, minmax(7rem, 1fr)); }
 }

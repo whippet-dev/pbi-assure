@@ -2,12 +2,22 @@
 
 <PageTitle>What PBI Assure does — PBI Assure</PageTitle>
 
+<AppNavigation IsInformationPage="true" />
+
 <article class="shell information-page" aria-labelledby="about-title">
-    <AppNavigation IsInformationPage="true" />
     <header>
-        <p class="eyebrow">PBI Assure · Model intelligence</p>
+        <p class="eyebrow">Model intelligence</p>
         <h1 id="about-title" tabindex="-1">What PBI Assure does</h1>
         <p>A practical guide to understanding your project and using the evidence it contains.</p>
+        <nav class="page-contents" aria-label="On this page">
+            <a href="about#what-is">What it is</a>
+            <a href="about#understand">What it helps with</a>
+            <a href="about#analyses">What it analyses</a>
+            <a href="about#outputs">Outputs</a>
+            <a href="about#workflow">Workflow</a>
+            <a href="about#limitations">Limitations</a>
+            <a href="about#privacy">Privacy</a>
+        </nav>
     </header>
 
     <section aria-labelledby="what-is">
@@ -40,24 +50,27 @@
     <section aria-labelledby="outputs">
         <h2 id="outputs">What do I get after a scan?</h2>
         <div class="information-outputs">
-            <div class="information-output">
-                <h3>Interactive HTML report — start here</h3>
+            <div class="information-output information-output-primary">
+                <p class="information-output-kicker">Start here</p>
+                <h3>Interactive HTML report</h3>
                 <p>Explore semantic usage, dependency evidence, Power Query, relationships and the report/page/visual inventory, with findings and specialist reviews alongside them. Open it in the browser or download it for later review.</p>
             </div>
             <div class="information-output">
+                <p class="information-output-kicker">One row per model object</p>
                 <h3>Data Catalogue CSV</h3>
                 <p>Reusable metadata for documentation, catalogues and governance: one row per eligible developer-authored column or measure, including objects with zero detected usage. Choose semantic usage, confidence, user-facing evidence, usage counts and contexts, and optional metadata such as Description.</p>
             </div>
             <div class="information-output">
+                <p class="information-output-kicker">One row per report usage</p>
                 <h3>Usage Mapping CSV</h3>
                 <p>Answer “where and how is this field used?” with one row per logical direct report usage: a report location and context/role, rather than a separate row for every piece of supporting evidence. Includes report, page and visual provenance where applicable, user-facing evidence and optional technical provenance.</p>
             </div>
         </div>
-        <p><strong>UserFacing</strong> describes whether qualifying direct report-presentation or intentional-interaction evidence was found. It is separate from semantic usage: directly used does not automatically mean Yes. No means no qualifying evidence was found, not proof that users can never encounter the object; Unclear means the retained direct context cannot be classified confidently.</p>
+        <p class="information-definition"><strong>UserFacing</strong> describes whether qualifying direct report-presentation or intentional-interaction evidence was found. It is separate from semantic usage: directly used does not automatically mean Yes. No means no qualifying evidence was found, not proof that users can never encounter the object; Unclear means the retained direct context cannot be classified confidently.</p>
         <p class="secondary-output">The existing fixed <strong>semantic usage CSV</strong> also remains available as a legacy technical/compatibility export.</p>
     </section>
 
-    <section aria-labelledby="workflow">
+    <section class="information-workflow" aria-labelledby="workflow">
         <h2 id="workflow">Typical workflow</h2>
         <ol>
             <li>Prepare and select a supported structured Power BI project. Analyse includes preparation guidance.</li>
@@ -83,6 +96,7 @@
         <h2 id="privacy">Privacy and read-only analysis</h2>
         <p>Selected project metadata is processed in your browser. Normal project selection and scanning are read-only: PBI Assure does not modify the selected source project. The application code does not upload selected project content or generated results as part of scanning or export.</p>
         <p>Projects and results are held in application memory, not application-managed persistent browser storage. Leaving or reloading Analyse loses that working state; secure memory deletion is not guaranteed. Downloads may contain sensitive metadata, so review them before sharing.</p>
+        <p>The only value PBI Assure stores in your browser is your Light, Dark or System appearance choice, so that the application and the reports it generates keep the appearance you picked. No project content or analysis result is stored.</p>
         <p>Loading the website requires normal site/runtime requests, and online HTML viewing can request a static same-origin viewer shell. Hosting infrastructure can receive ordinary request metadata. Offline scanning has been tested after the application has loaded; this is not a promise of zero network traffic or offline first-load availability.</p>
         <p><a href="https://github.com/whippet-dev/pbi-assure/blob/master/PRIVACY.md" target="_blank" rel="noopener noreferrer">Read the detailed privacy statement (opens in new tab)</a>.</p>
     </section>

@@ -1,15 +1,29 @@
-<nav class="app-navigation" aria-label="Application">
-    <a href="" aria-current="@(IsInformationPage ? null : "page")">Analyse</a>
-    <a href="about" aria-current="@(IsInformationPage ? "page" : null)"
-       target="@(HasActiveProject ? "_blank" : null)"
-       rel="@(HasActiveProject ? "noopener noreferrer" : null)">
-        What PBI Assure does
-        @if (HasActiveProject)
-        {
-            <span class="navigation-note">(opens in new tab)</span>
-        }
-    </a>
-</nav>
+<header class="app-bar">
+    <div class="app-bar-inner">
+        <span class="brand">
+            <svg class="brand-mark" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"
+                 stroke-linecap="round" aria-hidden="true" focusable="false">
+                <path d="M11.1 6.4 6.1 17.3M12.9 6.4l5 10.9M8.4 14.2h7.2" />
+                <circle cx="12" cy="4.4" r="2.1" fill="currentColor" stroke="none" />
+                <circle cx="5.2" cy="19.2" r="2.1" fill="currentColor" stroke="none" />
+                <circle cx="18.8" cy="19.2" r="2.1" fill="currentColor" stroke="none" />
+            </svg>PBI Assure
+        </span>
+        <nav class="app-navigation" aria-label="Application">
+            <a href="" aria-current="@(IsInformationPage ? null : "page")">Analyse</a>
+            <a href="about" aria-current="@(IsInformationPage ? "page" : null)"
+               target="@(HasActiveProject ? "_blank" : null)"
+               rel="@(HasActiveProject ? "noopener noreferrer" : null)">
+                What PBI Assure does
+                @if (HasActiveProject)
+                {
+                    <span class="navigation-note">(opens in new tab)</span>
+                }
+            </a>
+        </nav>
+        <AppearanceControl />
+    </div>
+</header>
 
 @code {
     [Parameter] public bool IsInformationPage { get; set; }

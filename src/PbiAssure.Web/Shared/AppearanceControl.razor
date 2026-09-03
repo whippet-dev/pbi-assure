@@ -1,0 +1,63 @@
+@using Microsoft.JSInterop
+@inject IJSRuntime JS
+
+<div class="appearance-control" role="group" aria-label="Appearance">
+    @foreach (var (value, label) in Options)
+    {
+        <button type="button" class="appearance-option" data-appearance="@value" title="@label"
+                aria-pressed="@(appearance == value ? "true" : "false")" @onclick="() => ChooseAsync(value)">
+            <span class="visually-hidden">@label</span>
+        </button>
+    }
+</div>
+
+@code {
+    // System / Light / Dark as three mutually exclusive toggle buttons. An ARIA radiogroup would
+    // owe the reader arrow-key navigation and roving focus, which a three-item appearance switch
+    // does not earn. Each option keeps a readable label behind its glyph.
+    private static readonly (string Value, string Label)[] Options =
+    [
+        ("system", "Match system appearance"),
+        ("light", "Light appearance"),
+        ("dark", "Dark appearance"),
+    ];
+
+    private string appearance = "system";
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender)
+        {
+            return;
+        }
+
+        // wwwroot/appearance.js has already applied any stored choice before the first paint, so
+        // this only brings the pressed state into line with what is on screen.
+        try
+        {
+            var stored = await JS.InvokeAsync<string>("pbiAssureAppearance.current");
+            if (stored is not null && stored != appearance)
+            {
+                appearance = stored;
+                StateHasChanged();
+            }
+        }
+        catch (JSException)
+        {
+            // Without the helper the page stays on the system appearance, which is the default.
+        }
+    }
+
+    private async Task ChooseAsync(string value)
+    {
+        appearance = value;
+        try
+        {
+            await JS.InvokeVoidAsync("pbiAssureAppearance.apply", value);
+        }
+        catch (JSException)
+        {
+            // The control still reflects the choice; only the page-wide change is lost.
+        }
+    }
+}

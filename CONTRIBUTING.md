@@ -11,6 +11,15 @@ This repository should remain understandable to Power BI specialists who may be 
 5. Record significant architectural decisions under `docs/decisions/`.
 6. After user-facing desktop feature changes, refresh the Windows publish output with `dotnet publish src/PbiAssure.Desktop -c Release -o artifacts/desktop`.
 
+## Visual design
+
+The design system is shared by the browser application and the generated HTML report. Its tokens and
+primitives live in `src/PbiAssure.Web/wwwroot/css/core.css`, the report's presentation layer in
+`src/PbiAssure.Reporting/Styles/report.css`. After editing either, run
+`node scripts/Sync-DesignTokens.mjs` to regenerate `src/PbiAssure.Reporting/DesignSystem.cs`;
+`DesignSystemSourceTests` fails when the copies drift. See
+[docs/design/visual-identity.md](docs/design/visual-identity.md).
+
 ## Design rules
 
 - Keep `PbiAssure.Core` independent of the command line and any future UI.

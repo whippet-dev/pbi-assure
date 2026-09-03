@@ -776,7 +776,7 @@ public sealed class HtmlReportRendererTests : IDisposable
             .Select(match => match.Groups[1].Value).ToArray();
         Assert.Equal(["semantic", "project", "power-query", "assurance"], groups);
         Assert.DoesNotContain(".summary-group-assurance", html, StringComparison.Ordinal);
-        Assert.Contains(".summary-group .metric dd { font-size: 1.65rem; }", html, StringComparison.Ordinal);
+        Assert.Contains(".summary-group .metric dd { font-size: var(--pa-t-xl); }", html, StringComparison.Ordinal);
         Assert.Contains("grid-template-columns: 13rem minmax(0, 1fr)", html, StringComparison.Ordinal);
         Assert.DoesNotContain("Eight tiles", html, StringComparison.Ordinal);
         Assert.Equal(jsonBefore, System.Text.Json.JsonSerializer.Serialize(inventory));
