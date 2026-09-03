@@ -5,8 +5,8 @@ Tactical entry point for an incoming coding agent. Read this first, then
 
 ## What just happened
 
-The first two **Export Builder** implementation slices are complete, but there is no browser/desktop UI or
-CLI surface yet. Core derives normalized direct semantic usage records and v1 object summaries for non-system-generated Columns
+The first three **Export Builder** implementation slices are complete, and the fourth Desktop UI slice is
+implemented locally but awaiting review. Core derives normalized direct semantic usage records and v1 object summaries for non-system-generated Columns
 and Measures only. They retain semantic identity/state/confidence, report path, persisted page/visual IDs,
 visual type, context/role and raw source evidence without reconstructing data from HTML or legacy CSV text.
 `UserFacing` is a separate export-only three-state value: active projections/tooltip data/drillthrough and
@@ -24,14 +24,23 @@ location counts remain machine-identity based. Usage mapping has a friendly **Vi
 established title/on-canvas-text/visual-type fallback, while `VisualId` remains its machine identity.
 `ExportPresetCatalog` validates fixed allowed columns and defaults, rejects invalid/duplicate selections, and the shared CSV writer preserves
 legacy comma/CRLF/RFC escaping/formula-neutralisation. The legacy `SemanticUsageCsvRenderer` remains
-byte-compatible with its prior header and behaviour. No JSON schema, CLI/Desktop/browser UI or semantic
-classification changed. The Web app now provides the first transient UI only: after a successful scan,
+byte-compatible with its prior header and behaviour. No JSON schema, CLI or semantic
+classification changed. The Web app provides a transient UI: after a successful scan,
 **Export CSV** opens a compact fieldset-based panel for Data catalogue or Usage mapping. It gets all
 allowed/default columns from `ExportPresetCatalog`, resets selection on preset or scan changes, calls
 `ExportCsvRenderer`, and downloads BOM-prefixed project-named CSVs through the existing local browser
-download path. **Download semantic usage CSV** remains separately labelled and unchanged. No Desktop UI,
-CLI switch, JSON/schema change, saved settings or further presets were added. The next export task may add
-Desktop UI only; do not duplicate Reporting contracts or move export mechanics into Core.
+download path. **Download semantic usage CSV** remains separately labelled and unchanged. The Desktop shell
+now retains the latest successful `ProjectInventory` only in memory and clears it immediately when a new
+scan starts, a project changes or a scan fails. **Export CSV…** is disabled until a successful scan and opens
+a compact modal: fixed presets/defaults/allowed columns come directly from Reporting; saving uses
+`ExportRequest` and `ExportCsvRenderer` without re-scanning and writes BOM-prefixed CSV through the standard
+Save dialog. The shared filename convention is `<project>.data-catalogue.csv` / `<project>.usage-mapping.csv`;
+legacy **Open semantic CSV** remains unchanged. Review and commit this Desktop slice before any next Export
+Builder work; do not duplicate Reporting contracts or move export mechanics into Core.
+
+Pending Desktop-slice validation: focused export/Desktop surface tests **12/12**, full Core suite
+**539/539**, privacy end-to-end **2/2**, and full Release build **0 warnings, 0 errors**. `git diff --check`
+passes. The known unrelated formatter baseline remains 24 findings and was not changed.
 
 Accessibility findings are now a supporting review rather than part of the main assurance surface. The
 renderer partitions existing `Accessibility` category findings in-process: the top-level **Accessibility

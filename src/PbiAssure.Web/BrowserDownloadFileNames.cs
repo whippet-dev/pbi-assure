@@ -8,12 +8,7 @@ public static class BrowserDownloadFileNames
 
     public static string SemanticUsageCsv(string projectDisplayName) => $"{BaseName(projectDisplayName)}.semantic-usage.csv";
 
-    public static string ExportCsv(string projectDisplayName, ExportPreset preset) => preset switch
-    {
-        ExportPreset.DataCatalogue => $"{BaseName(projectDisplayName)}.data-catalogue.csv",
-        ExportPreset.UsageMapping => $"{BaseName(projectDisplayName)}.usage-mapping.csv",
-        _ => throw new ArgumentOutOfRangeException(nameof(preset), preset, "Unsupported export preset."),
-    };
+    public static string ExportCsv(string projectDisplayName, ExportPreset preset) => ExportCsvFileNames.Create(projectDisplayName, preset);
 
     private static string BaseName(string value)
     {

@@ -5,6 +5,7 @@ using System.Linq;
 using System.Windows;
 using Microsoft.Win32;
 using PbiAssure.Cli;
+using PbiAssure.Core.Inventory;
 using PbiAssure.Core.Scanning;
 using PbiAssure.Reporting;
 
@@ -16,6 +17,7 @@ public partial class MainWindow : Window
     private string? latestReportPath;
     private string? latestSemanticUsageCsvPath;
     private string? outputFolderPath;
+    private ProjectInventory? currentInventory;
 
     public MainWindow()
     {
@@ -35,16 +37,8 @@ public partial class MainWindow : Window
         }
 
         projectPath = dialog.FolderName;
-        latestReportPath = null;
-        latestSemanticUsageCsvPath = null;
-        outputFolderPath = null;
+        ClearOutputState();
         ProjectPathTextBox.Text = projectPath;
-        OutputPathTextBox.Text = string.Empty;
-        CsvPathTextBox.Text = string.Empty;
-        OutputFolderTextBox.Text = string.Empty;
-        OpenReportButton.IsEnabled = false;
-        OpenSemanticCsvButton.IsEnabled = false;
-        OpenOutputFolderButton.IsEnabled = false;
         RunAssuranceButton.IsEnabled = true;
         StatusTextBlock.Text = "Ready to run assurance.";
     }
@@ -62,6 +56,7 @@ public partial class MainWindow : Window
             return;
         }
 
+        ClearCurrentInventory();
         SetRunningState(true);
         StatusTextBlock.Text = "Scanning project metadata and generating the HTML report…";
 
@@ -75,9 +70,11 @@ public partial class MainWindow : Window
             });
 
             latestReportPath = result.outputResult.HtmlOutput.LatestPath ?? result.outputResult.HtmlOutput.HistoricalPath;
+            currentInventory = result.inventory;
             OutputPathTextBox.Text = Path.GetFullPath(latestReportPath);
             outputFolderPath = Path.GetDirectoryName(latestReportPath);
             OpenReportButton.IsEnabled = true;
+            ExportCsvButton.IsEnabled = true;
             OpenOutputFolderButton.IsEnabled = !string.IsNullOrWhiteSpace(outputFolderPath);
             if (result.outputResult.SemanticUsageCsvOutput is not null)
             {
@@ -123,6 +120,25 @@ public partial class MainWindow : Window
         OpenFile(latestSemanticUsageCsvPath, "semantic CSV", OpenSemanticCsvButton);
     }
 
+    private void ExportCsv_Click(object sender, RoutedEventArgs e)
+    {
+        if (currentInventory is null)
+        {
+            StatusTextBlock.Text = "Run assurance again before exporting CSV.";
+            ExportCsvButton.IsEnabled = false;
+            return;
+        }
+
+        var exportWindow = new ExportCsvWindow(currentInventory, ProjectDisplayName(projectPath))
+        {
+            Owner = this,
+        };
+        if (exportWindow.ShowDialog() == true && !string.IsNullOrWhiteSpace(exportWindow.SavedPath))
+        {
+            StatusTextBlock.Text = $"CSV export saved: {Path.GetFullPath(exportWindow.SavedPath)}";
+        }
+    }
+
     private void OpenOutputFolder_Click(object sender, RoutedEventArgs e)
     {
         if (string.IsNullOrWhiteSpace(outputFolderPath) || !Directory.Exists(outputFolderPath))
@@ -155,6 +171,7 @@ public partial class MainWindow : Window
         if (isRunning)
         {
             OpenReportButton.IsEnabled = false;
+            ExportCsvButton.IsEnabled = false;
             OpenSemanticCsvButton.IsEnabled = false;
             OpenOutputFolderButton.IsEnabled = false;
         }
@@ -169,8 +186,25 @@ public partial class MainWindow : Window
         CsvPathTextBox.Text = string.Empty;
         OutputFolderTextBox.Text = string.Empty;
         OpenReportButton.IsEnabled = false;
+        ClearCurrentInventory();
         OpenSemanticCsvButton.IsEnabled = false;
         OpenOutputFolderButton.IsEnabled = false;
+    }
+
+    private void ClearCurrentInventory()
+    {
+        currentInventory = null;
+        ExportCsvButton.IsEnabled = false;
+    }
+
+    private static string ProjectDisplayName(string? path)
+    {
+        if (string.IsNullOrWhiteSpace(path))
+        {
+            return "pbi-assure";
+        }
+
+        return Path.GetFileName(Path.TrimEndingDirectorySeparator(path));
     }
 
     private static bool ContainsPowerBiProject(string folderPath)

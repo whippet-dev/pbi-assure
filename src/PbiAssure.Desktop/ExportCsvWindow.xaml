@@ -1,0 +1,54 @@
+<Window x:Class="PbiAssure.Desktop.ExportCsvWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Export CSV"
+        Width="680"
+        Height="650"
+        MinWidth="580"
+        MinHeight="520"
+        WindowStartupLocation="CenterOwner">
+  <Grid Margin="24">
+    <Grid.RowDefinitions>
+      <RowDefinition Height="Auto" />
+      <RowDefinition Height="Auto" />
+      <RowDefinition Height="*" />
+      <RowDefinition Height="Auto" />
+      <RowDefinition Height="Auto" />
+    </Grid.RowDefinitions>
+
+    <StackPanel Grid.Row="0">
+      <TextBlock FontSize="22" FontWeight="SemiBold" Text="Export CSV" />
+      <TextBlock Margin="0,6,0,0" Foreground="#52606D" TextWrapping="Wrap"
+                 Text="Choose a catalogue or report-usage view from this local scan." />
+    </StackPanel>
+
+    <StackPanel Grid.Row="1" Margin="0,20,0,0">
+      <GroupBox Header="Preset">
+        <StackPanel Margin="10,7">
+          <RadioButton x:Name="DataCataloguePresetRadioButton" GroupName="ExportPreset" Content="Data catalogue"
+                       Checked="DataCataloguePreset_Checked" />
+          <RadioButton x:Name="UsageMappingPresetRadioButton" GroupName="ExportPreset" Content="Usage mapping"
+                       Margin="0,6,0,0" Checked="UsageMappingPreset_Checked" />
+        </StackPanel>
+      </GroupBox>
+      <TextBlock x:Name="PresetDescriptionTextBlock" Margin="0,10,0,0" TextWrapping="Wrap" />
+      <TextBlock Margin="0,8,0,0" Foreground="#52606D" TextWrapping="Wrap"
+                 Text="User-facing means PBI Assure found direct report evidence that contributes to report presentation or intentional user interaction. It is separate from semantic usage classification." />
+    </StackPanel>
+
+    <GroupBox Grid.Row="2" Margin="0,18,0,0" Header="Columns">
+      <ScrollViewer VerticalScrollBarVisibility="Auto">
+        <StackPanel x:Name="ColumnsPanel" Margin="10,7" />
+      </ScrollViewer>
+    </GroupBox>
+
+    <TextBlock x:Name="ValidationTextBlock" Grid.Row="3" Margin="0,12,0,0" Foreground="#A4262C"
+               TextWrapping="Wrap" />
+
+    <StackPanel Grid.Row="4" Margin="0,16,0,0" HorizontalAlignment="Right" Orientation="Horizontal">
+      <Button Click="SelectDefaults_Click" Content="Select defaults" />
+      <Button x:Name="SaveCsvButton" Click="SaveCsv_Click" Margin="8,0,0,0" Content="Save CSV" IsDefault="True" />
+      <Button Click="Cancel_Click" Margin="8,0,0,0" Content="Cancel" IsCancel="True" />
+    </StackPanel>
+  </Grid>
+</Window>

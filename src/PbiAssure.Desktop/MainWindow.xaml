@@ -30,6 +30,7 @@
     <StackPanel Grid.Row="1" Margin="0,20,0,0" Orientation="Horizontal">
       <Button x:Name="RunAssuranceButton" Click="RunAssurance_Click" Content="Run assurance" IsEnabled="False" />
       <Button x:Name="OpenReportButton" Click="OpenReport_Click" Content="Open latest report" IsEnabled="False" />
+      <Button x:Name="ExportCsvButton" Click="ExportCsv_Click" Content="Export CSV…" IsEnabled="False" />
       <Button x:Name="OpenSemanticCsvButton" Click="OpenSemanticCsv_Click" Content="Open semantic CSV" IsEnabled="False" />
       <Button x:Name="OpenOutputFolderButton" Click="OpenOutputFolder_Click" Content="Open output folder" IsEnabled="False" />
     </StackPanel>

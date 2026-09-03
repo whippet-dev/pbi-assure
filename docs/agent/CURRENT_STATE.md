@@ -12,8 +12,8 @@ evidenced · **[design decision]** a choice, not a fact.
 |---|---|
 | Remote | `whippet-dev/pbi-assure` |
 | Branch | `master` (also the default branch) |
-| Last verified product state | This commit — separate Accessibility review from main findings |
-| Working tree | Expected clean of tracked modifications. Untracked local review documents may be present |
+| Last verified product state | Pending Desktop Export CSV slice (uncommitted) |
+| Working tree | Desktop Export CSV slice is implemented locally and awaiting review; re-check before committing. |
 
 `master` may have moved past that commit for documentation-only changes. Re-verify and update this
 section whenever a commit changes build, test or behaviour — not for every commit.
@@ -26,7 +26,7 @@ runtime-performance evidence.
 
 ## Export Builder provenance foundation
 
-The first Export Builder slice is in Core only: `DirectUsageProvenanceAnalyzer` derives deterministic,
+The Export Builder provenance foundation starts in Core: `DirectUsageProvenanceAnalyzer` derives deterministic,
 v1-eligible (**Columns** and **Measures**, excluding system-generated objects) normalized direct-report
 provenance and object summaries from the existing `ProjectInventory`. It retains semantic model/table/object
 identity, semantic usage/confidence, report name and path, persisted page/visual IDs, visual type,
@@ -45,7 +45,23 @@ successful scan: its compact, keyboard-operable panel takes presets and default/
 from Reporting, resets to defaults when presets/scans change, and downloads BOM-prefixed project-named
 `data-catalogue.csv` or `usage-mapping.csv` files through the existing local browser mechanism. The legacy
 semantic-usage CSV remains separately available as **Download semantic usage CSV**; its header and
-CLI/Desktop behaviour remain unchanged. JSON schema remains `0.26`; there is still no Desktop UI or CLI switch.
+CLI behaviour remain unchanged. JSON schema remains `0.26`; there is still no CLI switch.
+
+## Desktop Export CSV
+
+The Desktop shell now retains only the latest successfully scanned `ProjectInventory` in memory. Starting
+another scan, selecting another project or a failed scan clears that inventory and disables **Export CSV…**,
+so an export cannot be generated from stale results. After a successful scan, the action opens a compact,
+keyboard-operable modal dialog with the same two fixed presets, descriptions, reporting-owned allowed/default
+columns and reset behaviour as the Web UI. It builds `ExportRequest` and calls `ExportCsvRenderer` directly;
+it never reruns the scanner or reconstructs provenance. A standard Save dialog writes the renderer's CSV
+unchanged with a UTF-8 BOM, using the shared safe filenames `<project>.data-catalogue.csv` and
+`<project>.usage-mapping.csv`. The automatic legacy semantic CSV remains separately available as **Open
+semantic CSV** and is unchanged. This Desktop slice is awaiting review and has not yet been committed.
+
+Validation for the pending slice: focused export/Desktop surface tests **12/12**, full Core suite
+**539/539**, privacy end-to-end **2/2**, and full Release build **0 warnings, 0 errors**. `git diff --check`
+passes. The known unrelated formatter baseline remains 24 findings and was not changed.
 
 `UserFacing` is export-only provenance, never a sixth semantic usage state. Its values are **Yes**, **No**
 and **Unclear**. Active projections, tooltip data, drillthrough and active rendered formatting are Yes;
