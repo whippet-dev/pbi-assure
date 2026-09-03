@@ -181,6 +181,7 @@ button:disabled:hover { background: var(--pa-accent); border-color: var(--pa-acc
 .guidance-steps { display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr); gap: 0.75rem 1.75rem; align-items: start; }
 .guidance-example { display: grid; gap: 0.375rem; }
 .guidance-caption { margin: 0; font-size: var(--pa-t-xs); }
+.guidance-intro { margin: 0; max-width: 82ch; font-size: var(--pa-t-xs); }
 
 .guidance-warning {
   margin: 0;
@@ -407,6 +408,10 @@ button:disabled:hover { background: var(--pa-accent); border-color: var(--pa-acc
 /* ------------------------------------------------------------------ layout */
 
 @media (max-width: 46rem) {
+  /* Two-column workspaces need real room; below a tablet width they read better stacked. */
+  .guidance-steps { grid-template-columns: minmax(0, 1fr); }
+  .export-config { grid-template-columns: minmax(0, 1fr); }
+  .output-secondary { grid-template-columns: minmax(0, 1fr); }
   .project-metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .project-metrics .metric:last-child { grid-column: 1 / -1; }
   .information-definitions div { grid-template-columns: minmax(0, 1fr); gap: 0.125rem; }
@@ -425,12 +430,8 @@ button:disabled:hover { background: var(--pa-accent); border-color: var(--pa-acc
   h1 { font-size: var(--pa-t-2xl); }
   h2 { font-size: var(--pa-t-xl); }
   .guidance-panel, .picker, .export-panel, .information-panel { padding: 1rem; }
-  .guidance-steps { grid-template-columns: minmax(0, 1fr); }
-  .export-config { grid-template-columns: minmax(0, 1fr); }
-  .output-secondary { grid-template-columns: minmax(0, 1fr); }
   .project-bar { align-items: stretch; flex-direction: column; }
   .project-bar-actions button { flex: 1; }
-  .export-panel-heading { align-items: stretch; flex-direction: column; }
   .project-metrics, .power-query-metrics { grid-template-columns: minmax(0, 1fr); }
   .project-metrics .metric:last-child { grid-column: auto; }
   .metrics { grid-template-columns: repeat(auto-fit, minmax(7rem, 1fr)); }
