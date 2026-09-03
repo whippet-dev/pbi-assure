@@ -1,3 +1,5 @@
+using System.Text.RegularExpressions;
+
 namespace PbiAssure.Core.Tests;
 
 public sealed class WebNewcomerOrientationTests
@@ -64,6 +66,40 @@ public sealed class WebNewcomerOrientationTests
         Assert.Contains("a:focus-visible", ReadWeb("wwwroot/css/core.css"), StringComparison.Ordinal);
         Assert.DoesNotContain("role=\"tab", navigation, StringComparison.Ordinal);
         Assert.DoesNotContain("@inject", navigation, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// index.html sets <c>&lt;base href="/"&gt;</c>, so a fragment-only href resolves against the site
+    /// root rather than the current address: <c>#outputs</c> means <c>/#outputs</c>, which is Analyse.
+    /// Every jump link must name its own route, and every one must point at a section that exists.
+    /// </summary>
+    [Fact]
+    public void InformationPageJumpLinksStayOnTheInformationRoute()
+    {
+        var about = ReadWeb("Pages/About.razor");
+        var contents = ExtractBetween(about, "<nav class=\"page-contents\"", "</nav>");
+        var targets = Regex.Matches(contents, "href=\"(?<href>[^\"]+)\"")
+            .Select(match => match.Groups["href"].Value)
+            .ToArray();
+
+        Assert.NotEmpty(targets);
+        foreach (var target in targets)
+        {
+            Assert.StartsWith("about#", target, StringComparison.Ordinal);
+            Assert.DoesNotContain("/#", target, StringComparison.Ordinal);
+            Assert.Contains($"id=\"{target["about#".Length..]}\"", about, StringComparison.Ordinal);
+        }
+
+        Assert.Contains("<base href=\"/\" />", ReadWeb("wwwroot/index.html"), StringComparison.Ordinal);
+    }
+
+    private static string ExtractBetween(string value, string start, string end)
+    {
+        var from = value.IndexOf(start, StringComparison.Ordinal);
+        Assert.True(from >= 0, $"Could not find '{start}'.");
+        var to = value.IndexOf(end, from, StringComparison.Ordinal);
+        Assert.True(to > from, $"Could not find '{end}' after '{start}'.");
+        return value[from..to];
     }
 
     private static string ReadWeb(string relativePath)
