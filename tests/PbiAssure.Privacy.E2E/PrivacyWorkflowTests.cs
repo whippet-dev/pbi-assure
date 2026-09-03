@@ -17,13 +17,13 @@ public sealed class PrivacyWorkflowTests(PrivacyE2EFixture fixture)
         await LoadUntilReadyAsync(page);
         await page.WaitForFunctionAsync("document.activeElement?.id === 'page-title'");
         Assert.Equal("none", await page.Locator("#page-title").EvaluateAsync<string>("element => getComputedStyle(element).outlineStyle"));
-        await page.Keyboard.PressAsync("Tab");
-        Assert.True(await page.Locator("details.guidance-panel > summary").EvaluateAsync<bool>("element => element.matches(':focus-visible')"));
-        Assert.Equal("2px", await page.Locator("details.guidance-panel > summary").EvaluateAsync<string>("element => getComputedStyle(element).outlineWidth"));
+        // The primary task is one Tab away from the page title; the preparation guide follows it.
         await page.Keyboard.PressAsync("Tab");
         var picker = page.GetByRole(AriaRole.Button, new() { Name = "Choose Power BI project", Exact = true });
         Assert.True(await picker.EvaluateAsync<bool>("element => element.matches(':focus-visible')"));
         Assert.Equal("2px", await picker.EvaluateAsync<string>("element => getComputedStyle(element).outlineWidth"));
+        await page.Locator("details.guidance-panel > summary").FocusAsync();
+        Assert.Equal("2px", await page.Locator("details.guidance-panel > summary").EvaluateAsync<string>("element => getComputedStyle(element).outlineWidth"));
         await page.GotoAsync(fixture.BaseUrl + "/about");
         var heading = page.GetByRole(AriaRole.Heading, new() { Name = "What PBI Assure does", Exact = true });
         await heading.WaitForAsync();
@@ -55,7 +55,7 @@ public sealed class PrivacyWorkflowTests(PrivacyE2EFixture fixture)
         monitor.Begin("Information");
         await AssertInformationPopupPreservesPageAsync(page);
         monitor.Begin("Scan");
-        await page.GetByRole(AriaRole.Button, new() { Name = "Run assurance", Exact = true }).ClickAsync();
+        await page.GetByRole(AriaRole.Button, new() { Name = "Run analysis", Exact = true }).ClickAsync();
         await page.GetByRole(AriaRole.Heading, new() { Name = "Assurance summary", Exact = true }).WaitForAsync();
         var counts = await ReadAssuranceCountsAsync(page);
         monitor.Begin("Information");
@@ -240,7 +240,7 @@ public sealed class PrivacyWorkflowTests(PrivacyE2EFixture fixture)
     private async Task SelectFixtureAndScanAsync(IPage page)
     {
         await SelectFixtureAsync(page);
-        await page.GetByRole(AriaRole.Button, new() { Name = "Run assurance", Exact = true }).ClickAsync();
+        await page.GetByRole(AriaRole.Button, new() { Name = "Run analysis", Exact = true }).ClickAsync();
         await page.GetByRole(AriaRole.Heading, new() { Name = "Assurance summary", Exact = true })
             .WaitForAsync(new LocatorWaitForOptions { State = WaitForSelectorState.Visible });
         Assert.Contains("Your model objects", await page.Locator("main").InnerTextAsync(), StringComparison.Ordinal);

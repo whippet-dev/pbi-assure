@@ -5,41 +5,43 @@
 
 <section class="export-panel" aria-labelledby="export-csv-title">
     <div class="export-panel-heading">
-        <div>
-            <h3 id="export-csv-title">Export CSV</h3>
-            <p>Choose a catalogue or report-usage view from this local scan.</p>
-        </div>
-        <button class="secondary-button" @onclick="CloseAsync">Close</button>
+        <h3 id="export-csv-title">Export CSV</h3>
+        <button class="secondary-button export-close" @onclick="CloseAsync">Close</button>
     </div>
 
-    <fieldset class="export-preset-options">
-        <legend>Preset</legend>
-        @foreach (var preset in Presets)
-        {
-            var id = $"export-preset-{preset}";
-            <label for="@id">
-                <input id="@id" type="radio" name="export-preset" checked="@(selectedPreset == preset)"
-                       @onchange="() => SelectPreset(preset)" />
-                @PresetLabel(preset)
-            </label>
-        }
-    </fieldset>
+    <div class="export-config">
+        <fieldset class="export-preset-options">
+            <legend>Preset</legend>
+            <div class="export-preset-choices">
+                @foreach (var preset in Presets)
+                {
+                    var id = $"export-preset-{preset}";
+                    <label for="@id">
+                        <input id="@id" type="radio" name="export-preset" checked="@(selectedPreset == preset)"
+                               @onchange="() => SelectPreset(preset)" />
+                        @PresetLabel(preset)
+                    </label>
+                }
+            </div>
+            <p class="export-description">@PresetDescription(selectedPreset)</p>
+        </fieldset>
 
-    <p class="export-description">@PresetDescription(selectedPreset)</p>
-    <p class="export-help">User-facing means PBI Assure found direct report evidence that contributes to report presentation or intentional user interaction. It is separate from semantic usage classification.</p>
-
-    <fieldset class="export-column-options">
-        <legend>Columns</legend>
-        @foreach (var column in AllowedColumns)
-        {
-            var id = $"export-column-{column.Id}";
-            <label for="@id">
-                <input id="@id" type="checkbox" checked="@selectedColumns.Contains(column.Id)"
-                       @onchange="() => ToggleColumn(column.Id)" />
-                @column.Header
-            </label>
-        }
-    </fieldset>
+        <fieldset class="export-column-options">
+            <legend>Columns <span class="export-column-count">@selectedColumns.Count of @AllowedColumns.Count</span></legend>
+            <div class="export-column-grid">
+                @foreach (var column in AllowedColumns)
+                {
+                    var id = $"export-column-{column.Id}";
+                    <label for="@id">
+                        <input id="@id" type="checkbox" checked="@selectedColumns.Contains(column.Id)"
+                               @onchange="() => ToggleColumn(column.Id)" />
+                        @column.Header
+                    </label>
+                }
+            </div>
+            <p class="export-help">User-facing means PBI Assure found direct report evidence that contributes to report presentation or intentional user interaction. It is separate from semantic usage classification.</p>
+        </fieldset>
+    </div>
 
     <div class="export-actions">
         <button class="secondary-button" @onclick="ResetToDefaults">Select defaults</button>

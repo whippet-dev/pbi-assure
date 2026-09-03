@@ -12,42 +12,72 @@
 <AppNavigation HasActiveProject="@(selection is not null || inventory is not null || isBusy)" />
 
 <section class="shell" aria-labelledby="page-title" data-pbiassure-app-ready="true">
-    <header>
-        <p class="eyebrow">Model intelligence</p>
+    <header class="page-header @(HasProject ? "page-header-compact" : null)">
+        @if (!HasProject)
+        {
+            <p class="eyebrow">Model intelligence</p>
+        }
         <h1 id="page-title" tabindex="-1">Understand your Power BI project</h1>
-        <p>PBI Assure performs read-only analysis of Power BI project metadata, helping developers and analysts understand how the semantic model — your tables, fields and calculations — fits together with Power Query and the report.</p>
-        <ul class="orientation-outcomes">
-            <li>Find model objects with no detected usage</li>
-            <li>Trace where fields and measures are used</li>
-            <li>Understand model and Power Query dependencies</li>
-            <li>Export catalogue and usage metadata</li>
-        </ul>
+        @if (!HasProject)
+        {
+            <p class="page-lede">PBI Assure performs read-only analysis of Power BI project metadata: how your semantic model — tables, fields and calculations — fits together with Power Query and the report.</p>
+            <ul class="orientation-outcomes">
+                <li>Find model objects with no detected usage</li>
+                <li>Trace where fields and measures are used</li>
+                <li>Understand model and Power Query dependencies</li>
+                <li>Export catalogue and usage metadata</li>
+            </ul>
+        }
     </header>
 
-    <p class="supported-input">For supported local semantic-model analysis, use a PBIP project with PBIR and TMDL (<code>.SemanticModel/definition/</code>). Local <code>model.bim</code> (TMSL) models are not supported by this version yet.</p>
+    @if (!HasResults)
+    {
+        <p class="supported-input">For supported local semantic-model analysis, use a PBIP project with PBIR and TMDL (<code>.SemanticModel/definition/</code>). Local <code>model.bim</code> (TMSL) models are not supported by this version yet.</p>
+    }
 
-    <details class="guidance-panel">
-        <summary>Check or prepare your Power BI project</summary>
-        <div class="guidance-content">
-            <p>The supported project structure is a Power BI Project (PBIP) that uses the enhanced report format (PBIR) and the TMDL semantic model format.</p>
-            <ol>
-                <li>Open the PBIX in Power BI Desktop.</li>
-                <li>In <strong>File &gt; Options and settings &gt; Options &gt; Preview features</strong>, enable <strong>Power BI Project (.pbip) save option</strong> if it is shown.</li>
-                <li>Enable <strong>Store reports using enhanced metadata format (PBIR)</strong> and <strong>Store semantic model using TMDL format</strong>.</li>
-                <li>Save the report as a Power BI Project, then select its project root folder here.</li>
-            </ol>
-            <p>PBIR and TMDL store the report and semantic model as structured project files that PBI Assure can analyse locally in your browser.</p>
-            <div class="folder-example" aria-label="Example supported Power BI project folder structure"><code>MyReport/<br />├── MyReport.pbip<br />├── MyReport.Report/<br />│   └── definition/<br />└── MyReport.SemanticModel/<br />    ├── definition.pbism<br />    └── definition/</code></div>
-            <p>Select the <strong>project root</strong> shown above, not the <code>.Report</code> or <code>.SemanticModel</code> folder on its own.</p>
-            <p>A local semantic model stored as <code>model.bim</code> (TMSL) is not supported yet. Keep a backup, enable <strong>Store semantic model using TMDL format</strong>, then choose <strong>Upgrade</strong> when saving in Power BI Desktop. This conversion cannot be undone.</p>
-            <p class="guidance-links">Microsoft guidance: <a href="https://learn.microsoft.com/en-us/power-bi/developer/projects/projects-overview" target="_blank" rel="noopener noreferrer">Power BI Projects</a>, <a href="https://learn.microsoft.com/en-us/power-bi/developer/projects/projects-report" target="_blank" rel="noopener noreferrer">PBIR</a>, and <a href="https://learn.microsoft.com/en-us/power-bi/developer/projects/projects-dataset" target="_blank" rel="noopener noreferrer">TMDL semantic models</a>.</p>
+    @if (HasProject)
+    {
+        <div class="project-bar" aria-live="polite">
+            <div class="project-bar-identity">
+                <p class="project-bar-name"><span class="visually-hidden">Selected project: </span>@selection!.DisplayName</p>
+                <p class="project-bar-facts">@selection.Files.Count files · @FormatBytes(selection.TotalBytes)</p>
+            </div>
+            <div class="project-bar-actions">
+                <button @onclick="RunAssuranceAsync" disabled="@isBusy">@(HasResults ? "Analyse again" : "Run analysis")</button>
+                <button class="secondary-button" @onclick="() => ChooseProjectAsync(false)" disabled="@isBusy">Change project</button>
+            </div>
         </div>
-    </details>
+    }
+    else
+    {
+        <div class="picker">
+            <div class="picker-actions">
+                <button @onclick="() => ChooseProjectAsync(false)" disabled="@isBusy">Choose Power BI project</button>
+            </div>
+            <p class="privacy"><strong>Kept on this device:</strong> your Power BI project is processed locally in your browser. Project files and analysis results are not uploaded to PBI Assure. <a href="https://github.com/whippet-dev/pbi-assure/blob/master/PRIVACY.md" target="_blank" rel="noopener noreferrer">How privacy works</a>.</p>
+        </div>
+    }
 
-    <div class="picker">
-        <div class="picker-actions">
-            <button @onclick="() => ChooseProjectAsync(false)" disabled="@isBusy">Choose Power BI project</button>
-        </div>
+    <div class="setup-support @(HasProject ? "setup-support-compact" : null)">
+        <details class="guidance-panel">
+            <summary>Check or prepare your Power BI project</summary>
+            <div class="guidance-content">
+                <div class="guidance-steps">
+                    <ol>
+                        <li>Open the PBIX in Power BI Desktop.</li>
+                        <li>In <strong>File &gt; Options and settings &gt; Options &gt; Preview features</strong>, enable <strong>Power BI Project (.pbip) save option</strong> if it is shown.</li>
+                        <li>Enable <strong>Store reports using enhanced metadata format (PBIR)</strong> and <strong>Store semantic model using TMDL format</strong>.</li>
+                        <li>Save the report as a Power BI Project, then select its project root folder here.</li>
+                    </ol>
+                    <div class="guidance-example">
+                        <div class="folder-example" aria-label="Example supported Power BI project folder structure"><code>MyReport/<br />├── MyReport.pbip<br />├── MyReport.Report/<br />│   └── definition/<br />└── MyReport.SemanticModel/<br />    ├── definition.pbism<br />    └── definition/</code></div>
+                        <p class="guidance-caption">Select the <strong>project root</strong> shown above, not the <code>.Report</code> or <code>.SemanticModel</code> folder on its own.</p>
+                    </div>
+                </div>
+                <p class="guidance-warning"><strong>Converting from TMSL cannot be undone.</strong> A local semantic model stored as <code>model.bim</code> (TMSL) is not supported yet. Keep a backup, enable <strong>Store semantic model using TMDL format</strong>, then choose <strong>Upgrade</strong> when saving in Power BI Desktop.</p>
+                <p class="guidance-links">Microsoft guidance: <a href="https://learn.microsoft.com/en-us/power-bi/developer/projects/projects-overview" target="_blank" rel="noopener noreferrer">Power BI Projects</a>, <a href="https://learn.microsoft.com/en-us/power-bi/developer/projects/projects-report" target="_blank" rel="noopener noreferrer">PBIR</a>, and <a href="https://learn.microsoft.com/en-us/power-bi/developer/projects/projects-dataset" target="_blank" rel="noopener noreferrer">TMDL semantic models</a>.</p>
+            </div>
+        </details>
         <details class="picker-help">
             <summary>Having trouble selecting a folder?</summary>
             <div class="picker-help-content">
@@ -55,19 +85,7 @@
                 <button class="secondary-button" @onclick="() => ChooseProjectAsync(true)" disabled="@isBusy">Use alternative folder picker</button>
             </div>
         </details>
-        <p class="privacy"><strong>Kept on this device:</strong> your Power BI project is processed locally in your browser. Project files and analysis results are not uploaded to PBI Assure. <a href="https://github.com/whippet-dev/pbi-assure/blob/master/PRIVACY.md" target="_blank" rel="noopener noreferrer">How privacy works</a>.</p>
     </div>
-
-    @if (selection is not null)
-    {
-        <section class="selection" aria-live="polite">
-            <p><strong>Selected project:</strong> @selection.DisplayName</p>
-            <p><strong>Files accepted:</strong> @selection.Files.Count</p>
-            <p><strong>Metadata size:</strong> @FormatBytes(selection.TotalBytes)</p>
-            <p class="diagnostic">Directory selection: @selectionElapsed.TotalMilliseconds.ToString("N0") ms</p>
-            <button @onclick="RunAssuranceAsync" disabled="@isBusy">Run assurance</button>
-        </section>
-    }
 
     @if (!string.IsNullOrWhiteSpace(message))
     {
@@ -77,7 +95,7 @@
     @if (inventory is not null)
     {
         var assurance = WebAssuranceSummary.FromFindings(inventory.Findings);
-        <section aria-labelledby="results-title">
+        <section class="results" aria-labelledby="results-title">
             <h2 id="results-title">Assurance summary</h2>
             <details class="summary-help">
                 <summary>How to read these results</summary>
@@ -132,26 +150,28 @@
                 <Metric Label="Review required" Value="@assurance.ReviewRequired" State="review" />
                 <Metric Label="Total findings" Value="@assurance.TotalFindings" />
             </div>
-            <p class="supported-input">Accessibility observations are excluded from these Assurance counts and remain available separately in the HTML report’s Accessibility review.</p>
+            <p class="metrics-note">Accessibility observations are excluded from these Assurance counts and remain available separately in the HTML report’s Accessibility review.</p>
             <section class="output-actions" aria-labelledby="output-actions-heading">
                 <h3 id="output-actions-heading">Next steps</h3>
-                <div class="output-action">
+                <div class="output-primary">
                     <button @onclick="OpenHtmlAsync" disabled="@isBusy" aria-describedby="open-report-help">Open interactive report</button>
                     <p id="open-report-help">Start here to explore model usage, dependencies, report structure and findings.</p>
                 </div>
-                <div class="output-action">
-                    <button class="secondary-button" @onclick="() => exportPanelOpen = !exportPanelOpen" disabled="@isBusy" aria-expanded="@exportPanelOpen">Export data</button>
-                    <p>Create a Data Catalogue or Usage Mapping CSV for reusable project metadata.</p>
+                <div class="output-secondary">
+                    <div class="output-action">
+                        <button class="secondary-button" @onclick="() => exportPanelOpen = !exportPanelOpen" disabled="@isBusy" aria-expanded="@exportPanelOpen">Export data</button>
+                        <p>Data Catalogue or Usage Mapping CSV.</p>
+                    </div>
+                    <div class="output-action">
+                        <button @onclick="DownloadHtmlAsync" class="secondary-button" disabled="@isBusy">Download HTML report</button>
+                        <p>Save a copy to review elsewhere.</p>
+                    </div>
                 </div>
                 @if (exportPanelOpen && selection is not null)
                 {
                     <ExportCsvPanel @key="exportPanelKey" Inventory="@inventory" ProjectDisplayName="@selection.DisplayName"
                                     OnClose="() => exportPanelOpen = false" />
                 }
-                <div class="output-action">
-                    <button @onclick="DownloadHtmlAsync" class="secondary-button" disabled="@isBusy">Download HTML report</button>
-                    <p>Save a copy of the interactive report to review elsewhere.</p>
-                </div>
                 <details class="summary-help legacy-output">
                     <summary>Advanced: legacy export</summary>
                     <div class="output-action">
@@ -186,6 +206,12 @@
     private bool exportPanelOpen;
     private int exportPanelKey;
 
+    // Analyse is three states, not one accumulating page: choosing a project, a project ready to
+    // analyse, and results. Setup material stops competing with results once it has served its turn.
+    private bool HasProject => selection is not null;
+
+    private bool HasResults => inventory is not null;
+
     private int UsageCount(string state) => inventory?.DeveloperSemanticObjectCountForState(state) ?? 0;
 
     private string TimingSummary
@@ -194,6 +220,7 @@
         {
             var timings = new List<string>
             {
+                $"Selection: {selectionElapsed.TotalMilliseconds:N0} ms",
                 $"File read: {fileReadElapsed.TotalMilliseconds:N0} ms",
                 $"Scan: {scanElapsed.TotalMilliseconds:N0} ms",
             };
