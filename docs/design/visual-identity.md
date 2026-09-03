@@ -25,31 +25,40 @@ node scripts/Sync-DesignTokens.mjs
 ## The idea
 
 PBI Assure is an instrument, not a dashboard and not a compliance document. It reads a Power BI
-project and reports evidence, and the one thing it has that a general-purpose tool does not is a
-vocabulary for *how confident it is*: nine classifications running from an error a reader should act
-on to a model object with no detected usage at all.
+project and reports what the evidence supports. The thing it has that a general-purpose tool does
+not is a pair of classification vocabularies, and those vocabularies are the identity.
 
-That vocabulary is the identity. Every classification renders the same way in both surfaces:
+They answer different questions and are not points on one scale:
+
+- **Finding severity** — *how much should this concern me?* Error, Warning, Review required,
+  Informational. A judgement about something PBI Assure found.
+- **Semantic usage** — *what evidence of use exists for this model object?* Directly used,
+  Indirectly used, Structurally required, Only used by unused items, Apparently unused. A statement
+  about evidence, not a verdict.
+
+Keeping them apart matters: Apparently unused is not a severe finding, and Review required is not a
+usage state. The two families never appear in the same list, and each renders the same way in both
+surfaces:
 
 **glyph + label + hue.** The glyph and the label carry the meaning on their own. The hue only makes
-scanning faster. Outline style carries a second signal — solid means evidence of use was found,
-dashed means none was.
+scanning faster. Within semantic usage, outline style carries a further signal — solid means
+evidence of use was found, dashed means none was.
 
 ## Colour
 
 Indigo (`--pa-accent`) means "you can act on this": links, primary actions, the focus ring, the
 active navigation item. It is never a status, so an accent can never be misread as a finding.
 
-Status colours are two families that never appear in the same list.
+Status colours belong to the two families above, which never appear in the same list.
 
-| Severity | Token | Glyph |
+| Finding severity | Token | Glyph |
 | --- | --- | --- |
 | Error | `--pa-error` | cross in a disc |
 | Warning | `--pa-warning` | triangle |
 | Review required | `--pa-review` | eye |
 | Informational | `--pa-info` | i in a disc |
 
-| Usage | Token | Glyph | Outline |
+| Semantic usage | Token | Glyph | Outline |
 | --- | --- | --- | --- |
 | Directly used | `--pa-used` | filled disc | solid |
 | Indirectly used | `--pa-indirect` | disc inside a ring | solid |
@@ -57,9 +66,10 @@ Status colours are two families that never appear in the same list.
 | Only used by unused items | `--pa-branch` | half-filled disc | dashed |
 | Apparently unused | `--pa-unused` | hollow ring | dashed |
 
-The usage family is a ramp from evidenced use to no evidence of use, so Directly used and Indirectly
+Semantic usage is ordered by how much evidence of use was found, so Directly used and Indirectly
 used sit close together on purpose: both mean "used", and the glyph carries the distinction. Every
-other pair within a family is clearly separated in hue.
+other pair within a family is clearly separated in hue. Finding severity is not ordered by hue at
+all — its four hues are simply distinct, because severity is already ordered by its own labels.
 
 Structurally required is deliberately the least chromatic of the usage states. It is a fact about the
 model's machinery rather than a judgement about a person's report.
@@ -122,8 +132,8 @@ The lockup is the mark plus "PBI Assure". In the report a `/ Report` qualifier f
 
 ## How the two surfaces differ
 
-They share the mark, the tokens, the type principles, the status vocabulary, the controls and the
-focus treatment. They differ in density and in emphasis:
+They share the mark, the tokens, the type principles, both classification vocabularies, the controls
+and the focus treatment. They differ in density and in emphasis:
 
 - The report is denser, uses a two-column workspace with a sticky navigation rail, and treats plain
   `button` as a utility control.

@@ -65,7 +65,11 @@ main { display: block; }
 
 .page-header { display: grid; gap: 0.5rem; }
 .page-header-compact { gap: 0.25rem; }
-.page-header-compact h1 { font-size: var(--pa-t-xl); letter-spacing: -0.018em; }
+/* The project name is the page identity once one is selected, so it stays the largest thing on the
+   page and the summary heading steps down beneath it. */
+.page-header-compact h1 { font-size: var(--pa-t-2xl); letter-spacing: -0.02em; overflow-wrap: anywhere; }
+.page-header-compact .eyebrow { margin-bottom: 0.0625rem; }
+.results > h2 { font-size: var(--pa-t-xl); }
 h1, h2, p { margin: 0; }
 h1 { font-size: var(--pa-t-3xl); letter-spacing: -0.025em; }
 h1#page-title[tabindex="-1"]:focus, h1#about-title[tabindex="-1"]:focus { outline: none; }
@@ -125,9 +129,9 @@ h3 { margin: 1.5rem 0 0.625rem; font-size: var(--pa-t-lg); }
   background: var(--pa-surface);
 }
 
-.project-bar-identity { display: flex; min-width: 0; flex-wrap: wrap; align-items: baseline; gap: 0.25rem 0.625rem; }
-.project-bar-name { margin: 0; color: var(--pa-text); font-family: var(--pa-font-display); font-size: var(--pa-t-md); font-weight: 600; letter-spacing: -0.01em; overflow-wrap: anywhere; }
-.project-bar-facts { margin: 0; color: var(--pa-text-3); font-size: var(--pa-t-xs); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.project-bar-identity { display: flex; min-width: 0; flex-wrap: wrap; align-items: center; gap: 0.25rem 0.75rem; }
+.project-bar-facts { margin: 0; color: var(--pa-text-2); font-size: var(--pa-t-xs); font-variant-numeric: tabular-nums; white-space: nowrap; }
+
 .project-bar-actions { display: flex; flex-wrap: wrap; gap: 0.5rem; }
 .project-bar-actions button { min-height: 2rem; padding: 0.25rem 0.75rem; }
 
@@ -429,6 +433,8 @@ button:disabled:hover { background: var(--pa-accent); border-color: var(--pa-acc
   .app-footer { padding: 1rem 1rem 1.5rem; }
   h1 { font-size: var(--pa-t-2xl); }
   h2 { font-size: var(--pa-t-xl); }
+  .page-header-compact h1 { font-size: var(--pa-t-xl); }
+  .results > h2 { font-size: var(--pa-t-lg); }
   .guidance-panel, .picker, .export-panel, .information-panel { padding: 1rem; }
   .project-bar { align-items: stretch; flex-direction: column; }
   .project-bar-actions button { flex: 1; }

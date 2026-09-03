@@ -56,7 +56,7 @@ public sealed class PrivacyWorkflowTests(PrivacyE2EFixture fixture)
         await AssertInformationPopupPreservesPageAsync(page);
         monitor.Begin("Scan");
         await page.GetByRole(AriaRole.Button, new() { Name = "Run analysis", Exact = true }).ClickAsync();
-        await page.GetByRole(AriaRole.Heading, new() { Name = "Assurance summary", Exact = true }).WaitForAsync();
+        await page.GetByRole(AriaRole.Heading, new() { Name = "Analysis summary", Exact = true }).WaitForAsync();
         var counts = await ReadAssuranceCountsAsync(page);
         monitor.Begin("Information");
         await AssertInformationPopupPreservesPageAsync(page);
@@ -89,7 +89,7 @@ public sealed class PrivacyWorkflowTests(PrivacyE2EFixture fixture)
         Assert.DoesNotContain(PrivacyCanaries.ProjectName, await popup.Locator("body").InnerTextAsync(), StringComparison.Ordinal);
         await popup.CloseAsync();
         Assert.Equal(fixture.BaseUrl + "/", page.Url);
-        Assert.True(await page.GetByText($"Selected project: {PrivacyCanaries.ProjectName}", new() { Exact = true }).IsVisibleAsync());
+        Assert.True(await page.GetByRole(AriaRole.Heading, new() { Name = PrivacyCanaries.ProjectName, Exact = true }).IsVisibleAsync());
     }
 
     [Fact(Timeout = 240_000)]
@@ -241,7 +241,7 @@ public sealed class PrivacyWorkflowTests(PrivacyE2EFixture fixture)
     {
         await SelectFixtureAsync(page);
         await page.GetByRole(AriaRole.Button, new() { Name = "Run analysis", Exact = true }).ClickAsync();
-        await page.GetByRole(AriaRole.Heading, new() { Name = "Assurance summary", Exact = true })
+        await page.GetByRole(AriaRole.Heading, new() { Name = "Analysis summary", Exact = true })
             .WaitForAsync(new LocatorWaitForOptions { State = WaitForSelectorState.Visible });
         Assert.Contains("Your model objects", await page.Locator("main").InnerTextAsync(), StringComparison.Ordinal);
     }
@@ -252,7 +252,7 @@ public sealed class PrivacyWorkflowTests(PrivacyE2EFixture fixture)
         var chooser = await page.RunAndWaitForFileChooserAsync(() =>
             page.GetByRole(AriaRole.Button, new() { Name = "Use alternative folder picker", Exact = true }).ClickAsync());
         await chooser.SetFilesAsync(fixture.FixtureDirectory);
-        await page.GetByText($"Selected project: {PrivacyCanaries.ProjectName}", new() { Exact = true })
+        await page.GetByRole(AriaRole.Heading, new() { Name = PrivacyCanaries.ProjectName, Exact = true })
             .WaitForAsync(new LocatorWaitForOptions { State = WaitForSelectorState.Visible });
     }
 

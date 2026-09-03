@@ -13,11 +13,8 @@
 
 <section class="shell" aria-labelledby="page-title" data-pbiassure-app-ready="true">
     <header class="page-header @(HasProject ? "page-header-compact" : null)">
-        @if (!HasProject)
-        {
-            <p class="eyebrow">Model intelligence</p>
-        }
-        <h1 id="page-title" tabindex="-1">Understand your Power BI project</h1>
+        <p class="eyebrow">@(HasProject ? "Selected project" : "Model intelligence")</p>
+        <h1 id="page-title" tabindex="-1">@(HasProject ? selection!.DisplayName : "Understand your Power BI project")</h1>
         @if (!HasProject)
         {
             <p class="page-lede">PBI Assure performs read-only analysis of Power BI project metadata: how your semantic model — tables, fields and calculations — fits together with Power Query and the report.</p>
@@ -30,20 +27,19 @@
         }
     </header>
 
-    @if (!HasResults)
+    @if (!HasProject || !string.IsNullOrWhiteSpace(message))
     {
         <p class="supported-input">For supported local semantic-model analysis, use a PBIP project with PBIR and TMDL (<code>.SemanticModel/definition/</code>). Local <code>model.bim</code> (TMSL) models are not supported by this version yet.</p>
     }
 
     @if (HasProject)
     {
-        <div class="project-bar" aria-live="polite">
+        <div class="project-bar" role="group" aria-label="Project status and actions" aria-live="polite">
             <div class="project-bar-identity">
-                <p class="project-bar-name"><span class="visually-hidden">Selected project: </span>@selection!.DisplayName</p>
-                <p class="project-bar-facts">@selection.Files.Count files · @FormatBytes(selection.TotalBytes)</p>
+                <p class="project-bar-facts">@selection!.Files.Count files · @FormatBytes(selection.TotalBytes)</p>
             </div>
             <div class="project-bar-actions">
-                <button @onclick="RunAssuranceAsync" disabled="@isBusy">@(HasResults ? "Analyse again" : "Run analysis")</button>
+                <button class="@(HasResults ? "secondary-button" : null)" @onclick="RunAssuranceAsync" disabled="@isBusy">@RunLabel</button>
                 <button class="secondary-button" @onclick="() => ChooseProjectAsync(false)" disabled="@isBusy">Change project</button>
             </div>
         </div>
@@ -97,7 +93,7 @@
     {
         var assurance = WebAssuranceSummary.FromFindings(inventory.Findings);
         <section class="results" aria-labelledby="results-title">
-            <h2 id="results-title">Assurance summary</h2>
+            <h2 id="results-title">Analysis summary</h2>
             <details class="summary-help">
                 <summary>How to read these results</summary>
                 <dl>
@@ -212,6 +208,12 @@
     private bool HasProject => selection is not null;
 
     private bool HasResults => inventory is not null;
+
+    // A project is only ever on screen while it is being analysed, never while one is being chosen:
+    // ChooseProjectAsync clears the selection before it awaits, so the picker is showing instead.
+    private bool IsAnalysing => isBusy && HasProject;
+
+    private string RunLabel => IsAnalysing ? "Analysing…" : HasResults ? "Analyse again" : "Run analysis";
 
     private int UsageCount(string state) => inventory?.DeveloperSemanticObjectCountForState(state) ?? 0;
 
