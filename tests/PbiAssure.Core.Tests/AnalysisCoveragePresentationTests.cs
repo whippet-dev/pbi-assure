@@ -381,19 +381,37 @@ public sealed class AnalysisCoveragePresentationTests
     }
 
     /// <summary>
-    /// Nine navigation tiles use three columns inside the report's content width, so
-    /// desktop wrapping is made deliberate and balanced rather than leaving a single orphaned tile.
+    /// Desktop reports use a sticky left rail; narrower reports keep top navigation,
+    /// with compact two-column links at the smallest breakpoint.
     /// </summary>
     [Fact]
-    public void NavigationWrapsIntoBalancedRowsAtDesktopWidths()
+    public void NavigationUsesStickyDesktopRailAndResponsiveTopLinks()
     {
         var html = RenderFixture("desktop-semantic-constructs");
+        var desktopStart = html.IndexOf("@media (min-width: 72rem) {", StringComparison.Ordinal);
+        var narrowStart = html.IndexOf("@media (max-width: 45rem) {", StringComparison.Ordinal);
+        var printStart = html.IndexOf("@media print {", StringComparison.Ordinal);
+        Assert.True(desktopStart >= 0 && narrowStart > desktopStart && printStart > narrowStart);
 
-        Assert.Contains("@media (min-width: 64rem) {", html, StringComparison.Ordinal);
-        Assert.Contains(".section-nav { grid-template-columns: repeat(3, minmax(0, 1fr)); }", html, StringComparison.Ordinal);
-        // Narrower widths keep the existing auto-fit behaviour.
+        var baseStyles = html[..desktopStart];
+        var desktopStyles = html[desktopStart..narrowStart];
+        var narrowStyles = html[narrowStart..printStart];
+
+        // The default flow keeps the navigation above the report, without a permanent rail.
         Assert.Contains(".section-nav { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 11rem), 1fr));",
-            html, StringComparison.Ordinal);
+            baseStyles, StringComparison.Ordinal);
+        Assert.DoesNotContain(".report-workspace { display: grid;", baseStyles, StringComparison.Ordinal);
+        Assert.DoesNotContain(".section-navigator { position: sticky;", baseStyles, StringComparison.Ordinal);
+
+        Assert.Contains(".report-workspace { display: grid; grid-template-columns: 13rem minmax(0, 1fr);",
+            desktopStyles, StringComparison.Ordinal);
+        Assert.Contains(".section-navigator { position: sticky; top: 1rem; max-height: calc(100vh - 2rem); overflow-y: auto;",
+            desktopStyles, StringComparison.Ordinal);
+        Assert.Contains(".section-nav { grid-template-columns: minmax(0, 1fr);", desktopStyles, StringComparison.Ordinal);
+
+        Assert.Contains(".section-nav { grid-template-columns: repeat(2, minmax(0, 1fr)); }", narrowStyles, StringComparison.Ordinal);
+        Assert.Contains(".section-nav a { min-height: 2.75rem; }", narrowStyles, StringComparison.Ordinal);
+        Assert.Contains(".section-nav small { display: none; }", narrowStyles, StringComparison.Ordinal);
     }
 
     // ---- 14. No regression to existing report content ---------------------------------------------
