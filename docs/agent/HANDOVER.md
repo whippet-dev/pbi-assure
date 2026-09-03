@@ -5,7 +5,8 @@ Tactical entry point for an incoming coding agent. Read this first, then
 
 ## What just happened
 
-The **Web newcomer-orientation** slice is implemented and must remain **uncommitted for review**.
+The **Web newcomer-orientation** slice is committed at `d331708`; its approved heading-outline fix was
+committed as **Improve Web newcomer orientation** at `6374a65`. Both are pushed.
 Analyse `/` has a compact introduction and four outcomes above the unchanged preparation/picker flow.
 The new `/about` page explains the product, supported analysis, outputs, workflow, limitations and privacy.
 `Shared/AppNavigation.razor` uses ordinary links with current-page semantics; information opens in a
@@ -21,9 +22,13 @@ The test-only host's SPA fallback must remain after static-file handling, or it 
 Use `MSBUILDDISABLENODEREUSE=1` and `DOTNET_CLI_USE_MSBUILD_SERVER=0` in the local test process if publish
 output streams stall; these are invocation settings, not repository configuration changes.
 
-**Next task to decide separately:** Web summary-count/order alignment. Home still includes accessibility
-in its aggregate findings and uses Assurance-first ordering, unlike generated HTML. This is deliberately
-unchanged, as are post-scan actions, all exports, Core/Reporting and JSON `0.26`. No formatter cleanup.
+**Pending review, leave uncommitted:** Web summary alignment now orders Semantic usage -> Project ->
+Power Query -> Assurance. The narrow `WebAssuranceSummary` projection excludes Accessibility from all
+four primary counts, matching HTML; original findings/inventory totals remain intact. The Web note points
+to Accessibility review in the HTML report. Focused summary tests **3/3**, referenced Web build and diff
+check passed; no full Core/privacy run. Core/Reporting, exports, Desktop and JSON `0.26` are untouched.
+**Product decision:** future product/UX work is Web-only; no new Desktop parity work. Existing Desktop
+code stays, Core/Reporting remain reusable, and any Desktop retirement is a separate decision.
 
 The approved **HTML information-architecture** slice was committed and pushed at `8f09c27`. Navigation
 and body now prioritize Summary -> Semantic model -> Power Query -> Model relationships -> Report pages

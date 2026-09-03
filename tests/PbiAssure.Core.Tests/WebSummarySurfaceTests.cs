@@ -1,3 +1,6 @@
+using PbiAssure.Core.Inventory;
+using PbiAssure.Web;
+
 namespace PbiAssure.Core.Tests;
 
 public sealed class WebSummarySurfaceTests
@@ -9,7 +12,9 @@ public sealed class WebSummarySurfaceTests
         var markup = File.ReadAllText(Path.Combine(repositoryRoot, "src", "PbiAssure.Web", "Pages", "Home.razor"));
         var styles = File.ReadAllText(Path.Combine(repositoryRoot, "src", "PbiAssure.Web", "wwwroot", "css", "app.css"));
         var project = ExtractBetween(markup, "<h3>Project</h3>", "<h3>Power Query</h3>");
-        var powerQuery = ExtractBetween(markup, "<h3>Power Query</h3>", "<h3>Semantic usage</h3>");
+        var powerQuery = ExtractBetween(markup, "<h3>Power Query</h3>", "<h3>Assurance</h3>");
+        var semantic = ExtractBetween(markup, "<h3>Semantic usage</h3>", "<h3>Project</h3>");
+        Assert.Contains("Label=\"Apparently unused\"", semantic, StringComparison.Ordinal);
 
         Assert.Contains("<h3>Assurance</h3>", markup, StringComparison.Ordinal);
         Assert.DoesNotContain("<h3>Findings</h3>", markup, StringComparison.Ordinal);
@@ -34,10 +39,12 @@ public sealed class WebSummarySurfaceTests
         Assert.Contains("This is not the number of individual connections.", markup, StringComparison.Ordinal);
         Assert.Contains("counted once per query and function", markup, StringComparison.Ordinal);
 
-        Assert.Contains("Label=\"Errors\" Value=\"@inventory.ErrorFindingCount\"", markup, StringComparison.Ordinal);
-        Assert.Contains("Label=\"Warnings\" Value=\"@inventory.WarningFindingCount\"", markup, StringComparison.Ordinal);
-        Assert.Contains("Label=\"Review required\" Value=\"@inventory.ReviewRequiredCount\"", markup, StringComparison.Ordinal);
-        Assert.Contains("Label=\"Total findings\" Value=\"@inventory.FindingCount\"", markup, StringComparison.Ordinal);
+        Assert.Contains("WebAssuranceSummary.FromFindings(inventory.Findings)", markup, StringComparison.Ordinal);
+        Assert.Contains("Label=\"Errors\" Value=\"@assurance.Errors\"", markup, StringComparison.Ordinal);
+        Assert.Contains("Label=\"Warnings\" Value=\"@assurance.Warnings\"", markup, StringComparison.Ordinal);
+        Assert.Contains("Label=\"Review required\" Value=\"@assurance.ReviewRequired\"", markup, StringComparison.Ordinal);
+        Assert.Contains("Label=\"Total findings\" Value=\"@assurance.TotalFindings\"", markup, StringComparison.Ordinal);
+        Assert.Contains("Accessibility observations are excluded from these Assurance counts", markup, StringComparison.Ordinal);
         Assert.Contains("Label=\"Directly used\" Value=\"@UsageCount(SemanticUsageStates.DirectlyUsed)\"", markup, StringComparison.Ordinal);
         Assert.Contains("Label=\"Indirectly used\" Value=\"@UsageCount(SemanticUsageStates.IndirectlyUsed)\"", markup, StringComparison.Ordinal);
         Assert.Contains("Label=\"Structurally required\" Value=\"@UsageCount(SemanticUsageStates.StructurallyRequired)\"", markup, StringComparison.Ordinal);
@@ -55,6 +62,39 @@ public sealed class WebSummarySurfaceTests
         Assert.Contains("@media (max-width: 34rem)", styles, StringComparison.Ordinal);
         Assert.Contains("overflow-wrap: anywhere", styles, StringComparison.Ordinal);
     }
+
+    [Fact]
+    public void AssuranceExcludesAccessibilityWithoutChangingSeverityAssessmentOrSourceFindings()
+    {
+        var findings = new[]
+        {
+            Finding("Model", FindingSeverities.Error, AssessmentTypes.Finding),
+            Finding("Report", FindingSeverities.Warning, AssessmentTypes.ReviewRequired),
+            Finding("Power Query", FindingSeverities.Information, AssessmentTypes.ReviewRequired),
+            Finding("Model", FindingSeverities.Information, AssessmentTypes.Finding),
+            Finding("Accessibility", FindingSeverities.Error, AssessmentTypes.Finding),
+            Finding("accessibility", FindingSeverities.Warning, AssessmentTypes.ReviewRequired),
+            Finding("ACCESSIBILITY", FindingSeverities.Information, AssessmentTypes.ReviewRequired),
+        };
+        var before = findings.ToArray();
+        Assert.Equal(new WebAssuranceSummary(1, 1, 2, 4), WebAssuranceSummary.FromFindings(findings));
+        Assert.Equal(before, findings);
+        Assert.Equal(2, findings.Count(finding => finding.Severity == FindingSeverities.Error));
+        Assert.Equal(4, findings.Count(finding => finding.AssessmentType == AssessmentTypes.ReviewRequired));
+    }
+
+    [Fact]
+    public void EmptyAndAccessibilityOnlyFindingsHaveZeroPrimaryCounts()
+    {
+        var empty = new WebAssuranceSummary(0, 0, 0, 0);
+        Assert.Equal(empty, WebAssuranceSummary.FromFindings([]));
+        Assert.Equal(empty, WebAssuranceSummary.FromFindings([
+            Finding(AssuranceCategories.Accessibility, FindingSeverities.Warning, AssessmentTypes.ReviewRequired)]));
+    }
+
+    private static AssuranceFinding Finding(string category, string severity, string assessment) => new(
+        "TEST001", "1", category, severity, "Test finding", "Review", null, null, null, null, null, null, null,
+        "report.json", [], assessment, null);
 
     private static string ExtractBetween(string value, string startMarker, string endMarker)
     {

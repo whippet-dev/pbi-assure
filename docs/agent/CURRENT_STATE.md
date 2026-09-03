@@ -12,8 +12,8 @@ evidenced · **[design decision]** a choice, not a fact.
 |---|---|
 | Remote | `whippet-dev/pbi-assure` |
 | Branch | `master` (also the default branch) |
-| Last verified product state | HTML hierarchy refocus committed and pushed at `8f09c27`; Web newcomer orientation pending review |
-| Working tree | Web newcomer-orientation slice is uncommitted; re-check before committing. |
+| Last verified product state | Web newcomer orientation and heading-focus fix pushed through `6374a65`; Web summary alignment pending review |
+| Working tree | Web summary-alignment slice is uncommitted; re-check before committing. |
 
 `master` may have moved past that commit for documentation-only changes. Re-verify and update this
 section whenever a commit changes build, test or behaviour — not for every commit.
@@ -45,10 +45,15 @@ Build-server reuse was disabled for the test invocation to avoid a local publish
 no build configuration was changed. Browser visual review used the published build after the Debug
 development host encountered rebuilt-asset fetch failures.
 
-**Next deliberate task, not implemented:** Web post-scan summary still uses aggregate findings including
-accessibility and the older Assurance-first order; generated HTML excludes accessibility from Assurance
-headlines and leads with model intelligence. Post-scan actions, counts, exports, generated HTML, analysis,
-JSON `0.26` and the formatter baseline are unchanged in this newcomer slice.
+**Web summary alignment (pending review):** groups are Semantic usage, Project, Power Query, Assurance.
+`WebAssuranceSummary` excludes the Accessibility category case-insensitively, matching HTML's boundary;
+severity and review-required counting semantics are unchanged. A brief note points to the HTML report's
+separate Accessibility review. Inventory totals, findings, exports and generated HTML are untouched.
+Focused summary tests: **3/3**; referenced Web build and diff check passed. No full suite/privacy E2E run.
+A fresh Sales & Returns scan gives **2 errors / 12 warnings / 13 review required / 27 primary findings**;
+its **136** accessibility findings remain in the **163**-finding inventory (ignored review JSON:
+`artifacts/web-summary-alignment-sales.json`).
+New product/UX work targets Web only; see the durable product-surface decision in `DECISIONS.md`.
 
 ## HTML information hierarchy
 

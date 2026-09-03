@@ -7,6 +7,13 @@ Architectural decision records live in [`docs/decisions/`](../decisions/) and re
 ADRs with context and consequences. This file is the short index of standing invariants, including the
 Power BI semantics that are easy to get wrong and expensive to rediscover.
 
+## Product surface
+
+**[design decision]** PBI Assure is a Web product going forward. New product/UX features target Web;
+Desktop receives no new feature-parity work. Existing Desktop code remains for now, without removal or
+refactoring in this slice. Core and Reporting remain shared/reusable. Desktop retirement is a separate
+future decision.
+
 ## Evidence discipline
 
 Statements about Power BI behaviour carry their evidence level, and the levels are not

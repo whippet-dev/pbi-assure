@@ -75,16 +75,17 @@
 
     @if (inventory is not null)
     {
+        var assurance = WebAssuranceSummary.FromFindings(inventory.Findings);
         <section aria-labelledby="results-title">
             <h2 id="results-title">Assurance summary</h2>
             <details class="summary-help">
                 <summary>How to read these results</summary>
                 <dl>
-                    <div><dt>Assurance</dt><dd>Issues and review items found by the automated checks.</dd></div>
+                    <div><dt>Assurance</dt><dd>Non-accessibility issues and review items found by the automated checks.</dd></div>
                     <div><dt>Errors</dt><dd>Higher-confidence issues that would normally merit attention.</dd></div>
                     <div><dt>Warnings</dt><dd>Potential problems, good-practice concerns or lower-confidence issues worth reviewing.</dd></div>
                     <div><dt>Review required</dt><dd>Situations that need human judgement or contextual review; they are not necessarily defects.</dd></div>
-                    <div><dt>Total findings</dt><dd>All issues and review items found by the automated checks.</dd></div>
+                    <div><dt>Total findings</dt><dd>All non-accessibility issues and review items found by the automated checks.</dd></div>
                     <div><dt>Project</dt><dd>Counts of the main report and model content found in the selected project.</dd></div>
                     <div><dt>Power Query queries</dt><dd>Power Query queries found in this project.</dd></div>
                     <div><dt>Data source types</dt><dd>Different types of recognised data sources used by those queries. This is not the number of individual connections.</dd></div>
@@ -97,13 +98,18 @@
                     <div><dt>Apparently unused</dt><dd>PBI Assure could not find anything in this project that uses it. Check before removing it because external reports and dynamic behaviour may not be visible here.</dd></div>
                 </dl>
             </details>
-            <h3>Assurance</h3>
+            <h3>Semantic usage</h3>
             <div class="metrics">
-                <Metric Label="Errors" Value="@inventory.ErrorFindingCount" />
-                <Metric Label="Warnings" Value="@inventory.WarningFindingCount" />
-                <Metric Label="Review required" Value="@inventory.ReviewRequiredCount" />
-                <Metric Label="Total findings" Value="@inventory.FindingCount" />
+                <Metric Label="Directly used" Value="@UsageCount(SemanticUsageStates.DirectlyUsed)" />
+                <Metric Label="Indirectly used" Value="@UsageCount(SemanticUsageStates.IndirectlyUsed)" />
+                <Metric Label="Structurally required" Value="@UsageCount(SemanticUsageStates.StructurallyRequired)" />
+                <Metric Label="Only used by unused items" Value="@UsageCount(SemanticUsageStates.UsedOnlyByUnusedBranch)" />
+                <Metric Label="Apparently unused" Value="@inventory.DeveloperApparentlyUnusedSemanticObjectCount" />
             </div>
+            <details class="summary-help">
+                <summary>What does “Apparently unused” mean?</summary>
+                <p>PBI Assure could not find anything in this project that uses it. This does not prove it is safe to delete; external reports and dynamic behaviour may not be visible here.</p>
+            </details>
             <h3>Project</h3>
             <div class="metrics project-metrics">
                 <Metric Label="Reports" Value="@inventory.ReportCount" />
@@ -118,18 +124,14 @@
                 <Metric Label="Data source types" Value="@inventory.DistinctConnectorFamilyCount" />
                 <Metric Label="Data source references" Value="@inventory.DataSourceCount" />
             </div>
-            <h3>Semantic usage</h3>
+            <h3>Assurance</h3>
             <div class="metrics">
-                <Metric Label="Directly used" Value="@UsageCount(SemanticUsageStates.DirectlyUsed)" />
-                <Metric Label="Indirectly used" Value="@UsageCount(SemanticUsageStates.IndirectlyUsed)" />
-                <Metric Label="Structurally required" Value="@UsageCount(SemanticUsageStates.StructurallyRequired)" />
-                <Metric Label="Only used by unused items" Value="@UsageCount(SemanticUsageStates.UsedOnlyByUnusedBranch)" />
-                <Metric Label="Apparently unused" Value="@inventory.DeveloperApparentlyUnusedSemanticObjectCount" />
+                <Metric Label="Errors" Value="@assurance.Errors" />
+                <Metric Label="Warnings" Value="@assurance.Warnings" />
+                <Metric Label="Review required" Value="@assurance.ReviewRequired" />
+                <Metric Label="Total findings" Value="@assurance.TotalFindings" />
             </div>
-            <details class="summary-help">
-                <summary>What does “Apparently unused” mean?</summary>
-                <p>PBI Assure could not find anything in this project that uses it. This does not prove it is safe to delete; external reports and dynamic behaviour may not be visible here.</p>
-            </details>
+            <p class="supported-input">Accessibility observations are excluded from these Assurance counts and remain available separately in the HTML report’s Accessibility review.</p>
             <div class="downloads">
                 <button @onclick="OpenHtmlAsync" disabled="@isBusy">Open HTML report</button>
                 <button @onclick="DownloadHtmlAsync" disabled="@isBusy">Download HTML report</button>
