@@ -1,0 +1,29 @@
+table TableB
+
+	column ColumnB1
+		dataType: int64
+		formatString: 0
+		summarizeBy: sum
+		sourceColumn: ColumnB1
+
+		annotation SummarizationSetBy = Automatic
+
+	column CollumnB2
+		dataType: string
+		summarizeBy: none
+		sourceColumn: CollumnB2
+
+		annotation SummarizationSetBy = Automatic
+
+	partition TableB = m
+		mode: import
+		source =
+				let
+				  Source = Table.FromRows(Json.Document(Binary.Decompress(Binary.FromText("i45WMlTSUUpUitWJVjICspLALGMgKxnMMgGyUsAsUyArVSk2FgA=", BinaryEncoding.Base64), Compression.Deflate)), let _t = ((type nullable text) meta [Serialized.Text = true]) in type table [ColumnB1 = _t, CollumnB2 = _t]),
+				  #"Changed column type" = Table.TransformColumnTypes(Source, {{"ColumnB1", Int64.Type}, {"CollumnB2", type text}}, "en-US")
+				in
+				  #"Changed column type"
+
+	annotation PBI_NavigationStepName = Navigation
+
+	annotation PBI_ResultType = Table

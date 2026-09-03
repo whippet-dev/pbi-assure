@@ -1,3 +1,5 @@
+using System.Text.Json.Serialization;
+
 namespace PbiAssure.Core.Inventory;
 
 public sealed record SemanticTableInventory(
@@ -14,6 +16,10 @@ public sealed record SemanticTableInventory(
     SemanticCalculationGroupInventory? CalculationGroup,
     SemanticFieldParameterInventory? FieldParameter)
 {
+    /// <summary>Desktop-authored description, retained in process only; logical lines use LF.</summary>
+    [JsonIgnore]
+    public string? Description { get; init; }
+
     /// <summary>
     /// Explicit table-owned incremental-refresh policy metadata. The absence of this property means no
     /// policy block was found; RangeStart/RangeEnd query references alone never populate it.

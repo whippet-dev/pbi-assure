@@ -8,6 +8,10 @@ public sealed record SemanticMeasureInventory(
     string? FormatString,
     bool IsHidden)
 {
+    /// <summary>Desktop-authored description, retained in process only; logical lines use LF.</summary>
+    [JsonIgnore]
+    public string? Description { get; init; }
+
     /// <summary>
     /// Measure-owned KPI expressions retained only for dependency analysis. They are deliberately not
     /// a public inventory contract: the existing dependency edges provide the user-facing evidence.

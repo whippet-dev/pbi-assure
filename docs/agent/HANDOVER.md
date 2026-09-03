@@ -5,8 +5,23 @@ Tactical entry point for an incoming coding agent. Read this first, then
 
 ## What just happened
 
-The first three **Export Builder** implementation slices are complete, and the fourth Desktop UI slice is
-implemented locally but awaiting review. Core derives normalized direct semantic usage records and v1 object summaries for non-system-generated Columns
+The **description retention** slice is implemented locally and pending review. The sanitised model-only
+fixture `tests/fixtures/desktop-descriptions-sanitized` preserves Desktop-authored Table/Column/Measure
+description blocks and neighbouring undescribed controls. Phil confirmed normal-UI authoring and a
+successful save/close/reopen/save/close; no first-save snapshot exists. Descriptions use contiguous `/// `
+lines immediately preceding the declaration at its indentation, including a blank measure-description
+line and an authored trailing space. The dedicated Core reader retains spaces, normalizes logical
+newlines to LF, and populates nullable `[JsonIgnore]` inventory properties only. No JSON (`0.26`),
+classification, provenance, HTML, UI or CSV contract changes. Review this bounded slice before committing;
+do not add optional Data Catalogue `Description` until separately instructed. See the fixture README.
+
+Description-slice validation: **14/14** description tests; **86/86** focused parser/export tests (inclusive);
+**553/553** full Core; Release **0 warnings / 0 errors**; `git diff --check` passed. JSON and all three CSV
+contracts have equality regressions, including optional columns and a report-used fixture. No privacy
+E2E run was needed because serialized/browser-visible output is unchanged. Keep this slice uncommitted.
+
+All four **Export Builder** implementation slices are complete; Desktop UI was committed at `00c4fc9`.
+Core derives normalized direct semantic usage records and v1 object summaries for non-system-generated Columns
 and Measures only. They retain semantic identity/state/confidence, report path, persisted page/visual IDs,
 visual type, context/role and raw source evidence without reconstructing data from HTML or legacy CSV text.
 `UserFacing` is a separate export-only three-state value: active projections/tooltip data/drillthrough and
@@ -35,10 +50,10 @@ scan starts, a project changes or a scan fails. **Export CSV…** is disabled un
 a compact modal: fixed presets/defaults/allowed columns come directly from Reporting; saving uses
 `ExportRequest` and `ExportCsvRenderer` without re-scanning and writes BOM-prefixed CSV through the standard
 Save dialog. The shared filename convention is `<project>.data-catalogue.csv` / `<project>.usage-mapping.csv`;
-legacy **Open semantic CSV** remains unchanged. Review and commit this Desktop slice before any next Export
-Builder work; do not duplicate Reporting contracts or move export mechanics into Core.
+legacy **Open semantic CSV** remains unchanged. Do not duplicate Reporting contracts or move export
+mechanics into Core.
 
-Pending Desktop-slice validation: focused export/Desktop surface tests **12/12**, full Core suite
+Desktop-slice validation: focused export/Desktop surface tests **12/12**, full Core suite
 **539/539**, privacy end-to-end **2/2**, and full Release build **0 warnings, 0 errors**. `git diff --check`
 passes. The known unrelated formatter baseline remains 24 findings and was not changed.
 

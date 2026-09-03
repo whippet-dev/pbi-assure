@@ -2,3 +2,6 @@
 
 *.png binary
 *.pbix binary
+
+# Desktop description evidence contains significant trailing spaces; preserve them verbatim.
+tests/fixtures/desktop-descriptions-sanitized/pbi-descriptions.SemanticModel/definition/tables/TableA.tmdl whitespace=-blank-at-eol

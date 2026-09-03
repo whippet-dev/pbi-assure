@@ -12,8 +12,8 @@ evidenced · **[design decision]** a choice, not a fact.
 |---|---|
 | Remote | `whippet-dev/pbi-assure` |
 | Branch | `master` (also the default branch) |
-| Last verified product state | Pending Desktop Export CSV slice (uncommitted) |
-| Working tree | Desktop Export CSV slice is implemented locally and awaiting review; re-check before committing. |
+| Last verified product state | Desktop Export Builder committed at `00c4fc9`; description retention slice pending review |
+| Working tree | Table/Column/Measure description retention slice is uncommitted; re-check before committing. |
 
 `master` may have moved past that commit for documentation-only changes. Re-verify and update this
 section whenever a commit changes build, test or behaviour — not for every commit.
@@ -23,6 +23,26 @@ The current evidence-led backlog is re-ranked in
 `alternateOf` aggregation mappings and measure KPI/Detail Rows expressions are now fixture-backed
 dependencies. Table-owned Detail Rows remains evidence-gated; aggregation metadata is not
 runtime-performance evidence.
+
+## Semantic descriptions (in-process only)
+
+**[verified by Power BI Desktop-authored fixture]** `desktop-descriptions-sanitized` banks the observed
+same-indentation, contiguous `/// ` description lines immediately before Table/Column/Measure declarations.
+Phil confirmed normal-UI authoring and save/close/reopen/save/close; no first-save byte snapshot exists.
+Multiline measure text includes an empty line and a significant trailing space. Undescribed controls
+have no description block. See [fixture evidence](../../tests/fixtures/desktop-descriptions-sanitized/README.md).
+
+**[design decision]** Core retains nullable `Description` init properties on only `SemanticTableInventory`,
+`SemanticColumnInventory` and `SemanticMeasureInventory`. A dedicated preceding-block reader preserves
+content spaces and empty lines, joining logical lines with LF. All three properties are `[JsonIgnore]`:
+JSON schema remains `0.26`; semantic classification, provenance, HTML and all CSV exports are unchanged.
+Optional Data Catalogue exposure is a separate future slice. No missing-description rule is introduced.
+
+Validation: description tests **14/14**, focused parser/export regressions **86/86** (including those
+description tests), full Core **553/553**, Release build **0 warnings / 0 errors**, and `git diff --check`
+passed. Tests compare JSON and legacy/Data Catalogue/Usage Mapping CSV output with changed description
+metadata, including all optional export columns. Privacy E2E was not needed: browser-visible and
+serialized output remain unchanged. The existing unrelated formatter baseline was not touched.
 
 ## Export Builder provenance foundation
 
@@ -57,9 +77,9 @@ columns and reset behaviour as the Web UI. It builds `ExportRequest` and calls `
 it never reruns the scanner or reconstructs provenance. A standard Save dialog writes the renderer's CSV
 unchanged with a UTF-8 BOM, using the shared safe filenames `<project>.data-catalogue.csv` and
 `<project>.usage-mapping.csv`. The automatic legacy semantic CSV remains separately available as **Open
-semantic CSV** and is unchanged. This Desktop slice is awaiting review and has not yet been committed.
+semantic CSV** and is unchanged. The Desktop slice was approved and committed at `00c4fc9`.
 
-Validation for the pending slice: focused export/Desktop surface tests **12/12**, full Core suite
+Validation for the Desktop slice: focused export/Desktop surface tests **12/12**, full Core suite
 **539/539**, privacy end-to-end **2/2**, and full Release build **0 warnings, 0 errors**. `git diff --check`
 passes. The known unrelated formatter baseline remains 24 findings and was not changed.
 

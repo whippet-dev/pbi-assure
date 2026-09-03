@@ -116,6 +116,7 @@ internal static class TmdlSemanticModelParser
                     Expression: ReadExpression(lines, index, endIndex, columnExpression))
                 {
                     AlternateOf = ParseAlternateOf(lines, index, endIndex),
+                    Description = ReadDescription(lines, index),
                 });
             }
             else if (TryParseDeclaration(lines[index].Trimmed, "measure", out var measureName, out var measureExpression))
@@ -127,6 +128,7 @@ internal static class TmdlSemanticModelParser
                     IsHidden: HasFlag(lines, index, endIndex, "isHidden"))
                 {
                     Kpi = ParseKpi(lines, index, endIndex),
+                    Description = ReadDescription(lines, index),
                     DetailRowsDefinitionExpression = ReadAssignmentExpression(
                         lines,
                         index,
@@ -182,6 +184,7 @@ internal static class TmdlSemanticModelParser
             FieldParameter: fieldParameter)
         {
             RefreshPolicy = refreshPolicy,
+            Description = ReadDescription(lines, tableDeclarationIndex),
         };
     }
 
@@ -918,6 +921,34 @@ internal static class TmdlSemanticModelParser
         return string.Join(
             Environment.NewLine,
             expressionLines.Select(line => line.Text.Length >= commonIndent ? line.Text[commonIndent..] : string.Empty));
+    }
+
+    // Desktop descriptions precede the declaration at its own indentation. Only the marker and
+    // one separator space are structural; retain content spaces and blank lines, using LF in memory.
+    private static string? ReadDescription(IReadOnlyList<TmdlLine> lines, int declarationIndex)
+    {
+        var descriptionLines = new List<string>();
+        var indent = lines[declarationIndex].Indent;
+        for (var index = declarationIndex - 1; index >= 0; index--)
+        {
+            var line = lines[index];
+            var text = line.Text[LeadingWhitespace(line.Text).Length..];
+            if (line.Indent != indent || !text.StartsWith("///", StringComparison.Ordinal))
+            {
+                break;
+            }
+
+            var content = text[3..];
+            descriptionLines.Add(content.StartsWith(' ') ? content[1..] : content);
+        }
+
+        if (descriptionLines.Count == 0)
+        {
+            return null;
+        }
+
+        descriptionLines.Reverse();
+        return string.Join('\n', descriptionLines);
     }
 
     private static string? FindProperty(
