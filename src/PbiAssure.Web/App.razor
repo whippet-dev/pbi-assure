@@ -7,18 +7,24 @@
             </Found>
             <NotFound>
                 <LayoutView Layout="typeof(MainLayout)">
-                    <p role="alert">That page was not found.</p>
+                    <AppNavigation />
+                    <div class="shell">
+                        <p role="alert">That page was not found.</p>
+                    </div>
                 </LayoutView>
             </NotFound>
         </Router>
     </ChildContent>
     <ErrorContent>
         <LayoutView Layout="typeof(MainLayout)">
-            <section class="fatal-message" role="alert">
-                <h1>PBI Assure could not continue</h1>
-                <p>No project data was uploaded. Reload the page and choose the project again.</p>
-                <a class="button-link" href="">Reload PBI Assure</a>
-            </section>
+            <AppNavigation />
+            <div class="shell">
+                <section class="fatal-message" role="alert">
+                    <h1>PBI Assure could not continue</h1>
+                    <p>No project data was uploaded. Reload the page and choose the project again.</p>
+                    <a class="button-link" href="">Reload PBI Assure</a>
+                </section>
+            </div>
         </LayoutView>
     </ErrorContent>
 </ErrorBoundary>

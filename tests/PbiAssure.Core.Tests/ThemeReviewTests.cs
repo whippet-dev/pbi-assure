@@ -222,8 +222,8 @@ public sealed class ThemeReviewTests
         Assert.DoesNotContain("class=\"theme-swatch\" style=\"--swatch:#000000\">#000000", html, StringComparison.Ordinal);
         Assert.Contains(".visually-hidden { position: absolute !important;", html, StringComparison.Ordinal);
         Assert.Contains("clip: rect(0, 0, 0, 0) !important;", html, StringComparison.Ordinal);
-        Assert.Contains(".theme-colour-chip { flex: 0 0 auto; width: 1.05rem;", html, StringComparison.Ordinal);
-        Assert.Contains("border: 1px solid #637282;", html, StringComparison.Ordinal);
+        Assert.Contains(".theme-colour-chip { flex: 0 0 auto; width: 0.9375rem;", html, StringComparison.Ordinal);
+        Assert.Contains("border: 1px solid var(--pa-line-strong);", html, StringComparison.Ordinal);
         Assert.Contains("Counts represent visual and property combinations, not visuals.", html, StringComparison.Ordinal);
     }
 
@@ -240,7 +240,8 @@ public sealed class ThemeReviewTests
         Assert.Contains("<option value=\"Scoped\">Specific series or category</option>", scopeFilter, StringComparison.Ordinal);
         Assert.Contains("<option value=\"VisualWide\">Whole visual</option>", scopeFilter, StringComparison.Ordinal);
         Assert.Contains("data-filter-scope=\"VisualWide&#x1F;Scoped\"", html, StringComparison.Ordinal);
-        Assert.Contains(".theme-visual-card[open] > summary::after { content: \"−\"; }", html, StringComparison.Ordinal);
+        Assert.Contains(".theme-visual-card[open] > summary::after", html, StringComparison.Ordinal);
+        Assert.Contains("transform: rotate(90deg);", html, StringComparison.Ordinal);
         Assert.DoesNotContain("âˆ’", html, StringComparison.Ordinal);
     }
 

@@ -284,10 +284,11 @@ public sealed class AnalysisCoveragePresentationTests
         Assert.Contains("<h2 id=\"analysis-coverage-heading\" tabindex=\"-1\">Analysis coverage</h2>", html, StringComparison.Ordinal);
         // The disclosure for harmless limitations is a native details element, so it is keyboard operable.
         Assert.Contains("<details class=\"coverage-other\"><summary>", html, StringComparison.Ordinal);
-        // …and it carries the report's existing +/− disclosure affordance rather than looking like a
-        // bold line of text.
-        Assert.Contains(".coverage-other > summary::after { margin-left: auto; content: \"+\";", html, StringComparison.Ordinal);
-        Assert.Contains(".coverage-other[open] > summary::after { content: \"−\"; }", html, StringComparison.Ordinal);
+        // …and it carries the report's disclosure affordance — a chevron that rotates on open —
+        // rather than looking like a bold line of text.
+        Assert.Contains(".coverage-other > summary::after {", html, StringComparison.Ordinal);
+        Assert.Contains("mask: var(--pa-icon-chevron) center / contain no-repeat;", html, StringComparison.Ordinal);
+        Assert.Contains(".coverage-other[open] > summary::after { transform: rotate(90deg); }", html, StringComparison.Ordinal);
         // The marker's meaning does not depend on colour or on hovering.
         Assert.Contains("<span class=\"visually-hidden\">", html, StringComparison.Ordinal);
         Assert.Contains("PBI Assure could not check every source of usage in this model", html, StringComparison.Ordinal);
@@ -398,7 +399,7 @@ public sealed class AnalysisCoveragePresentationTests
         var narrowStyles = html[narrowStart..printStart];
 
         // The default flow keeps the navigation above the report, without a permanent rail.
-        Assert.Contains(".section-nav { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 11rem), 1fr));",
+        Assert.Contains("grid-template-columns: repeat(auto-fit, minmax(min(100%, 11rem), 1fr));",
             baseStyles, StringComparison.Ordinal);
         Assert.DoesNotContain(".report-workspace { display: grid;", baseStyles, StringComparison.Ordinal);
         Assert.DoesNotContain(".section-navigator { position: sticky;", baseStyles, StringComparison.Ordinal);
@@ -410,7 +411,7 @@ public sealed class AnalysisCoveragePresentationTests
         Assert.Contains(".section-nav { grid-template-columns: minmax(0, 1fr);", desktopStyles, StringComparison.Ordinal);
 
         Assert.Contains(".section-nav { grid-template-columns: repeat(2, minmax(0, 1fr)); }", narrowStyles, StringComparison.Ordinal);
-        Assert.Contains(".section-nav a { min-height: 2.75rem; }", narrowStyles, StringComparison.Ordinal);
+        Assert.Contains(".section-nav a { min-height: 2.5rem; }", narrowStyles, StringComparison.Ordinal);
         Assert.Contains(".section-nav small { display: none; }", narrowStyles, StringComparison.Ordinal);
     }
 

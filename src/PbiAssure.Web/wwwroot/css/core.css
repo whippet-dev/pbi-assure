@@ -1,0 +1,567 @@
+/* PBI Assure design system — tokens and shared primitives.
+   Shared verbatim by the browser application and the generated HTML report so that both
+   surfaces stay one product. Edit this file, then run: node scripts/Sync-DesignTokens.mjs
+   DesignSystemSourceTests fails the build when the copies drift. */
+
+/* ---------------------------------------------------------------- tokens */
+
+:root {
+  color-scheme: light;
+
+  --pa-font-sans: "Segoe UI Variable Text", "Segoe UI", system-ui, -apple-system, Inter, "Helvetica Neue", Arial, sans-serif;
+  --pa-font-display: "Segoe UI Variable Display", "Segoe UI", system-ui, -apple-system, Inter, "Helvetica Neue", Arial, sans-serif;
+  --pa-font-mono: "Cascadia Mono", "Cascadia Code", ui-monospace, "SF Mono", "JetBrains Mono", Consolas, "Liberation Mono", monospace;
+
+  --pa-t-3xs: 0.6875rem;
+  --pa-t-2xs: 0.75rem;
+  --pa-t-xs: 0.8125rem;
+  --pa-t-sm: 0.875rem;
+  --pa-t-md: 0.9375rem;
+  --pa-t-lg: 1.0625rem;
+  --pa-t-xl: 1.3125rem;
+  --pa-t-2xl: 1.625rem;
+  --pa-t-3xl: 2rem;
+
+  --pa-s1: 0.25rem;
+  --pa-s2: 0.5rem;
+  --pa-s3: 0.75rem;
+  --pa-s4: 1rem;
+  --pa-s5: 1.25rem;
+  --pa-s6: 1.5rem;
+  --pa-s7: 2rem;
+  --pa-s8: 2.5rem;
+  --pa-s9: 3.5rem;
+
+  --pa-r1: 3px;
+  --pa-r2: 5px;
+  --pa-r3: 8px;
+
+  --pa-fast: 110ms;
+  --pa-normal: 170ms;
+  --pa-ease: cubic-bezier(0.2, 0, 0, 1);
+
+  /* Neutral ramp. Cool-cast rather than pure grey: technical without reading as corporate navy. */
+  --pa-canvas: #f7f8fa;
+  --pa-surface: #ffffff;
+  --pa-surface-2: #f2f4f7;
+  --pa-surface-3: #e8ebf0;
+  --pa-line: #e2e6ec;
+  --pa-line-strong: #cdd4de;
+  --pa-text: #101828;
+  --pa-text-2: #475467;
+  --pa-text-3: #667085;
+  --pa-on-accent: #ffffff;
+
+  /* Interaction. Indigo is reserved for "you can act on this" and is never a status. */
+  --pa-accent: #4f46e5;
+  --pa-accent-hover: #4038c9;
+  --pa-accent-soft: #eef0ff;
+  --pa-accent-line: #c5c8fb;
+  --pa-focus: #4f46e5;
+  --pa-focus-contrast: #ffffff;
+
+  /* Severity family: findings. */
+  --pa-error: #b42318;
+  --pa-error-soft: #fef3f2;
+  --pa-error-line: #fbcfca;
+  --pa-warning: #b54708;
+  --pa-warning-soft: #fffaeb;
+  --pa-warning-line: #f5dda0;
+  --pa-review: #7e22ce;
+  --pa-review-soft: #faf5ff;
+  --pa-review-line: #e5d2fb;
+  --pa-info: #026aa2;
+  --pa-info-soft: #f0f9ff;
+  --pa-info-line: #b3ddf5;
+  --pa-neutral: #475467;
+  --pa-neutral-soft: #f2f4f7;
+  --pa-neutral-line: #dfe3ea;
+
+  /* Usage family: a confidence ramp from evidenced use to no evidence of use. */
+  --pa-used: #067647;
+  --pa-used-soft: #ecfdf3;
+  --pa-used-line: #a9e5c4;
+  --pa-indirect: #0f766e;
+  --pa-indirect-soft: #edfbf8;
+  --pa-indirect-line: #a3e3d8;
+  --pa-structural: #3e4c63;
+  --pa-structural-soft: #eef1f6;
+  --pa-structural-line: #d3dae5;
+  --pa-branch: #a15c07;
+  --pa-branch-soft: #fdf6e7;
+  --pa-branch-line: #eeda9f;
+  --pa-unused: #c11574;
+  --pa-unused-soft: #fdf2fa;
+  --pa-unused-line: #f7c8e6;
+
+  --pa-shadow-1: 0 1px 2px rgb(16 24 40 / 7%);
+  --pa-shadow-2: 0 6px 16px -4px rgb(16 24 40 / 12%), 0 2px 5px -2px rgb(16 24 40 / 8%);
+}
+
+/* Dark is designed, not inverted: the canvas recedes, surfaces step up towards the reader,
+   borders carry less contrast than in light, and every status hue is re-picked at a lightness
+   that reads on a dark ground without glowing. */
+:root[data-theme="dark"] {
+  color-scheme: dark;
+
+  --pa-canvas: #0b0e13;
+  --pa-surface: #12181f;
+  --pa-surface-2: #181f28;
+  --pa-surface-3: #212a35;
+  --pa-line: #27313d;
+  --pa-line-strong: #3a4654;
+  --pa-text: #e6edf6;
+  --pa-text-2: #a4b1c3;
+  --pa-text-3: #7f8d9f;
+  --pa-on-accent: #0b0e13;
+
+  --pa-accent: #8f90f8;
+  --pa-accent-hover: #a8a9fb;
+  --pa-accent-soft: #1b1f3a;
+  --pa-accent-line: #3d3f7d;
+  --pa-focus: #8f90f8;
+  --pa-focus-contrast: #0b0e13;
+
+  --pa-error: #ff9086;
+  --pa-error-soft: #2a1413;
+  --pa-error-line: #5d2721;
+  --pa-warning: #f2b345;
+  --pa-warning-soft: #291e0d;
+  --pa-warning-line: #573c15;
+  --pa-review: #c8a3f7;
+  --pa-review-soft: #221a34;
+  --pa-review-line: #47336d;
+  --pa-info: #5cc0f0;
+  --pa-info-soft: #0f2230;
+  --pa-info-line: #1d4964;
+  --pa-neutral: #a4b1c3;
+  --pa-neutral-soft: #181f28;
+  --pa-neutral-line: #3a4654;
+
+  --pa-used: #5fd6a0;
+  --pa-used-soft: #0e2419;
+  --pa-used-line: #1d4e35;
+  --pa-indirect: #4fd5c5;
+  --pa-indirect-soft: #0c2422;
+  --pa-indirect-line: #1a4d47;
+  --pa-structural: #a2b2c9;
+  --pa-structural-soft: #181f28;
+  --pa-structural-line: #384453;
+  --pa-branch: #e0b062;
+  --pa-branch-soft: #251f0f;
+  --pa-branch-line: #514320;
+  --pa-unused: #f291c8;
+  --pa-unused-soft: #2a1423;
+  --pa-unused-line: #592847;
+
+  --pa-shadow-1: 0 1px 2px rgb(0 0 0 / 40%);
+  --pa-shadow-2: 0 8px 20px -6px rgb(0 0 0 / 60%), 0 2px 6px -2px rgb(0 0 0 / 45%);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+
+    --pa-canvas: #0b0e13;
+    --pa-surface: #12181f;
+    --pa-surface-2: #181f28;
+    --pa-surface-3: #212a35;
+    --pa-line: #27313d;
+    --pa-line-strong: #3a4654;
+    --pa-text: #e6edf6;
+    --pa-text-2: #a4b1c3;
+    --pa-text-3: #7f8d9f;
+    --pa-on-accent: #0b0e13;
+
+    --pa-accent: #8f90f8;
+    --pa-accent-hover: #a8a9fb;
+    --pa-accent-soft: #1b1f3a;
+    --pa-accent-line: #3d3f7d;
+    --pa-focus: #8f90f8;
+    --pa-focus-contrast: #0b0e13;
+
+    --pa-error: #ff9086;
+    --pa-error-soft: #2a1413;
+    --pa-error-line: #5d2721;
+    --pa-warning: #f2b345;
+    --pa-warning-soft: #291e0d;
+    --pa-warning-line: #573c15;
+    --pa-review: #c8a3f7;
+    --pa-review-soft: #221a34;
+    --pa-review-line: #47336d;
+    --pa-info: #5cc0f0;
+    --pa-info-soft: #0f2230;
+    --pa-info-line: #1d4964;
+    --pa-neutral: #a4b1c3;
+    --pa-neutral-soft: #181f28;
+    --pa-neutral-line: #3a4654;
+
+    --pa-used: #5fd6a0;
+    --pa-used-soft: #0e2419;
+    --pa-used-line: #1d4e35;
+    --pa-indirect: #4fd5c5;
+    --pa-indirect-soft: #0c2422;
+    --pa-indirect-line: #1a4d47;
+    --pa-structural: #a2b2c9;
+    --pa-structural-soft: #181f28;
+    --pa-structural-line: #384453;
+    --pa-branch: #e0b062;
+    --pa-branch-soft: #251f0f;
+    --pa-branch-line: #514320;
+    --pa-unused: #f291c8;
+    --pa-unused-soft: #2a1423;
+    --pa-unused-line: #592847;
+
+    --pa-shadow-1: 0 1px 2px rgb(0 0 0 / 40%);
+    --pa-shadow-2: 0 8px 20px -6px rgb(0 0 0 / 60%), 0 2px 6px -2px rgb(0 0 0 / 45%);
+  }
+}
+
+/* ------------------------------------------------------------- foundation */
+
+*, *::before, *::after { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: var(--pa-canvas);
+  color: var(--pa-text);
+  font-family: var(--pa-font-sans);
+  font-size: var(--pa-t-md);
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  text-size-adjust: 100%;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--pa-font-display);
+  font-weight: 600;
+  letter-spacing: -0.015em;
+  line-height: 1.25;
+}
+
+code, pre, kbd, samp { font-family: var(--pa-font-mono); }
+code { font-size: 0.9em; overflow-wrap: anywhere; }
+
+a { color: var(--pa-accent); text-decoration-thickness: 1px; text-underline-offset: 0.18em; }
+a:hover { color: var(--pa-accent-hover); text-decoration-thickness: 2px; }
+
+/* One focus treatment everywhere: an accent ring with a contrasting spacer so it stays
+   visible on tinted surfaces, inside cards and on top of the accent colour itself. */
+a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible, summary:focus-visible, [tabindex]:focus-visible, details:focus-visible {
+  outline: 2px solid var(--pa-focus);
+  outline-offset: 2px;
+  box-shadow: 0 0 0 2px var(--pa-focus-contrast);
+}
+
+::selection { background: var(--pa-accent-soft); color: var(--pa-text); }
+
+.visually-hidden { position: absolute !important; width: 1px !important; height: 1px !important; padding: 0 !important; margin: -1px !important; overflow: hidden !important; clip: rect(0, 0, 0, 0) !important; white-space: nowrap !important; border: 0 !important; }
+
+/* ------------------------------------------------------------------ brand */
+
+.brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4375rem;
+  color: var(--pa-text);
+  font-family: var(--pa-font-display);
+  font-size: var(--pa-t-md);
+  font-weight: 600;
+  letter-spacing: -0.012em;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.brand:hover { color: var(--pa-text); text-decoration: none; }
+.brand-mark { display: block; flex: 0 0 auto; width: 1.25rem; height: 1.25rem; color: var(--pa-accent); }
+.brand-qualifier { color: var(--pa-text-3); font-size: var(--pa-t-xs); font-weight: 500; letter-spacing: 0; }
+.brand-qualifier::before { margin-right: 0.4375rem; color: var(--pa-line-strong); content: "/"; }
+
+/* Small-caps micro-label for section kickers and group labels, never for body copy. */
+.eyebrow {
+  margin: 0;
+  color: var(--pa-text-3);
+  font-family: var(--pa-font-sans);
+  font-size: var(--pa-t-3xs);
+  font-weight: 650;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+}
+
+/* --------------------------------------------------------------- controls */
+
+/* Shared control geometry. Each surface sets its own default emphasis: the application leads
+   with a filled primary action, the report is mostly utility controls on a quiet ground. */
+button, .button-link, .secondary-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.375rem;
+  min-height: 2.125rem;
+  padding: 0.3125rem 0.75rem;
+  border: 1px solid var(--pa-line-strong);
+  border-radius: var(--pa-r2);
+  background: var(--pa-surface);
+  color: var(--pa-text);
+  font: inherit;
+  font-size: var(--pa-t-sm);
+  font-weight: 600;
+  line-height: 1.35;
+  text-decoration: none;
+  cursor: pointer;
+  transition: background var(--pa-fast) var(--pa-ease), border-color var(--pa-fast) var(--pa-ease), color var(--pa-fast) var(--pa-ease);
+}
+
+button:hover, .secondary-button:hover {
+  border-color: var(--pa-accent-line);
+  background: var(--pa-accent-soft);
+  color: var(--pa-accent-hover);
+}
+
+button:disabled { opacity: 0.55; cursor: not-allowed; }
+button:disabled:hover { border-color: var(--pa-line-strong); background: var(--pa-surface); color: var(--pa-text); }
+
+input, select, textarea {
+  width: 100%;
+  min-height: 2.125rem;
+  padding: 0.3125rem 0.5rem;
+  border: 1px solid var(--pa-line-strong);
+  border-radius: var(--pa-r2);
+  background: var(--pa-surface);
+  color: var(--pa-text);
+  font: inherit;
+  font-size: var(--pa-t-sm);
+  transition: border-color var(--pa-fast) var(--pa-ease);
+}
+
+input::placeholder { color: var(--pa-text-3); }
+input:hover, select:hover { border-color: var(--pa-text-3); }
+input[type="checkbox"], input[type="radio"] { width: auto; min-height: 0; accent-color: var(--pa-accent); }
+
+/* Segmented System / Light / Dark control, identical in both surfaces. */
+.appearance-control {
+  display: inline-flex;
+  align-items: center;
+  gap: 1px;
+  padding: 2px;
+  border: 1px solid var(--pa-line);
+  border-radius: var(--pa-r2);
+  background: var(--pa-surface-2);
+}
+
+.appearance-option {
+  display: inline-grid;
+  min-height: 0;
+  width: 1.75rem;
+  height: 1.5rem;
+  place-items: center;
+  padding: 0;
+  border: 0;
+  border-radius: var(--pa-r1);
+  background: transparent;
+  color: var(--pa-text-3);
+}
+
+.appearance-option:hover { background: transparent; border-color: transparent; color: var(--pa-text); }
+.appearance-option[aria-pressed="true"] { background: var(--pa-surface); color: var(--pa-text); box-shadow: var(--pa-shadow-1); }
+.appearance-option::before { width: 0.9375rem; height: 0.9375rem; background: currentColor; content: ""; }
+.appearance-option[data-appearance="system"]::before { mask: var(--pa-icon-system) center / contain no-repeat; -webkit-mask: var(--pa-icon-system) center / contain no-repeat; }
+.appearance-option[data-appearance="light"]::before { mask: var(--pa-icon-light) center / contain no-repeat; -webkit-mask: var(--pa-icon-light) center / contain no-repeat; }
+.appearance-option[data-appearance="dark"]::before { mask: var(--pa-icon-dark) center / contain no-repeat; -webkit-mask: var(--pa-icon-dark) center / contain no-repeat; }
+
+/* ----------------------------------------------------------------- badges */
+
+/* Every classification reads as glyph + label + hue. The glyph and the label carry the meaning
+   on their own; the hue only makes scanning faster. Solid outlines mean evidence was found,
+   dashed outlines mean none was. */
+.badge {
+  display: inline-flex;
+  max-width: 100%;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 0.3125rem;
+  padding: 0.0625rem 0.375rem 0.0625rem 0.3125rem;
+  border: 1px solid var(--pa-badge-line, var(--pa-neutral-line));
+  border-radius: var(--pa-r1);
+  background: var(--pa-badge-soft, var(--pa-neutral-soft));
+  color: var(--pa-badge-fg, var(--pa-neutral));
+  font-size: var(--pa-t-2xs);
+  font-weight: 600;
+  line-height: 1.5;
+  white-space: nowrap;
+}
+
+.badge::before {
+  width: 0.75rem;
+  height: 0.75rem;
+  flex: 0 0 auto;
+  background: currentColor;
+  content: "";
+  mask: var(--pa-badge-glyph, none) center / contain no-repeat;
+  -webkit-mask: var(--pa-badge-glyph, none) center / contain no-repeat;
+}
+
+.badge-neutral::before { display: none; }
+
+.badge-error { --pa-badge-fg: var(--pa-error); --pa-badge-soft: var(--pa-error-soft); --pa-badge-line: var(--pa-error-line); --pa-badge-glyph: var(--pa-icon-error); }
+.badge-warning { --pa-badge-fg: var(--pa-warning); --pa-badge-soft: var(--pa-warning-soft); --pa-badge-line: var(--pa-warning-line); --pa-badge-glyph: var(--pa-icon-warning); }
+.badge-review { --pa-badge-fg: var(--pa-review); --pa-badge-soft: var(--pa-review-soft); --pa-badge-line: var(--pa-review-line); --pa-badge-glyph: var(--pa-icon-review); }
+.badge-information { --pa-badge-fg: var(--pa-info); --pa-badge-soft: var(--pa-info-soft); --pa-badge-line: var(--pa-info-line); --pa-badge-glyph: var(--pa-icon-info); }
+.badge-neutral { --pa-badge-fg: var(--pa-neutral); --pa-badge-soft: var(--pa-neutral-soft); --pa-badge-line: var(--pa-neutral-line); }
+
+.badge-used { --pa-badge-fg: var(--pa-used); --pa-badge-soft: var(--pa-used-soft); --pa-badge-line: var(--pa-used-line); --pa-badge-glyph: var(--pa-icon-used); }
+.badge-indirect { --pa-badge-fg: var(--pa-indirect); --pa-badge-soft: var(--pa-indirect-soft); --pa-badge-line: var(--pa-indirect-line); --pa-badge-glyph: var(--pa-icon-indirect); }
+.badge-structural { --pa-badge-fg: var(--pa-structural); --pa-badge-soft: var(--pa-structural-soft); --pa-badge-line: var(--pa-structural-line); --pa-badge-glyph: var(--pa-icon-structural); }
+.badge-unused-branch { --pa-badge-fg: var(--pa-branch); --pa-badge-soft: var(--pa-branch-soft); --pa-badge-line: var(--pa-branch-line); --pa-badge-glyph: var(--pa-icon-branch); border-style: dashed; }
+.badge-unused { --pa-badge-fg: var(--pa-unused); --pa-badge-soft: var(--pa-unused-soft); --pa-badge-line: var(--pa-unused-line); --pa-badge-glyph: var(--pa-icon-unused); border-style: dashed; }
+
+/* ---------------------------------------------------------------- metrics */
+
+/* Counts print on a hairline-divided rail rather than in boxes: the same information in roughly
+   half the vertical space, and the eye reads a row of numbers instead of a row of cards. */
+.metrics {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(8rem, 1fr));
+  margin: 0;
+  border: 1px solid var(--pa-line);
+  border-radius: var(--pa-r2);
+  background: var(--pa-surface);
+  overflow: clip;
+}
+
+.metric {
+  min-width: 0;
+  margin: 0;
+  padding: 0.5rem 0.75rem 0.625rem;
+  border-left: 1px solid var(--pa-line);
+}
+
+.metric:first-child { border-left: 0; }
+
+.metric dt, .metric > span {
+  display: flex;
+  align-items: center;
+  gap: 0.3125rem;
+  color: var(--pa-text-2);
+  font-size: var(--pa-t-2xs);
+  font-weight: 550;
+  overflow-wrap: anywhere;
+}
+
+.metric dd, .metric > strong {
+  display: block;
+  margin: 0.0625rem 0 0;
+  color: var(--pa-text);
+  font-family: var(--pa-font-display);
+  font-size: var(--pa-t-xl);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
+  line-height: 1.15;
+}
+
+/* The state dot repeats the badge glyph vocabulary at label size, so a count and a classification
+   are recognisably the same thing. */
+.metric-error, .metric-warning, .metric-review, .metric-used, .metric-indirect, .metric-structural, .metric-branch, .metric-unused {
+  --pa-metric-fg: var(--pa-neutral);
+}
+
+.metric-error dt::before, .metric-error > span::before,
+.metric-warning dt::before, .metric-warning > span::before,
+.metric-review dt::before, .metric-review > span::before,
+.metric-used dt::before, .metric-used > span::before,
+.metric-indirect dt::before, .metric-indirect > span::before,
+.metric-structural dt::before, .metric-structural > span::before,
+.metric-branch dt::before, .metric-branch > span::before,
+.metric-unused dt::before, .metric-unused > span::before {
+  width: 0.6875rem;
+  height: 0.6875rem;
+  flex: 0 0 auto;
+  background: var(--pa-metric-fg);
+  content: "";
+  mask: var(--pa-metric-glyph, none) center / contain no-repeat;
+  -webkit-mask: var(--pa-metric-glyph, none) center / contain no-repeat;
+}
+
+.metric-error { --pa-metric-fg: var(--pa-error); --pa-metric-glyph: var(--pa-icon-error); }
+.metric-warning { --pa-metric-fg: var(--pa-warning); --pa-metric-glyph: var(--pa-icon-warning); }
+.metric-review { --pa-metric-fg: var(--pa-review); --pa-metric-glyph: var(--pa-icon-review); }
+.metric-used { --pa-metric-fg: var(--pa-used); --pa-metric-glyph: var(--pa-icon-used); }
+.metric-indirect { --pa-metric-fg: var(--pa-indirect); --pa-metric-glyph: var(--pa-icon-indirect); }
+.metric-structural { --pa-metric-fg: var(--pa-structural); --pa-metric-glyph: var(--pa-icon-structural); }
+.metric-branch { --pa-metric-fg: var(--pa-branch); --pa-metric-glyph: var(--pa-icon-branch); }
+.metric-unused { --pa-metric-fg: var(--pa-unused); --pa-metric-glyph: var(--pa-icon-unused); }
+
+/* --------------------------------------------------------------- notices */
+
+.notice {
+  display: grid;
+  gap: 0.1875rem;
+  padding: 0.625rem 0.75rem;
+  border: 1px solid var(--pa-notice-line, var(--pa-line));
+  border-left: 3px solid var(--pa-notice-fg, var(--pa-text-3));
+  border-radius: var(--pa-r2);
+  background: var(--pa-notice-soft, var(--pa-surface-2));
+  overflow-wrap: anywhere;
+}
+
+.notice > :first-child { margin-top: 0; }
+.notice > :last-child { margin-bottom: 0; }
+.notice-info { --pa-notice-fg: var(--pa-info); --pa-notice-soft: var(--pa-info-soft); --pa-notice-line: var(--pa-info-line); }
+.notice-warning { --pa-notice-fg: var(--pa-warning); --pa-notice-soft: var(--pa-warning-soft); --pa-notice-line: var(--pa-warning-line); }
+.notice-review { --pa-notice-fg: var(--pa-review); --pa-notice-soft: var(--pa-review-soft); --pa-notice-line: var(--pa-review-line); }
+.notice-caution { --pa-notice-fg: var(--pa-unused); --pa-notice-soft: var(--pa-unused-soft); --pa-notice-line: var(--pa-unused-line); }
+.notice-success { --pa-notice-fg: var(--pa-used); --pa-notice-soft: var(--pa-used-soft); --pa-notice-line: var(--pa-used-line); }
+
+/* ------------------------------------------------------------- disclosure */
+
+/* A chevron that rotates, rather than a plus turning into a minus. */
+summary { cursor: pointer; color: var(--pa-accent); font-weight: 600; list-style: none; }
+summary::-webkit-details-marker { display: none; }
+summary:hover { color: var(--pa-accent-hover); }
+
+.disclosure-marker::after {
+  width: 0.875rem;
+  height: 0.875rem;
+  flex: 0 0 auto;
+  align-self: center;
+  background: currentColor;
+  content: "";
+  mask: var(--pa-icon-chevron) center / contain no-repeat;
+  -webkit-mask: var(--pa-icon-chevron) center / contain no-repeat;
+  opacity: 0.7;
+  transition: transform var(--pa-fast) var(--pa-ease);
+}
+
+[open] > .disclosure-marker::after { transform: rotate(90deg); }
+
+/* ------------------------------------------------------------------ icons */
+
+/* Monochrome masks so every glyph inherits the surrounding text colour and works unchanged in
+   both themes. A failed mask loses the glyph, never the label. */
+:root {
+  --pa-icon-error: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M8 1.25a6.75 6.75 0 1 0 0 13.5 6.75 6.75 0 0 0 0-13.5Zm2.53 8.22a.75.75 0 1 1-1.06 1.06L8 9.06l-1.47 1.47a.75.75 0 0 1-1.06-1.06L6.94 8 5.47 6.53a.75.75 0 0 1 1.06-1.06L8 6.94l1.47-1.47a.75.75 0 1 1 1.06 1.06L9.06 8Z'/%3E%3C/svg%3E");
+  --pa-icon-warning: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M7.13 1.96a1 1 0 0 1 1.74 0l6.03 10.55a1 1 0 0 1-.87 1.49H1.97a1 1 0 0 1-.87-1.49ZM8 5.4a.75.75 0 0 0-.75.75v3a.75.75 0 0 0 1.5 0v-3A.75.75 0 0 0 8 5.4Zm0 5.1a.9.9 0 1 0 0 1.8.9.9 0 0 0 0-1.8Z'/%3E%3C/svg%3E");
+  --pa-icon-review: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M8 2.5c-3.2 0-5.9 2.1-7.3 4.9a1.4 1.4 0 0 0 0 1.2C2.1 11.4 4.8 13.5 8 13.5s5.9-2.1 7.3-4.9a1.4 1.4 0 0 0 0-1.2C13.9 4.6 11.2 2.5 8 2.5Zm0 1.6a3.9 3.9 0 1 1 0 7.8 3.9 3.9 0 0 1 0-7.8Zm0 1.7a2.2 2.2 0 1 0 0 4.4 2.2 2.2 0 0 0 0-4.4Z'/%3E%3C/svg%3E");
+  --pa-icon-info: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M8 1.25a6.75 6.75 0 1 0 0 13.5 6.75 6.75 0 0 0 0-13.5ZM8 3.6a.95.95 0 1 1 0 1.9.95.95 0 0 1 0-1.9Zm1.15 8.4h-2.3a.7.7 0 0 1 0-1.4h.45V8.05h-.35a.7.7 0 1 1 0-1.4h1.05a.7.7 0 0 1 .7.7v3.25h.45a.7.7 0 1 1 0 1.4Z'/%3E%3C/svg%3E");
+  --pa-icon-used: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Ccircle cx='8' cy='8' r='5.5'/%3E%3C/svg%3E");
+  --pa-icon-indirect: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M8 1.6a6.4 6.4 0 1 0 0 12.8A6.4 6.4 0 0 0 8 1.6Zm0 1.5a4.9 4.9 0 1 1 0 9.8 4.9 4.9 0 0 1 0-9.8Z'/%3E%3Ccircle cx='8' cy='8' r='2.7'/%3E%3C/svg%3E");
+  --pa-icon-structural: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M3.3 2.5h9.4c.44 0 .8.36.8.8v9.4c0 .44-.36.8-.8.8H3.3a.8.8 0 0 1-.8-.8V3.3c0-.44.36-.8.8-.8Zm.7 1.5v8h8V4Z'/%3E%3Cpath d='M6.2 6.2h3.6v3.6H6.2z'/%3E%3C/svg%3E");
+  --pa-icon-branch: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M8 1.6a6.4 6.4 0 1 0 0 12.8A6.4 6.4 0 0 0 8 1.6Zm0 1.5a4.9 4.9 0 1 1 0 9.8 4.9 4.9 0 0 1 0-9.8Z'/%3E%3Cpath d='M8 3.9a4.1 4.1 0 0 0 0 8.2Z'/%3E%3C/svg%3E");
+  --pa-icon-unused: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M8 1.6a6.4 6.4 0 1 0 0 12.8A6.4 6.4 0 0 0 8 1.6Zm0 1.6a4.8 4.8 0 1 1 0 9.6 4.8 4.8 0 0 1 0-9.6Z'/%3E%3C/svg%3E");
+  --pa-icon-chevron: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M5.97 3.47a.75.75 0 0 1 1.06 0l4 4a.75.75 0 0 1 0 1.06l-4 4a.75.75 0 0 1-1.06-1.06L9.44 8 5.97 4.53a.75.75 0 0 1 0-1.06Z'/%3E%3C/svg%3E");
+  --pa-icon-system: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M2.5 2.6h11c.5 0 .9.4.9.9v7c0 .5-.4.9-.9.9H9.1v1.1h1.6a.7.7 0 0 1 0 1.4H5.3a.7.7 0 0 1 0-1.4h1.6v-1.1H2.5a.9.9 0 0 1-.9-.9v-7c0-.5.4-.9.9-.9Zm.5 1.4v6h10v-6Z'/%3E%3C/svg%3E");
+  --pa-icon-light: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Ccircle cx='8' cy='8' r='3.1'/%3E%3Cpath d='M8 .9a.7.7 0 0 1 .7.7v1.2a.7.7 0 1 1-1.4 0V1.6A.7.7 0 0 1 8 .9Zm0 11.3a.7.7 0 0 1 .7.7v1.2a.7.7 0 1 1-1.4 0v-1.2a.7.7 0 0 1 .7-.7ZM15.1 8a.7.7 0 0 1-.7.7h-1.2a.7.7 0 1 1 0-1.4h1.2a.7.7 0 0 1 .7.7ZM3.8 8a.7.7 0 0 1-.7.7H1.9a.7.7 0 0 1 0-1.4h1.2A.7.7 0 0 1 3.8 8Zm9.22-5.02a.7.7 0 0 1 0 .99l-.85.85a.7.7 0 1 1-.99-.99l.85-.85a.7.7 0 0 1 .99 0ZM4.82 11.18a.7.7 0 0 1 0 .99l-.85.85a.7.7 0 1 1-.99-.99l.85-.85a.7.7 0 0 1 .99 0Zm8.2 1.84a.7.7 0 0 1-.99 0l-.85-.85a.7.7 0 1 1 .99-.99l.85.85a.7.7 0 0 1 0 .99ZM4.82 4.82a.7.7 0 0 1-.99 0l-.85-.85a.7.7 0 0 1 .99-.99l.85.85a.7.7 0 0 1 0 .99Z'/%3E%3C/svg%3E");
+  --pa-icon-dark: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M6.4 1.7a6.6 6.6 0 1 0 7.9 8.8 5.4 5.4 0 0 1-7.9-6.5 6.9 6.9 0 0 1 0-2.3Z'/%3E%3C/svg%3E");
+}
+
+/* ----------------------------------------------------------------- motion */
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

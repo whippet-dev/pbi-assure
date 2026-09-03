@@ -9,8 +9,9 @@
 
 <PageTitle>Analyse — PBI Assure</PageTitle>
 
+<AppNavigation HasActiveProject="@(selection is not null || inventory is not null || isBusy)" />
+
 <section class="shell" aria-labelledby="page-title" data-pbiassure-app-ready="true">
-    <AppNavigation HasActiveProject="@(selection is not null || inventory is not null || isBusy)" />
     <header>
         <p class="eyebrow">PBI Assure · Model intelligence</p>
         <h1 id="page-title" tabindex="-1">Understand your Power BI project</h1>
@@ -100,11 +101,11 @@
             </details>
             <h3>Semantic usage</h3>
             <div class="metrics">
-                <Metric Label="Directly used" Value="@UsageCount(SemanticUsageStates.DirectlyUsed)" />
-                <Metric Label="Indirectly used" Value="@UsageCount(SemanticUsageStates.IndirectlyUsed)" />
-                <Metric Label="Structurally required" Value="@UsageCount(SemanticUsageStates.StructurallyRequired)" />
-                <Metric Label="Only used by unused items" Value="@UsageCount(SemanticUsageStates.UsedOnlyByUnusedBranch)" />
-                <Metric Label="Apparently unused" Value="@inventory.DeveloperApparentlyUnusedSemanticObjectCount" />
+                <Metric Label="Directly used" Value="@UsageCount(SemanticUsageStates.DirectlyUsed)" State="used" />
+                <Metric Label="Indirectly used" Value="@UsageCount(SemanticUsageStates.IndirectlyUsed)" State="indirect" />
+                <Metric Label="Structurally required" Value="@UsageCount(SemanticUsageStates.StructurallyRequired)" State="structural" />
+                <Metric Label="Only used by unused items" Value="@UsageCount(SemanticUsageStates.UsedOnlyByUnusedBranch)" State="branch" />
+                <Metric Label="Apparently unused" Value="@inventory.DeveloperApparentlyUnusedSemanticObjectCount" State="unused" />
             </div>
             <details class="summary-help">
                 <summary>What does “Apparently unused” mean?</summary>
@@ -126,9 +127,9 @@
             </div>
             <h3>Assurance</h3>
             <div class="metrics">
-                <Metric Label="Errors" Value="@assurance.Errors" />
-                <Metric Label="Warnings" Value="@assurance.Warnings" />
-                <Metric Label="Review required" Value="@assurance.ReviewRequired" />
+                <Metric Label="Errors" Value="@assurance.Errors" State="error" />
+                <Metric Label="Warnings" Value="@assurance.Warnings" State="warning" />
+                <Metric Label="Review required" Value="@assurance.ReviewRequired" State="review" />
                 <Metric Label="Total findings" Value="@assurance.TotalFindings" />
             </div>
             <p class="supported-input">Accessibility observations are excluded from these Assurance counts and remain available separately in the HTML report’s Accessibility review.</p>

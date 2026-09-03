@@ -59,7 +59,9 @@ public sealed class WebNewcomerOrientationTests
         Assert.Contains("(opens in new tab)", navigation, StringComparison.Ordinal);
         Assert.Contains("<AppNavigation IsInformationPage=\"true\" />", ReadWeb("Pages/About.razor"), StringComparison.Ordinal);
         Assert.Contains("<FocusOnNavigate RouteData=\"routeData\" Selector=\"h1\" />", ReadWeb("App.razor"), StringComparison.Ordinal);
-        Assert.Contains("a:focus-visible", ReadWeb("wwwroot/css/app.css"), StringComparison.Ordinal);
+        // The focus treatment is shared with the generated report, so it lives in the design-system core
+        // stylesheet that index.html links alongside app.css.
+        Assert.Contains("a:focus-visible", ReadWeb("wwwroot/css/core.css"), StringComparison.Ordinal);
         Assert.DoesNotContain("role=\"tab", navigation, StringComparison.Ordinal);
         Assert.DoesNotContain("@inject", navigation, StringComparison.Ordinal);
     }

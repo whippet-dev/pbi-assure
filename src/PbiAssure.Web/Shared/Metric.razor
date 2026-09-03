@@ -1,4 +1,4 @@
-<article class="metric">
+<article class="metric @StateClass">
     <span>@Label</span>
     <strong>@Value</strong>
 </article>
@@ -6,4 +6,12 @@
 @code {
     [Parameter, EditorRequired] public string Label { get; set; } = string.Empty;
     [Parameter, EditorRequired] public int Value { get; set; }
+
+    /// <summary>
+    /// Optional classification this count belongs to. It draws the same glyph and hue the report
+    /// uses for that state, so a count and a badge are recognisably the same vocabulary.
+    /// </summary>
+    [Parameter] public string? State { get; set; }
+
+    private string StateClass => State is null ? string.Empty : $"metric-{State}";
 }

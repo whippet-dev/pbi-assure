@@ -4,8 +4,39 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>PBI Assure report</title>
+    <style>
+        /* This shell is visible only while the report is being handed over, so it carries the
+           brand and nothing else. Its route allows inline styles but not a linked stylesheet,
+           so the few tokens it needs are repeated here rather than imported. */
+        :root { color-scheme: light dark; --shell-canvas: #f7f8fa; --shell-text: #101828; --shell-muted: #667085; --shell-accent: #4f46e5; }
+        @media (prefers-color-scheme: dark) {
+            :root { --shell-canvas: #0b0e13; --shell-text: #e6edf6; --shell-muted: #7f8d9f; --shell-accent: #8f90f8; }
+        }
+        body {
+            display: grid;
+            min-height: 100vh;
+            margin: 0;
+            place-content: center;
+            justify-items: center;
+            gap: 0.75rem;
+            padding: 2rem;
+            background: var(--shell-canvas);
+            color: var(--shell-text);
+            font-family: "Segoe UI Variable Text", "Segoe UI", system-ui, -apple-system, Inter, Arial, sans-serif;
+            font-size: 0.9375rem;
+            text-align: center;
+        }
+        svg { width: 2.25rem; height: 2.25rem; color: var(--shell-accent); }
+        p { margin: 0; color: var(--shell-muted); }
+    </style>
 </head>
 <body>
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" aria-hidden="true" focusable="false">
+        <path d="M11.1 6.4 6.1 17.3M12.9 6.4l5 10.9M8.4 14.2h7.2" />
+        <circle cx="12" cy="4.4" r="2.1" fill="currentColor" stroke="none" />
+        <circle cx="5.2" cy="19.2" r="2.1" fill="currentColor" stroke="none" />
+        <circle cx="18.8" cy="19.2" r="2.1" fill="currentColor" stroke="none" />
+    </svg>
     <p id="viewer-status">Preparing the local PBI Assure report…</p>
     <script src="report-viewer.js?v=__PBIASSURE_ASSET_VERSION__"></script>
 </body>
