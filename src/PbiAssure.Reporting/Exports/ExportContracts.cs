@@ -25,6 +25,7 @@ public static class ExportPresetCatalog
         new("PageCount", "PageCount"), new("VisualCount", "VisualCount"), new("UsageContexts", "UsageContexts"),
         new("ReportNames", "ReportNames"), new("PageNames", "PageNames"), new("UsageRoles", "UsageRoles"),
         new("SemanticReason", "SemanticReason"),
+        new("Description", "Description"),
     ];
 
     private static readonly string[] DataCatalogueDefaults =

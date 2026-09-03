@@ -12,8 +12,8 @@ evidenced · **[design decision]** a choice, not a fact.
 |---|---|
 | Remote | `whippet-dev/pbi-assure` |
 | Branch | `master` (also the default branch) |
-| Last verified product state | Desktop Export Builder committed at `00c4fc9`; description retention slice pending review |
-| Working tree | Table/Column/Measure description retention slice is uncommitted; re-check before committing. |
+| Last verified product state | Description retention committed at `998adb0`; optional catalogue Description pending review |
+| Working tree | Optional Data Catalogue Description slice is uncommitted; re-check before committing. |
 
 `master` may have moved past that commit for documentation-only changes. Re-verify and update this
 section whenever a commit changes build, test or behaviour — not for every commit.
@@ -35,10 +35,22 @@ have no description block. See [fixture evidence](../../tests/fixtures/desktop-d
 **[design decision]** Core retains nullable `Description` init properties on only `SemanticTableInventory`,
 `SemanticColumnInventory` and `SemanticMeasureInventory`. A dedicated preceding-block reader preserves
 content spaces and empty lines, joining logical lines with LF. All three properties are `[JsonIgnore]`:
-JSON schema remains `0.26`; semantic classification, provenance, HTML and all CSV exports are unchanged.
-Optional Data Catalogue exposure is a separate future slice. No missing-description rule is introduced.
+JSON schema remains `0.26`; semantic classification, provenance and HTML are unchanged.
+The retention slice was committed at `998adb0`. No missing-description rule is introduced.
 
-Validation: description tests **14/14**, focused parser/export regressions **86/86** (including those
+The follow-up slice now exposes **Description** only as an optional Data Catalogue column, off by
+default. Reporting resolves Column/Measure metadata by model/table/name/type without adding metadata to
+usage records. Null descriptions become empty fields; LF and content spaces flow through the shared
+CSV writer. Default catalogue columns/output, Usage Mapping and legacy CSV remain unchanged. Both Web
+and Desktop discover the option through `ExportPresetCatalog`; no frontend code changes were needed.
+
+Optional-column validation: focused description/export/surface tests **34/34**, full Core **557/557**,
+Release **0 warnings / 0 errors**, and `git diff --check` passed. Pre/post Release-binary comparisons
+on the description fixture confirm byte-identical default catalogue, Usage Mapping, legacy CSV and
+JSON (scan timestamp fixed for comparison). The Description-selected local review CSV has six object
+rows. Privacy E2E was not required: no browser-visible code changed. Formatter baseline untouched.
+
+Retention-slice validation: description tests **14/14**, focused parser/export regressions **86/86** (including those
 description tests), full Core **553/553**, Release build **0 warnings / 0 errors**, and `git diff --check`
 passed. Tests compare JSON and legacy/Data Catalogue/Usage Mapping CSV output with changed description
 metadata, including all optional export columns. Privacy E2E was not needed: browser-visible and

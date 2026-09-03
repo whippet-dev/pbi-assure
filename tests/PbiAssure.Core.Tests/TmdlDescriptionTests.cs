@@ -64,7 +64,7 @@ public sealed class TmdlDescriptionTests
     }
 
     [Fact]
-    public void DescriptionsDoNotChangeClassificationConfidenceDependenciesOrExports()
+    public void DescriptionsDoNotChangeClassificationConfidenceDependenciesOrExistingExports()
     {
         var described = ScanFixtureText("\n", removeDescriptions: false);
         var control = ScanFixtureText("\n", removeDescriptions: true);
@@ -76,7 +76,7 @@ public sealed class TmdlDescriptionTests
     [Theory]
     [InlineData("desktop-descriptions-sanitized")]
     [InlineData("kpi-detailrows-sanitized")]
-    public void DescriptionPropertiesAreIgnoredByJsonAndAllCsvContracts(string fixture)
+    public void DescriptionPropertiesAreIgnoredByJsonAndExistingCsvColumns(string fixture)
     {
         var inventory = ProjectScanner.Scan(FixtureRoot(fixture));
         // Populate every type, including report-used objects, so mapping coverage is not header-only.
@@ -96,9 +96,89 @@ public sealed class TmdlDescriptionTests
         Assert.Equal(JsonSerializer.Serialize(inventory), JsonSerializer.Serialize(changed));
         Assert.DoesNotContain("\"Description\"", JsonSerializer.Serialize(changed), StringComparison.Ordinal);
         AssertOutputsEqual(inventory, changed);
-        foreach (var preset in Enum.GetValues<ExportPreset>())
+        Assert.DoesNotContain(ExportPresetCatalog.GetAllowedColumns(ExportPreset.UsageMapping), column => column.Id == "Description");
+        Assert.DoesNotContain("Description", ExportPresetCatalog.GetDefaultColumnIds(ExportPreset.DataCatalogue));
+    }
+
+    [Fact]
+    public void OptionalCatalogueDescriptionExportsExactDesktopTextInRequestedPosition()
+    {
+        var inventory = ProjectScanner.Scan(FixtureRoot("desktop-descriptions-sanitized"));
+        var csv = ExportCsvRenderer.Render(inventory, new ExportRequest(ExportPreset.DataCatalogue,
+            ["Table", "Object", "Description", "ObjectType"]));
+
+        Assert.Equal(
+            "Table,Object,Description,ObjectType\r\n" +
+            "TableA,ColumnA1,Customer's category: used for grouping.,Column\r\n" +
+            "TableA,ColumnA2,,Column\r\n" +
+            "TableA,MeasureA,\"Returns total sales - \n\nbefore adjustments.\",Measure\r\n" +
+            "TableA,MeasureB,,Measure\r\n" +
+            "TableB,CollumnB2,,Column\r\n" +
+            "TableB,ColumnB1,,Column\r\n", csv);
+        Assert.DoesNotContain("Contains test data", csv, StringComparison.Ordinal);
+        Assert.DoesNotContain("Description", DataCatalogueCsvRenderer.Render(inventory), StringComparison.Ordinal);
+        Assert.Contains(ExportPresetCatalog.GetAllowedColumns(ExportPreset.DataCatalogue), column => column.Id == "Description");
+        Assert.DoesNotContain("Description", ExportPresetCatalog.GetDefaultColumnIds(ExportPreset.DataCatalogue));
+        Assert.Throws<ArgumentException>(() => ExportCsvRenderer.Render(inventory,
+            new ExportRequest(ExportPreset.UsageMapping, ["Description"])));
+    }
+
+    [Fact]
+    public void CatalogueDescriptionUsesFullInventoryIdentityWithoutInferringMissingMetadata()
+    {
+        var inventory = ProjectScanner.Scan(new InMemoryProjectFileSource("Description identity",
+        [
+            File("First.SemanticModel/definition.pbism", "{}"),
+            File("First.SemanticModel/definition/tables/One.tmdl",
+                "table One\n\t/// first column\n\tcolumn Shared\n\t\tdataType: int64\n\t/// first measure\n\tmeasure Shared = 1\n"),
+            File("First.SemanticModel/definition/tables/Two.tmdl",
+                "table Two\n\t/// second table\n\tmeasure Shared = 1\n"),
+            File("Second.SemanticModel/definition.pbism", "{}"),
+            File("Second.SemanticModel/definition/tables/One.tmdl",
+                "table One\n\t/// second model\n\tmeasure Shared = 1\n"),
+        ]));
+        var request = new ExportRequest(ExportPreset.DataCatalogue,
+            ["SemanticModel", "Table", "Object", "ObjectType", "Description"]);
+        Assert.Equal(
+            "SemanticModel,Table,Object,ObjectType,Description\r\n" +
+            "First,One,Shared,Column,first column\r\n" +
+            "First,One,Shared,Measure,first measure\r\n" +
+            "First,Two,Shared,Measure,second table\r\n" +
+            "Second,One,Shared,Measure,second model\r\n", ExportCsvRenderer.Render(inventory, request));
+    }
+
+    [Fact]
+    public void CatalogueDescriptionUsesSharedCsvEscapingAndFormulaSafety()
+    {
+        var inventory = ProjectScanner.Scan(FixtureRoot("desktop-descriptions-sanitized"));
+        var changed = inventory with
         {
-            Assert.DoesNotContain(ExportPresetCatalog.GetAllowedColumns(preset), column => column.Id == "Description");
+            SemanticModels = inventory.SemanticModels.Select(model => model with
+            {
+                Tables = model.Tables.Select(table => table with
+                {
+                    Columns = table.Columns.Select(column => column with { Description = "=value, \"quoted\"\nnext " }).ToArray(),
+                }).ToArray(),
+            }).ToArray(),
+        };
+        var csv = ExportCsvRenderer.Render(changed, new ExportRequest(ExportPreset.DataCatalogue, ["Object", "Description"]));
+        Assert.Contains("ColumnA1,\"'=value, \"\"quoted\"\"\nnext \"\r\n", csv, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void WebAndDesktopColumnChoicesAreDerivedFromReportingWithoutDescriptionLists()
+    {
+        var root = Path.GetFullPath(Path.Combine(FixtureRoot("desktop-descriptions-sanitized"), "..", "..", ".."));
+        var web = System.IO.File.ReadAllText(Path.Combine(root, "src", "PbiAssure.Web", "Shared", "ExportCsvPanel.razor"));
+        var desktop = System.IO.File.ReadAllText(Path.Combine(root, "src", "PbiAssure.Desktop", "ExportCsvWindow.xaml.cs"));
+        Assert.Contains("foreach (var column in AllowedColumns)", web, StringComparison.Ordinal);
+        Assert.Contains("@column.Header", web, StringComparison.Ordinal);
+        Assert.Contains("Content = column.Header", desktop, StringComparison.Ordinal);
+        foreach (var source in new[] { web, desktop })
+        {
+            Assert.Contains("ExportPresetCatalog.GetAllowedColumns(selectedPreset)", source, StringComparison.Ordinal);
+            Assert.Contains("ExportPresetCatalog.GetDefaultColumnIds(selectedPreset)", source, StringComparison.Ordinal);
+            Assert.DoesNotContain("\"Description\"", source, StringComparison.Ordinal);
         }
     }
 
@@ -109,7 +189,8 @@ public sealed class TmdlDescriptionTests
         {
             Assert.Equal(ExportCsvRenderer.Render(expected, new ExportRequest(preset)),
                 ExportCsvRenderer.Render(actual, new ExportRequest(preset)));
-            var allColumns = new ExportRequest(preset, ExportPresetCatalog.GetAllowedColumns(preset).Select(column => column.Id).ToArray());
+            var allColumns = new ExportRequest(preset, ExportPresetCatalog.GetAllowedColumns(preset)
+                .Where(column => column.Id != "Description").Select(column => column.Id).ToArray());
             Assert.Equal(ExportCsvRenderer.Render(expected, allColumns), ExportCsvRenderer.Render(actual, allColumns));
         }
     }

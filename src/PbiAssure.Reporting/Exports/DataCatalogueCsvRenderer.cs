@@ -18,6 +18,9 @@ public static class DataCatalogueCsvRenderer
         }
 
         var columns = ExportPresetCatalog.ResolveColumns(request);
+        var descriptions = columns.Any(column => column.Id == "Description")
+            ? DescriptionLookup(inventory)
+            : new Dictionary<string, string?>(StringComparer.OrdinalIgnoreCase);
         var analysis = DirectUsageProvenanceAnalyzer.Analyze(inventory);
         var logicalUsagesByObject = LogicalDirectUsageAnalyzer.Analyze(inventory)
             .GroupBy(usage => Key(usage.SemanticModel, usage.Table, usage.ObjectName, usage.ObjectType), StringComparer.OrdinalIgnoreCase)
@@ -35,7 +38,9 @@ public static class DataCatalogueCsvRenderer
         {
             var usages = logicalUsagesByObject.GetValueOrDefault(Key(summary.SemanticModel, summary.Table, summary.ObjectName, summary.ObjectType)) ?? [];
             var source = sourceUsages[Key(summary.SemanticModel, summary.Table, summary.ObjectName, summary.ObjectType)];
-            CsvWriter.AppendRow(csv, columns.Select(column => Value(column.Id, inventory, summary, usages, source)));
+            CsvWriter.AppendRow(csv, columns.Select(column => column.Id == "Description"
+                ? descriptions.GetValueOrDefault(Key(summary.SemanticModel, summary.Table, summary.ObjectName, summary.ObjectType)) ?? string.Empty
+                : Value(column.Id, inventory, summary, usages, source)));
         }
 
         return csv.ToString();
@@ -66,6 +71,29 @@ public static class DataCatalogueCsvRenderer
         "SemanticReason" => SemanticUsagePresentation.DescribeReason(inventory, source) ?? string.Empty,
         _ => throw new ArgumentOutOfRangeException(nameof(column), column, "Unsupported Data catalogue column."),
     };
+
+    // Descriptive metadata belongs to semantic inventory, not usage/classification records.
+    private static Dictionary<string, string?> DescriptionLookup(ProjectInventory inventory)
+    {
+        var descriptions = new Dictionary<string, string?>(StringComparer.OrdinalIgnoreCase);
+        foreach (var model in inventory.SemanticModels)
+        {
+            foreach (var table in model.Tables)
+            {
+                foreach (var column in table.Columns)
+                {
+                    descriptions.Add(Key(model.Name, table.Name, column.Name, SemanticObjectTypes.Column), column.Description);
+                }
+
+                foreach (var measure in table.Measures)
+                {
+                    descriptions.Add(Key(model.Name, table.Name, measure.Name, SemanticObjectTypes.Measure), measure.Description);
+                }
+            }
+        }
+
+        return descriptions;
+    }
 
     private static string Join(IEnumerable<string?> values) => string.Join(" | ", values
         .Where(value => !string.IsNullOrWhiteSpace(value))

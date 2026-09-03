@@ -5,20 +5,32 @@ Tactical entry point for an incoming coding agent. Read this first, then
 
 ## What just happened
 
-The **description retention** slice is implemented locally and pending review. The sanitised model-only
+The **description retention** slice was approved and committed at `998adb0`. The sanitised model-only
 fixture `tests/fixtures/desktop-descriptions-sanitized` preserves Desktop-authored Table/Column/Measure
 description blocks and neighbouring undescribed controls. Phil confirmed normal-UI authoring and a
 successful save/close/reopen/save/close; no first-save snapshot exists. Descriptions use contiguous `/// `
 lines immediately preceding the declaration at its indentation, including a blank measure-description
 line and an authored trailing space. The dedicated Core reader retains spaces, normalizes logical
 newlines to LF, and populates nullable `[JsonIgnore]` inventory properties only. No JSON (`0.26`),
-classification, provenance, HTML, UI or CSV contract changes. Review this bounded slice before committing;
-do not add optional Data Catalogue `Description` until separately instructed. See the fixture README.
+classification, provenance, HTML, UI or CSV contract changes occurred in that slice. See the fixture README.
+
+The approved follow-up now adds optional **Description** to Data Catalogue only, using retained
+Column/Measure inventory metadata keyed by model/table/name/type. No inference or table rows; null
+becomes blank, and the shared CSV writer preserves/quotes multiline content. Defaults are unchanged.
+Usage Mapping, legacy CSV, JSON `0.26`, semantic analysis and UserFacing are unchanged. Both Export
+Builder shells consume Reporting's allowed/default columns automatically; no frontend changes were
+needed. Keep this follow-up uncommitted for review and do not make Description default-on.
+
+Optional-column validation: focused **34/34**, full Core **557/557**, Release **0 warnings / 0 errors**,
+`git diff --check` passed. Default catalogue, Usage Mapping, legacy CSV and JSON were byte-compared
+against the pre-change Release binaries on the fixture (fixed scan timestamp for JSON). The local,
+ignored review CSV is `artifacts/description-catalogue-review/pbi-descriptions.data-catalogue.csv`.
+No browser-visible code changed, so privacy E2E was not required. No formatter baseline changes.
 
 Description-slice validation: **14/14** description tests; **86/86** focused parser/export tests (inclusive);
 **553/553** full Core; Release **0 warnings / 0 errors**; `git diff --check` passed. JSON and all three CSV
 contracts have equality regressions, including optional columns and a report-used fixture. No privacy
-E2E run was needed because serialized/browser-visible output is unchanged. Keep this slice uncommitted.
+E2E run was needed because serialized/browser-visible output was unchanged in the retention slice.
 
 All four **Export Builder** implementation slices are complete; Desktop UI was committed at `00c4fc9`.
 Core derives normalized direct semantic usage records and v1 object summaries for non-system-generated Columns
