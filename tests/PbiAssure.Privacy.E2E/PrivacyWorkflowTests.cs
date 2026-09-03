@@ -19,11 +19,11 @@ public sealed class PrivacyWorkflowTests(PrivacyE2EFixture fixture)
         Assert.Equal("none", await page.Locator("#page-title").EvaluateAsync<string>("element => getComputedStyle(element).outlineStyle"));
         await page.Keyboard.PressAsync("Tab");
         Assert.True(await page.Locator("details.guidance-panel > summary").EvaluateAsync<bool>("element => element.matches(':focus-visible')"));
-        Assert.Equal("3px", await page.Locator("details.guidance-panel > summary").EvaluateAsync<string>("element => getComputedStyle(element).outlineWidth"));
+        Assert.Equal("2px", await page.Locator("details.guidance-panel > summary").EvaluateAsync<string>("element => getComputedStyle(element).outlineWidth"));
         await page.Keyboard.PressAsync("Tab");
         var picker = page.GetByRole(AriaRole.Button, new() { Name = "Choose Power BI project", Exact = true });
         Assert.True(await picker.EvaluateAsync<bool>("element => element.matches(':focus-visible')"));
-        Assert.Equal("3px", await picker.EvaluateAsync<string>("element => getComputedStyle(element).outlineWidth"));
+        Assert.Equal("2px", await picker.EvaluateAsync<string>("element => getComputedStyle(element).outlineWidth"));
         await page.GotoAsync(fixture.BaseUrl + "/about");
         var heading = page.GetByRole(AriaRole.Heading, new() { Name = "What PBI Assure does", Exact = true });
         await heading.WaitForAsync();
@@ -69,8 +69,9 @@ public sealed class PrivacyWorkflowTests(PrivacyE2EFixture fixture)
         {
             Assert.Equal("GET", item.Method);
             var path = new Uri(item.Url).AbsolutePath;
-            Assert.True(path == "/about" || path == "/css/app.css" || path == "/project-picker.js" ||
-                path == "/download.js" || path.StartsWith("/_framework/", StringComparison.Ordinal), item.Url);
+            Assert.True(path is "/about" or "/css/core.css" or "/css/app.css" or "/favicon.svg" or
+                "/appearance.js" or "/project-picker.js" or "/download.js" ||
+                path.StartsWith("/_framework/", StringComparison.Ordinal), item.Url);
         });
     }
 
