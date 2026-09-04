@@ -1,0 +1,6 @@
+{
+  "name": "hidden-access-child-two",
+  "parentGroupName": "hidden-access-group",
+  "position": { "x": 220, "y": 20, "tabOrder": 0 },
+  "visual": { "visualType": "card" }
+}

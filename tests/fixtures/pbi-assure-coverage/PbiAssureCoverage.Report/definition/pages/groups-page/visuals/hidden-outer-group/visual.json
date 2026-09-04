@@ -1,0 +1,6 @@
+{
+  "name": "hidden-outer-group",
+  "isHidden": true,
+  "position": { "x": 460, "y": 20, "z": 1, "height": 260, "width": 400, "tabOrder": 1 },
+  "visualGroup": { "displayName": "Hidden outer group", "groupMode": "ScaleMode" }
+}

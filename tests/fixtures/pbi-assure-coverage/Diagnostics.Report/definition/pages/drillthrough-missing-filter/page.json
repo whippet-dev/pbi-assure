@@ -1,0 +1,9 @@
+{
+  "name": "drillthrough-missing-filter",
+  "displayName": "Missing drillthrough filter diagnostic",
+  "pageBinding": {
+    "name": "MissingFilterDrillthrough",
+    "type": "Drillthrough",
+    "parameters": [{ "name": "MissingFilterParameter", "boundFilter": "RemovedFilter" }]
+  }
+}

@@ -1,0 +1,17 @@
+{
+  "name": "qna-diagnostic",
+  "position": { "x": 20, "y": 20, "tabOrder": 0 },
+  "visual": {
+    "visualType": "qnaVisual",
+    "visualContainerObjects": {
+      "general": [{ "properties": { "altText": { "expr": { "Literal": { "Value": "'Deprecated Q and A diagnostic'" } } } } }],
+      "title": [
+        {
+          "properties": {
+            "show": { "expr": { "Literal": { "Value": "true" } } }
+          }
+        }
+      ]
+    }
+  }
+}

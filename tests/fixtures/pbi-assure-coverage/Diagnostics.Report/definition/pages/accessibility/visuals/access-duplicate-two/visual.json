@@ -1,0 +1,10 @@
+{
+  "name": "access-duplicate-two",
+  "position": { "x": 420, "y": 20, "tabOrder": 1 },
+  "visual": {
+    "visualType": "card",
+    "visualContainerObjects": {
+      "general": [{ "properties": { "altText": { "expr": { "Literal": { "Value": "'Second duplicate tab rank control'" } } } } }]
+    }
+  }
+}

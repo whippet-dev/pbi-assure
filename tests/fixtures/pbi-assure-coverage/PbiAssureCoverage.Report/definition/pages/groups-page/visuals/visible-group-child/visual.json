@@ -1,0 +1,11 @@
+{
+  "name": "visible-group-child",
+  "parentGroupName": "visible-inner-group",
+  "position": { "x": 20, "y": 20, "z": 0, "height": 100, "width": 180, "tabOrder": 0 },
+  "visual": {
+    "visualType": "card",
+    "visualContainerObjects": {
+      "general": [{ "properties": { "altText": { "expr": { "Literal": { "Value": "'Visible nested group child'" } } } } }]
+    }
+  }
+}

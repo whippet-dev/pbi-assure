@@ -1,0 +1,10 @@
+{
+  "name": "interaction-source",
+  "position": { "x": 20, "y": 20, "tabOrder": 0 },
+  "visual": {
+    "visualType": "image",
+    "visualContainerObjects": {
+      "general": [{ "properties": { "altText": { "expr": { "Literal": { "Value": "'Interaction source control'" } } } } }]
+    }
+  }
+}

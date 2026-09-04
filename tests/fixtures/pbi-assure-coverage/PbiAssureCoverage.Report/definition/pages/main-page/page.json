@@ -5,6 +5,13 @@
   "displayOption": "FitToPage",
   "height": 720,
   "width": 1280,
+  "visualInteractions": [
+    {
+      "source": "projection-visual",
+      "target": "filter-only-visual",
+      "type": "DataFilter"
+    }
+  ],
   "filterConfig": {
     "filters": [
       {

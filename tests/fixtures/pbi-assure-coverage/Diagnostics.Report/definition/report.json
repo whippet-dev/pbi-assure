@@ -1,0 +1,16 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/report/3.3.0/schema.json",
+  "themeCollection": {
+    "baseTheme": { "name": "Base", "type": "SharedResources" },
+    "customTheme": { "name": "MissingCoverageTheme.json", "type": "RegisteredResources" }
+  },
+  "resourcePackages": [
+    {
+      "name": "SharedResources",
+      "type": "SharedResources",
+      "items": [
+        { "name": "Base", "path": "BaseThemes/Base.json", "type": "BaseTheme" }
+      ]
+    }
+  ]
+}

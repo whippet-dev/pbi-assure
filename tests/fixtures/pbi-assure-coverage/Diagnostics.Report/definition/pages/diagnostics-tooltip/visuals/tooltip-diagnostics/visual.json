@@ -1,0 +1,48 @@
+{
+  "name": "tooltip-diagnostics",
+  "position": { "x": 20, "y": 20, "tabOrder": 0 },
+  "visual": {
+    "visualType": "image",
+    "visualContainerObjects": {
+      "general": [
+        {
+          "properties": {
+            "altText": { "expr": { "Literal": { "Value": "'Deliberately broken tooltip bindings'" } } }
+          }
+        }
+      ],
+      "visualTooltip": [
+        {
+          "properties": {
+            "show": { "expr": { "Literal": { "Value": "true" } } },
+            "type": { "expr": { "Literal": { "Value": "'Canvas'" } } },
+            "section": { "expr": { "Literal": { "Value": "'missing-tooltip-page'" } } }
+          }
+        },
+        {
+          "properties": {
+            "show": { "expr": { "Literal": { "Value": "true" } } },
+            "type": { "expr": { "Literal": { "Value": "'Canvas'" } } },
+            "section": { "expr": { "Literal": { "Value": "''" } } }
+          }
+        },
+        {
+          "properties": {
+            "show": { "expr": { "Literal": { "Value": "true" } } },
+            "type": { "expr": { "Literal": { "Value": "'Canvas'" } } },
+            "section": { "expr": { "Literal": { "Value": "'ordinary-tooltip-target'" } } }
+          }
+        }
+      ],
+      "visualHeaderTooltip": [
+        {
+          "properties": {
+            "show": { "expr": { "Literal": { "Value": "true" } } },
+            "type": { "expr": { "Literal": { "Value": "'Canvas'" } } },
+            "section": { "expr": { "Conditional": {} } }
+          }
+        }
+      ]
+    }
+  }
+}

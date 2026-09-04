@@ -1,0 +1,46 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/visualContainer/2.11.0/schema.json",
+  "name": "valid-actions",
+  "position": { "x": 20, "y": 580, "z": 3, "height": 60, "width": 300, "tabOrder": 3 },
+  "visual": {
+    "visualType": "actionButton",
+    "visualContainerObjects": {
+      "general": [
+        {
+          "properties": {
+            "altText": { "expr": { "Literal": { "Value": "'Valid report navigation actions'" } } }
+          }
+        }
+      ],
+      "visualLink": [
+        {
+          "properties": {
+            "show": { "expr": { "Literal": { "Value": "true" } } },
+            "type": { "expr": { "Literal": { "Value": "'PageNavigation'" } } },
+            "navigationSection": { "expr": { "Literal": { "Value": "'destination-page'" } } }
+          }
+        },
+        {
+          "properties": {
+            "show": { "expr": { "Literal": { "Value": "true" } } },
+            "type": { "expr": { "Literal": { "Value": "'Bookmark'" } } },
+            "bookmark": { "expr": { "Literal": { "Value": "'CoverageBookmark'" } } }
+          }
+        },
+        {
+          "properties": {
+            "show": { "expr": { "Literal": { "Value": "true" } } },
+            "type": { "expr": { "Literal": { "Value": "'WebUrl'" } } },
+            "webUrl": { "expr": { "Literal": { "Value": "'https://example.test/coverage'" } } }
+          }
+        },
+        {
+          "properties": {
+            "show": { "expr": { "Literal": { "Value": "true" } } },
+            "type": { "expr": { "Literal": { "Value": "'Back'" } } }
+          }
+        }
+      ]
+    }
+  }
+}

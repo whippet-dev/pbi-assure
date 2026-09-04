@@ -1,0 +1,10 @@
+{
+  "name": "interaction-target",
+  "position": { "x": 220, "y": 20, "tabOrder": 1 },
+  "visual": {
+    "visualType": "image",
+    "visualContainerObjects": {
+      "general": [{ "properties": { "altText": { "expr": { "Literal": { "Value": "'Interaction target control'" } } } } }]
+    }
+  }
+}

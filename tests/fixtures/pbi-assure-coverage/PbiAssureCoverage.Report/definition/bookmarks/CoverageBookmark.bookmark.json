@@ -1,0 +1,12 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/bookmark/2.1.0/schema.json",
+  "name": "CoverageBookmark",
+  "displayName": "Coverage bookmark",
+  "options": {
+    "applyOnlyToTargetVisuals": true,
+    "targetVisualNames": ["projection-visual"]
+  },
+  "explorationState": {
+    "activeSection": "main-page"
+  }
+}

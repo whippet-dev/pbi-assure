@@ -1,0 +1,25 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/visualContainer/2.11.0/schema.json",
+  "name": "back-action",
+  "position": { "x": 20, "y": 20, "z": 0, "height": 50, "width": 120, "tabOrder": 0 },
+  "visual": {
+    "visualType": "actionButton",
+    "visualContainerObjects": {
+      "general": [
+        {
+          "properties": {
+            "altText": { "expr": { "Literal": { "Value": "'Return to source page'" } } }
+          }
+        }
+      ],
+      "visualLink": [
+        {
+          "properties": {
+            "show": { "expr": { "Literal": { "Value": "true" } } },
+            "type": { "expr": { "Literal": { "Value": "'Back'" } } }
+          }
+        }
+      ]
+    }
+  }
+}

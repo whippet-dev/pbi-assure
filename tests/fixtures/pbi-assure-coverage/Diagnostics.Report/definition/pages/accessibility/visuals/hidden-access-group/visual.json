@@ -1,0 +1,6 @@
+{
+  "name": "hidden-access-group",
+  "isHidden": true,
+  "position": { "x": 420, "y": 220, "tabOrder": 3 },
+  "visualGroup": { "displayName": "Hidden accessibility control", "groupMode": "ScaleMode" }
+}

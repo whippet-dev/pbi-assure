@@ -1,0 +1,11 @@
+{
+  "name": "diagnostics-interactions",
+  "displayName": "Broken interaction",
+  "visualInteractions": [
+    {
+      "source": "missing-interaction-source",
+      "target": "interaction-target",
+      "type": "DataFilter"
+    }
+  ]
+}

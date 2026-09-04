@@ -1,0 +1,17 @@
+{
+  "name": "access-title-disabled",
+  "position": { "x": 220, "y": 220, "tabOrder": 2 },
+  "visual": {
+    "visualType": "card",
+    "visualContainerObjects": {
+      "general": [{ "properties": { "altText": { "expr": { "Literal": { "Value": "'Title disabled diagnostic'" } } } } }],
+      "title": [
+        {
+          "properties": {
+            "show": { "expr": { "Literal": { "Value": "false" } } }
+          }
+        }
+      ]
+    }
+  }
+}

@@ -1,0 +1,7 @@
+{
+  "items": [
+    { "name": "BrokenPageBookmark" },
+    { "name": "BrokenVisualBookmark" },
+    { "name": "MissingDefinitionBookmark" }
+  ]
+}

@@ -1,0 +1,9 @@
+{
+  "name": "drillthrough-unbound",
+  "displayName": "Unbound drillthrough diagnostic",
+  "pageBinding": {
+    "name": "UnboundDrillthrough",
+    "type": "Drillthrough",
+    "parameters": [{ "name": "UnboundParameter" }]
+  }
+}

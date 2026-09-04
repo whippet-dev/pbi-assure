@@ -1,0 +1,9 @@
+{
+  "name": "BrokenVisualBookmark",
+  "displayName": "Broken visual bookmark",
+  "options": {
+    "applyOnlyToTargetVisuals": true,
+    "targetVisualNames": ["missing-bookmark-visual"]
+  },
+  "explorationState": { "activeSection": "diagnostics-bookmarks" }
+}

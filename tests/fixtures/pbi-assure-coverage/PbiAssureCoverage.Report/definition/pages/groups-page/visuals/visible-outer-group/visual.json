@@ -1,0 +1,5 @@
+{
+  "name": "visible-outer-group",
+  "position": { "x": 20, "y": 20, "z": 0, "height": 260, "width": 400, "tabOrder": 0 },
+  "visualGroup": { "displayName": "Visible outer group", "groupMode": "ScaleMode" }
+}

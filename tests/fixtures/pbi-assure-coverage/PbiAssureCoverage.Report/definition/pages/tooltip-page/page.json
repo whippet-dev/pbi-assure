@@ -1,0 +1,9 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/page/2.1.0/schema.json",
+  "name": "tooltip-page",
+  "displayName": "Coverage tooltip",
+  "type": "Tooltip",
+  "visibility": "HiddenInViewMode",
+  "height": 320,
+  "width": 480
+}

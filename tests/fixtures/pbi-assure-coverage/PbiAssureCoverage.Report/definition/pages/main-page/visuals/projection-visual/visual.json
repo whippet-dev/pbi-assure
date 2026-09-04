@@ -48,6 +48,15 @@
             "altText": { "expr": { "Literal": { "Value": "'Core semantic projection coverage'" } } }
           }
         }
+      ],
+      "visualTooltip": [
+        {
+          "properties": {
+            "show": { "expr": { "Literal": { "Value": "true" } } },
+            "type": { "expr": { "Literal": { "Value": "'Canvas'" } } },
+            "section": { "expr": { "Literal": { "Value": "'tooltip-page'" } } }
+          }
+        }
       ]
     }
   }

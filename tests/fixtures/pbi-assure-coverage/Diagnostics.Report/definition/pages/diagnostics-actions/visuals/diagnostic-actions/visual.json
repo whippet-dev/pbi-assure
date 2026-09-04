@@ -1,0 +1,44 @@
+{
+  "name": "diagnostic-actions",
+  "position": { "x": 20, "y": 20, "height": 80, "width": 300, "tabOrder": 0 },
+  "visual": {
+    "visualType": "actionButton",
+    "visualContainerObjects": {
+      "general": [
+        {
+          "properties": {
+            "altText": { "expr": { "Literal": { "Value": "'Deliberately broken navigation actions'" } } }
+          }
+        }
+      ],
+      "visualLink": [
+        {
+          "properties": {
+            "show": { "expr": { "Literal": { "Value": "true" } } },
+            "type": { "expr": { "Literal": { "Value": "'Bookmark'" } } },
+            "bookmark": { "expr": { "Literal": { "Value": "'MissingActionBookmark'" } } }
+          }
+        },
+        {
+          "properties": {
+            "show": { "expr": { "Literal": { "Value": "true" } } },
+            "type": { "expr": { "Literal": { "Value": "'Bookmark'" } } }
+          }
+        },
+        {
+          "properties": {
+            "show": { "expr": { "Literal": { "Value": "true" } } },
+            "type": { "expr": { "Literal": { "Value": "'PageNavigation'" } } },
+            "navigationSection": { "expr": { "Literal": { "Value": "'missing-destination-page'" } } }
+          }
+        },
+        {
+          "properties": {
+            "show": { "expr": { "Literal": { "Value": "true" } } },
+            "type": { "expr": { "Conditional": {} } }
+          }
+        }
+      ]
+    }
+  }
+}

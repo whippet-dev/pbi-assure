@@ -1,0 +1,17 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/pagesMetadata/1.1.0/schema.json",
+  "pageOrder": [
+    "diagnostics-actions",
+    "diagnostics-bookmarks",
+    "diagnostics-interactions",
+    "diagnostics-tooltip",
+    "ordinary-tooltip-target",
+    "drillthrough-empty",
+    "drillthrough-unbound",
+    "drillthrough-missing-filter",
+    "accessibility",
+    "compatibility"
+  ],
+  "activePageName": "diagnostics-actions",
+  "landingPageName": "missing-landing-page"
+}

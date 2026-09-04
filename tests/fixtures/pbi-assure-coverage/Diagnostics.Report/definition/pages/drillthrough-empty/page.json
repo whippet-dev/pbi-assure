@@ -1,0 +1,9 @@
+{
+  "name": "drillthrough-empty",
+  "displayName": "Empty drillthrough diagnostic",
+  "pageBinding": {
+    "name": "EmptyDrillthrough",
+    "type": "Drillthrough",
+    "parameters": []
+  }
+}

@@ -1,0 +1,6 @@
+{
+  "name": "visible-inner-group",
+  "parentGroupName": "visible-outer-group",
+  "position": { "x": 20, "y": 20, "z": 0, "height": 180, "width": 300, "tabOrder": 0 },
+  "visualGroup": { "displayName": "Visible inner group", "groupMode": "ScaleMode" }
+}
