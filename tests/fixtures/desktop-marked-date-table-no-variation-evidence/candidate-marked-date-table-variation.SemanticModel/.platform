@@ -1,0 +1,11 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/gitIntegration/platformProperties/2.0.0/schema.json",
+  "metadata": {
+    "type": "SemanticModel",
+    "displayName": "candidate-marked-date-table-variation"
+  },
+  "config": {
+    "version": "2.0",
+    "logicalId": "796d54f1-b374-4ced-b07b-b2bbb01733c4"
+  }
+}

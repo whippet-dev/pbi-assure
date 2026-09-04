@@ -1,0 +1,4 @@
+relationship 5f2c8d31-7b46-4e09-a2d5-61c8f0937a01
+	fromColumn: Fact.Date
+	toColumn: DimDate.Date
+

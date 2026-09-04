@@ -1,0 +1,86 @@
+table DimDate
+	lineageTag: 8c41a0d6-3e57-4b92-9f10-5a2d7e6b3001
+	dataCategory: Time
+
+	column Date
+		dataType: dateTime
+		isKey
+		formatString: Long Date
+		lineageTag: 8c41a0d6-3e57-4b92-9f10-5a2d7e6b3002
+		summarizeBy: none
+		sourceColumn: Date
+
+		annotation SummarizationSetBy = Automatic
+
+		annotation UnderlyingDateTimeDataType = Date
+
+	column Year
+		dataType: int64
+		formatString: 0
+		lineageTag: 8c41a0d6-3e57-4b92-9f10-5a2d7e6b3003
+		summarizeBy: none
+		sourceColumn: Year
+
+		annotation SummarizationSetBy = User
+
+	column Quarter
+		dataType: string
+		lineageTag: 8c41a0d6-3e57-4b92-9f10-5a2d7e6b3004
+		summarizeBy: none
+		sourceColumn: Quarter
+
+		annotation SummarizationSetBy = Automatic
+
+	column Month
+		dataType: int64
+		formatString: 0
+		lineageTag: 8c41a0d6-3e57-4b92-9f10-5a2d7e6b3005
+		summarizeBy: none
+		sourceColumn: Month
+
+		annotation SummarizationSetBy = User
+
+	column Day
+		dataType: int64
+		formatString: 0
+		lineageTag: 8c41a0d6-3e57-4b92-9f10-5a2d7e6b3006
+		summarizeBy: none
+		sourceColumn: Day
+
+		annotation SummarizationSetBy = User
+
+	hierarchy 'Date Hierarchy'
+		lineageTag: 8c41a0d6-3e57-4b92-9f10-5a2d7e6b3007
+
+		level Year
+			lineageTag: 8c41a0d6-3e57-4b92-9f10-5a2d7e6b3008
+			column: Year
+
+		level Quarter
+			lineageTag: 8c41a0d6-3e57-4b92-9f10-5a2d7e6b3009
+			column: Quarter
+
+		level Month
+			lineageTag: 8c41a0d6-3e57-4b92-9f10-5a2d7e6b300a
+			column: Month
+
+		level Day
+			lineageTag: 8c41a0d6-3e57-4b92-9f10-5a2d7e6b300b
+			column: Day
+
+	partition DimDate = m
+		mode: import
+		source =
+				let
+				  Dates = List.Dates(#date(2026, 1, 1), 365, #duration(1, 0, 0, 0)),
+				  Source = Table.FromList(Dates, Splitter.SplitByNothing(), {"Date"}),
+				  Typed = Table.TransformColumnTypes(Source, {{"Date", type date}}),
+				  WithYear = Table.AddColumn(Typed, "Year", each Date.Year([Date]), Int64.Type),
+				  WithQuarter = Table.AddColumn(WithYear, "Quarter", each "Q" & Text.From(Date.QuarterOfYear([Date])), type text),
+				  WithMonth = Table.AddColumn(WithQuarter, "Month", each Date.Month([Date]), Int64.Type),
+				  WithDay = Table.AddColumn(WithMonth, "Day", each Date.Day([Date]), Int64.Type)
+				in
+				  WithDay
+
+	annotation PBI_ResultType = Table
+

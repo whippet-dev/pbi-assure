@@ -1,0 +1,46 @@
+table Fact
+	lineageTag: 8c41a0d6-3e57-4b92-9f10-5a2d7e6b4001
+
+	measure 'Total Value' = SUM ( Fact[Value] )
+		formatString: #,0
+		lineageTag: 8c41a0d6-3e57-4b92-9f10-5a2d7e6b4002
+
+	column Date
+		dataType: dateTime
+		formatString: Long Date
+		lineageTag: 8c41a0d6-3e57-4b92-9f10-5a2d7e6b4003
+		summarizeBy: none
+		sourceColumn: Date
+
+		annotation SummarizationSetBy = Automatic
+
+		annotation UnderlyingDateTimeDataType = Date
+
+	column Value
+		dataType: int64
+		formatString: 0
+		lineageTag: 8c41a0d6-3e57-4b92-9f10-5a2d7e6b4004
+		summarizeBy: sum
+		sourceColumn: Value
+
+		annotation SummarizationSetBy = Automatic
+
+	partition Fact = m
+		mode: import
+		source =
+				let
+				  Source = Table.FromRows(
+				      {
+				          {#date(2026, 1, 15), 100},
+				          {#date(2026, 2, 20), 250},
+				          {#date(2026, 5, 10), 400},
+				          {#date(2026, 8, 3), 175},
+				          {#date(2026, 11, 27), 320}
+				      },
+				      type table [Date = date, Value = Int64.Type]
+				  )
+				in
+				  Source
+
+	annotation PBI_ResultType = Table
+
