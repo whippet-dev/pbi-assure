@@ -1,3 +1,5 @@
+using System.Text.Json.Serialization;
+
 namespace PbiAssure.Core.Inventory;
 
 public sealed record SemanticUsageEvidence(
@@ -7,4 +9,9 @@ public sealed record SemanticUsageEvidence(
     string ArtifactPath,
     string UsageContext,
     string? Role,
-    string EvidencePath);
+    string EvidencePath)
+{
+    /// <summary>True only when the originating PBIR role projection explicitly persists hidden.</summary>
+    [JsonIgnore]
+    public bool IsHiddenProjection { get; init; }
+}

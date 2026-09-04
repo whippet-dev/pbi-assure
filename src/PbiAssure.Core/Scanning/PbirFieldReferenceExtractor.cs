@@ -9,7 +9,7 @@ internal static class PbirFieldReferenceExtractor
     {
         var references = new List<VisualFieldReference>();
         var sourceAliases = ReadSourceAliases(root);
-        Visit(root, "$", [], sourceAliases, references);
+        Visit(root, "$", [], sourceAliases, references, isHiddenProjection: false);
 
         return references
             .Distinct()
@@ -25,10 +25,12 @@ internal static class PbirFieldReferenceExtractor
         string path,
         IReadOnlyList<string> ancestors,
         IReadOnlyDictionary<string, HashSet<string>> sourceAliases,
-        ICollection<VisualFieldReference> references)
+        ICollection<VisualFieldReference> references,
+        bool isHiddenProjection)
     {
         if (element.ValueKind == JsonValueKind.Object)
         {
+            var descendantIsHiddenProjection = isHiddenProjection || IsHiddenRoleProjection(element, ancestors);
             foreach (var property in element.EnumerateObject())
             {
                 var propertyPath = $"{path}.{property.Name}";
@@ -40,12 +42,14 @@ internal static class PbirFieldReferenceExtractor
                         propertyPath,
                         nextAncestors,
                         sourceAliases,
+                        descendantIsHiddenProjection,
                         out var reference))
                 {
                     references.Add(reference);
                 }
 
-                Visit(property.Value, propertyPath, nextAncestors, sourceAliases, references);
+                Visit(property.Value, propertyPath, nextAncestors, sourceAliases, references,
+                    descendantIsHiddenProjection);
             }
 
             return;
@@ -59,7 +63,7 @@ internal static class PbirFieldReferenceExtractor
         var index = 0;
         foreach (var item in element.EnumerateArray())
         {
-            Visit(item, $"{path}[{index}]", ancestors, sourceAliases, references);
+            Visit(item, $"{path}[{index}]", ancestors, sourceAliases, references, isHiddenProjection);
             index++;
         }
     }
@@ -70,6 +74,7 @@ internal static class PbirFieldReferenceExtractor
         string evidencePath,
         IReadOnlyList<string> ancestors,
         IReadOnlyDictionary<string, HashSet<string>> sourceAliases,
+        bool isHiddenProjection,
         out VisualFieldReference reference)
     {
         reference = null!;
@@ -93,7 +98,8 @@ internal static class PbirFieldReferenceExtractor
                 expressionKind,
                 hierarchyName: null,
                 evidencePath,
-                ancestors);
+                ancestors,
+                isHiddenProjection);
             return true;
         }
 
@@ -110,7 +116,8 @@ internal static class PbirFieldReferenceExtractor
                 SemanticObjectTypes.Column,
                 hierarchyName: null,
                 evidencePath,
-                ancestors);
+                ancestors,
+                isHiddenProjection);
             return true;
         }
 
@@ -128,7 +135,8 @@ internal static class PbirFieldReferenceExtractor
             SemanticObjectTypes.HierarchyLevel,
             hierarchyName,
             evidencePath,
-            ancestors);
+            ancestors,
+            isHiddenProjection);
         return true;
     }
 
@@ -138,7 +146,8 @@ internal static class PbirFieldReferenceExtractor
         string objectType,
         string? hierarchyName,
         string evidencePath,
-        IReadOnlyList<string> ancestors)
+        IReadOnlyList<string> ancestors,
+        bool isHiddenProjection)
     {
         var origin = DetermineReferenceOrigin(ancestors);
         return new VisualFieldReference(
@@ -159,8 +168,16 @@ internal static class PbirFieldReferenceExtractor
             SelectorKind = origin == VisualReferenceOrigins.FormattingSelectorIdentity
                 ? DetermineSelectorKind(ancestors)
                 : null,
+            IsHiddenProjection = isHiddenProjection,
         };
     }
+
+    private static bool IsHiddenRoleProjection(JsonElement element, IReadOnlyList<string> ancestors) =>
+        ancestors.Count > 0 &&
+        string.Equals(ancestors[^1], "projections", StringComparison.OrdinalIgnoreCase) &&
+        IndexOf(ancestors, "queryState") >= 0 &&
+        element.TryGetProperty("hidden", out var hidden) &&
+        hidden.ValueKind == JsonValueKind.True;
 
     private static string DetermineReferenceOrigin(IReadOnlyList<string> ancestors)
     {

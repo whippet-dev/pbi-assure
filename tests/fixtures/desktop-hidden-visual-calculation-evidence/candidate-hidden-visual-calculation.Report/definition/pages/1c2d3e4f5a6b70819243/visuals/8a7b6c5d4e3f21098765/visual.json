@@ -1,0 +1,79 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/visualContainer/2.12.0/schema.json",
+  "name": "8a7b6c5d4e3f21098765",
+  "position": {
+    "x": 10,
+    "y": 10,
+    "z": 0,
+    "height": 320,
+    "width": 640,
+    "tabOrder": 0
+  },
+  "visual": {
+    "visualType": "tableEx",
+    "query": {
+      "queryState": {
+        "Values": {
+          "projections": [
+            {
+              "field": {
+                "Column": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "Fact"
+                    }
+                  },
+                  "Property": "Category"
+                }
+              },
+              "queryRef": "Fact.Category",
+              "nativeQueryRef": "Category"
+            },
+            {
+              "field": {
+                "Measure": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "Fact"
+                    }
+                  },
+                  "Property": "Visible Measure"
+                }
+              },
+              "queryRef": "Fact.Visible Measure",
+              "nativeQueryRef": "Visible Measure"
+            },
+            {
+              "field": {
+                "Column": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "Fact"
+                    }
+                  },
+                  "Property": "HiddenSupportValue"
+                }
+              },
+              "queryRef": "Fact.HiddenSupportValue",
+              "nativeQueryRef": "HiddenSupportValue",
+              "hidden": true
+            },
+            {
+              "field": {
+                "NativeVisualCalculation": {
+                  "Language": "dax",
+                  "Expression": "[Visible Measure] - [HiddenSupportValue]",
+                  "Name": "Adjusted Value",
+                  "DataType": "Integer"
+                }
+              },
+              "queryRef": "Adjusted Value",
+              "nativeQueryRef": "Adjusted Value"
+            }
+          ]
+        }
+      }
+    },
+    "drillFilterOtherVisuals": true
+  }
+}

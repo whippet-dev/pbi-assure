@@ -1,0 +1,50 @@
+table Fact
+	lineageTag: 3ae90f52-1d64-4c07-8b1a-90c4d7e5f001
+
+	measure 'Visible Measure' = SUM ( Fact[VisibleValue] )
+		formatString: #,0
+		lineageTag: 3ae90f52-1d64-4c07-8b1a-90c4d7e5f002
+
+	column Category
+		dataType: string
+		lineageTag: 3ae90f52-1d64-4c07-8b1a-90c4d7e5f003
+		summarizeBy: none
+		sourceColumn: Category
+
+		annotation SummarizationSetBy = Automatic
+
+	column VisibleValue
+		dataType: int64
+		formatString: 0
+		lineageTag: 3ae90f52-1d64-4c07-8b1a-90c4d7e5f004
+		summarizeBy: sum
+		sourceColumn: VisibleValue
+
+		annotation SummarizationSetBy = Automatic
+
+	column HiddenSupportValue
+		dataType: int64
+		formatString: 0
+		lineageTag: 3ae90f52-1d64-4c07-8b1a-90c4d7e5f005
+		summarizeBy: none
+		sourceColumn: HiddenSupportValue
+
+		annotation SummarizationSetBy = User
+
+	partition Fact = m
+		mode: import
+		source =
+				let
+				  Source = Table.FromRows(
+				      {
+				          {"North", 100, 10},
+				          {"South", 250, 25},
+				          {"East", 400, 40}
+				      },
+				      type table [Category = text, VisibleValue = Int64.Type, HiddenSupportValue = Int64.Type]
+				  )
+				in
+				  Source
+
+	annotation PBI_ResultType = Table
+

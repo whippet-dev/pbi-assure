@@ -20,6 +20,15 @@
               "field": {
                 "Column": {
                   "Expression": { "SourceRef": { "Entity": "Fact" } },
+                  "Property": "HiddenProjectionOnlyColumn"
+                }
+              },
+              "hidden": true
+            },
+            {
+              "field": {
+                "Column": {
+                  "Expression": { "SourceRef": { "Entity": "Fact" } },
                   "Property": "SortLabel"
                 }
               }

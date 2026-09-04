@@ -124,7 +124,10 @@ internal static class SemanticUsageReconciler
                         ArtifactPath: context.ArtifactPath,
                         UsageContext: context.Reference.UsageContext,
                         Role: context.Reference.Role,
-                        EvidencePath: context.Reference.EvidencePath),
+                        EvidencePath: context.Reference.EvidencePath)
+                    {
+                        IsHiddenProjection = context.Reference.IsHiddenProjection,
+                    },
                 }))
             .GroupBy(item => item.Identity, StringComparer.OrdinalIgnoreCase)
             .ToDictionary(

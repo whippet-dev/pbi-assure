@@ -128,7 +128,9 @@ internal static class DirectUsageProvenanceAnalyzer
     {
         return evidence.UsageContext switch
         {
-            UsageContexts.Projection => UserFacingStates.Yes,
+            UsageContexts.Projection => evidence.IsHiddenProjection
+                ? UserFacingStates.No
+                : UserFacingStates.Yes,
             UsageContexts.Drillthrough => UserFacingStates.Yes,
             UsageContexts.Filter or UsageContexts.Sort => UserFacingStates.No,
             UsageContexts.Formatting => ClassifyFormattingUserFacing(reference),

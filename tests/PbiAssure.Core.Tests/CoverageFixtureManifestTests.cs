@@ -117,6 +117,20 @@ public sealed class CoverageFixtureManifestTests
             Assert.Equal(Text(expected, "userFacing"), summary.UserFacing);
         }
 
+        foreach (var expected in root.GetProperty("machineContract").GetProperty("directUsageUserFacingControls").EnumerateArray())
+        {
+            var semanticModel = Text(expected, "semanticModel");
+            var table = Text(expected, "table");
+            var objectName = Text(expected, "object");
+            var usageContext = Text(expected, "usageContext");
+            Assert.Contains(directUsage.Usages, usage => usage.SemanticModel == semanticModel &&
+                usage.Table == table && usage.ObjectName == objectName && usage.UsageContext == usageContext);
+            var summary = Assert.Single(directUsage.ObjectSummaries, candidate =>
+                candidate.SemanticModel == semanticModel && candidate.Table == table &&
+                candidate.ObjectName == objectName);
+            Assert.Equal(Text(expected, "userFacing"), summary.UserFacing);
+        }
+
         foreach (var expected in root.GetProperty("machineContract").GetProperty("analysisLimitations").EnumerateArray())
         {
             Assert.Contains(inventory.AnalysisLimitations, limitation =>

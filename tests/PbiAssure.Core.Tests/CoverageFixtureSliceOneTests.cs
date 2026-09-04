@@ -16,6 +16,7 @@ public sealed class CoverageFixtureSliceOneTests
         AssertUsage(inventory, "Fact", "UnusedBranchMeasure", SemanticUsageStates.ApparentlyUnused);
         AssertUsage(inventory, "Fact", "UnusedBranchColumn", SemanticUsageStates.UsedOnlyByUnusedBranch);
         AssertUsage(inventory, "Dimension", "StructurallyRequiredColumn", SemanticUsageStates.StructurallyRequired);
+        AssertUsage(inventory, "Fact", "HiddenProjectionOnlyColumn", SemanticUsageStates.DirectlyUsed);
 
         AssertTableUsage(inventory, "Fact", SemanticUsageStates.DirectlyUsed);
         AssertTableUsage(inventory, "Dimension", SemanticUsageStates.IndirectlyUsed);
@@ -90,6 +91,22 @@ public sealed class CoverageFixtureSliceOneTests
         AssertReference(inventory, "VisualSortOnlyColumn", UsageContexts.Sort, "main-page", "sort-only-visual");
         AssertReference(inventory, "ReportFilterColumn", UsageContexts.Filter, page: null, visual: null);
         AssertReference(inventory, "PageFilterColumn", UsageContexts.Filter, "main-page", visual: null);
+
+        var hiddenUsage = Assert.Single(inventory.SemanticObjectUsages, candidate =>
+            candidate.Table == "Fact" && candidate.ObjectName == "HiddenProjectionOnlyColumn");
+        var hiddenEvidence = Assert.Single(hiddenUsage.DirectReportReferences);
+        Assert.Equal(UsageContexts.Projection, hiddenEvidence.UsageContext);
+        Assert.True(hiddenEvidence.IsHiddenProjection);
+        var projectionVisual = inventory.Reports.Single(report => report.Name == "PbiAssureCoverage")
+            .Pages.Single(page => page.Name == "main-page")
+            .Visuals.Single(visual => visual.Name == "projection-visual");
+        Assert.True(Assert.Single(projectionVisual.FieldReferences, reference =>
+            reference.ObjectName == "HiddenProjectionOnlyColumn").IsHiddenProjection);
+        var provenance = DirectUsageProvenanceAnalyzer.Analyze(inventory);
+        Assert.Equal(UserFacingStates.No, Assert.Single(provenance.ObjectSummaries, summary =>
+            summary.ObjectName == "HiddenProjectionOnlyColumn").UserFacing);
+        Assert.Equal(UserFacingStates.Yes, Assert.Single(provenance.ObjectSummaries, summary =>
+            summary.ObjectName == "DirectlyUsedMeasure").UserFacing);
     }
 
     private static void AssertUsage(ProjectInventory inventory, string table, string name, string state)

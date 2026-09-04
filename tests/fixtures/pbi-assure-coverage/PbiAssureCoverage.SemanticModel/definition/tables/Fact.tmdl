@@ -68,6 +68,10 @@ table Fact
 		dataType: string
 		sourceColumn: PageFilterColumn
 
+	column HiddenProjectionOnlyColumn
+		dataType: string
+		sourceColumn: HiddenProjectionOnlyColumn
+
 	column LineageSelectedColumn
 		dataType: string
 		sourceColumn: LineageSelectedColumn

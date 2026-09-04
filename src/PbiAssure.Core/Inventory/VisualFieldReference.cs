@@ -28,4 +28,11 @@ public sealed record VisualFieldReference(
 
     [JsonIgnore]
     public string? MatchedProjectionQueryRef { get; init; }
+
+    /// <summary>
+    /// True only when this reference is carried by a PBIR role projection that explicitly persists
+    /// <c>hidden: true</c>. This is separate from visual/container and semantic-object visibility.
+    /// </summary>
+    [JsonIgnore]
+    public bool IsHiddenProjection { get; init; }
 }

@@ -104,6 +104,45 @@ public sealed class DirectUsageProvenanceAnalyzerTests
     }
 
     [Fact]
+    public void VisibleProjectionWinsOverHiddenProjectionForTheSameObject()
+    {
+        var visualPath = "Reports/One.Report/definition/pages/page-1/visuals/visual-1/visual.json";
+        var hiddenPath = "$.visual.query.queryState.Values.projections[0].field.Column";
+        var visiblePath = "$.visual.query.queryState.Values.projections[1].field.Column";
+        var references = new[]
+        {
+            Reference("Mixed", UsageContexts.Projection, "Values", hiddenPath) with { IsHiddenProjection = true },
+            Reference("Mixed", UsageContexts.Projection, "Values", visiblePath),
+        };
+        var usage = Usage(
+            "Mixed",
+            visualPath,
+            "page-1",
+            "visual-1",
+            UsageContexts.Projection,
+            "Values",
+            hiddenPath,
+            visiblePath,
+            UsageContexts.Projection);
+        usage = usage with
+        {
+            DirectReportReferences = usage.DirectReportReferences.Select(evidence => evidence with
+            {
+                IsHiddenProjection = evidence.EvidencePath == hiddenPath,
+            }).ToArray(),
+        };
+        var inventory = Inventory(
+            reports: [Report("Report", "Reports/One.Report", "page-1", "Overview", "visual-1", references, [])],
+            usages: [usage]);
+
+        var analysis = DirectUsageProvenanceAnalyzer.Analyze(inventory);
+
+        Assert.Equal(UserFacingStates.No, Assert.Single(analysis.Usages, item => item.EvidencePath == hiddenPath).UserFacing);
+        Assert.Equal(UserFacingStates.Yes, Assert.Single(analysis.Usages, item => item.EvidencePath == visiblePath).UserFacing);
+        Assert.Equal(UserFacingStates.Yes, Assert.Single(analysis.ObjectSummaries).UserFacing);
+    }
+
+    [Fact]
     public void UsesMachineProvenanceForCountsDespiteDuplicateDisplayNamesAndHiddenContainers()
     {
         var firstVisualPath = "First.Report/definition/pages/page-one/visuals/shared-visual/visual.json";

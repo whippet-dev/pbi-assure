@@ -51,6 +51,7 @@
   "machineContract": {
     "semanticUsages": [
       { "semanticModel": "PbiAssureCoverage", "table": "Fact", "object": "DirectlyUsedMeasure", "state": "DirectlyUsed", "confidence": "Established" },
+      { "semanticModel": "PbiAssureCoverage", "table": "Fact", "object": "HiddenProjectionOnlyColumn", "state": "DirectlyUsed", "confidence": "Established" },
       { "semanticModel": "PbiAssureCoverage", "table": "Fact", "object": "IndirectlyUsedMeasure", "state": "IndirectlyUsed", "confidence": "Established" },
       { "semanticModel": "PbiAssureCoverage", "table": "Fact", "object": "ApparentlyUnusedMeasure", "state": "ApparentlyUnused", "confidence": "QualifiedByLimitation" },
       { "semanticModel": "PbiAssureCoverage", "table": "Fact", "object": "UnusedBranchMeasure", "state": "ApparentlyUnused", "confidence": "QualifiedByLimitation" },
@@ -160,6 +161,10 @@
     "directUsageNegativeControls": [
       { "semanticModel": "PbiAssureCoverage", "table": "Fact", "object": "SelectorOnlyColumn", "userFacing": "No" },
       { "semanticModel": "PbiAssureCoverage", "table": "TableOlsProtected", "object": "UnrelatedColumn", "userFacing": "No" }
+    ],
+    "directUsageUserFacingControls": [
+      { "semanticModel": "PbiAssureCoverage", "table": "Fact", "object": "HiddenProjectionOnlyColumn", "usageContext": "Projection", "userFacing": "No" },
+      { "semanticModel": "PbiAssureCoverage", "table": "Fact", "object": "DirectlyUsedMeasure", "usageContext": "Projection", "userFacing": "Yes" }
     ],
     "themeFormattingClassifications": ["DynamicExpression", "NoPersistedValue", "PersistedLiteral"],
     "analysisLimitations": [
@@ -1032,6 +1037,16 @@
       "documentedDependencyTargets": ["Fact[MobileFormattingColumn]"],
       "documentedFindingRuleIds": [],
       "documentedSurfaces": ["Report pages", "Usage mapping"]
+    },
+    {
+      "id": "RPT-CONTEXT-10",
+      "name": "HiddenProjectionOnlyColumn",
+      "capability": "hidden-role-projection-user-facing-control",
+      "documentedUsage": "DirectlyUsed / UserFacing No",
+      "documentedDependencyKinds": [],
+      "documentedDependencyTargets": ["projection-visual"],
+      "documentedFindingRuleIds": [],
+      "documentedSurfaces": ["Report pages", "Usage mapping", "Data catalogue"]
     },
     {
       "id": "THEME-STATUS-01",
