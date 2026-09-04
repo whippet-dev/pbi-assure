@@ -1,0 +1,17 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/report/3.3.0/schema.json",
+  "filterConfig": {
+    "filters": [
+      {
+        "name": "ReportLimitedDirectControlFilter",
+        "field": {
+          "Column": {
+            "Expression": { "SourceRef": { "Entity": "ReportLimitedTable" } },
+            "Property": "ReportLimitedDirectControl"
+          }
+        },
+        "type": "Categorical"
+      }
+    ]
+  }
+}

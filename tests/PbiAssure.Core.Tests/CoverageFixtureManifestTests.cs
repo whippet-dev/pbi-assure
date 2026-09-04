@@ -104,6 +104,18 @@ public sealed class CoverageFixtureManifestTests
             Assert.Equal(Text(expected, "userFacing"), summary.UserFacing);
         }
 
+        foreach (var expected in root.GetProperty("machineContract").GetProperty("analysisLimitations").EnumerateArray())
+        {
+            Assert.Contains(inventory.AnalysisLimitations, limitation =>
+                limitation.LimitationId == Text(expected, "limitationId") &&
+                limitation.Scope == Text(expected, "scope") &&
+                limitation.SemanticModel == Text(expected, "semanticModel") &&
+                limitation.ConstructType == Text(expected, "constructType") &&
+                limitation.ArtifactPath == Text(expected, "artifactPath") &&
+                limitation.SupportState == Text(expected, "supportState") &&
+                limitation.DependencyImpact == Text(expected, "dependencyImpact"));
+        }
+
         // Formatting contract equality is intentionally scoped to the principal report.
         var formattingClassifications = inventory.Reports.Single(report => report.Name == "PbiAssureCoverage")
             .Pages.SelectMany(page => page.Visuals).SelectMany(visual => visual.PersistedFormatting)

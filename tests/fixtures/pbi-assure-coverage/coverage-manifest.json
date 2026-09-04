@@ -8,8 +8,8 @@
   },
   "globalExpectations": {
     "semanticUsageStates": ["DirectlyUsed", "IndirectlyUsed", "StructurallyRequired", "UsedOnlyByUnusedBranch", "ApparentlyUnused"],
-    "semanticModels": ["CoverageLimited", "EstablishedCoverage", "PbiAssureCoverage"],
-    "reports": ["BaseThemeOnly", "Diagnostics", "PbiAssureCoverage"],
+    "semanticModels": ["CoverageLimited", "EstablishedCoverage", "PbiAssureCoverage", "ReportLimited"],
+    "reports": ["BaseThemeOnly", "Diagnostics", "PbiAssureCoverage", "ReportLimited"],
     "dependencyKinds": ["AggregationMapping", "CalculationGroupItem", "ContainingTable", "Dax", "FieldParameter", "FunctionCall", "HierarchyLevel", "IncrementalRefreshPolicy", "ObjectLevelPermission", "PerspectiveMember", "RelationshipEndpoint", "ReportMeasure", "SortBy", "TablePermission"],
     "classificationConfidences": ["Established", "QualifiedByLimitation"],
     "reportSchemaObservationStates": ["RecognisedUnverifiedVersion", "VerifiedExact"],
@@ -73,7 +73,9 @@
       { "semanticModel": "PbiAssureCoverage", "table": "Fact", "object": "ReportRootedUdfMeasure", "state": "DirectlyUsed", "confidence": "Established" },
       { "semanticModel": "PbiAssureCoverage", "table": "Fact", "object": "ReportRootedUdfSource", "state": "IndirectlyUsed", "confidence": "Established" },
       { "semanticModel": "PbiAssureCoverage", "table": "Metric Selector", "object": "Metric Selector Order", "state": "ApparentlyUnused", "confidence": "QualifiedByLimitation" },
-      { "semanticModel": "PbiAssureCoverage", "table": "Fact", "object": "SelectorOnlyColumn", "state": "ApparentlyUnused", "confidence": "QualifiedByLimitation" }
+      { "semanticModel": "PbiAssureCoverage", "table": "Fact", "object": "SelectorOnlyColumn", "state": "ApparentlyUnused", "confidence": "QualifiedByLimitation" },
+      { "semanticModel": "ReportLimited", "table": "ReportLimitedTable", "object": "ReportLimitedDirectControl", "state": "DirectlyUsed", "confidence": "Established" },
+      { "semanticModel": "ReportLimited", "table": "ReportLimitedTable", "object": "ReportLimitedUnusedControl", "state": "ApparentlyUnused", "confidence": "QualifiedByLimitation" }
     ],
     "dependencies": [
       { "semanticModel": "PbiAssureCoverage", "kind": "AggregationMapping", "fromTable": "AggregationCoverage", "fromObject": "AggregatedAmount", "toTable": "Fact", "toObject": "AggregationDetail" },
@@ -127,7 +129,18 @@
     "directUsageNegativeControls": [
       { "semanticModel": "PbiAssureCoverage", "table": "Fact", "object": "SelectorOnlyColumn", "userFacing": "No" }
     ],
-    "themeFormattingClassifications": ["DynamicExpression", "NoPersistedValue", "PersistedLiteral"]
+    "themeFormattingClassifications": ["DynamicExpression", "NoPersistedValue", "PersistedLiteral"],
+    "analysisLimitations": [
+      {
+        "limitationId": "PBI-LIMIT-REPORT-UNRECOGNIZED",
+        "scope": "Report",
+        "semanticModel": "ReportLimited",
+        "constructType": "unrecognizedReportDefinitionFile",
+        "artifactPath": "ReportLimited.Report/definition/semanticBindings.json",
+        "supportState": "Unrecognized",
+        "dependencyImpact": "MayCreateDependencies"
+      }
+    ]
   },
   "constructs": [
     {
@@ -1018,6 +1031,46 @@
       "documentedDependencyTargets": [],
       "documentedFindingRuleIds": [],
       "documentedSurfaces": ["Analysis coverage"]
+    },
+    {
+      "id": "COV-REPORT-LIMIT-01",
+      "name": "ReportLimited known PBIR artefacts",
+      "capability": "known-report-artifact-analysis",
+      "documentedUsage": "Known report files do not create analysis limitations",
+      "documentedDependencyKinds": [],
+      "documentedDependencyTargets": [],
+      "documentedFindingRuleIds": [],
+      "documentedSurfaces": ["Analysis coverage"]
+    },
+    {
+      "id": "COV-REPORT-LIMIT-02",
+      "name": "semanticBindings.json",
+      "capability": "unrecognized-report-artifact-limitation",
+      "documentedUsage": "Unrecognized / MayCreateDependencies",
+      "documentedDependencyKinds": [],
+      "documentedDependencyTargets": ["ReportLimitedTable[ReportLimitedUnusedControl]"],
+      "documentedFindingRuleIds": [],
+      "documentedSurfaces": ["Analysis coverage"]
+    },
+    {
+      "id": "COV-REPORT-LIMIT-03",
+      "name": "ReportLimitedUnusedControl",
+      "capability": "report-limitation-qualified-absence-state",
+      "documentedUsage": "ApparentlyUnused / QualifiedByLimitation",
+      "documentedDependencyKinds": [],
+      "documentedDependencyTargets": ["unrecognized report artefact limitation"],
+      "documentedFindingRuleIds": [],
+      "documentedSurfaces": ["Semantic model", "Analysis coverage"]
+    },
+    {
+      "id": "COV-REPORT-LIMIT-04",
+      "name": "ReportLimitedDirectControl",
+      "capability": "report-limitation-positive-confidence-control",
+      "documentedUsage": "DirectlyUsed / Established",
+      "documentedDependencyKinds": [],
+      "documentedDependencyTargets": [],
+      "documentedFindingRuleIds": [],
+      "documentedSurfaces": ["Semantic model", "Analysis coverage"]
     },
     {
       "id": "FIND-MODEL-01",

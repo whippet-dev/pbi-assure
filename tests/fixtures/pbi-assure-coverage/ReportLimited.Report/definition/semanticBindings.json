@@ -1,0 +1,6 @@
+{
+  "syntheticFixtureNotice": "Not Desktop serialization authority",
+  "semanticReferences": [
+    { "table": "ReportLimitedTable", "object": "ReportLimitedUnusedControl" }
+  ]
+}

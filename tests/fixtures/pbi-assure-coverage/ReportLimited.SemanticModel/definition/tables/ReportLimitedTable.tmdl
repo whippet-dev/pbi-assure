@@ -1,0 +1,12 @@
+table ReportLimitedTable
+	column ReportLimitedDirectControl
+		dataType: string
+		sourceColumn: ReportLimitedDirectControl
+
+	column ReportLimitedUnusedControl
+		dataType: string
+		sourceColumn: ReportLimitedUnusedControl
+
+	partition ReportLimitedTable = m
+		mode: import
+		source = #table({}, {})

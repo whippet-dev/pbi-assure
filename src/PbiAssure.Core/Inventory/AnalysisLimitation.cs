@@ -89,12 +89,14 @@ public static class AnalysisConcerns
 }
 
 /// <summary>
-/// How much of the project an unanalysed construct bears on. File-level detection only ever produces
-/// <see cref="SemanticModel"/>; narrower scopes arrive with block-level detection.
+/// How much of the project an unanalysed construct bears on.
 /// </summary>
 public static class AnalysisLimitationScopes
 {
     public const string SemanticModel = "SemanticModel";
+
+    /// <summary>A locally persisted report artifact, associated with its resolved local semantic model.</summary>
+    public const string Report = "Report";
 }
 
 /// <summary>
