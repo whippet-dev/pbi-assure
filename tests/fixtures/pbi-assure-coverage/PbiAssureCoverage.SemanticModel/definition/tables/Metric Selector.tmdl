@@ -1,0 +1,28 @@
+table 'Metric Selector'
+	column 'Metric Selector'
+		dataType: string
+		sourceColumn: Value1
+
+		extendedProperty ParameterMetadata =
+			{
+			  "version": 3,
+			  "kind": 2
+			}
+
+	column 'Metric Selector Fields'
+		dataType: string
+		isHidden
+		sourceColumn: Value2
+
+	column 'Metric Selector Order'
+		dataType: int64
+		isHidden
+		sourceColumn: Value3
+
+	partition 'Metric Selector' = calculated
+		mode: import
+		source =
+			{
+				("Direct measure", NAMEOF(Fact[DirectlyUsedMeasure]), 0),
+				("Category", NAMEOF(Fact[FormattingOnlyColumn]), 1)
+			}

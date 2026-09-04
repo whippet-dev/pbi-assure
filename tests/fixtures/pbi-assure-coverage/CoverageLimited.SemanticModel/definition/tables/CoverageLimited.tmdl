@@ -1,0 +1,18 @@
+table CoverageLimited
+	column UdfUsedSource
+		dataType: int64
+		sourceColumn: UdfUsedSource
+
+	column UdfUnusedSource
+		dataType: int64
+		sourceColumn: UdfUnusedSource
+
+	column QualifiedUnusedControl
+		dataType: string
+		sourceColumn: QualifiedUnusedControl
+
+	measure UsedUdfConsumer = UsedCoverageFunction()
+
+	partition CoverageLimited = m
+		mode: import
+		source = #table({}, {})

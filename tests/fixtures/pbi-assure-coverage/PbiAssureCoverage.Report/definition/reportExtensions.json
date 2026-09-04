@@ -1,0 +1,29 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/reportExtension/1.0.0/schema.json",
+  "name": "coverage-extension",
+  "entities": [
+    {
+      "name": "Fact",
+      "measures": [
+        {
+          "name": "ActiveReportMeasure",
+          "dataType": "Decimal",
+          "expression": "[ReportMeasureActiveSource]",
+          "references": {
+            "unrecognizedReferences": false,
+            "measures": [{ "entity": "Fact", "name": "ReportMeasureActiveSource" }]
+          }
+        },
+        {
+          "name": "UnusedReportMeasure",
+          "dataType": "Decimal",
+          "expression": "[ReportMeasureUnusedSource]",
+          "references": {
+            "unrecognizedReferences": false,
+            "measures": [{ "entity": "Fact", "name": "ReportMeasureUnusedSource" }]
+          }
+        }
+      ]
+    }
+  ]
+}

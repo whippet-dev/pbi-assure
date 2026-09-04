@@ -1,0 +1,7 @@
+{
+  "name": "Coverage custom theme",
+  "dataColors": ["#118DFF", "#E66C37", "#6B007B"],
+  "foreground": "#252423",
+  "textClasses": { "title": { "fontFace": "Segoe UI", "fontSize": 18, "color": "#252423" } },
+  "visualStyles": { "columnChart": { "*": { "title": [{ "fontSize": 18 }] } } }
+}

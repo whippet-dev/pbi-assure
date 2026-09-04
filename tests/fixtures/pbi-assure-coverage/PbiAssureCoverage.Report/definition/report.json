@@ -1,5 +1,17 @@
 {
   "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/report/3.3.0/schema.json",
+  "themeCollection": {
+    "baseTheme": { "name": "CoverageBase", "type": "SharedResources" },
+    "customTheme": { "name": "CoverageCustom.json", "type": "RegisteredResources" }
+  },
+  "resourcePackages": [
+    { "name": "SharedResources", "type": "SharedResources", "items": [
+      { "name": "CoverageBase", "path": "BaseThemes/CoverageBase.json", "type": "BaseTheme" }
+    ] },
+    { "name": "RegisteredResources", "type": "RegisteredResources", "items": [
+      { "name": "CoverageCustom.json", "path": "CoverageCustom.json", "type": "CustomTheme" }
+    ] }
+  ],
   "filterConfig": {
     "filters": [
       {

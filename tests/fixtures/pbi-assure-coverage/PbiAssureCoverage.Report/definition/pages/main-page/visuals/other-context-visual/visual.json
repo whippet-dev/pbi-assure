@@ -1,0 +1,17 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/visualContainer/2.11.0/schema.json",
+  "name": "other-context-visual",
+  "position": { "x": 640, "y": 290, "z": 7, "height": 180, "width": 280, "tabOrder": 7 },
+  "visual": {
+    "visualType": "card",
+    "prototypeSemanticReference": {
+      "Column": {
+        "Expression": { "SourceRef": { "Entity": "Fact" } },
+        "Property": "OtherContextColumn"
+      }
+    },
+    "visualContainerObjects": {
+      "general": [{ "properties": { "altText": { "expr": { "Literal": { "Value": "'Other context coverage'" } } } } }]
+    }
+  }
+}

@@ -11,6 +11,14 @@ table Dimension
 		dataType: string
 		sourceColumn: LineageExpandedColumn
 
+	column InactiveKey
+		dataType: int64
+		sourceColumn: InactiveKey
+
+	column ManyToManyKey
+		dataType: int64
+		sourceColumn: ManyToManyKey
+
 	partition Dimension = m
 		mode: import
 		source = #table({}, {})

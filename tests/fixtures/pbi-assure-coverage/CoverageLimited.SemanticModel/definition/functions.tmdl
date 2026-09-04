@@ -1,0 +1,3 @@
+function UsedCoverageFunction = () => SUM(CoverageLimited[UdfUsedSource])
+
+function UnusedCoverageFunction = () => SUM(CoverageLimited[UdfUnusedSource])

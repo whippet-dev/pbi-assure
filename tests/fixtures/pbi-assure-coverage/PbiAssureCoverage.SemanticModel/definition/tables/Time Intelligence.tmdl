@@ -1,0 +1,15 @@
+table 'Time Intelligence'
+	calculationGroup
+		precedence: 20
+
+		calculationItem Current = SELECTEDMEASURE()
+
+		calculationItem CoverageYTD = CALCULATE(SELECTEDMEASURE(), Fact[BaseAmount])
+			ordinal: 1
+
+		calculationItem 'Coverage measure only' = IF(ISSELECTEDMEASURE([IndirectlyUsedMeasure]), SELECTEDMEASURE())
+			ordinal: 2
+
+	column 'Time Calculation'
+		dataType: string
+		sourceColumn: Name

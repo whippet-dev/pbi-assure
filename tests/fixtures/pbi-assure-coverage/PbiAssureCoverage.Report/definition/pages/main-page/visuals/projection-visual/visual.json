@@ -36,6 +36,54 @@
                   "Level": "HierarchyLevelOne"
                 }
               }
+            },
+            {
+              "field": {
+                "Measure": {
+                  "Expression": { "SourceRef": { "Entity": "Fact" } },
+                  "Property": "KpiBase"
+                }
+              }
+            },
+            {
+              "field": {
+                "Measure": {
+                  "Expression": { "SourceRef": { "Entity": "Fact" } },
+                  "Property": "DetailRowsBase"
+                }
+              }
+            },
+            {
+              "field": {
+                "Measure": {
+                  "Expression": { "SourceRef": { "Entity": "Fact" } },
+                  "Property": "InactiveRelationshipMeasure"
+                }
+              }
+            },
+            {
+              "field": {
+                "Column": {
+                  "Expression": { "SourceRef": { "Entity": "Metric Selector" } },
+                  "Property": "Metric Selector"
+                }
+              }
+            },
+            {
+              "field": {
+                "Column": {
+                  "Expression": { "SourceRef": { "Entity": "Time Intelligence" } },
+                  "Property": "Time Calculation"
+                }
+              }
+            },
+            {
+              "field": {
+                "Measure": {
+                  "Expression": { "SourceRef": { "Entity": "Fact" } },
+                  "Property": "ActiveReportMeasure"
+                }
+              }
             }
           ]
         }
@@ -56,6 +104,12 @@
             "type": { "expr": { "Literal": { "Value": "'Canvas'" } } },
             "section": { "expr": { "Literal": { "Value": "'tooltip-page'" } } }
           }
+        }
+      ],
+      "selectorControl": [
+        {
+          "properties": { "lineStyle": { "expr": { "Literal": { "Value": "'solid'" } } } },
+          "selector": { "metadata": "Fact.UnusedReportMeasure" }
         }
       ]
     }

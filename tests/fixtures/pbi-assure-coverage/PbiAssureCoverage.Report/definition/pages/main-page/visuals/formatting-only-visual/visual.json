@@ -1,0 +1,22 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/visualContainer/2.11.0/schema.json",
+  "name": "formatting-only-visual",
+  "position": { "x": 20, "y": 290, "z": 5, "height": 180, "width": 280, "tabOrder": 5 },
+  "visual": {
+    "visualType": "card",
+    "objects": {
+      "dataPoint": [{
+        "properties": {
+          "fill": { "solid": { "color": { "expr": { "Column": {
+            "Expression": { "SourceRef": { "Entity": "Fact" } },
+            "Property": "FormattingOnlyColumn"
+          } } } } }
+        },
+        "selector": { "data": [{ "dataViewWildcard": { "matchingOption": 1 } }] }
+      }]
+    },
+    "visualContainerObjects": {
+      "general": [{ "properties": { "altText": { "expr": { "Literal": { "Value": "'Formatting-only coverage'" } } } } }]
+    }
+  }
+}

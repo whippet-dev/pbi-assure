@@ -6,6 +6,13 @@
     "generationMode": "synthetic",
     "desktopRoundTripAuthoritative": false
   },
+  "globalExpectations": {
+    "semanticUsageStates": ["DirectlyUsed", "IndirectlyUsed", "StructurallyRequired", "UsedOnlyByUnusedBranch", "ApparentlyUnused"],
+    "semanticModels": ["CoverageLimited", "PbiAssureCoverage"],
+    "reports": ["BaseThemeOnly", "Diagnostics", "PbiAssureCoverage"],
+    "dependencyKinds": ["AggregationMapping", "CalculationGroupItem", "ContainingTable", "Dax", "FieldParameter", "FunctionCall", "HierarchyLevel", "IncrementalRefreshPolicy", "ObjectLevelPermission", "PerspectiveMember", "RelationshipEndpoint", "ReportMeasure", "SortBy", "TablePermission"],
+    "analysisCoverageStates": ["Established", "QualifiedByLimitation", "VerifiedExact", "RecognisedUnverifiedVersion"]
+  },
   "constructs": [
     {
       "id": "SM-USAGE-01",
@@ -562,6 +569,319 @@
       "expectedFindingRuleIds": [],
       "expectedFindingMultiplicities": {},
       "expectedSurfaces": ["Accessibility review", "Report pages"]
+    },
+    {
+      "id": "SM-FP-01",
+      "name": "Metric Selector",
+      "capability": "field-parameter-dependencies",
+      "expectedUsage": "DirectlyUsed",
+      "expectedDependencyKinds": ["FieldParameter"],
+      "expectedDependencyTargets": ["Fact[DirectlyUsedMeasure]", "Fact[FormattingOnlyColumn]"],
+      "expectedFindingRuleIds": [],
+      "expectedSurfaces": ["Semantic model", "Report pages"]
+    },
+    {
+      "id": "SM-CG-01",
+      "name": "Time Intelligence",
+      "capability": "calculation-group-and-item-dependencies",
+      "expectedUsage": "DirectlyUsed / IndirectlyUsed",
+      "expectedDependencyKinds": ["CalculationGroupItem", "Dax"],
+      "expectedDependencyTargets": ["CoverageYTD", "Fact[BaseAmount]", "Fact[IndirectlyUsedMeasure]"],
+      "expectedFindingRuleIds": [],
+      "expectedSurfaces": ["Semantic model", "Report pages"]
+    },
+    {
+      "id": "SM-UDF-01",
+      "name": "UsedCoverageFunction / UnusedCoverageFunction",
+      "capability": "dax-udf-used-and-unused-branches",
+      "expectedUsage": "StructurallyRequired / UsedOnlyByUnusedBranch",
+      "expectedDependencyKinds": ["FunctionCall", "Dax"],
+      "expectedDependencyTargets": ["CoverageLimited[UdfUsedSource]", "CoverageLimited[UdfUnusedSource]"],
+      "expectedFindingRuleIds": [],
+      "expectedSurfaces": ["Semantic model", "Analysis coverage"]
+    },
+    {
+      "id": "SM-KPI-01",
+      "name": "KpiBase",
+      "capability": "kpi-expression-dependencies",
+      "expectedUsage": "DirectlyUsed / IndirectlyUsed",
+      "expectedDependencyKinds": ["Dax"],
+      "expectedDependencyTargets": ["Fact[KpiTargetOnly]", "Fact[KpiStatusOnly]", "Fact[KpiTrendOnly]"],
+      "expectedFindingRuleIds": [],
+      "expectedSurfaces": ["Semantic model"]
+    },
+    {
+      "id": "SM-DETAIL-01",
+      "name": "DetailRowsBase",
+      "capability": "measure-detail-rows-dependency",
+      "expectedUsage": "DirectlyUsed / IndirectlyUsed",
+      "expectedDependencyKinds": ["Dax"],
+      "expectedDependencyTargets": ["Fact[DetailRowsOnly]"],
+      "expectedFindingRuleIds": [],
+      "expectedSurfaces": ["Semantic model"]
+    },
+    {
+      "id": "SM-REFRESH-01",
+      "name": "Fact refresh policy",
+      "capability": "incremental-refresh-policy-dependency",
+      "expectedUsage": "StructurallyRequired",
+      "expectedDependencyKinds": ["IncrementalRefreshPolicy"],
+      "expectedDependencyTargets": ["Fact[RefreshWatermark]"],
+      "expectedFindingRuleIds": [],
+      "expectedSurfaces": ["Semantic model"]
+    },
+    {
+      "id": "SM-AGG-01",
+      "name": "AggregationCoverage[AggregatedAmount]",
+      "capability": "aggregation-mapping-dependency",
+      "expectedUsage": "StructurallyRequired",
+      "expectedDependencyKinds": ["AggregationMapping"],
+      "expectedDependencyTargets": ["Fact[AggregationDetail]"],
+      "expectedFindingRuleIds": [],
+      "expectedSurfaces": ["Semantic model"]
+    },
+    {
+      "id": "SM-REL-02",
+      "name": "BidirectionalRelationship",
+      "capability": "bidirectional-relationship",
+      "expectedUsage": null,
+      "expectedDependencyKinds": ["RelationshipEndpoint"],
+      "expectedDependencyTargets": ["Fact[RelationshipKey]", "Dimension[DimensionKey]"],
+      "expectedFindingRuleIds": ["PBI-MODEL-003"],
+      "expectedFindingMultiplicities": { "PBI-MODEL-003": 1 },
+      "expectedSurfaces": ["Model relationships", "Findings"]
+    },
+    {
+      "id": "SM-REL-03",
+      "name": "ManyToManyRelationship",
+      "capability": "many-to-many-relationship",
+      "expectedUsage": null,
+      "expectedDependencyKinds": ["RelationshipEndpoint"],
+      "expectedDependencyTargets": ["Fact[ManyToManyKey]", "Dimension[ManyToManyKey]"],
+      "expectedFindingRuleIds": ["PBI-MODEL-004"],
+      "expectedFindingMultiplicities": { "PBI-MODEL-004": 1 },
+      "expectedSurfaces": ["Model relationships", "Findings"]
+    },
+    {
+      "id": "SM-REL-04",
+      "name": "InactiveRelationship",
+      "capability": "inactive-relationship-activation-evidence",
+      "expectedUsage": "ActivatedByReportUsedDax",
+      "expectedDependencyKinds": ["RelationshipEndpoint", "Dax"],
+      "expectedDependencyTargets": ["Fact[InactiveKey]", "Dimension[InactiveKey]"],
+      "expectedFindingRuleIds": [],
+      "expectedSurfaces": ["Model relationships", "Semantic model"]
+    },
+    {
+      "id": "SM-AUTODATE-01",
+      "name": "LocalDateTable_Coverage",
+      "capability": "auto-date-time-system-provenance",
+      "expectedUsage": "StructurallyRequired",
+      "expectedDependencyKinds": ["RelationshipEndpoint"],
+      "expectedDependencyTargets": ["Fact[AutoDateSource]", "LocalDateTable_Coverage[Date]"],
+      "expectedFindingRuleIds": [],
+      "expectedSurfaces": ["Semantic model", "Model relationships"]
+    },
+    {
+      "id": "SM-RLS-01",
+      "name": "CoverageRole RLS",
+      "capability": "row-level-security-dependency",
+      "expectedUsage": "StructurallyRequired",
+      "expectedDependencyKinds": ["TablePermission"],
+      "expectedDependencyTargets": ["Fact[RlsColumn]"],
+      "expectedFindingRuleIds": [],
+      "expectedSurfaces": ["Semantic model"]
+    },
+    {
+      "id": "SM-OLS-01",
+      "name": "CoverageRole OLS",
+      "capability": "object-level-security-dependency",
+      "expectedUsage": "StructurallyRequired",
+      "expectedDependencyKinds": ["ObjectLevelPermission"],
+      "expectedDependencyTargets": ["Fact[OlsColumn]"],
+      "expectedFindingRuleIds": [],
+      "expectedSurfaces": ["Semantic model"]
+    },
+    {
+      "id": "SM-PERSP-01",
+      "name": "CoveragePerspective",
+      "capability": "perspective-member-dependency",
+      "expectedUsage": "StructurallyRequired",
+      "expectedDependencyKinds": ["PerspectiveMember"],
+      "expectedDependencyTargets": ["Fact[PerspectiveOnlyMeasure]"],
+      "expectedFindingRuleIds": [],
+      "expectedSurfaces": ["Semantic model"]
+    },
+    {
+      "id": "SM-REPORTMEASURE-01",
+      "name": "ActiveReportMeasure",
+      "capability": "used-report-measure-dependency",
+      "expectedUsage": "IndirectlyUsed",
+      "expectedDependencyKinds": ["ReportMeasure"],
+      "expectedDependencyTargets": ["Fact[ReportMeasureActiveSource]"],
+      "expectedFindingRuleIds": [],
+      "expectedSurfaces": ["Semantic model", "Report pages"]
+    },
+    {
+      "id": "SM-REPORTMEASURE-02",
+      "name": "UnusedReportMeasure",
+      "capability": "unused-report-measure-branch",
+      "expectedUsage": "UsedOnlyByUnusedBranch",
+      "expectedDependencyKinds": ["ReportMeasure"],
+      "expectedDependencyTargets": ["Fact[ReportMeasureUnusedSource]"],
+      "expectedFindingRuleIds": [],
+      "expectedSurfaces": ["Semantic model", "Report pages"]
+    },
+    {
+      "id": "SM-UNRESOLVED-01",
+      "name": "UnresolvedSortColumn",
+      "capability": "unresolved-structured-dependency",
+      "expectedUsage": "ApparentlyUnused",
+      "expectedDependencyKinds": ["SortBy"],
+      "expectedDependencyTargets": ["Fact[MissingSortTarget]"],
+      "expectedFindingRuleIds": ["PBI-MODEL-005"],
+      "expectedFindingMultiplicities": { "PBI-MODEL-005": 1 },
+      "expectedSurfaces": ["Semantic model", "Findings"]
+    },
+    {
+      "id": "RPT-CONTEXT-04",
+      "name": "formatting-only-visual",
+      "capability": "active-formatting-reference",
+      "expectedUsage": "Formatting / UserFacing Yes",
+      "expectedDependencyKinds": [],
+      "expectedDependencyTargets": ["Fact[FormattingOnlyColumn]"],
+      "expectedFindingRuleIds": [],
+      "expectedSurfaces": ["Report pages", "Usage mapping"]
+    },
+    {
+      "id": "RPT-CONTEXT-05",
+      "name": "selector-control-visual",
+      "capability": "persisted-selector-only-control",
+      "expectedUsage": "ApparentlyUnused / UserFacing No",
+      "expectedDependencyKinds": [],
+      "expectedDependencyTargets": ["Fact[SelectorOnlyColumn]"],
+      "expectedFindingRuleIds": [],
+      "expectedSurfaces": ["Report pages", "Semantic model"]
+    },
+    {
+      "id": "RPT-CONTEXT-06",
+      "name": "other-context-visual",
+      "capability": "other-direct-reference-context",
+      "expectedUsage": "Other / UserFacing Unclear",
+      "expectedDependencyKinds": [],
+      "expectedDependencyTargets": ["Fact[OtherContextColumn]"],
+      "expectedFindingRuleIds": [],
+      "expectedSurfaces": ["Report pages", "Usage mapping"]
+    },
+    {
+      "id": "RPT-CONTEXT-09",
+      "name": "other-context-visual mobile title",
+      "capability": "mobile-formatting-reference",
+      "expectedUsage": "Formatting / UserFacing Yes",
+      "expectedDependencyKinds": [],
+      "expectedDependencyTargets": ["Fact[MobileFormattingColumn]"],
+      "expectedFindingRuleIds": [],
+      "expectedSurfaces": ["Report pages", "Usage mapping"]
+    },
+    {
+      "id": "THEME-STATUS-01",
+      "name": "PbiAssureCoverage custom theme",
+      "capability": "custom-theme-applied-over-base",
+      "expectedUsage": "CustomThemeAppliedOverBase",
+      "expectedDependencyKinds": [],
+      "expectedDependencyTargets": [],
+      "expectedFindingRuleIds": [],
+      "expectedSurfaces": ["Theme Review"]
+    },
+    {
+      "id": "THEME-STATUS-02",
+      "name": "BaseThemeOnly",
+      "capability": "base-theme-only",
+      "expectedUsage": "BaseThemeOnly",
+      "expectedDependencyKinds": [],
+      "expectedDependencyTargets": [],
+      "expectedFindingRuleIds": [],
+      "expectedSurfaces": ["Theme Review"]
+    },
+    {
+      "id": "THEME-STATUS-03",
+      "name": "Diagnostics unresolved custom theme",
+      "capability": "theme-resource-unresolved",
+      "expectedUsage": "ThemeResourceUnresolved",
+      "expectedDependencyKinds": [],
+      "expectedDependencyTargets": [],
+      "expectedFindingRuleIds": ["PBI-COMPAT-002"],
+      "expectedSurfaces": ["Theme Review", "Findings"]
+    },
+    {
+      "id": "THEME-DEVIATION-01",
+      "name": "theme-outlier",
+      "capability": "saved-format-differs-from-theme",
+      "expectedUsage": "30 vs 18",
+      "expectedDependencyKinds": [],
+      "expectedDependencyTargets": [],
+      "expectedFindingRuleIds": [],
+      "expectedSurfaces": ["Theme Review"]
+    },
+    {
+      "id": "THEME-CONSISTENCY-01",
+      "name": "theme-outlier among four peers",
+      "capability": "dominant-formatting-consistency",
+      "expectedUsage": "3 of 4 use 18; outlier uses 30",
+      "expectedDependencyKinds": [],
+      "expectedDependencyTargets": [],
+      "expectedFindingRuleIds": [],
+      "expectedSurfaces": ["Theme Review"]
+    },
+    {
+      "id": "THEME-FORMAT-01",
+      "name": "theme-page title formatting",
+      "capability": "supported-persisted-formatting-inventory",
+      "expectedUsage": "PersistedLiteral",
+      "expectedDependencyKinds": [],
+      "expectedDependencyTargets": ["title.fontSize"],
+      "expectedFindingRuleIds": [],
+      "expectedSurfaces": ["Theme Review", "Report pages"]
+    },
+    {
+      "id": "COV-MODEL-01",
+      "name": "EstablishedUnusedControl",
+      "capability": "established-apparently-unused-confidence",
+      "expectedUsage": "ApparentlyUnused / Established",
+      "expectedDependencyKinds": [],
+      "expectedDependencyTargets": [],
+      "expectedFindingRuleIds": [],
+      "expectedSurfaces": ["Semantic model", "Analysis coverage"]
+    },
+    {
+      "id": "COV-MODEL-02",
+      "name": "QualifiedUnusedControl",
+      "capability": "qualified-apparently-unused-confidence",
+      "expectedUsage": "ApparentlyUnused / QualifiedByLimitation",
+      "expectedDependencyKinds": [],
+      "expectedDependencyTargets": ["function limitation"],
+      "expectedFindingRuleIds": [],
+      "expectedSurfaces": ["Semantic model", "Analysis coverage"]
+    },
+    {
+      "id": "COV-REPORT-01",
+      "name": "PbiAssureCoverage report schema",
+      "capability": "verified-report-schema-coverage",
+      "expectedUsage": "VerifiedExact",
+      "expectedDependencyKinds": [],
+      "expectedDependencyTargets": [],
+      "expectedFindingRuleIds": [],
+      "expectedSurfaces": ["Analysis coverage"]
+    },
+    {
+      "id": "COV-REPORT-02",
+      "name": "PbiAssureCoverage report extension schema",
+      "capability": "recognised-unverified-report-schema-coverage",
+      "expectedUsage": "RecognisedUnverifiedVersion",
+      "expectedDependencyKinds": [],
+      "expectedDependencyTargets": [],
+      "expectedFindingRuleIds": [],
+      "expectedSurfaces": ["Analysis coverage"]
     }
   ]
 }

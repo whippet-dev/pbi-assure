@@ -72,6 +72,75 @@ table Fact
 		dataType: int64
 		sourceColumn: LineageMergeKey
 
+	column FormattingOnlyColumn
+		dataType: string
+		sourceColumn: FormattingOnlyColumn
+
+	column SelectorOnlyColumn
+		dataType: string
+		sourceColumn: SelectorOnlyColumn
+
+	column OtherContextColumn
+		dataType: string
+		sourceColumn: OtherContextColumn
+
+	column MobileFormattingColumn
+		dataType: string
+		sourceColumn: MobileFormattingColumn
+
+	column InactiveKey
+		dataType: int64
+		sourceColumn: InactiveKey
+
+	column ManyToManyKey
+		dataType: int64
+		sourceColumn: ManyToManyKey
+
+	column AutoDateSource
+		dataType: dateTime
+		sourceColumn: AutoDateSource
+
+	column RefreshWatermark
+		dataType: dateTime
+		sourceColumn: RefreshWatermark
+
+	column RlsColumn
+		dataType: string
+		sourceColumn: RlsColumn
+
+	column OlsColumn
+		dataType: string
+		sourceColumn: OlsColumn
+
+	column AggregationDetail
+		dataType: int64
+		sourceColumn: AggregationDetail
+
+	column KpiTargetOnly
+		dataType: int64
+		sourceColumn: KpiTargetOnly
+
+	column KpiStatusOnly
+		dataType: int64
+		sourceColumn: KpiStatusOnly
+
+	column KpiTrendOnly
+		dataType: int64
+		sourceColumn: KpiTrendOnly
+
+	column DetailRowsOnly
+		dataType: string
+		sourceColumn: DetailRowsOnly
+
+	column EstablishedUnusedControl
+		dataType: string
+		sourceColumn: EstablishedUnusedControl
+
+	column UnresolvedSortColumn
+		dataType: string
+		sourceColumn: UnresolvedSortColumn
+		sortByColumn: MissingSortTarget
+
 	measure DirectlyUsedMeasure = [IndirectlyUsedMeasure] + SUM(Fact[IndirectlyUsedColumn]) + SUM(Fact[CalculatedDependencyColumn])
 		formatString: 0
 
@@ -83,6 +152,32 @@ table Fact
 
 	measure UnusedBranchMeasure = SUM(Fact[UnusedBranchColumn])
 		formatString: 0
+
+	measure KpiBase = SUM(Fact[BaseAmount])
+		kpi
+			targetExpression = Fact[KpiTargetOnly]
+			statusExpression = Fact[KpiStatusOnly]
+			trendExpression = Fact[KpiTrendOnly]
+
+	measure DetailRowsBase = SUM(Fact[BaseAmount])
+		detailRowsDefinition = SELECTCOLUMNS(Fact, "Detail", Fact[DetailRowsOnly])
+
+	measure InactiveRelationshipMeasure = CALCULATE([DirectlyUsedMeasure], USERELATIONSHIP(Fact[InactiveKey], Dimension[InactiveKey]))
+
+	measure PerspectiveOnlyMeasure = SUM(Fact[BaseAmount])
+
+	measure ReportMeasureActiveSource = SUM(Fact[BaseAmount])
+
+	measure ReportMeasureUnusedSource = SUM(Fact[UnusedBranchColumn])
+
+	refreshPolicy
+		policyType: basic
+		rollingWindowGranularity: year
+		rollingWindowPeriods: 2
+		incrementalGranularity: day
+		incrementalPeriods: 30
+		pollingExpression = List.Max(Fact[RefreshWatermark])
+		sourceExpression = let Source = Fact in Source
 
 	hierarchy DiagnosticHierarchy
 		level HierarchyLevelOne

@@ -7,3 +7,7 @@ ref table Fact
 ref table Dimension
 ref table LoadedFactQuery
 ref table CalculatedDiagnostic
+ref table 'Metric Selector'
+ref table 'Time Intelligence'
+ref table AggregationCoverage
+ref table LocalDateTable_Coverage

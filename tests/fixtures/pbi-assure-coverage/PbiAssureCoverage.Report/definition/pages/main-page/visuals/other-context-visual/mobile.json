@@ -1,0 +1,14 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/visualContainerMobileState/2.7.0/schema.json",
+  "position": { "x": 10, "y": 20, "width": 100, "height": 100 },
+  "visualContainerObjects": {
+    "title": [{
+      "properties": {
+        "text": { "expr": { "Column": {
+          "Expression": { "SourceRef": { "Entity": "Fact" } },
+          "Property": "MobileFormattingColumn"
+        } } }
+      }
+    }]
+  }
+}

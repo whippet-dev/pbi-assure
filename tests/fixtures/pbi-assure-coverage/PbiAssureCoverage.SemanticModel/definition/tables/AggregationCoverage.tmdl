@@ -1,0 +1,10 @@
+table AggregationCoverage
+	column AggregatedAmount
+		dataType: int64
+		alternateOf
+			baseColumn: Fact.AggregationDetail
+			summarization: sum
+
+	partition AggregationCoverage = m
+		mode: import
+		source = #table({}, {})

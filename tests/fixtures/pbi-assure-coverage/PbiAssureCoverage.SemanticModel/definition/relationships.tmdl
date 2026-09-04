@@ -1,3 +1,23 @@
 relationship ActiveRelationship
 	fromColumn: Fact.RelationshipKey
 	toColumn: Dimension.StructurallyRequiredColumn
+
+relationship BidirectionalRelationship
+	crossFilteringBehavior: bothDirections
+	fromColumn: Fact.RelationshipKey
+	toColumn: Dimension.DimensionKey
+
+relationship ManyToManyRelationship
+	fromCardinality: many
+	fromColumn: Fact.ManyToManyKey
+	toCardinality: many
+	toColumn: Dimension.ManyToManyKey
+
+relationship InactiveRelationship
+	isActive: false
+	fromColumn: Fact.InactiveKey
+	toColumn: Dimension.InactiveKey
+
+relationship AutoDateRelationship
+	fromColumn: Fact.AutoDateSource
+	toColumn: LocalDateTable_Coverage.Date

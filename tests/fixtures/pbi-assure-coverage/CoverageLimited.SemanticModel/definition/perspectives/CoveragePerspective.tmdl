@@ -1,0 +1,4 @@
+perspective CoveragePerspective
+
+	perspectiveTable CoverageLimited
+		perspectiveMeasure UsedUdfConsumer
