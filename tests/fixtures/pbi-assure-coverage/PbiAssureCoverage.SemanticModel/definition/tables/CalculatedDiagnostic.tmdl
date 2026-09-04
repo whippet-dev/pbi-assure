@@ -1,0 +1,8 @@
+table CalculatedDiagnostic
+	column CopiedValue
+		dataType: int64
+		sourceColumn: CopiedValue
+
+	partition CalculatedDiagnostic = calculated
+		mode: import
+		source = SELECTCOLUMNS(Fact, "CopiedValue", Fact[CalculatedSourceColumn])

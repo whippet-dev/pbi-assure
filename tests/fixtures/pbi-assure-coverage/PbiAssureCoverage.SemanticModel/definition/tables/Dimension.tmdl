@@ -1,0 +1,16 @@
+table Dimension
+	column StructurallyRequiredColumn
+		dataType: int64
+		sourceColumn: StructurallyRequiredColumn
+
+	column DimensionKey
+		dataType: int64
+		sourceColumn: DimensionKey
+
+	column LineageExpandedColumn
+		dataType: string
+		sourceColumn: LineageExpandedColumn
+
+	partition Dimension = m
+		mode: import
+		source = #table({}, {})

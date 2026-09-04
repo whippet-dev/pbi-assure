@@ -1,0 +1,32 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/visualContainer/2.11.0/schema.json",
+  "name": "sort-only-visual",
+  "position": { "x": 820, "y": 20, "z": 2, "height": 240, "width": 380, "tabOrder": 2 },
+  "visual": {
+    "visualType": "tableEx",
+    "query": {
+      "sortDefinition": {
+        "sort": [
+          {
+            "field": {
+              "Column": {
+                "Expression": { "SourceRef": { "Entity": "Fact" } },
+                "Property": "VisualSortOnlyColumn"
+              }
+            },
+            "direction": "Ascending"
+          }
+        ]
+      }
+    },
+    "visualContainerObjects": {
+      "general": [
+        {
+          "properties": {
+            "altText": { "expr": { "Literal": { "Value": "'Sort-only reference coverage'" } } }
+          }
+        }
+      ]
+    }
+  }
+}

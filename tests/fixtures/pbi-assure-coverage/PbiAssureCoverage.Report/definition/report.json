@@ -1,0 +1,38 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/report/3.3.0/schema.json",
+  "filterConfig": {
+    "filters": [
+      {
+        "name": "ReportFilter",
+        "field": {
+          "Column": {
+            "Expression": { "SourceRef": { "Entity": "Fact" } },
+            "Property": "ReportFilterColumn"
+          }
+        },
+        "type": "Categorical",
+        "filter": {
+          "Version": 2,
+          "From": [{ "Name": "f", "Entity": "Fact", "Type": 0 }],
+          "Where": [
+            {
+              "Condition": {
+                "In": {
+                  "Expressions": [
+                    {
+                      "Column": {
+                        "Expression": { "SourceRef": { "Source": "f" } },
+                        "Property": "ReportFilterColumn"
+                      }
+                    }
+                  ],
+                  "Values": [[{ "Literal": { "Value": "'Report'" } }]]
+                }
+              }
+            }
+          ]
+        }
+      }
+    ]
+  }
+}

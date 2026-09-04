@@ -1,0 +1,28 @@
+expression ReferencedQuery = #table(type table [Value = number], {{1}})
+
+expression UnusedQuery = #table(type table [Value = number], {{2}})
+
+expression DynamicQuery = Expression.Evaluate("ReferencedQuery", #shared)
+
+expression LineageTransformQuery =
+		let
+			Selected = Table.SelectColumns(Fact, {"LineageSelectedColumn"}),
+			Removed = Table.RemoveColumns(Fact, {"LineageRemovedColumn"}),
+			Renamed = Table.RenameColumns(Fact, {{"LineageRenamedColumn", "RenamedOutput"}}),
+			Typed = Table.TransformColumnTypes(Fact, {{"LineageTransformedColumn", type text}}),
+			Joined = Table.NestedJoin(Fact, {"LineageMergeKey"}, Dimension, {"DimensionKey"}, "DimensionRows", JoinKind.LeftOuter),
+			Expanded = Table.ExpandTableColumn(Joined, "DimensionRows", {"LineageExpandedColumn"}, {"LineageExpandedColumn"})
+		in
+			Expanded
+
+expression LocalFileQuery = File.Contents("C:\\PbiAssureFixture\\input.csv")
+
+expression NetworkFileQuery = Folder.Files("\\\\fixture-server\\share")
+
+expression RelativeFileQuery = File.Contents("data/input.csv")
+
+expression WebSourceQuery = Web.Contents("https://fixture.invalid/data")
+
+expression NamedServerQuery = Sql.Database("fixture-server", "fixture-db")
+
+expression DynamicSourceQuery = File.Contents(SourcePath)

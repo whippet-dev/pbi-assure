@@ -1,0 +1,281 @@
+{
+  "fixture": {
+    "id": "pbi-assure-coverage",
+    "purpose": "canonical-current-coverage",
+    "format": "PBIP/PBIR/TMDL",
+    "generationMode": "synthetic",
+    "desktopRoundTripAuthoritative": false
+  },
+  "constructs": [
+    {
+      "id": "SM-USAGE-01",
+      "name": "DirectlyUsedMeasure",
+      "capability": "semantic-usage",
+      "expectedUsage": "DirectlyUsed",
+      "expectedDependencyKinds": ["Dax"],
+      "expectedDependencyTargets": ["Fact[IndirectlyUsedMeasure]", "Fact[IndirectlyUsedColumn]", "Fact[CalculatedDependencyColumn]"],
+      "expectedFindingRuleIds": [],
+      "expectedSurfaces": ["Semantic model", "Report pages", "Usage mapping"]
+    },
+    {
+      "id": "SM-USAGE-02",
+      "name": "IndirectlyUsedMeasure",
+      "capability": "semantic-usage",
+      "expectedUsage": "IndirectlyUsed",
+      "expectedDependencyKinds": ["Dax"],
+      "expectedDependencyTargets": ["Fact[BaseAmount]"],
+      "expectedFindingRuleIds": [],
+      "expectedSurfaces": ["Semantic model", "Data catalogue"]
+    },
+    {
+      "id": "SM-USAGE-03",
+      "name": "ApparentlyUnusedMeasure",
+      "capability": "semantic-usage",
+      "expectedUsage": "ApparentlyUnused",
+      "expectedDependencyKinds": [],
+      "expectedDependencyTargets": [],
+      "expectedFindingRuleIds": [],
+      "expectedSurfaces": ["Semantic model", "Data catalogue"]
+    },
+    {
+      "id": "SM-USAGE-04",
+      "name": "UnusedBranchMeasure / UnusedBranchColumn",
+      "capability": "semantic-unused-branch",
+      "expectedUsage": "ApparentlyUnused / UsedOnlyByUnusedBranch",
+      "expectedDependencyKinds": ["Dax"],
+      "expectedDependencyTargets": ["Fact[UnusedBranchColumn]"],
+      "expectedFindingRuleIds": [],
+      "expectedSurfaces": ["Semantic model"]
+    },
+    {
+      "id": "SM-USAGE-05",
+      "name": "StructurallyRequiredColumn",
+      "capability": "semantic-structural-usage",
+      "expectedUsage": "StructurallyRequired",
+      "expectedDependencyKinds": ["RelationshipEndpoint"],
+      "expectedDependencyTargets": ["Dimension[StructurallyRequiredColumn]"],
+      "expectedFindingRuleIds": [],
+      "expectedSurfaces": ["Semantic model", "Model relationships"]
+    },
+    {
+      "id": "SM-TABLE-01",
+      "name": "Fact",
+      "capability": "semantic-table-inventory",
+      "expectedUsage": "DirectlyUsed",
+      "expectedDependencyKinds": ["ContainingTable"],
+      "expectedDependencyTargets": ["Fact"],
+      "expectedFindingRuleIds": [],
+      "expectedSurfaces": ["Semantic model", "Power Query"]
+    },
+    {
+      "id": "SM-DAX-01",
+      "name": "CalculatedDependencyColumn",
+      "capability": "calculated-column-dependency",
+      "expectedUsage": "IndirectlyUsed",
+      "expectedDependencyKinds": ["Dax"],
+      "expectedDependencyTargets": ["Fact[CalculatedSourceColumn]"],
+      "expectedFindingRuleIds": [],
+      "expectedSurfaces": ["Semantic model"]
+    },
+    {
+      "id": "SM-DAX-02",
+      "name": "CalculatedDiagnostic",
+      "capability": "calculated-table-dependency",
+      "expectedUsage": null,
+      "expectedDependencyKinds": ["Dax"],
+      "expectedDependencyTargets": ["Fact[CalculatedSourceColumn]"],
+      "expectedFindingRuleIds": [],
+      "expectedSurfaces": ["Semantic model"]
+    },
+    {
+      "id": "SM-SORT-01",
+      "name": "SortLabel / SortKey",
+      "capability": "sort-by-dependency",
+      "expectedUsage": "DirectlyUsed / IndirectlyUsed",
+      "expectedDependencyKinds": ["SortBy"],
+      "expectedDependencyTargets": ["Fact[SortKey]"],
+      "expectedFindingRuleIds": [],
+      "expectedSurfaces": ["Semantic model", "Report pages"]
+    },
+    {
+      "id": "SM-HIER-01",
+      "name": "DiagnosticHierarchy / HierarchyLevelOne",
+      "capability": "hierarchy-level-dependency",
+      "expectedUsage": "DirectlyUsed",
+      "expectedDependencyKinds": ["HierarchyLevel"],
+      "expectedDependencyTargets": ["Fact[HierarchyColumn]"],
+      "expectedFindingRuleIds": [],
+      "expectedSurfaces": ["Semantic model", "Report pages"]
+    },
+    {
+      "id": "SM-REL-01",
+      "name": "ActiveRelationship",
+      "capability": "active-relationship",
+      "expectedUsage": null,
+      "expectedDependencyKinds": ["RelationshipEndpoint"],
+      "expectedDependencyTargets": ["Fact[RelationshipKey]", "Dimension[StructurallyRequiredColumn]"],
+      "expectedFindingRuleIds": [],
+      "expectedSurfaces": ["Model relationships", "Semantic model"]
+    },
+    {
+      "id": "PQ-STATE-01",
+      "name": "LoadedFactQuery",
+      "capability": "power-query-load-state",
+      "expectedUsage": "LoadedToModel",
+      "expectedDependencyKinds": [],
+      "expectedDependencyTargets": ["ReferencedQuery", "DynamicQuery", "LineageTransformQuery", "LocalFileQuery", "NetworkFileQuery", "RelativeFileQuery", "WebSourceQuery", "NamedServerQuery", "DynamicSourceQuery"],
+      "expectedFindingRuleIds": [],
+      "expectedSurfaces": ["Power Query"]
+    },
+    {
+      "id": "PQ-STATE-02",
+      "name": "ReferencedQuery",
+      "capability": "power-query-supporting-state",
+      "expectedUsage": "SupportingQuery",
+      "expectedDependencyKinds": [],
+      "expectedDependencyTargets": [],
+      "expectedFindingRuleIds": [],
+      "expectedSurfaces": ["Power Query"]
+    },
+    {
+      "id": "PQ-STATE-03",
+      "name": "UnusedQuery",
+      "capability": "power-query-orphan-state",
+      "expectedUsage": "ApparentlyUnused",
+      "expectedDependencyKinds": [],
+      "expectedDependencyTargets": [],
+      "expectedFindingRuleIds": ["PBI-QUERY-002"],
+      "expectedSurfaces": ["Power Query", "Findings"]
+    },
+    {
+      "id": "PQ-STATE-04",
+      "name": "DynamicQuery",
+      "capability": "power-query-dynamic-reference",
+      "expectedUsage": "SupportingQuery",
+      "expectedDependencyKinds": [],
+      "expectedDependencyTargets": ["ReferencedQuery"],
+      "expectedFindingRuleIds": ["PBI-QUERY-001"],
+      "expectedSurfaces": ["Power Query", "Findings"]
+    },
+    {
+      "id": "PQ-COLUMN-01",
+      "name": "LineageTransformQuery",
+      "capability": "power-query-column-lineage",
+      "expectedUsage": "SupportingQuery",
+      "expectedDependencyKinds": [],
+      "expectedDependencyTargets": ["Fact", "Dimension"],
+      "expectedFindingRuleIds": [],
+      "expectedSurfaces": ["Power Query", "Semantic model"]
+    },
+    {
+      "id": "PQ-SOURCE-01",
+      "name": "LocalFileQuery",
+      "capability": "recognised-local-file-source",
+      "expectedUsage": "SupportingQuery",
+      "expectedDependencyKinds": [],
+      "expectedDependencyTargets": [],
+      "expectedFindingRuleIds": ["PBI-SOURCE-001"],
+      "expectedSurfaces": ["Power Query", "Findings"]
+    },
+    {
+      "id": "PQ-SOURCE-02",
+      "name": "NetworkFileQuery",
+      "capability": "recognised-network-file-source",
+      "expectedUsage": "SupportingQuery",
+      "expectedDependencyKinds": [],
+      "expectedDependencyTargets": [],
+      "expectedFindingRuleIds": ["PBI-SOURCE-001"],
+      "expectedSurfaces": ["Power Query", "Findings"]
+    },
+    {
+      "id": "PQ-SOURCE-03",
+      "name": "RelativeFileQuery",
+      "capability": "recognised-relative-file-source",
+      "expectedUsage": "SupportingQuery",
+      "expectedDependencyKinds": [],
+      "expectedDependencyTargets": [],
+      "expectedFindingRuleIds": [],
+      "expectedSurfaces": ["Power Query"]
+    },
+    {
+      "id": "PQ-SOURCE-04",
+      "name": "WebSourceQuery",
+      "capability": "recognised-web-source",
+      "expectedUsage": "SupportingQuery",
+      "expectedDependencyKinds": [],
+      "expectedDependencyTargets": [],
+      "expectedFindingRuleIds": [],
+      "expectedSurfaces": ["Power Query"]
+    },
+    {
+      "id": "PQ-SOURCE-05",
+      "name": "NamedServerQuery",
+      "capability": "recognised-named-server-source",
+      "expectedUsage": "SupportingQuery",
+      "expectedDependencyKinds": [],
+      "expectedDependencyTargets": [],
+      "expectedFindingRuleIds": [],
+      "expectedSurfaces": ["Power Query"]
+    },
+    {
+      "id": "PQ-SOURCE-06",
+      "name": "DynamicSourceQuery",
+      "capability": "recognised-dynamic-source",
+      "expectedUsage": "SupportingQuery",
+      "expectedDependencyKinds": [],
+      "expectedDependencyTargets": [],
+      "expectedFindingRuleIds": [],
+      "expectedSurfaces": ["Power Query"]
+    },
+    {
+      "id": "RPT-CONTEXT-01",
+      "name": "projection-visual",
+      "capability": "report-projection-reference",
+      "expectedUsage": "Projection",
+      "expectedDependencyKinds": [],
+      "expectedDependencyTargets": ["Fact[DirectlyUsedMeasure]", "Fact[SortLabel]", "Fact[DiagnosticHierarchy].[HierarchyLevelOne]"],
+      "expectedFindingRuleIds": [],
+      "expectedSurfaces": ["Report pages", "Semantic model", "Usage mapping"]
+    },
+    {
+      "id": "RPT-CONTEXT-02",
+      "name": "filter-only-visual",
+      "capability": "visual-filter-only-reference",
+      "expectedUsage": "Filter",
+      "expectedDependencyKinds": [],
+      "expectedDependencyTargets": ["Fact[VisualFilterOnlyColumn]"],
+      "expectedFindingRuleIds": [],
+      "expectedSurfaces": ["Report pages", "Semantic model", "Usage mapping"]
+    },
+    {
+      "id": "RPT-CONTEXT-03",
+      "name": "sort-only-visual",
+      "capability": "visual-sort-only-reference",
+      "expectedUsage": "Sort",
+      "expectedDependencyKinds": [],
+      "expectedDependencyTargets": ["Fact[VisualSortOnlyColumn]"],
+      "expectedFindingRuleIds": [],
+      "expectedSurfaces": ["Report pages", "Semantic model", "Usage mapping"]
+    },
+    {
+      "id": "RPT-CONTEXT-07",
+      "name": "ReportFilterColumn",
+      "capability": "report-filter-reference",
+      "expectedUsage": "Filter",
+      "expectedDependencyKinds": [],
+      "expectedDependencyTargets": ["Fact[ReportFilterColumn]"],
+      "expectedFindingRuleIds": [],
+      "expectedSurfaces": ["Report pages", "Semantic model", "Usage mapping"]
+    },
+    {
+      "id": "RPT-CONTEXT-08",
+      "name": "PageFilterColumn",
+      "capability": "page-filter-reference",
+      "expectedUsage": "Filter",
+      "expectedDependencyKinds": [],
+      "expectedDependencyTargets": ["Fact[PageFilterColumn]"],
+      "expectedFindingRuleIds": [],
+      "expectedSurfaces": ["Report pages", "Semantic model", "Usage mapping"]
+    }
+  ]
+}

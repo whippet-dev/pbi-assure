@@ -1,0 +1,93 @@
+/// Principal semantic table for canonical coverage.
+table Fact
+	column BaseAmount
+		dataType: int64
+		sourceColumn: BaseAmount
+
+	column IndirectlyUsedColumn
+		dataType: int64
+		sourceColumn: IndirectlyUsedColumn
+
+	column CalculatedSourceColumn
+		dataType: int64
+		sourceColumn: CalculatedSourceColumn
+
+	column CalculatedDependencyColumn = Fact[CalculatedSourceColumn]
+		dataType: int64
+
+	column UnusedBranchColumn
+		dataType: int64
+		sourceColumn: UnusedBranchColumn
+
+	column RelationshipKey
+		dataType: int64
+		sourceColumn: RelationshipKey
+
+	column SortLabel
+		dataType: string
+		sourceColumn: SortLabel
+		sortByColumn: SortKey
+
+	column SortKey
+		dataType: int64
+		sourceColumn: SortKey
+
+	column HierarchyColumn
+		dataType: string
+		sourceColumn: HierarchyColumn
+
+	column VisualFilterOnlyColumn
+		dataType: string
+		sourceColumn: VisualFilterOnlyColumn
+
+	column VisualSortOnlyColumn
+		dataType: string
+		sourceColumn: VisualSortOnlyColumn
+
+	column ReportFilterColumn
+		dataType: string
+		sourceColumn: ReportFilterColumn
+
+	column PageFilterColumn
+		dataType: string
+		sourceColumn: PageFilterColumn
+
+	column LineageSelectedColumn
+		dataType: string
+		sourceColumn: LineageSelectedColumn
+
+	column LineageRemovedColumn
+		dataType: string
+		sourceColumn: LineageRemovedColumn
+
+	column LineageRenamedColumn
+		dataType: string
+		sourceColumn: LineageRenamedColumn
+
+	column LineageTransformedColumn
+		dataType: string
+		sourceColumn: LineageTransformedColumn
+
+	column LineageMergeKey
+		dataType: int64
+		sourceColumn: LineageMergeKey
+
+	measure DirectlyUsedMeasure = [IndirectlyUsedMeasure] + SUM(Fact[IndirectlyUsedColumn]) + SUM(Fact[CalculatedDependencyColumn])
+		formatString: 0
+
+	measure IndirectlyUsedMeasure = SUM(Fact[BaseAmount])
+		formatString: 0
+
+	measure ApparentlyUnusedMeasure = 1
+		formatString: 0
+
+	measure UnusedBranchMeasure = SUM(Fact[UnusedBranchColumn])
+		formatString: 0
+
+	hierarchy DiagnosticHierarchy
+		level HierarchyLevelOne
+			column: HierarchyColumn
+
+	partition Fact = m
+		mode: import
+		source = #table({}, {})

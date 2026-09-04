@@ -1,0 +1,54 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/visualContainer/2.11.0/schema.json",
+  "name": "projection-visual",
+  "position": { "x": 20, "y": 20, "z": 0, "height": 240, "width": 380, "tabOrder": 0 },
+  "visual": {
+    "visualType": "tableEx",
+    "query": {
+      "queryState": {
+        "Values": {
+          "projections": [
+            {
+              "field": {
+                "Measure": {
+                  "Expression": { "SourceRef": { "Entity": "Fact" } },
+                  "Property": "DirectlyUsedMeasure"
+                }
+              }
+            },
+            {
+              "field": {
+                "Column": {
+                  "Expression": { "SourceRef": { "Entity": "Fact" } },
+                  "Property": "SortLabel"
+                }
+              }
+            },
+            {
+              "field": {
+                "HierarchyLevel": {
+                  "Expression": {
+                    "Hierarchy": {
+                      "Expression": { "SourceRef": { "Entity": "Fact" } },
+                      "Hierarchy": "DiagnosticHierarchy"
+                    }
+                  },
+                  "Level": "HierarchyLevelOne"
+                }
+              }
+            }
+          ]
+        }
+      }
+    },
+    "visualContainerObjects": {
+      "general": [
+        {
+          "properties": {
+            "altText": { "expr": { "Literal": { "Value": "'Core semantic projection coverage'" } } }
+          }
+        }
+      ]
+    }
+  }
+}

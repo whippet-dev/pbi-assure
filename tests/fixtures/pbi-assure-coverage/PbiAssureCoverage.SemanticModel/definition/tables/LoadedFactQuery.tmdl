@@ -1,0 +1,20 @@
+table LoadedFactQuery
+	column Value
+		dataType: int64
+		sourceColumn: Value
+
+	partition LoadedFactQuery = m
+		mode: import
+		source =
+				let
+					Base = ReferencedQuery,
+					Dynamic = DynamicQuery,
+					Lineage = LineageTransformQuery,
+					LocalFile = LocalFileQuery,
+					NetworkFile = NetworkFileQuery,
+					RelativeFile = RelativeFileQuery,
+					WebSource = WebSourceQuery,
+					NamedServer = NamedServerQuery,
+					DynamicSource = DynamicSourceQuery
+				in
+					Base
