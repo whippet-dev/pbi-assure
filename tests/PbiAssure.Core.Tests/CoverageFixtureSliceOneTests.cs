@@ -50,6 +50,10 @@ public sealed class CoverageFixtureSliceOneTests
             "ReferencedQuery", PowerQuerySourceKinds.NamedExpression);
         AssertQueryDependency(inventory, "LineageTransformQuery", PowerQuerySourceKinds.NamedExpression,
             "Fact", PowerQuerySourceKinds.TablePartition);
+        AssertQuery(inventory, "AddColumnLineageQuery", PowerQueryUsageStates.SupportingQuery);
+        AssertQuery(inventory, "GroupLineageQuery", PowerQueryUsageStates.SupportingQuery);
+        AssertQuery(inventory, "CombineLineageQuery", PowerQueryUsageStates.SupportingQuery);
+        AssertQuery(inventory, "UnpivotLineageQuery", PowerQueryUsageStates.SupportingQuery);
 
         AssertColumnLineage(inventory, "Fact", "LineageMergeKey", PowerQueryColumnUsageKinds.MergeKey);
         AssertColumnLineage(inventory, "Dimension", "LineageExpandedColumn", PowerQueryColumnUsageKinds.ExpandedColumn);
@@ -57,6 +61,22 @@ public sealed class CoverageFixtureSliceOneTests
         AssertColumnLineage(inventory, "Fact", "LineageRemovedColumn", PowerQueryColumnUsageKinds.RemovedColumn);
         AssertColumnLineage(inventory, "Fact", "LineageRenamedColumn", PowerQueryColumnUsageKinds.RenamedColumn);
         AssertColumnLineage(inventory, "Fact", "LineageTransformedColumn", PowerQueryColumnUsageKinds.TransformedColumn);
+        AssertColumnLineage(inventory, "Fact", "LineageAddLeft", PowerQueryColumnUsageKinds.AddedColumnExpression,
+            "AddColumnLineageQuery");
+        AssertColumnLineage(inventory, "Fact", "LineageAddRight", PowerQueryColumnUsageKinds.AddedColumnExpression,
+            "AddColumnLineageQuery");
+        AssertColumnLineage(inventory, "Fact", "LineageGroupKey", PowerQueryColumnUsageKinds.GroupingKey,
+            "GroupLineageQuery");
+        AssertColumnLineage(inventory, "Fact", "LineageGroupValue", PowerQueryColumnUsageKinds.AggregationExpression,
+            "GroupLineageQuery");
+        AssertColumnLineage(inventory, "Fact", "LineageCombineFact", PowerQueryColumnUsageKinds.CombinedColumn,
+            "CombineLineageQuery");
+        AssertColumnLineage(inventory, "Dimension", "LineageCombineDimension", PowerQueryColumnUsageKinds.CombinedColumn,
+            "CombineLineageQuery");
+        AssertColumnLineage(inventory, "Fact", "LineageUnpivotKeepA", PowerQueryColumnUsageKinds.UnpivotRetainedColumn,
+            "UnpivotLineageQuery");
+        AssertColumnLineage(inventory, "Fact", "LineageUnpivotKeepB", PowerQueryColumnUsageKinds.UnpivotRetainedColumn,
+            "UnpivotLineageQuery");
 
         AssertSource(inventory, "LocalFileQuery", "File", DataSourceLocationKinds.LocalFile);
         AssertSource(inventory, "NetworkFileQuery", "Folder", DataSourceLocationKinds.NetworkFile);
@@ -116,12 +136,17 @@ public sealed class CoverageFixtureSliceOneTests
             dependency.FromQueryName == fromQuery && dependency.FromSourceKind == fromKind &&
             dependency.ToQueryName == toQuery && dependency.ToSourceKind == toKind);
 
-    private static void AssertColumnLineage(ProjectInventory inventory, string table, string column, string kind)
+    private static void AssertColumnLineage(
+        ProjectInventory inventory,
+        string table,
+        string column,
+        string kind,
+        string consumer = "LineageTransformQuery")
     {
         Assert.Contains(inventory.PowerQueryColumnUsages, usage =>
             usage.SourceTable == table &&
             usage.SourceColumn == column &&
-            usage.ConsumerQuery == "LineageTransformQuery" &&
+            usage.ConsumerQuery == consumer &&
             usage.UsageKind == kind);
     }
 

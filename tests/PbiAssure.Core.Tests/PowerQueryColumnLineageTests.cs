@@ -118,6 +118,90 @@ public sealed class PowerQueryColumnLineageTests : IDisposable
             result.SemanticObjectUsages.Single(usage => usage.Table == "Source" && usage.ObjectName == "A").UsageState);
     }
 
+    [Fact]
+    public void ScanExtractsStaticAddGroupCombineAndUnpivotColumnEvidence()
+    {
+        WriteTable("Add Source", ["Add A", "Add B"], "#table({}, {})");
+        WriteTable("Add Consumer", ["Result"], """
+            let
+                Added = Table.AddColumn(#"Add Source", "Added", each [Add A] & [Add B])
+            in
+                Added
+            """);
+        WriteTable("Group Source", ["Group Key", "Group Value"], "#table({}, {})");
+        WriteTable("Group Consumer", ["Result"], """
+            let
+                Grouped = Table.Group(#"Group Source", {"Group Key"}, {{"Total", each List.Sum([Group Value]), type number}})
+            in
+                Grouped
+            """);
+        WriteTable("Combine A", ["Combine A"], "#table({}, {})");
+        WriteTable("Combine B", ["Combine B"], "#table({}, {})");
+        WriteTable("Combine Consumer", ["Result"], """
+            let
+                Combined = Table.Combine({#"Combine A", #"Combine B"}, {"Combine A", "Combine B"})
+            in
+                Combined
+            """);
+        WriteTable("Unpivot Source", ["Keep A", "Keep B", "Value"], "#table({}, {})");
+        WriteTable("Unpivot Consumer", ["Result"], """
+            let
+                Unpivoted = Table.UnpivotOtherColumns(#"Unpivot Source", {"Keep A", "Keep B"}, "Attribute", "Value")
+            in
+                Unpivoted
+            """);
+
+        var result = ProjectScanner.Scan(testRoot);
+
+        AssertUsage(result, "Add Source", "Add A", "Add Consumer", PowerQueryColumnUsageKinds.AddedColumnExpression);
+        AssertUsage(result, "Add Source", "Add B", "Add Consumer", PowerQueryColumnUsageKinds.AddedColumnExpression);
+        AssertUsage(result, "Group Source", "Group Key", "Group Consumer", PowerQueryColumnUsageKinds.GroupingKey);
+        AssertUsage(result, "Group Source", "Group Value", "Group Consumer", PowerQueryColumnUsageKinds.AggregationExpression);
+        AssertUsage(result, "Combine A", "Combine A", "Combine Consumer", PowerQueryColumnUsageKinds.CombinedColumn);
+        AssertUsage(result, "Combine B", "Combine B", "Combine Consumer", PowerQueryColumnUsageKinds.CombinedColumn);
+        AssertUsage(result, "Unpivot Source", "Keep A", "Unpivot Consumer", PowerQueryColumnUsageKinds.UnpivotRetainedColumn);
+        AssertUsage(result, "Unpivot Source", "Keep B", "Unpivot Consumer", PowerQueryColumnUsageKinds.UnpivotRetainedColumn);
+        Assert.All(result.PowerQueryColumnUsages.Where(usage => usage.ConsumerQuery.EndsWith("Consumer", StringComparison.Ordinal)),
+            usage => Assert.False(string.IsNullOrWhiteSpace(usage.StepName)));
+    }
+
+    [Fact]
+    public void ScanDoesNotGuessDynamicTransformationColumnsOrCombineRuntimeSchemas()
+    {
+        WriteTable("Source", ["A"], "#table({}, {})");
+        WriteTable("Dynamic Add", ["Result"], """
+            let
+                Added = Table.AddColumn(Source, "Added", each Record.Field(_, ColumnName))
+            in
+                Added
+            """);
+        WriteTable("Dynamic Group", ["Result"], """
+            let
+                Grouped = Table.Group(Source, GroupingColumns, {{"Total", each Record.Field(_, AggregateColumn)}})
+            in
+                Grouped
+            """);
+        WriteTable("Schema Combine", ["Result"], """
+            let
+                Combined = Table.Combine({Source})
+            in
+                Combined
+            """);
+        WriteTable("Dynamic Unpivot", ["Result"], """
+            let
+                Unpivoted = Table.UnpivotOtherColumns(Source, RetainedColumns, "Attribute", "Value")
+            in
+                Unpivoted
+            """);
+
+        var result = ProjectScanner.Scan(testRoot);
+
+        Assert.DoesNotContain(result.PowerQueryColumnUsages, usage =>
+            usage.ConsumerQuery is "Dynamic Add" or "Dynamic Group" or "Schema Combine" or "Dynamic Unpivot");
+        Assert.Contains(result.PowerQueryDependencies, edge =>
+            edge.FromQueryName == "Schema Combine" && edge.ToQueryName == "Source");
+    }
+
     public void Dispose()
     {
         if (Directory.Exists(testRoot))

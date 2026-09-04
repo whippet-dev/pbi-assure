@@ -28,4 +28,14 @@ public static class PowerQueryColumnUsageKinds
     public const string RemovedColumn = "RemovedColumn";
 
     public const string TransformedColumn = "TransformedColumn";
+
+    public const string AddedColumnExpression = "AddedColumnExpression";
+
+    public const string GroupingKey = "GroupingKey";
+
+    public const string AggregationExpression = "AggregationExpression";
+
+    public const string CombinedColumn = "CombinedColumn";
+
+    public const string UnpivotRetainedColumn = "UnpivotRetainedColumn";
 }

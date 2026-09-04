@@ -197,6 +197,34 @@ table Fact
 		level HierarchyLevelOne
 			column: HierarchyColumn
 
+	column LineageAddLeft
+		dataType: string
+		sourceColumn: LineageAddLeft
+
+	column LineageAddRight
+		dataType: string
+		sourceColumn: LineageAddRight
+
+	column LineageGroupKey
+		dataType: string
+		sourceColumn: LineageGroupKey
+
+	column LineageGroupValue
+		dataType: decimal
+		sourceColumn: LineageGroupValue
+
+	column LineageCombineFact
+		dataType: string
+		sourceColumn: LineageCombineFact
+
+	column LineageUnpivotKeepA
+		dataType: string
+		sourceColumn: LineageUnpivotKeepA
+
+	column LineageUnpivotKeepB
+		dataType: string
+		sourceColumn: LineageUnpivotKeepB
+
 	partition Fact = m
 		mode: import
 		source = #table({}, {})

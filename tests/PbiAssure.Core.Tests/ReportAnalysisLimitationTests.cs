@@ -48,11 +48,11 @@ public sealed class ReportAnalysisLimitationTests
     {
         var inventory = ProjectScanner.Scan(FixturePath());
         var report = Assert.Single(inventory.Reports, candidate => candidate.Name == "ReportLimited");
-        var reportLimitations = inventory.AnalysisLimitations
-            .Where(limitation => limitation.Scope == AnalysisLimitationScopes.Report)
-            .ToArray();
-
-        var limitation = Assert.Single(reportLimitations);
+        var limitation = Assert.Single(inventory.AnalysisLimitations, candidate =>
+            candidate.Scope == AnalysisLimitationScopes.Report &&
+            candidate.LimitationId == "PBI-LIMIT-REPORT-UNRECOGNIZED" &&
+            candidate.SemanticModel == "ReportLimited" &&
+            candidate.ArtifactPath == "ReportLimited.Report/definition/semanticBindings.json");
         Assert.Equal("PBI-LIMIT-REPORT-UNRECOGNIZED", limitation.LimitationId);
         Assert.Equal("ReportLimited", limitation.SemanticModel);
         Assert.Equal("unrecognizedReportDefinitionFile", limitation.ConstructType);

@@ -15,6 +15,30 @@ expression LineageTransformQuery =
 		in
 			Expanded
 
+expression AddColumnLineageQuery =
+		let
+			Added = Table.AddColumn(Fact, "Added", each [LineageAddLeft] & [LineageAddRight])
+		in
+			Added
+
+expression GroupLineageQuery =
+		let
+			Grouped = Table.Group(Fact, {"LineageGroupKey"}, {{"Total", each List.Sum([LineageGroupValue]), type number}})
+		in
+			Grouped
+
+expression CombineLineageQuery =
+		let
+			Combined = Table.Combine({Fact, Dimension}, {"LineageCombineFact", "LineageCombineDimension"})
+		in
+			Combined
+
+expression UnpivotLineageQuery =
+		let
+			Unpivoted = Table.UnpivotOtherColumns(Fact, {"LineageUnpivotKeepA", "LineageUnpivotKeepB"}, "Attribute", "Value")
+		in
+			Unpivoted
+
 expression LocalFileQuery = File.Contents("C:\\PbiAssureFixture\\input.csv")
 
 expression NetworkFileQuery = Folder.Files("\\\\fixture-server\\share")

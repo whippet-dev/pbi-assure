@@ -89,6 +89,33 @@ internal static partial class MColumnLineageExtractor
                 AddResolvedColumns(references, arguments[0], ReadTupleFirstStrings(arguments[1]), states, known,
                     consumerQuery, PowerQueryColumnUsageKinds.TransformedColumn, function, binding.Name);
             }
+            else if (function.Equals("Table.AddColumn", StringComparison.OrdinalIgnoreCase) && arguments.Length >= 3)
+            {
+                AddResolvedColumns(references, arguments[0], ReadFieldReferences(arguments[2]), states, known,
+                    consumerQuery, PowerQueryColumnUsageKinds.AddedColumnExpression, function, binding.Name);
+            }
+            else if (function.Equals("Table.Group", StringComparison.OrdinalIgnoreCase) && arguments.Length >= 3)
+            {
+                AddResolvedColumns(references, arguments[0], ReadStringOrList(arguments[1]), states, known,
+                    consumerQuery, PowerQueryColumnUsageKinds.GroupingKey, function, binding.Name);
+                AddResolvedColumns(references, arguments[0], ReadTupleExpressions(arguments[2], 1)
+                        .SelectMany(ReadFieldReferences), states, known,
+                    consumerQuery, PowerQueryColumnUsageKinds.AggregationExpression, function, binding.Name);
+            }
+            else if (function.Equals("Table.Combine", StringComparison.OrdinalIgnoreCase) && arguments.Length >= 2)
+            {
+                var columns = ReadStringList(arguments[1]);
+                foreach (var input in ReadListItems(arguments[0]))
+                {
+                    AddResolvedColumns(references, input, columns, states, known,
+                        consumerQuery, PowerQueryColumnUsageKinds.CombinedColumn, function, binding.Name);
+                }
+            }
+            else if (function.Equals("Table.UnpivotOtherColumns", StringComparison.OrdinalIgnoreCase) && arguments.Length >= 2)
+            {
+                AddResolvedColumns(references, arguments[0], ReadStringList(arguments[1]), states, known,
+                    consumerQuery, PowerQueryColumnUsageKinds.UnpivotRetainedColumn, function, binding.Name);
+            }
 
             states[binding.Name] = state;
         }
@@ -338,6 +365,47 @@ internal static partial class MColumnLineageExtractor
             .ToArray();
     }
 
+    private static string[] ReadStringOrList(string expression) =>
+        ReadString(expression) is { } value ? [value] : ReadStringList(expression);
+
+    private static string[] ReadListItems(string expression)
+    {
+        var trimmed = expression.Trim();
+        return trimmed.StartsWith('{') && trimmed.EndsWith('}')
+            ? SplitTopLevel(trimmed[1..^1]).ToArray()
+            : [];
+    }
+
+    private static IEnumerable<string> ReadTupleExpressions(string expression, int index)
+    {
+        foreach (var item in ReadListItems(expression))
+        {
+            var tuple = item.Trim();
+            if (!tuple.StartsWith('{') || !tuple.EndsWith('}'))
+            {
+                continue;
+            }
+
+            var values = SplitTopLevel(tuple[1..^1]).ToArray();
+            if (values.Length > index)
+            {
+                yield return values[index];
+            }
+        }
+    }
+
+    private static string[] ReadFieldReferences(string expression)
+    {
+        var searchable = MReferenceExtractor.RemoveStringsAndComments(expression);
+        return FieldReferenceRegex().Matches(searchable)
+            .Select(match => NormalizeIdentifier(match.Groups[1].Value.Trim()))
+            .Where(name => !string.IsNullOrWhiteSpace(name) &&
+                           !name.Contains('=') &&
+                           !name.Contains(','))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToArray();
+    }
+
     private static string? ReadString(string expression)
     {
         var match = ExactStringRegex().Match(expression.Trim());
@@ -369,6 +437,9 @@ internal static partial class MColumnLineageExtractor
 
     [GeneratedRegex("\"((?:\"\"|[^\"])*)\"", RegexOptions.CultureInvariant)]
     private static partial Regex StringRegex();
+
+    [GeneratedRegex("\\[(#\"(?:[^\"]|\"\")*\"|[^\\[\\]]+)\\]", RegexOptions.CultureInvariant)]
+    private static partial Regex FieldReferenceRegex();
 
     private sealed record Binding(string Name, string Expression);
     private sealed record ColumnPair(string From, string To);

@@ -122,7 +122,22 @@
     ],
     "powerQueryDependencies": [
       { "semanticModel": "PbiAssureCoverage", "fromQuery": "LoadedFactQuery", "fromSourceKind": "TablePartition", "toQuery": "ReferencedQuery", "toSourceKind": "NamedExpression" },
-      { "semanticModel": "PbiAssureCoverage", "fromQuery": "LineageTransformQuery", "fromSourceKind": "NamedExpression", "toQuery": "Fact", "toSourceKind": "TablePartition" }
+      { "semanticModel": "PbiAssureCoverage", "fromQuery": "LineageTransformQuery", "fromSourceKind": "NamedExpression", "toQuery": "Fact", "toSourceKind": "TablePartition" },
+      { "semanticModel": "PbiAssureCoverage", "fromQuery": "AddColumnLineageQuery", "fromSourceKind": "NamedExpression", "toQuery": "Fact", "toSourceKind": "TablePartition" },
+      { "semanticModel": "PbiAssureCoverage", "fromQuery": "GroupLineageQuery", "fromSourceKind": "NamedExpression", "toQuery": "Fact", "toSourceKind": "TablePartition" },
+      { "semanticModel": "PbiAssureCoverage", "fromQuery": "CombineLineageQuery", "fromSourceKind": "NamedExpression", "toQuery": "Fact", "toSourceKind": "TablePartition" },
+      { "semanticModel": "PbiAssureCoverage", "fromQuery": "CombineLineageQuery", "fromSourceKind": "NamedExpression", "toQuery": "Dimension", "toSourceKind": "TablePartition" },
+      { "semanticModel": "PbiAssureCoverage", "fromQuery": "UnpivotLineageQuery", "fromSourceKind": "NamedExpression", "toQuery": "Fact", "toSourceKind": "TablePartition" }
+    ],
+    "powerQueryColumnUsages": [
+      { "semanticModel": "PbiAssureCoverage", "sourceQuery": "Fact", "sourceTable": "Fact", "sourceColumn": "LineageAddLeft", "consumerQuery": "AddColumnLineageQuery", "usageKind": "AddedColumnExpression", "mFunction": "Table.AddColumn", "stepName": "Added" },
+      { "semanticModel": "PbiAssureCoverage", "sourceQuery": "Fact", "sourceTable": "Fact", "sourceColumn": "LineageAddRight", "consumerQuery": "AddColumnLineageQuery", "usageKind": "AddedColumnExpression", "mFunction": "Table.AddColumn", "stepName": "Added" },
+      { "semanticModel": "PbiAssureCoverage", "sourceQuery": "Fact", "sourceTable": "Fact", "sourceColumn": "LineageGroupKey", "consumerQuery": "GroupLineageQuery", "usageKind": "GroupingKey", "mFunction": "Table.Group", "stepName": "Grouped" },
+      { "semanticModel": "PbiAssureCoverage", "sourceQuery": "Fact", "sourceTable": "Fact", "sourceColumn": "LineageGroupValue", "consumerQuery": "GroupLineageQuery", "usageKind": "AggregationExpression", "mFunction": "Table.Group", "stepName": "Grouped" },
+      { "semanticModel": "PbiAssureCoverage", "sourceQuery": "Fact", "sourceTable": "Fact", "sourceColumn": "LineageCombineFact", "consumerQuery": "CombineLineageQuery", "usageKind": "CombinedColumn", "mFunction": "Table.Combine", "stepName": "Combined" },
+      { "semanticModel": "PbiAssureCoverage", "sourceQuery": "Dimension", "sourceTable": "Dimension", "sourceColumn": "LineageCombineDimension", "consumerQuery": "CombineLineageQuery", "usageKind": "CombinedColumn", "mFunction": "Table.Combine", "stepName": "Combined" },
+      { "semanticModel": "PbiAssureCoverage", "sourceQuery": "Fact", "sourceTable": "Fact", "sourceColumn": "LineageUnpivotKeepA", "consumerQuery": "UnpivotLineageQuery", "usageKind": "UnpivotRetainedColumn", "mFunction": "Table.UnpivotOtherColumns", "stepName": "Unpivoted" },
+      { "semanticModel": "PbiAssureCoverage", "sourceQuery": "Fact", "sourceTable": "Fact", "sourceColumn": "LineageUnpivotKeepB", "consumerQuery": "UnpivotLineageQuery", "usageKind": "UnpivotRetainedColumn", "mFunction": "Table.UnpivotOtherColumns", "stepName": "Unpivoted" }
     ],
     "dataSources": [
       { "query": "LocalFileQuery", "connectorFamily": "File", "locationKind": "LocalFile" },
@@ -321,6 +336,46 @@
       "documentedUsage": "SupportingQuery",
       "documentedDependencyKinds": [],
       "documentedDependencyTargets": ["Fact", "Dimension"],
+      "documentedFindingRuleIds": [],
+      "documentedSurfaces": ["Power Query", "Semantic model"]
+    },
+    {
+      "id": "PQ-COLUMN-02",
+      "name": "AddColumnLineageQuery",
+      "capability": "power-query-add-column-lineage",
+      "documentedUsage": "SupportingQuery",
+      "documentedDependencyKinds": [],
+      "documentedDependencyTargets": ["Fact[LineageAddLeft]", "Fact[LineageAddRight]"],
+      "documentedFindingRuleIds": [],
+      "documentedSurfaces": ["Power Query", "Semantic model"]
+    },
+    {
+      "id": "PQ-COLUMN-03",
+      "name": "GroupLineageQuery",
+      "capability": "power-query-group-lineage",
+      "documentedUsage": "SupportingQuery",
+      "documentedDependencyKinds": [],
+      "documentedDependencyTargets": ["Fact[LineageGroupKey]", "Fact[LineageGroupValue]"],
+      "documentedFindingRuleIds": [],
+      "documentedSurfaces": ["Power Query", "Semantic model"]
+    },
+    {
+      "id": "PQ-COLUMN-04",
+      "name": "CombineLineageQuery",
+      "capability": "power-query-combine-lineage",
+      "documentedUsage": "SupportingQuery",
+      "documentedDependencyKinds": [],
+      "documentedDependencyTargets": ["Fact[LineageCombineFact]", "Dimension[LineageCombineDimension]"],
+      "documentedFindingRuleIds": [],
+      "documentedSurfaces": ["Power Query", "Semantic model"]
+    },
+    {
+      "id": "PQ-COLUMN-05",
+      "name": "UnpivotLineageQuery",
+      "capability": "power-query-unpivot-other-columns-lineage",
+      "documentedUsage": "SupportingQuery",
+      "documentedDependencyKinds": [],
+      "documentedDependencyTargets": ["Fact[LineageUnpivotKeepA]", "Fact[LineageUnpivotKeepB]"],
       "documentedFindingRuleIds": [],
       "documentedSurfaces": ["Power Query", "Semantic model"]
     },

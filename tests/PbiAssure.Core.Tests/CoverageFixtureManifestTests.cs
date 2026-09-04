@@ -73,6 +73,19 @@ public sealed class CoverageFixtureManifestTests
                 dependency.ToSourceKind == Text(expected, "toSourceKind"));
         }
 
+        foreach (var expected in root.GetProperty("machineContract").GetProperty("powerQueryColumnUsages").EnumerateArray())
+        {
+            Assert.Contains(inventory.PowerQueryColumnUsages, usage =>
+                usage.SemanticModel == Text(expected, "semanticModel") &&
+                usage.SourceQuery == Text(expected, "sourceQuery") &&
+                usage.SourceTable == Text(expected, "sourceTable") &&
+                usage.SourceColumn == Text(expected, "sourceColumn") &&
+                usage.ConsumerQuery == Text(expected, "consumerQuery") &&
+                usage.UsageKind == Text(expected, "usageKind") &&
+                usage.MFunction == Text(expected, "mFunction") &&
+                usage.StepName == Text(expected, "stepName"));
+        }
+
         foreach (var expected in root.GetProperty("machineContract").GetProperty("dataSources").EnumerateArray())
         {
             Assert.Contains(inventory.DataSources, source =>

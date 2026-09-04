@@ -19,6 +19,10 @@ table Dimension
 		dataType: int64
 		sourceColumn: ManyToManyKey
 
+	column LineageCombineDimension
+		dataType: string
+		sourceColumn: LineageCombineDimension
+
 	partition Dimension = m
 		mode: import
 		source = #table({}, {})
