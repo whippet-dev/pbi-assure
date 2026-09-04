@@ -1,0 +1,5 @@
+role CoverageOlsRole
+	modelPermission: read
+
+	tablePermission Fact
+		columnPermission OlsColumn = none

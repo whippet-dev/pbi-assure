@@ -55,6 +55,62 @@ public sealed class CoverageFixtureManifestTests
             Assert.Equal(Text(expected, "fromObject"), incoming.FromObjectName);
         }
 
+        foreach (var expected in root.GetProperty("machineContract").GetProperty("semanticTableUsages").EnumerateArray())
+        {
+            var usage = Assert.Single(inventory.SemanticTableUsages, candidate =>
+                candidate.SemanticModel == Text(expected, "semanticModel") &&
+                candidate.Table == Text(expected, "table"));
+            Assert.Equal(Text(expected, "state"), usage.UsageState);
+        }
+
+        foreach (var expected in root.GetProperty("machineContract").GetProperty("powerQueryDependencies").EnumerateArray())
+        {
+            Assert.Contains(inventory.PowerQueryDependencies, dependency =>
+                dependency.SemanticModel == Text(expected, "semanticModel") &&
+                dependency.FromQueryName == Text(expected, "fromQuery") &&
+                dependency.FromSourceKind == Text(expected, "fromSourceKind") &&
+                dependency.ToQueryName == Text(expected, "toQuery") &&
+                dependency.ToSourceKind == Text(expected, "toSourceKind"));
+        }
+
+        foreach (var expected in root.GetProperty("machineContract").GetProperty("dataSources").EnumerateArray())
+        {
+            Assert.Contains(inventory.DataSources, source =>
+                source.QueryName == Text(expected, "query") &&
+                source.ConnectorFamily == Text(expected, "connectorFamily") &&
+                source.LocationKind == Text(expected, "locationKind"));
+        }
+
+        foreach (var expected in root.GetProperty("machineContract").GetProperty("reportMeasureReachability").EnumerateArray())
+        {
+            var node = Assert.Single(inventory.SemanticNodeReachability, candidate =>
+                candidate.SemanticModel == Text(expected, "semanticModel") &&
+                candidate.Table == Text(expected, "table") &&
+                candidate.ObjectName == Text(expected, "object") &&
+                candidate.ObjectType == SemanticObjectTypes.ReportMeasure);
+            Assert.Equal(expected.GetProperty("reachableFromReport").GetBoolean(), node.ReachableFromReport);
+        }
+
+        var directUsage = DirectUsageProvenanceAnalyzer.Analyze(inventory);
+        foreach (var expected in root.GetProperty("machineContract").GetProperty("directUsageNegativeControls").EnumerateArray())
+        {
+            var semanticModel = Text(expected, "semanticModel");
+            var table = Text(expected, "table");
+            var objectName = Text(expected, "object");
+            Assert.DoesNotContain(directUsage.Usages, usage => usage.SemanticModel == semanticModel &&
+                usage.Table == table && usage.ObjectName == objectName);
+            var summary = Assert.Single(directUsage.ObjectSummaries, candidate => candidate.SemanticModel == semanticModel &&
+                candidate.Table == table && candidate.ObjectName == objectName);
+            Assert.Equal(Text(expected, "userFacing"), summary.UserFacing);
+        }
+
+        var formattingClassifications = inventory.Reports.Single(report => report.Name == "PbiAssureCoverage")
+            .Pages.SelectMany(page => page.Visuals).SelectMany(visual => visual.PersistedFormatting)
+            .Select(formatting => formatting.Classification).Distinct(StringComparer.Ordinal)
+            .OrderBy(value => value, StringComparer.Ordinal).ToArray();
+        Assert.Equal(Strings(root.GetProperty("machineContract"), "themeFormattingClassifications"),
+            formattingClassifications);
+
         var global = root.GetProperty("globalExpectations");
         var expectedFindings = global.GetProperty("findingRuleMultiplicities").EnumerateObject()
             .Select(property => (RuleId: property.Name, Count: property.Value.GetInt32()))

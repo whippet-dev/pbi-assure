@@ -84,6 +84,14 @@
                   "Property": "ActiveReportMeasure"
                 }
               }
+            },
+            {
+              "field": {
+                "Measure": {
+                  "Expression": { "SourceRef": { "Entity": "Fact" } },
+                  "Property": "ReportRootedUdfMeasure"
+                }
+              }
             }
           ]
         }

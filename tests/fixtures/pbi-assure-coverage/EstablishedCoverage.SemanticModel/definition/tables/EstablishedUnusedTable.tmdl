@@ -1,0 +1,8 @@
+table EstablishedUnusedTable
+	column EstablishedUnusedControl
+		dataType: string
+		sourceColumn: EstablishedUnusedControl
+
+	partition EstablishedUnusedTable = m
+		mode: import
+		source = #table({}, {})

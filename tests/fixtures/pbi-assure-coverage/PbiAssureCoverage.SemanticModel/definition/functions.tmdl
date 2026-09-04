@@ -1,0 +1,1 @@
+function ReportRootedCoverageFunction = () => SUM(Fact[ReportRootedUdfSource])

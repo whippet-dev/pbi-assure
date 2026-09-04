@@ -1,5 +1,0 @@
-role CoverageRole
-	modelPermission: read
-
-	tablePermission Fact = Fact[RlsColumn] = "Allowed"
-		columnPermission OlsColumn = none

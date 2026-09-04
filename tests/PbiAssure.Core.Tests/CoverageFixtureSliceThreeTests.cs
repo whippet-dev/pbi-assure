@@ -15,9 +15,18 @@ public sealed class CoverageFixtureSliceThreeTests
         Assert.Equal(1, principal.FieldParameterCount);
         Assert.Equal(1, principal.CalculationGroupCount);
         Assert.Equal(3, principal.CalculationItemCount);
-        Assert.Equal(1, principal.RoleCount);
+        Assert.Equal(2, principal.RoleCount);
         Assert.Equal(1, principal.PerspectiveCount);
+        Assert.Equal(1, principal.FunctionCount);
         Assert.Equal(2, limited.FunctionCount);
+        var rlsRole = Assert.Single(principal.Roles, role => role.Name == "CoverageRlsRole");
+        var rlsPermission = Assert.Single(rlsRole.TablePermissions);
+        Assert.Equal("[RlsColumn] = \"Allowed\"", rlsPermission.FilterExpression);
+        Assert.Empty(rlsPermission.ColumnPermissions);
+        var olsRole = Assert.Single(principal.Roles, role => role.Name == "CoverageOlsRole");
+        var olsPermission = Assert.Single(olsRole.TablePermissions);
+        Assert.Equal(string.Empty, olsPermission.FilterExpression);
+        Assert.Equal("OlsColumn", Assert.Single(olsPermission.ColumnPermissions).Column);
 
         AssertDependency(inventory, SemanticDependencyKinds.FieldParameter, "Metric Selector", "Metric Selector", "Fact", "DirectlyUsedMeasure");
         AssertDependency(inventory, SemanticDependencyKinds.CalculationGroupItem, "Time Intelligence", "Time Intelligence", "Time Intelligence", "CoverageYTD");
@@ -25,10 +34,12 @@ public sealed class CoverageFixtureSliceThreeTests
         AssertDependency(inventory, SemanticDependencyKinds.Dax, "Fact", "DetailRowsBase", "Fact", "DetailRowsOnly");
         AssertDependency(inventory, SemanticDependencyKinds.IncrementalRefreshPolicy, "Fact", "Fact", "Fact", "RefreshWatermark");
         AssertDependency(inventory, SemanticDependencyKinds.AggregationMapping, "AggregationCoverage", "AggregatedAmount", "Fact", "AggregationDetail");
-        AssertDependency(inventory, SemanticDependencyKinds.TablePermission, string.Empty, "CoverageRole", "Fact", "RlsColumn");
-        AssertDependency(inventory, SemanticDependencyKinds.ObjectLevelPermission, string.Empty, "CoverageRole", "Fact", "OlsColumn");
+        AssertDependency(inventory, SemanticDependencyKinds.TablePermission, string.Empty, "CoverageRlsRole", "Fact", "RlsColumn");
+        AssertDependency(inventory, SemanticDependencyKinds.ObjectLevelPermission, string.Empty, "CoverageOlsRole", "Fact", "OlsColumn");
         AssertDependency(inventory, SemanticDependencyKinds.PerspectiveMember, string.Empty, "CoveragePerspective", "Fact", "PerspectiveOnlyMeasure");
         AssertDependency(inventory, SemanticDependencyKinds.FunctionCall, "CoverageLimited", "UsedUdfConsumer", string.Empty, "UsedCoverageFunction");
+        AssertDependency(inventory, SemanticDependencyKinds.FunctionCall, "Fact", "ReportRootedUdfMeasure", string.Empty, "ReportRootedCoverageFunction");
+        AssertDependency(inventory, SemanticDependencyKinds.Dax, string.Empty, "ReportRootedCoverageFunction", "Fact", "ReportRootedUdfSource");
         AssertDependency(inventory, SemanticDependencyKinds.ReportMeasure, "Fact", "ActiveReportMeasure", "Fact", "ReportMeasureActiveSource");
 
         AssertUsage(inventory, "PbiAssureCoverage", "Fact", "KpiTargetOnly", SemanticUsageStates.IndirectlyUsed);
@@ -38,6 +49,10 @@ public sealed class CoverageFixtureSliceThreeTests
         AssertUsage(inventory, "PbiAssureCoverage", "Fact", "ReportMeasureUnusedSource", SemanticUsageStates.UsedOnlyByUnusedBranch);
         AssertUsage(inventory, "CoverageLimited", "CoverageLimited", "UdfUsedSource", SemanticUsageStates.StructurallyRequired);
         AssertUsage(inventory, "CoverageLimited", "CoverageLimited", "UdfUnusedSource", SemanticUsageStates.UsedOnlyByUnusedBranch);
+        AssertUsage(inventory, "PbiAssureCoverage", "Fact", "ReportRootedUdfMeasure", SemanticUsageStates.DirectlyUsed);
+        AssertUsage(inventory, "PbiAssureCoverage", "Fact", "ReportRootedUdfSource", SemanticUsageStates.IndirectlyUsed);
+        AssertUsage(inventory, "PbiAssureCoverage", "Metric Selector", "Metric Selector Order", SemanticUsageStates.ApparentlyUnused);
+        Assert.Empty(Usage(inventory, "PbiAssureCoverage", "Metric Selector", "Metric Selector Order").DirectReportReferences);
 
         var inactive = principal.Relationships.Single(relationship => relationship.Name == "InactiveRelationship");
         Assert.Equal(SemanticRelationshipActivationStates.ActivatedByReportUsedDax, inactive.Activation?.State);
@@ -67,6 +82,16 @@ public sealed class CoverageFixtureSliceThreeTests
             .ReportMeasures, measure => measure.Name == "UnusedReportMeasure");
         Assert.Single(activeReportMeasure.References);
         Assert.Single(unusedReportMeasure.References);
+        var activeReachability = Assert.Single(inventory.SemanticNodeReachability, node =>
+            node.ObjectType == SemanticObjectTypes.ReportMeasure && node.ObjectName == "ActiveReportMeasure");
+        var unusedReachability = Assert.Single(inventory.SemanticNodeReachability, node =>
+            node.ObjectType == SemanticObjectTypes.ReportMeasure && node.ObjectName == "UnusedReportMeasure");
+        Assert.True(activeReachability.ReachableFromReport);
+        Assert.False(unusedReachability.ReachableFromReport);
+        Assert.Equal(SemanticUsageStates.IndirectlyUsed,
+            Usage(inventory, "PbiAssureCoverage", "Fact", "ReportMeasureActiveSource").UsageState);
+        Assert.Equal(SemanticUsageStates.UsedOnlyByUnusedBranch,
+            Usage(inventory, "PbiAssureCoverage", "Fact", "ReportMeasureUnusedSource").UsageState);
     }
 
     [Fact]
@@ -88,11 +113,23 @@ public sealed class CoverageFixtureSliceThreeTests
         Assert.Equal("theme-outlier", consistency.VisualName);
         Assert.Equal(4, consistency.PeerCount);
         Assert.Equal(3, consistency.DominantCount);
+        var formatting = principal.Pages.SelectMany(page => page.Visuals).SelectMany(visual => visual.PersistedFormatting).ToArray();
+        Assert.Equal(
+            [PersistedFormattingClassifications.DynamicExpression, PersistedFormattingClassifications.NoPersistedValue,
+                PersistedFormattingClassifications.PersistedLiteral],
+            formatting.Select(item => item.Classification).Distinct(StringComparer.Ordinal)
+                .OrderBy(value => value, StringComparer.Ordinal).ToArray());
+        Assert.Contains(formatting, item => item.PropertyKey == "dataPoint.fill" &&
+            item.Classification == PersistedFormattingClassifications.DynamicExpression);
+        Assert.Contains(formatting, item => item.PropertyKey == "title.fontSize" &&
+            item.Classification == PersistedFormattingClassifications.PersistedLiteral);
 
         Assert.Equal(ClassificationConfidences.Established,
-            Usage(inventory, "PbiAssureCoverage", "Fact", "EstablishedUnusedControl").ClassificationConfidence);
+            Usage(inventory, "EstablishedCoverage", "EstablishedUnusedTable", "EstablishedUnusedControl").ClassificationConfidence);
         Assert.Equal(ClassificationConfidences.QualifiedByLimitation,
             Usage(inventory, "CoverageLimited", "CoverageLimited", "QualifiedUnusedControl").ClassificationConfidence);
+        Assert.Equal(ClassificationConfidences.Established,
+            Usage(inventory, "CoverageLimited", "CoverageLimited", "UdfUsedSource").ClassificationConfidence);
         Assert.Contains(inventory.AnalysisLimitations, limitation =>
             limitation.SemanticModel == "CoverageLimited" &&
             limitation.ConstructType == "function" &&
@@ -106,13 +143,21 @@ public sealed class CoverageFixtureSliceThreeTests
 
         var expected = Enumerable.Range(1, 17).Select(number => $"PBI-NAV-{number:000}")
             .Concat(["PBI-ACCESS-001", "PBI-ACCESS-002", "PBI-ACCESS-003", "PBI-ACCESS-004", "PBI-ACCESS-005",
-                "PBI-COMPAT-001", "PBI-COMPAT-002", "PBI-MODEL-002", "PBI-MODEL-003", "PBI-MODEL-004",
+                "PBI-COMPAT-001", "PBI-COMPAT-002", "PBI-MODEL-001", "PBI-MODEL-002", "PBI-MODEL-003", "PBI-MODEL-004",
                 "PBI-MODEL-005", "PBI-QUERY-001", "PBI-QUERY-002", "PBI-SOURCE-001"])
             .OrderBy(ruleId => ruleId, StringComparer.Ordinal)
             .ToArray();
         Assert.Equal(expected, inventory.Findings.Select(finding => finding.RuleId).Distinct()
             .OrderBy(ruleId => ruleId, StringComparer.Ordinal).ToArray());
         Assert.Equal(2, inventory.Findings.Count(finding => finding.RuleId == "PBI-SOURCE-001"));
+        Assert.Single(inventory.Findings, finding =>
+            finding.RuleId == "PBI-SOURCE-001" && finding.ObjectName == "LocalFileQuery");
+        Assert.Single(inventory.Findings, finding =>
+            finding.RuleId == "PBI-SOURCE-001" && finding.ObjectName == "NetworkFileQuery");
+        Assert.Single(inventory.Findings, finding =>
+            finding.RuleId == "PBI-MODEL-001" && finding.Report == "PbiAssureCoverage" &&
+            finding.Page == "main-page" && finding.Visual == "missing-local-object" &&
+            finding.Table == "Fact" && finding.ObjectName == "MissingLocalObject");
         Assert.All(inventory.Findings.Where(finding => finding.RuleId != "PBI-SOURCE-001"), finding =>
             Assert.Equal(1, inventory.Findings.Count(candidate => candidate.RuleId == finding.RuleId)));
     }

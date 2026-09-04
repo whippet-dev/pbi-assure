@@ -27,6 +27,10 @@ table Fact
 		dataType: int64
 		sourceColumn: CalculationItemOnlyColumn
 
+	column ReportRootedUdfSource
+		dataType: int64
+		sourceColumn: ReportRootedUdfSource
+
 	column RelationshipKey
 		dataType: int64
 		sourceColumn: RelationshipKey
@@ -140,10 +144,6 @@ table Fact
 		dataType: string
 		sourceColumn: DetailRowsOnly
 
-	column EstablishedUnusedControl
-		dataType: string
-		sourceColumn: EstablishedUnusedControl
-
 	column UnresolvedSortColumn
 		dataType: string
 		sourceColumn: UnresolvedSortColumn
@@ -177,6 +177,8 @@ table Fact
 	measure ReportMeasureActiveSource = SUM(Fact[BaseAmount])
 
 	measure ReportMeasureUnusedSource = SUM(Fact[UnusedReportMeasureTerminal])
+
+	measure ReportRootedUdfMeasure = ReportRootedCoverageFunction()
 
 	refreshPolicy
 		policyType: basic

@@ -17,6 +17,11 @@ public sealed class CoverageFixtureSliceOneTests
         AssertUsage(inventory, "Fact", "UnusedBranchColumn", SemanticUsageStates.UsedOnlyByUnusedBranch);
         AssertUsage(inventory, "Dimension", "StructurallyRequiredColumn", SemanticUsageStates.StructurallyRequired);
 
+        AssertTableUsage(inventory, "Fact", SemanticUsageStates.DirectlyUsed);
+        AssertTableUsage(inventory, "Dimension", SemanticUsageStates.IndirectlyUsed);
+        AssertTableUsage(inventory, "AggregationCoverage", SemanticUsageStates.StructurallyRequired);
+        AssertTableUsage(inventory, "CalculatedDiagnostic", SemanticUsageStates.ApparentlyUnused);
+
         AssertDependency(inventory, SemanticDependencyKinds.Dax,
             "Fact", "DirectlyUsedMeasure", "Fact", "IndirectlyUsedMeasure");
         AssertDependency(inventory, SemanticDependencyKinds.Dax,
@@ -41,6 +46,10 @@ public sealed class CoverageFixtureSliceOneTests
         AssertQuery(inventory, "UnusedQuery", PowerQueryUsageStates.ApparentlyUnused);
         var dynamicQuery = AssertQuery(inventory, "DynamicQuery", PowerQueryUsageStates.SupportingQuery);
         Assert.True(dynamicQuery.HasDynamicReferences);
+        AssertQueryDependency(inventory, "LoadedFactQuery", PowerQuerySourceKinds.TablePartition,
+            "ReferencedQuery", PowerQuerySourceKinds.NamedExpression);
+        AssertQueryDependency(inventory, "LineageTransformQuery", PowerQuerySourceKinds.NamedExpression,
+            "Fact", PowerQuerySourceKinds.TablePartition);
 
         AssertColumnLineage(inventory, "Fact", "LineageMergeKey", PowerQueryColumnUsageKinds.MergeKey);
         AssertColumnLineage(inventory, "Dimension", "LineageExpandedColumn", PowerQueryColumnUsageKinds.ExpandedColumn);
@@ -49,12 +58,12 @@ public sealed class CoverageFixtureSliceOneTests
         AssertColumnLineage(inventory, "Fact", "LineageRenamedColumn", PowerQueryColumnUsageKinds.RenamedColumn);
         AssertColumnLineage(inventory, "Fact", "LineageTransformedColumn", PowerQueryColumnUsageKinds.TransformedColumn);
 
-        AssertSource(inventory, "LocalFileQuery", DataSourceLocationKinds.LocalFile);
-        AssertSource(inventory, "NetworkFileQuery", DataSourceLocationKinds.NetworkFile);
-        AssertSource(inventory, "RelativeFileQuery", DataSourceLocationKinds.RelativeFile);
-        AssertSource(inventory, "WebSourceQuery", DataSourceLocationKinds.WebAddress);
-        AssertSource(inventory, "NamedServerQuery", DataSourceLocationKinds.NamedServer);
-        AssertSource(inventory, "DynamicSourceQuery", DataSourceLocationKinds.DynamicOrUnspecified);
+        AssertSource(inventory, "LocalFileQuery", "File", DataSourceLocationKinds.LocalFile);
+        AssertSource(inventory, "NetworkFileQuery", "Folder", DataSourceLocationKinds.NetworkFile);
+        AssertSource(inventory, "RelativeFileQuery", "File", DataSourceLocationKinds.RelativeFile);
+        AssertSource(inventory, "WebSourceQuery", "Web", DataSourceLocationKinds.WebAddress);
+        AssertSource(inventory, "NamedServerQuery", "SQL Server", DataSourceLocationKinds.NamedServer);
+        AssertSource(inventory, "DynamicSourceQuery", "File", DataSourceLocationKinds.DynamicOrUnspecified);
 
         AssertReference(inventory, "DirectlyUsedMeasure", UsageContexts.Projection, "main-page", "projection-visual");
         AssertReference(inventory, "VisualFilterOnlyColumn", UsageContexts.Filter, "main-page", "filter-only-visual");
@@ -67,6 +76,13 @@ public sealed class CoverageFixtureSliceOneTests
     {
         var usage = Assert.Single(inventory.SemanticObjectUsages, candidate =>
             candidate.Table == table && candidate.ObjectName == name);
+        Assert.Equal(state, usage.UsageState);
+    }
+
+    private static void AssertTableUsage(ProjectInventory inventory, string table, string state)
+    {
+        var usage = Assert.Single(inventory.SemanticTableUsages, candidate =>
+            candidate.SemanticModel == "PbiAssureCoverage" && candidate.Table == table);
         Assert.Equal(state, usage.UsageState);
     }
 
@@ -93,6 +109,13 @@ public sealed class CoverageFixtureSliceOneTests
         return usage;
     }
 
+    private static void AssertQueryDependency(ProjectInventory inventory, string fromQuery, string fromKind,
+        string toQuery, string toKind) =>
+        Assert.Contains(inventory.PowerQueryDependencies, dependency =>
+            dependency.SemanticModel == "PbiAssureCoverage" &&
+            dependency.FromQueryName == fromQuery && dependency.FromSourceKind == fromKind &&
+            dependency.ToQueryName == toQuery && dependency.ToSourceKind == toKind);
+
     private static void AssertColumnLineage(ProjectInventory inventory, string table, string column, string kind)
     {
         Assert.Contains(inventory.PowerQueryColumnUsages, usage =>
@@ -102,10 +125,10 @@ public sealed class CoverageFixtureSliceOneTests
             usage.UsageKind == kind);
     }
 
-    private static void AssertSource(ProjectInventory inventory, string query, string locationKind)
+    private static void AssertSource(ProjectInventory inventory, string query, string connectorFamily, string locationKind)
     {
         Assert.Contains(inventory.DataSources, source =>
-            source.QueryName == query && source.LocationKind == locationKind);
+            source.QueryName == query && source.ConnectorFamily == connectorFamily && source.LocationKind == locationKind);
     }
 
     private static void AssertReference(

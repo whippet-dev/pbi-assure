@@ -1,0 +1,29 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/visualContainer/2.11.0/schema.json",
+  "name": "missing-local-object",
+  "position": { "x": 950, "y": 290, "z": 8, "height": 180, "width": 280, "tabOrder": 8 },
+  "visual": {
+    "visualType": "card",
+    "query": {
+      "queryState": {
+        "Values": {
+          "projections": [{
+            "field": {
+              "Column": {
+                "Expression": { "SourceRef": { "Entity": "Fact" } },
+                "Property": "MissingLocalObject"
+              }
+            }
+          }]
+        }
+      }
+    },
+    "visualContainerObjects": {
+      "general": [{
+        "properties": {
+          "altText": { "expr": { "Literal": { "Value": "'Missing local semantic object diagnostic'" } } }
+        }
+      }]
+    }
+  }
+}

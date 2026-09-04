@@ -8,7 +8,7 @@
   },
   "globalExpectations": {
     "semanticUsageStates": ["DirectlyUsed", "IndirectlyUsed", "StructurallyRequired", "UsedOnlyByUnusedBranch", "ApparentlyUnused"],
-    "semanticModels": ["CoverageLimited", "PbiAssureCoverage"],
+    "semanticModels": ["CoverageLimited", "EstablishedCoverage", "PbiAssureCoverage"],
     "reports": ["BaseThemeOnly", "Diagnostics", "PbiAssureCoverage"],
     "dependencyKinds": ["AggregationMapping", "CalculationGroupItem", "ContainingTable", "Dax", "FieldParameter", "FunctionCall", "HierarchyLevel", "IncrementalRefreshPolicy", "ObjectLevelPermission", "PerspectiveMember", "RelationshipEndpoint", "ReportMeasure", "SortBy", "TablePermission"],
     "analysisCoverageStates": ["Established", "QualifiedByLimitation", "RecognisedUnverifiedVersion", "VerifiedExact"],
@@ -20,6 +20,7 @@
       "PBI-ACCESS-005": 1,
       "PBI-COMPAT-001": 1,
       "PBI-COMPAT-002": 1,
+      "PBI-MODEL-001": 1,
       "PBI-MODEL-002": 1,
       "PBI-MODEL-003": 1,
       "PBI-MODEL-004": 1,
@@ -64,10 +65,14 @@
       { "semanticModel": "PbiAssureCoverage", "table": "Fact", "object": "AutoDateSource", "state": "StructurallyRequired" },
       { "semanticModel": "PbiAssureCoverage", "table": "Fact", "object": "RlsColumn", "state": "StructurallyRequired" },
       { "semanticModel": "PbiAssureCoverage", "table": "Fact", "object": "OlsColumn", "state": "StructurallyRequired" },
-      { "semanticModel": "CoverageLimited", "table": "CoverageLimited", "object": "UdfUsedSource", "state": "StructurallyRequired" },
       { "semanticModel": "CoverageLimited", "table": "CoverageLimited", "object": "UdfUnusedSource", "state": "UsedOnlyByUnusedBranch" },
-      { "semanticModel": "PbiAssureCoverage", "table": "Fact", "object": "EstablishedUnusedControl", "state": "ApparentlyUnused", "confidence": "Established" },
-      { "semanticModel": "CoverageLimited", "table": "CoverageLimited", "object": "QualifiedUnusedControl", "state": "ApparentlyUnused", "confidence": "QualifiedByLimitation" }
+      { "semanticModel": "CoverageLimited", "table": "CoverageLimited", "object": "UdfUsedSource", "state": "StructurallyRequired", "confidence": "Established" },
+      { "semanticModel": "EstablishedCoverage", "table": "EstablishedUnusedTable", "object": "EstablishedUnusedControl", "state": "ApparentlyUnused", "confidence": "Established" },
+      { "semanticModel": "CoverageLimited", "table": "CoverageLimited", "object": "QualifiedUnusedControl", "state": "ApparentlyUnused", "confidence": "QualifiedByLimitation" },
+      { "semanticModel": "PbiAssureCoverage", "table": "Fact", "object": "ReportRootedUdfMeasure", "state": "DirectlyUsed", "confidence": "Established" },
+      { "semanticModel": "PbiAssureCoverage", "table": "Fact", "object": "ReportRootedUdfSource", "state": "IndirectlyUsed", "confidence": "Established" },
+      { "semanticModel": "PbiAssureCoverage", "table": "Metric Selector", "object": "Metric Selector Order", "state": "ApparentlyUnused" },
+      { "semanticModel": "PbiAssureCoverage", "table": "Fact", "object": "SelectorOnlyColumn", "state": "ApparentlyUnused" }
     ],
     "dependencies": [
       { "semanticModel": "PbiAssureCoverage", "kind": "AggregationMapping", "fromTable": "AggregationCoverage", "fromObject": "AggregatedAmount", "toTable": "Fact", "toObject": "AggregationDetail" },
@@ -81,19 +86,47 @@
       { "semanticModel": "CoverageLimited", "kind": "FunctionCall", "fromTable": "CoverageLimited", "fromObject": "UsedUdfConsumer", "toTable": "", "toObject": "UsedCoverageFunction" },
       { "semanticModel": "PbiAssureCoverage", "kind": "HierarchyLevel", "fromTable": "Fact", "fromObject": "HierarchyLevelOne", "toTable": "Fact", "toObject": "HierarchyColumn" },
       { "semanticModel": "PbiAssureCoverage", "kind": "IncrementalRefreshPolicy", "fromTable": "Fact", "fromObject": "Fact", "toTable": "Fact", "toObject": "RefreshWatermark" },
-      { "semanticModel": "PbiAssureCoverage", "kind": "ObjectLevelPermission", "fromTable": "", "fromObject": "CoverageRole", "toTable": "Fact", "toObject": "OlsColumn" },
+      { "semanticModel": "PbiAssureCoverage", "kind": "ObjectLevelPermission", "fromTable": "", "fromObject": "CoverageOlsRole", "toTable": "Fact", "toObject": "OlsColumn" },
       { "semanticModel": "PbiAssureCoverage", "kind": "PerspectiveMember", "fromTable": "", "fromObject": "CoveragePerspective", "toTable": "Fact", "toObject": "PerspectiveOnlyMeasure" },
       { "semanticModel": "PbiAssureCoverage", "kind": "RelationshipEndpoint", "fromTable": "", "fromObject": "ActiveRelationship", "toTable": "Dimension", "toObject": "StructurallyRequiredColumn" },
       { "semanticModel": "PbiAssureCoverage", "kind": "ReportMeasure", "fromTable": "Fact", "fromObject": "ActiveReportMeasure", "toTable": "Fact", "toObject": "ReportMeasureActiveSource" },
       { "semanticModel": "PbiAssureCoverage", "kind": "SortBy", "fromTable": "Fact", "fromObject": "SortLabel", "toTable": "Fact", "toObject": "SortKey" },
-      { "semanticModel": "PbiAssureCoverage", "kind": "TablePermission", "fromTable": "", "fromObject": "CoverageRole", "toTable": "Fact", "toObject": "RlsColumn" }
+      { "semanticModel": "PbiAssureCoverage", "kind": "TablePermission", "fromTable": "", "fromObject": "CoverageRlsRole", "toTable": "Fact", "toObject": "RlsColumn" },
+      { "semanticModel": "PbiAssureCoverage", "kind": "FunctionCall", "fromTable": "Fact", "fromObject": "ReportRootedUdfMeasure", "toTable": "", "toObject": "ReportRootedCoverageFunction" },
+      { "semanticModel": "PbiAssureCoverage", "kind": "Dax", "fromTable": "", "fromObject": "ReportRootedCoverageFunction", "toTable": "Fact", "toObject": "ReportRootedUdfSource" }
     ],
     "exclusiveIncomingDependencies": [
       { "semanticModel": "PbiAssureCoverage", "kind": "Dax", "fromTable": "Fact", "fromObject": "DirectlyUsedMeasure", "toTable": "Fact", "toObject": "IndirectlyUsedMeasure" },
       { "semanticModel": "PbiAssureCoverage", "kind": "Dax", "fromTable": "Fact", "fromObject": "UnusedBranchMeasure", "toTable": "Fact", "toObject": "UnusedBranchColumn" },
       { "semanticModel": "PbiAssureCoverage", "kind": "Dax", "fromTable": "Fact", "fromObject": "ReportMeasureUnusedSource", "toTable": "Fact", "toObject": "UnusedReportMeasureTerminal" },
       { "semanticModel": "PbiAssureCoverage", "kind": "Dax", "fromTable": "Time Intelligence", "fromObject": "Coverage measure only", "toTable": "Fact", "toObject": "CalculationItemOnlyColumn" }
-    ]
+    ],
+    "semanticTableUsages": [
+      { "semanticModel": "PbiAssureCoverage", "table": "Fact", "state": "DirectlyUsed" },
+      { "semanticModel": "PbiAssureCoverage", "table": "Dimension", "state": "IndirectlyUsed" },
+      { "semanticModel": "PbiAssureCoverage", "table": "AggregationCoverage", "state": "StructurallyRequired" },
+      { "semanticModel": "PbiAssureCoverage", "table": "CalculatedDiagnostic", "state": "ApparentlyUnused" }
+    ],
+    "powerQueryDependencies": [
+      { "semanticModel": "PbiAssureCoverage", "fromQuery": "LoadedFactQuery", "fromSourceKind": "TablePartition", "toQuery": "ReferencedQuery", "toSourceKind": "NamedExpression" },
+      { "semanticModel": "PbiAssureCoverage", "fromQuery": "LineageTransformQuery", "fromSourceKind": "NamedExpression", "toQuery": "Fact", "toSourceKind": "TablePartition" }
+    ],
+    "dataSources": [
+      { "query": "LocalFileQuery", "connectorFamily": "File", "locationKind": "LocalFile" },
+      { "query": "NetworkFileQuery", "connectorFamily": "Folder", "locationKind": "NetworkFile" },
+      { "query": "RelativeFileQuery", "connectorFamily": "File", "locationKind": "RelativeFile" },
+      { "query": "WebSourceQuery", "connectorFamily": "Web", "locationKind": "WebAddress" },
+      { "query": "NamedServerQuery", "connectorFamily": "SQL Server", "locationKind": "NamedServer" },
+      { "query": "DynamicSourceQuery", "connectorFamily": "File", "locationKind": "DynamicOrUnspecified" }
+    ],
+    "reportMeasureReachability": [
+      { "semanticModel": "PbiAssureCoverage", "table": "Fact", "object": "ActiveReportMeasure", "reachableFromReport": true },
+      { "semanticModel": "PbiAssureCoverage", "table": "Fact", "object": "UnusedReportMeasure", "reachableFromReport": false }
+    ],
+    "directUsageNegativeControls": [
+      { "semanticModel": "PbiAssureCoverage", "table": "Fact", "object": "SelectorOnlyColumn", "userFacing": "No" }
+    ],
+    "themeFormattingClassifications": ["DynamicExpression", "NoPersistedValue", "PersistedLiteral"]
   },
   "constructs": [
     {
@@ -663,6 +696,16 @@
       "expectedSurfaces": ["Semantic model", "Report pages"]
     },
     {
+      "id": "SM-FP-CONTROL-01",
+      "name": "Metric Selector Order",
+      "capability": "field-parameter-order-column-negative-control",
+      "expectedUsage": "ApparentlyUnused",
+      "expectedDependencyKinds": [],
+      "expectedDependencyTargets": [],
+      "expectedFindingRuleIds": [],
+      "expectedSurfaces": ["Semantic model"]
+    },
+    {
       "id": "SM-CG-01",
       "name": "Time Intelligence",
       "capability": "calculation-group-and-item-dependencies",
@@ -675,12 +718,22 @@
     {
       "id": "SM-UDF-01",
       "name": "UsedCoverageFunction / UnusedCoverageFunction",
-      "capability": "dax-udf-used-and-unused-branches",
-      "expectedUsage": "StructurallyRequired / UsedOnlyByUnusedBranch",
+      "capability": "dax-udf-inherits-structural-or-unused-caller-reachability",
+      "expectedUsage": "Sources inherit StructurallyRequired or UsedOnlyByUnusedBranch from their callers",
       "expectedDependencyKinds": ["FunctionCall", "Dax"],
       "expectedDependencyTargets": ["UsedCoverageFunction", "CoverageLimited[UdfUsedSource]", "CoverageLimited[UdfUnusedSource]"],
       "expectedFindingRuleIds": [],
       "expectedSurfaces": ["Semantic model", "Analysis coverage"]
+    },
+    {
+      "id": "SM-UDF-02",
+      "name": "ReportRootedCoverageFunction",
+      "capability": "dax-udf-inherits-report-caller-reachability",
+      "expectedUsage": "ReportRootedUdfMeasure DirectlyUsed; ReportRootedUdfSource IndirectlyUsed",
+      "expectedDependencyKinds": ["FunctionCall", "Dax"],
+      "expectedDependencyTargets": ["ReportRootedCoverageFunction", "Fact[ReportRootedUdfSource]"],
+      "expectedFindingRuleIds": [],
+      "expectedSurfaces": ["Semantic model", "Report pages"]
     },
     {
       "id": "SM-KPI-01",
@@ -766,7 +819,7 @@
     },
     {
       "id": "SM-RLS-01",
-      "name": "CoverageRole RLS",
+      "name": "CoverageRlsRole",
       "capability": "row-level-security-dependency",
       "expectedUsage": "StructurallyRequired",
       "expectedDependencyKinds": ["TablePermission"],
@@ -776,7 +829,7 @@
     },
     {
       "id": "SM-OLS-01",
-      "name": "CoverageRole OLS",
+      "name": "CoverageOlsRole",
       "capability": "object-level-security-dependency",
       "expectedUsage": "StructurallyRequired",
       "expectedDependencyKinds": ["ObjectLevelPermission"],
@@ -917,17 +970,17 @@
     },
     {
       "id": "THEME-FORMAT-01",
-      "name": "theme-page title formatting",
-      "capability": "supported-persisted-formatting-inventory",
-      "expectedUsage": "PersistedLiteral",
+      "name": "canonical persisted formatting controls",
+      "capability": "retained-formatting-classifications-currently-proven",
+      "expectedUsage": "DynamicExpression / NoPersistedValue / PersistedLiteral",
       "expectedDependencyKinds": [],
-      "expectedDependencyTargets": ["title.fontSize"],
+      "expectedDependencyTargets": ["dataPoint.fill", "title.fontSize"],
       "expectedFindingRuleIds": [],
       "expectedSurfaces": ["Theme Review", "Report pages"]
     },
     {
       "id": "COV-MODEL-01",
-      "name": "EstablishedUnusedControl",
+      "name": "EstablishedCoverage[EstablishedUnusedControl]",
       "capability": "established-apparently-unused-confidence",
       "expectedUsage": "ApparentlyUnused / Established",
       "expectedDependencyKinds": [],
@@ -964,6 +1017,17 @@
       "expectedDependencyTargets": [],
       "expectedFindingRuleIds": [],
       "expectedSurfaces": ["Analysis coverage"]
+    },
+    {
+      "id": "FIND-MODEL-01",
+      "name": "missing-local-object",
+      "capability": "unresolved-local-model-object-reference",
+      "expectedUsage": null,
+      "expectedDependencyKinds": [],
+      "expectedDependencyTargets": ["Fact[MissingLocalObject]"],
+      "expectedFindingRuleIds": ["PBI-MODEL-001"],
+      "expectedFindingMultiplicities": { "PBI-MODEL-001": 1 },
+      "expectedSurfaces": ["Findings", "Report pages"]
     }
   ]
 }
