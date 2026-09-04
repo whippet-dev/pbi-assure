@@ -1,4 +1,5 @@
 {
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/visualContainer/2.11.0/schema.json",
   "name": "hidden-access-group",
   "isHidden": true,
   "position": { "x": 420, "y": 220, "tabOrder": 3 },

@@ -1,4 +1,5 @@
 {
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/page/2.1.0/schema.json",
   "name": "drillthrough-missing-filter",
   "displayName": "Missing drillthrough filter diagnostic",
   "pageBinding": {

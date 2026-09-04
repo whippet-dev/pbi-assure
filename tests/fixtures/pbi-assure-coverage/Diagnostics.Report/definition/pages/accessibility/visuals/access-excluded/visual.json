@@ -1,4 +1,5 @@
 {
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/visualContainer/2.11.0/schema.json",
   "name": "access-excluded",
   "position": { "x": 20, "y": 220, "tabOrder": -1 },
   "visual": { "visualType": "card" }

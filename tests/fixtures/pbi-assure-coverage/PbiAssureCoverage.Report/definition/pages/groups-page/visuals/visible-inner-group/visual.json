@@ -1,4 +1,5 @@
 {
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/visualContainer/2.11.0/schema.json",
   "name": "visible-inner-group",
   "parentGroupName": "visible-outer-group",
   "position": { "x": 20, "y": 20, "z": 0, "height": 180, "width": 300, "tabOrder": 0 },

@@ -1,4 +1,5 @@
 {
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/bookmark/2.1.0/schema.json",
   "name": "BrokenPageBookmark",
   "displayName": "Broken page bookmark",
   "explorationState": { "activeSection": "missing-bookmark-page" }

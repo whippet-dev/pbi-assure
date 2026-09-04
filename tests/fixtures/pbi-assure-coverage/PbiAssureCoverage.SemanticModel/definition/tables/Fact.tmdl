@@ -19,6 +19,14 @@ table Fact
 		dataType: int64
 		sourceColumn: UnusedBranchColumn
 
+	column UnusedReportMeasureTerminal
+		dataType: int64
+		sourceColumn: UnusedReportMeasureTerminal
+
+	column CalculationItemOnlyColumn
+		dataType: int64
+		sourceColumn: CalculationItemOnlyColumn
+
 	column RelationshipKey
 		dataType: int64
 		sourceColumn: RelationshipKey
@@ -168,7 +176,7 @@ table Fact
 
 	measure ReportMeasureActiveSource = SUM(Fact[BaseAmount])
 
-	measure ReportMeasureUnusedSource = SUM(Fact[UnusedBranchColumn])
+	measure ReportMeasureUnusedSource = SUM(Fact[UnusedReportMeasureTerminal])
 
 	refreshPolicy
 		policyType: basic

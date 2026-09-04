@@ -7,7 +7,7 @@ table 'Time Intelligence'
 		calculationItem CoverageYTD = CALCULATE(SELECTEDMEASURE(), Fact[BaseAmount])
 			ordinal: 1
 
-		calculationItem 'Coverage measure only' = IF(ISSELECTEDMEASURE([IndirectlyUsedMeasure]), SELECTEDMEASURE())
+		calculationItem 'Coverage measure only' = CALCULATE(SELECTEDMEASURE(), Fact[CalculationItemOnlyColumn])
 			ordinal: 2
 
 	column 'Time Calculation'
