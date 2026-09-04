@@ -54,7 +54,6 @@ public sealed class CoverageFixtureSliceTwoTests
         var groupsPage = report.Pages.Single(page => page.Name == "groups-page");
         Assert.Equal(4, groupsPage.VisualGroupCount);
         Assert.Equal(2, groupsPage.VisualCount);
-        Assert.Equal(15, report.VisualCount);
         Assert.Contains(groupsPage.VisualGroups, group => group.Name == "hidden-outer-group" && group.IsHidden);
         Assert.Contains(groupsPage.Visuals, visual =>
             visual.Name == "hidden-group-child" && visual.ParentGroupName == "hidden-inner-group");

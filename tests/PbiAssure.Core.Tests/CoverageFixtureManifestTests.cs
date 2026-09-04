@@ -27,10 +27,10 @@ public sealed class CoverageFixtureManifestTests
             var usage = Assert.Single(inventory.SemanticObjectUsages, candidate =>
                 candidate.SemanticModel == semanticModel && candidate.Table == table && candidate.ObjectName == objectName);
             Assert.Equal(Text(expected, "state"), usage.UsageState);
-            if (expected.TryGetProperty("confidence", out var confidence))
-            {
-                Assert.Equal(confidence.GetString(), usage.ClassificationConfidence);
-            }
+            var expectedConfidence = Text(expected, "confidence");
+            Assert.True(expectedConfidence == usage.ClassificationConfidence,
+                $"Expected {semanticModel}/{table}/{objectName} confidence '{expectedConfidence}', " +
+                $"but found '{usage.ClassificationConfidence}'.");
         }
 
         foreach (var expected in root.GetProperty("machineContract").GetProperty("dependencies").EnumerateArray())
@@ -104,6 +104,7 @@ public sealed class CoverageFixtureManifestTests
             Assert.Equal(Text(expected, "userFacing"), summary.UserFacing);
         }
 
+        // Formatting contract equality is intentionally scoped to the principal report.
         var formattingClassifications = inventory.Reports.Single(report => report.Name == "PbiAssureCoverage")
             .Pages.SelectMany(page => page.Visuals).SelectMany(visual => visual.PersistedFormatting)
             .Select(formatting => formatting.Classification).Distinct(StringComparer.Ordinal)
@@ -127,14 +128,20 @@ public sealed class CoverageFixtureManifestTests
             inventory.SemanticDependencies.Select(dependency => dependency.DependencyKind)
                 .Distinct(StringComparer.Ordinal).OrderBy(value => value, StringComparer.Ordinal).ToArray());
 
-        var emittedCoverageStates = inventory.SemanticObjectUsages
+        var classificationConfidences = inventory.SemanticObjectUsages
             .Select(usage => usage.ClassificationConfidence)
-            .Concat(inventory.Reports.SelectMany(report => report.SchemaObservations).Select(observation => observation.State))
             .Distinct(StringComparer.Ordinal)
             .OrderBy(value => value, StringComparer.Ordinal)
             .ToArray();
-        Assert.Equal(Strings(global, "analysisCoverageStates"), emittedCoverageStates);
-        Assert.DoesNotContain(inventory.Reports.SelectMany(report => report.SchemaObservations), observation =>
+        Assert.Equal(Strings(global, "classificationConfidences"), classificationConfidences);
+
+        var reportSchemaObservations = inventory.Reports.SelectMany(report => report.SchemaObservations).ToArray();
+        var reportSchemaObservationStates = reportSchemaObservations.Select(observation => observation.State)
+            .Distinct(StringComparer.Ordinal)
+            .OrderBy(value => value, StringComparer.Ordinal)
+            .ToArray();
+        Assert.Equal(Strings(global, "reportSchemaObservationStates"), reportSchemaObservationStates);
+        Assert.DoesNotContain(reportSchemaObservations, observation =>
             observation.State == ReportSchemaObservationStates.MetadataMissing);
     }
 
