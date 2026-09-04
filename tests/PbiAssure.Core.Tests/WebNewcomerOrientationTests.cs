@@ -1,5 +1,3 @@
-using System.Text.RegularExpressions;
-
 namespace PbiAssure.Core.Tests;
 
 public sealed class WebNewcomerOrientationTests
@@ -33,7 +31,7 @@ public sealed class WebNewcomerOrientationTests
         Assert.Contains("<h1 id=\"about-title\" tabindex=\"-1\">What PBI Assure does</h1>", about, StringComparison.Ordinal);
         foreach (var heading in new[] { "What is PBI Assure?", "What can it help me understand?", "What does it analyse?", "What do I get after a scan?", "Typical workflow", "Important limitations", "Privacy and read-only analysis" })
         {
-            Assert.Contains($">{heading}</h2>", about, StringComparison.Ordinal);
+            Assert.Contains($">{heading}</h3>", about, StringComparison.Ordinal);
         }
 
         foreach (var fact in new[] { "Interactive HTML report", "Start here", "Data Catalogue CSV", "Usage Mapping CSV", "zero detected usage", "optional metadata such as Description", "one row per logical direct report usage", "legacy technical/compatibility export", "Apparently unused does not mean safe to delete", "not a WCAG compliance verdict", "partial or version-specific coverage", "does not validate runtime data correctness", "directly used does not automatically mean Yes", "No means no qualifying evidence was found", "application-managed persistent browser storage", "secure memory deletion is not guaranteed", "normal site/runtime requests", "static same-origin viewer shell", "ordinary request metadata", "after the application has loaded", "PRIVACY.md" })
@@ -69,29 +67,44 @@ public sealed class WebNewcomerOrientationTests
     }
 
     /// <summary>
-    /// index.html sets <c>&lt;base href="/"&gt;</c>, so a fragment-only href resolves against the site
-    /// root rather than the current address: <c>#outputs</c> means <c>/#outputs</c>, which is Analyse.
-    /// Every jump link must name its own route, and every one must point at a section that exists.
+    /// About is a tab surface, not a scrolling document. Two things have to stay true for it to
+    /// behave that way. Its tabs must be buttons, because an anchor would navigate — and with
+    /// <c>&lt;base href="/"&gt;</c> in index.html a fragment-only anchor resolves to the site root,
+    /// which is how the previous jump list sent readers to Analyse. And no tab fragment may match an
+    /// id on the page, because opening /about#outputs would then scroll the heading out of view.
     /// </summary>
     [Fact]
-    public void InformationPageJumpLinksStayOnTheInformationRoute()
+    public void InformationPageTabsSwitchViewsWithoutNavigatingOrScrolling()
     {
         var about = ReadWeb("Pages/About.razor");
-        var contents = ExtractBetween(about, "<nav class=\"page-contents\"", "</nav>");
-        var targets = Regex.Matches(contents, "href=\"(?<href>[^\"]+)\"")
-            .Select(match => match.Groups["href"].Value)
-            .ToArray();
+        var tablist = ExtractBetween(about, "role=\"tablist\"", "</div>");
 
-        Assert.NotEmpty(targets);
-        foreach (var target in targets)
+        Assert.Contains("role=\"tab\"", tablist, StringComparison.Ordinal);
+        Assert.DoesNotContain("<a ", tablist, StringComparison.Ordinal);
+        Assert.DoesNotContain("href", tablist, StringComparison.Ordinal);
+        Assert.Contains("aria-selected=", tablist, StringComparison.Ordinal);
+        Assert.Contains("aria-controls=", tablist, StringComparison.Ordinal);
+        Assert.Contains("role=\"tabpanel\"", about, StringComparison.Ordinal);
+
+        foreach (var (field, fragment, label) in AboutTabs)
         {
-            Assert.StartsWith("about#", target, StringComparison.Ordinal);
-            Assert.DoesNotContain("/#", target, StringComparison.Ordinal);
-            Assert.Contains($"id=\"{target["about#".Length..]}\"", about, StringComparison.Ordinal);
+            Assert.Contains($"new(\"{fragment}\", \"{label}\")", about, StringComparison.Ordinal);
+            Assert.DoesNotContain($"id=\"{fragment}\"", about, StringComparison.Ordinal);
+            // Each panel prints its own tab's label, so the heading can never drift from the tab.
+            Assert.Contains($"<h2>@{field}.Label</h2>", about, StringComparison.Ordinal);
+            Assert.Contains($"id=\"@PanelId({field})\"", about, StringComparison.Ordinal);
         }
 
         Assert.Contains("<base href=\"/\" />", ReadWeb("wwwroot/index.html"), StringComparison.Ordinal);
     }
+
+    private static readonly (string Field, string Fragment, string Label)[] AboutTabs =
+    [
+        ("Overview", "overview", "Overview"),
+        ("Analysis", "analysis", "Analysis"),
+        ("Outputs", "outputs", "Outputs"),
+        ("Trust", "trust", "Trust & limits"),
+    ];
 
     private static string ExtractBetween(string value, string start, string end)
     {
