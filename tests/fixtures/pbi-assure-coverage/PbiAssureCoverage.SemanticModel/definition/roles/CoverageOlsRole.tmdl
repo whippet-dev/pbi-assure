@@ -3,3 +3,6 @@ role CoverageOlsRole
 
 	tablePermission Fact
 		columnPermission OlsColumn = none
+
+	tablePermission TableOlsProtected
+		metadataPermission: none

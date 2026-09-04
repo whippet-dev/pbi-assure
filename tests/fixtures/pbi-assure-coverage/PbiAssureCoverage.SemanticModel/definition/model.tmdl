@@ -11,3 +11,4 @@ ref table 'Metric Selector'
 ref table 'Time Intelligence'
 ref table AggregationCoverage
 ref table LocalDateTable_Coverage
+ref table TableOlsProtected

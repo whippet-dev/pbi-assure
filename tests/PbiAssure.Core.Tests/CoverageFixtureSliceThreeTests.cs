@@ -24,9 +24,13 @@ public sealed class CoverageFixtureSliceThreeTests
         Assert.Equal("[RlsColumn] = \"Allowed\"", rlsPermission.FilterExpression);
         Assert.Empty(rlsPermission.ColumnPermissions);
         var olsRole = Assert.Single(principal.Roles, role => role.Name == "CoverageOlsRole");
-        var olsPermission = Assert.Single(olsRole.TablePermissions);
-        Assert.Equal(string.Empty, olsPermission.FilterExpression);
-        Assert.Equal("OlsColumn", Assert.Single(olsPermission.ColumnPermissions).Column);
+        var columnOlsPermission = Assert.Single(olsRole.TablePermissions, permission => permission.Table == "Fact");
+        Assert.Equal(string.Empty, columnOlsPermission.FilterExpression);
+        Assert.Null(columnOlsPermission.MetadataPermission);
+        Assert.Equal("OlsColumn", Assert.Single(columnOlsPermission.ColumnPermissions).Column);
+        var tableOlsPermission = Assert.Single(olsRole.TablePermissions, permission => permission.Table == "TableOlsProtected");
+        Assert.Equal("none", tableOlsPermission.MetadataPermission);
+        Assert.Empty(tableOlsPermission.ColumnPermissions);
 
         AssertDependency(inventory, SemanticDependencyKinds.FieldParameter, "Metric Selector", "Metric Selector", "Fact", "DirectlyUsedMeasure");
         AssertDependency(inventory, SemanticDependencyKinds.CalculationGroupItem, "Time Intelligence", "Time Intelligence", "Time Intelligence", "CoverageYTD");
@@ -36,6 +40,7 @@ public sealed class CoverageFixtureSliceThreeTests
         AssertDependency(inventory, SemanticDependencyKinds.AggregationMapping, "AggregationCoverage", "AggregatedAmount", "Fact", "AggregationDetail");
         AssertDependency(inventory, SemanticDependencyKinds.TablePermission, string.Empty, "CoverageRlsRole", "Fact", "RlsColumn");
         AssertDependency(inventory, SemanticDependencyKinds.ObjectLevelPermission, string.Empty, "CoverageOlsRole", "Fact", "OlsColumn");
+        AssertDependency(inventory, SemanticDependencyKinds.ObjectLevelPermission, string.Empty, "CoverageOlsRole", "TableOlsProtected", "TableOlsProtected");
         AssertDependency(inventory, SemanticDependencyKinds.PerspectiveMember, string.Empty, "CoveragePerspective", "Fact", "PerspectiveOnlyMeasure");
         AssertDependency(inventory, SemanticDependencyKinds.FunctionCall, "CoverageLimited", "UsedUdfConsumer", string.Empty, "UsedCoverageFunction");
         AssertDependency(inventory, SemanticDependencyKinds.FunctionCall, "Fact", "ReportRootedUdfMeasure", string.Empty, "ReportRootedCoverageFunction");
@@ -53,6 +58,14 @@ public sealed class CoverageFixtureSliceThreeTests
         AssertUsage(inventory, "PbiAssureCoverage", "Fact", "ReportRootedUdfSource", SemanticUsageStates.IndirectlyUsed);
         AssertUsage(inventory, "PbiAssureCoverage", "Metric Selector", "Metric Selector Order", SemanticUsageStates.ApparentlyUnused);
         Assert.Empty(Usage(inventory, "PbiAssureCoverage", "Metric Selector", "Metric Selector Order").DirectReportReferences);
+        Assert.Equal(SemanticUsageStates.StructurallyRequired,
+            Assert.Single(inventory.SemanticTableUsages, usage => usage.SemanticModel == "PbiAssureCoverage" &&
+                usage.Table == "TableOlsProtected").UsageState);
+        AssertUsage(inventory, "PbiAssureCoverage", "TableOlsProtected", "UnrelatedColumn", SemanticUsageStates.ApparentlyUnused);
+        var provenance = DirectUsageProvenanceAnalyzer.Analyze(inventory);
+        Assert.Equal(UserFacingStates.No,
+            Assert.Single(provenance.ObjectSummaries, summary => summary.SemanticModel == "PbiAssureCoverage" &&
+                summary.Table == "TableOlsProtected" && summary.ObjectName == "UnrelatedColumn").UserFacing);
 
         var inactive = principal.Relationships.Single(relationship => relationship.Name == "InactiveRelationship");
         Assert.Equal(SemanticRelationshipActivationStates.ActivatedByReportUsedDax, inactive.Activation?.State);

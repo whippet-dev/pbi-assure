@@ -1,0 +1,8 @@
+table TableOlsProtected
+	column UnrelatedColumn
+		dataType: string
+		sourceColumn: UnrelatedColumn
+
+	partition TableOlsProtected = m
+		mode: import
+		source = #table(type table [UnrelatedColumn = text], {{"Protected table control"}})

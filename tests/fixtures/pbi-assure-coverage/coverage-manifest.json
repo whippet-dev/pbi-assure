@@ -66,6 +66,7 @@
       { "semanticModel": "PbiAssureCoverage", "table": "Fact", "object": "AutoDateSource", "state": "StructurallyRequired", "confidence": "Established" },
       { "semanticModel": "PbiAssureCoverage", "table": "Fact", "object": "RlsColumn", "state": "StructurallyRequired", "confidence": "Established" },
       { "semanticModel": "PbiAssureCoverage", "table": "Fact", "object": "OlsColumn", "state": "StructurallyRequired", "confidence": "Established" },
+      { "semanticModel": "PbiAssureCoverage", "table": "TableOlsProtected", "object": "UnrelatedColumn", "state": "ApparentlyUnused", "confidence": "QualifiedByLimitation" },
       { "semanticModel": "CoverageLimited", "table": "CoverageLimited", "object": "UdfUnusedSource", "state": "UsedOnlyByUnusedBranch", "confidence": "QualifiedByLimitation" },
       { "semanticModel": "CoverageLimited", "table": "CoverageLimited", "object": "UdfUsedSource", "state": "StructurallyRequired", "confidence": "Established" },
       { "semanticModel": "EstablishedCoverage", "table": "EstablishedUnusedTable", "object": "EstablishedUnusedControl", "state": "ApparentlyUnused", "confidence": "Established" },
@@ -94,6 +95,7 @@
       { "semanticModel": "PbiAssureCoverage", "kind": "HierarchyLevel", "fromTable": "Fact", "fromObject": "HierarchyLevelOne", "toTable": "Fact", "toObject": "HierarchyColumn" },
       { "semanticModel": "PbiAssureCoverage", "kind": "IncrementalRefreshPolicy", "fromTable": "Fact", "fromObject": "Fact", "toTable": "Fact", "toObject": "RefreshWatermark" },
       { "semanticModel": "PbiAssureCoverage", "kind": "ObjectLevelPermission", "fromTable": "", "fromObject": "CoverageOlsRole", "toTable": "Fact", "toObject": "OlsColumn" },
+      { "semanticModel": "PbiAssureCoverage", "kind": "ObjectLevelPermission", "fromTable": "", "fromObject": "CoverageOlsRole", "toTable": "TableOlsProtected", "toObject": "TableOlsProtected" },
       { "semanticModel": "PbiAssureCoverage", "kind": "PerspectiveMember", "fromTable": "", "fromObject": "CoveragePerspective", "toTable": "Fact", "toObject": "PerspectiveOnlyMeasure" },
       { "semanticModel": "PbiAssureCoverage", "kind": "RelationshipEndpoint", "fromTable": "", "fromObject": "ActiveRelationship", "toTable": "Dimension", "toObject": "StructurallyRequiredColumn" },
       { "semanticModel": "PbiAssureCoverage", "kind": "ReportMeasure", "fromTable": "Fact", "fromObject": "ActiveReportMeasure", "toTable": "Fact", "toObject": "ReportMeasureActiveSource" },
@@ -115,7 +117,8 @@
       { "semanticModel": "PbiAssureCoverage", "table": "Fact", "state": "DirectlyUsed" },
       { "semanticModel": "PbiAssureCoverage", "table": "Dimension", "state": "IndirectlyUsed" },
       { "semanticModel": "PbiAssureCoverage", "table": "AggregationCoverage", "state": "StructurallyRequired" },
-      { "semanticModel": "PbiAssureCoverage", "table": "CalculatedDiagnostic", "state": "ApparentlyUnused" }
+      { "semanticModel": "PbiAssureCoverage", "table": "CalculatedDiagnostic", "state": "ApparentlyUnused" },
+      { "semanticModel": "PbiAssureCoverage", "table": "TableOlsProtected", "state": "StructurallyRequired" }
     ],
     "powerQueryDependencies": [
       { "semanticModel": "PbiAssureCoverage", "fromQuery": "LoadedFactQuery", "fromSourceKind": "TablePartition", "toQuery": "ReferencedQuery", "toSourceKind": "NamedExpression" },
@@ -135,7 +138,8 @@
       { "semanticModel": "ReportMeasureLimited", "table": "ReportMeasureLimitedTable", "object": "ExpressionDependencyReportMeasure", "reachableFromReport": true }
     ],
     "directUsageNegativeControls": [
-      { "semanticModel": "PbiAssureCoverage", "table": "Fact", "object": "SelectorOnlyColumn", "userFacing": "No" }
+      { "semanticModel": "PbiAssureCoverage", "table": "Fact", "object": "SelectorOnlyColumn", "userFacing": "No" },
+      { "semanticModel": "PbiAssureCoverage", "table": "TableOlsProtected", "object": "UnrelatedColumn", "userFacing": "No" }
     ],
     "themeFormattingClassifications": ["DynamicExpression", "NoPersistedValue", "PersistedLiteral"],
     "analysisLimitations": [
@@ -867,6 +871,16 @@
       "documentedDependencyTargets": ["Fact[OlsColumn]"],
       "documentedFindingRuleIds": [],
       "documentedSurfaces": ["Semantic model"]
+    },
+    {
+      "id": "SM-OLS-02",
+      "name": "TableOlsProtected",
+      "capability": "table-level-object-security-dependency",
+      "documentedUsage": "Table StructurallyRequired; child column ApparentlyUnused",
+      "documentedDependencyKinds": ["ObjectLevelPermission"],
+      "documentedDependencyTargets": ["TableOlsProtected"],
+      "documentedFindingRuleIds": [],
+      "documentedSurfaces": ["Semantic model", "Security roles"]
     },
     {
       "id": "SM-PERSP-01",

@@ -55,17 +55,41 @@ public sealed class ObjectLevelSecurityTests
     }
 
     [Fact]
-    public void TableLevelOlsDoesNotCreateDependenciesForEveryColumn()
+    public void TableLevelOlsMakesOnlyTheProtectedTableStructurallyRequired()
     {
         var inventory = ScanDesktopFixture();
 
+        Assert.Equal(
+            SemanticUsageStates.StructurallyRequired,
+            Assert.Single(inventory.SemanticTableUsages, item => item.Table == "Confidential").UsageState);
         Assert.All(
             inventory.SemanticObjectUsages.Where(item => item.Table == "Confidential"),
             usage => Assert.Equal(SemanticUsageStates.ApparentlyUnused, usage.UsageState));
-        Assert.DoesNotContain(inventory.SemanticDependencies, edge =>
-            edge.DependencyKind == SemanticDependencyKinds.ObjectLevelPermission && edge.ToTable == "Confidential");
+        var dependency = Assert.Single(inventory.SemanticDependencies, edge =>
+            edge.DependencyKind == SemanticDependencyKinds.ObjectLevelPermission &&
+            edge.FromObjectName == "RestrictedViewer" &&
+            edge.ToTable == "Confidential");
+        Assert.Equal(SemanticObjectTypes.Table, dependency.ToObjectType);
+        Assert.Equal("Confidential", dependency.ToObjectName);
         Assert.DoesNotContain(inventory.Findings, finding =>
             finding.Message.Contains("object-level security", StringComparison.OrdinalIgnoreCase));
+    }
+
+    [Fact]
+    public void AbsentTableMetadataPermissionDoesNotCreateATableOlsRoot()
+    {
+        var inventory = Scan("""
+            role Reader
+                tablePermission Confidential
+            """);
+
+        var permission = Assert.Single(Assert.Single(inventory.SemanticModels).Roles).TablePermissions.Single();
+        Assert.Null(permission.MetadataPermission);
+        Assert.Equal(
+            SemanticUsageStates.ApparentlyUnused,
+            Assert.Single(inventory.SemanticTableUsages, item => item.Table == "Confidential").UsageState);
+        Assert.DoesNotContain(inventory.SemanticDependencies, edge =>
+            edge.DependencyKind == SemanticDependencyKinds.ObjectLevelPermission && edge.ToTable == "Confidential");
     }
 
     [Fact]

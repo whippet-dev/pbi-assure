@@ -1212,8 +1212,9 @@ internal static class SemanticDependencyAnalyzer
     /// mechanism relationship endpoints use, so ordinary traversal produces the classification rather
     /// than any RLS-specific rule.
     ///
-    /// Row-level filters and explicitly named column-level object permissions are interpreted. Other
-    /// role content is not, which is why roles remain partially analysed in the definition-file registry.
+    /// Row-level filters, restrictive table-level metadata permissions and explicitly named column-level
+    /// object permissions are interpreted. Other role content is not, which is why roles remain partially
+    /// analysed in the definition-file registry.
     /// </summary>
     private static void AnalyzeRoles(
         SemanticModelInventory model,
@@ -1253,6 +1254,19 @@ internal static class SemanticDependencyAnalyzer
                         dependencies,
                         unresolved,
                         structuralRoots);
+                }
+
+                if (string.Equals(permission.MetadataPermission?.Trim(), "none", StringComparison.OrdinalIgnoreCase))
+                {
+                    var target = Target(permission.Table, permission.Table, SemanticObjectTypes.Table);
+                    dependencies.Add(CreateEdge(
+                        model.Name,
+                        source,
+                        target,
+                        SemanticDependencyKinds.ObjectLevelPermission,
+                        role.RelativePath,
+                        $"{permission.Table} metadataPermission = {permission.MetadataPermission}"));
+                    structuralRoots.Add(NodeKey(model.Name, target));
                 }
 
                 foreach (var columnPermission in permission.ColumnPermissions)
