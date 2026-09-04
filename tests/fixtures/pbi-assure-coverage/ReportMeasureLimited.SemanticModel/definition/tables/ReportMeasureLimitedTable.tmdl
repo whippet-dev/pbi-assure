@@ -1,0 +1,14 @@
+table ReportMeasureLimitedTable
+	column ExpressionOnlyColumn
+		dataType: int64
+		sourceColumn: ExpressionOnlyColumn
+
+	column UnrecognizedUnusedControl
+		dataType: int64
+		sourceColumn: UnrecognizedUnusedControl
+
+	measure DeclaredMeasure = 1
+
+	partition ReportMeasureLimitedTable = m
+		mode: import
+		source = #table({}, {})

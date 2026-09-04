@@ -1,0 +1,22 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/reportExtension/1.0.0/schema.json",
+  "name": "report-measure-expression-coverage",
+  "entities": [
+    {
+      "name": "ReportMeasureLimitedTable",
+      "measures": [
+        {
+          "name": "ExpressionDependencyReportMeasure",
+          "dataType": "Decimal",
+          "expression": "ReportMeasureLimitedTable[ExpressionOnlyColumn] + [DeclaredMeasure]",
+          "references": {
+            "unrecognizedReferences": true,
+            "measures": [
+              { "entity": "ReportMeasureLimitedTable", "name": "DeclaredMeasure" }
+            ]
+          }
+        }
+      ]
+    }
+  ]
+}

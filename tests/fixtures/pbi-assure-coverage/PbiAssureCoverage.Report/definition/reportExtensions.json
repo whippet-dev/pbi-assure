@@ -17,7 +17,7 @@
         {
           "name": "UnusedReportMeasure",
           "dataType": "Decimal",
-          "expression": "[ReportMeasureUnusedSource]",
+          "expression": "[ReportMeasureUnusedSource] + SUM(Fact[UnusedReportExpressionOnlyColumn])",
           "references": {
             "unrecognizedReferences": false,
             "measures": [{ "entity": "Fact", "name": "ReportMeasureUnusedSource" }]

@@ -135,5 +135,30 @@ internal static class AnalysisLimitationDetector
                 Concerns: rule.Concerns,
                 Reason: rule.Reason);
         }
+
+        if (report is null)
+        {
+            yield break;
+        }
+
+        foreach (var measure in report.ReportMeasures.Where(measure => measure.HasUnrecognizedReferences))
+        {
+            yield return new AnalysisLimitation(
+                LimitationId: "PBI-LIMIT-REPORT-MEASURE-REFERENCES",
+                Cause: AnalysisLimitationCauses.DependencyMetadataIncomplete,
+                SupportState: ConstructSupportStates.PartiallyAnalyzed,
+                ConstructType: "reportMeasure",
+                Scope: AnalysisLimitationScopes.Report,
+                SemanticModel: semanticModel,
+                Table: measure.Entity,
+                ObjectName: measure.Name,
+                ArtifactPath: measure.RelativePath,
+                EvidencePath: "$.entities[].measures[].references.unrecognizedReferences",
+                DependencyImpact: ConstructDependencyImpacts.MayCreateDependencies,
+                Concerns: [AnalysisConcerns.Dependency],
+                Reason: $"Report measure '{measure.Entity}[{measure.Name}]' declares that its persisted " +
+                        "reference list is incomplete. Its DAX expression is analysed, but additional " +
+                        "dependencies may still be absent from the report metadata.");
+        }
     }
 }

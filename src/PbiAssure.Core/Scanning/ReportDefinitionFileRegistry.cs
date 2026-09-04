@@ -41,7 +41,7 @@ internal static class ReportDefinitionFileRegistry
             ReportDefinitionFileMatch.ExactPath, "PBIR version metadata is analysed."),
         Analyzed("PBI-LIMIT-REPORT-EXTENSION", "reportExtension", "definition/reportExtensions.json",
             ReportDefinitionFileMatch.ExactPath,
-            "Report measures and their persisted semantic-reference metadata are analysed."),
+            "Report-measure DAX expressions and persisted semantic-reference metadata are analysed."),
         Analyzed("PBI-LIMIT-REPORT-PAGES", "pagesMetadata", "definition/pages/pages.json",
             ReportDefinitionFileMatch.ExactPath, "Page ordering and landing-page metadata are analysed."),
         Analyzed("PBI-LIMIT-REPORT-PAGE", "pageDefinition", "definition/pages/*/page.json",

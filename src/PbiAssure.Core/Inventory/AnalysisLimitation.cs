@@ -10,6 +10,9 @@ public static class AnalysisLimitationCauses
 
     /// <summary>The construct was present but could not be parsed. Not yet emitted; see the design note on this file.</summary>
     public const string ParseFailed = "ParseFailed";
+
+    /// <summary>The persisted artifact explicitly states that its dependency metadata is incomplete.</summary>
+    public const string DependencyMetadataIncomplete = "DependencyMetadataIncomplete";
 }
 
 /// <summary>

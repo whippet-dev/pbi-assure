@@ -1,0 +1,33 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/visualContainer/2.11.0/schema.json",
+  "name": "expression-measure-visual",
+  "position": { "x": 20, "y": 20, "z": 0, "height": 160, "width": 300, "tabOrder": 0 },
+  "visual": {
+    "visualType": "card",
+    "query": {
+      "queryState": {
+        "Values": {
+          "projections": [
+            {
+              "field": {
+                "Measure": {
+                  "Expression": { "SourceRef": { "Entity": "ReportMeasureLimitedTable" } },
+                  "Property": "ExpressionDependencyReportMeasure"
+                }
+              }
+            }
+          ]
+        }
+      }
+    },
+    "visualContainerObjects": {
+      "general": [
+        {
+          "properties": {
+            "altText": { "expr": { "Literal": { "Value": "'Report measure expression coverage'" } } }
+          }
+        }
+      ]
+    }
+  }
+}

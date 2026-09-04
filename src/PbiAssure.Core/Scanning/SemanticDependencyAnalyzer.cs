@@ -87,6 +87,7 @@ internal static class SemanticDependencyAnalyzer
 
             var modelUsages = usages.Where(usage =>
                 string.Equals(usage.SemanticModel, model.Name, StringComparison.OrdinalIgnoreCase)).ToArray();
+            var modelLookup = new ModelLookup(model, modelUsages);
             var modelMeasures = modelUsages
                 .Where(usage => usage.ObjectType == SemanticObjectTypes.Measure)
                 .ToDictionary(usage => QualifiedKey(usage.Table, usage.ObjectName), Source,
@@ -114,14 +115,25 @@ internal static class SemanticDependencyAnalyzer
             foreach (var measure in report.ReportMeasures)
             {
                 var source = reportMeasures[QualifiedKey(measure.Entity, measure.Name)];
+                var measureDependencies = new List<SemanticDependencyEdge>();
+                AddReportMeasureExpressionDependencies(
+                    model,
+                    source,
+                    measure,
+                    modelLookup,
+                    reportMeasures,
+                    measureDependencies,
+                    unresolved);
+
                 foreach (var reference in measure.References)
                 {
                     var lookup = reference.IsReportMeasureReference ? reportMeasures : modelMeasures;
                     if (lookup.TryGetValue(QualifiedKey(reference.Entity, reference.Name), out var target))
                     {
-                        dependencies.Add(CreateEdge(
+                        var declaredDependency = CreateEdge(
                             model.Name, source, target, SemanticDependencyKinds.ReportMeasure,
-                            measure.RelativePath, $"{reference.Entity}[{reference.Name}]"));
+                            measure.RelativePath, $"{reference.Entity}[{reference.Name}]");
+                        AddDependencyIfMissing(measureDependencies, declaredDependency);
                     }
                     else
                     {
@@ -135,9 +147,113 @@ internal static class SemanticDependencyAnalyzer
                             measure.RelativePath));
                     }
                 }
+
+                dependencies.AddRange(measureDependencies);
             }
         }
     }
+
+    private static void AddReportMeasureExpressionDependencies(
+        SemanticModelInventory model,
+        SemanticNode source,
+        ReportMeasureInventory measure,
+        ModelLookup modelLookup,
+        IReadOnlyDictionary<string, SemanticNode> reportMeasures,
+        List<SemanticDependencyEdge> dependencies,
+        List<UnresolvedSemanticDependency> unresolved)
+    {
+        foreach (var reference in DaxReferenceExtractor.Extract(
+                     measure.Expression, modelLookup.TableNames, modelLookup.FunctionNames))
+        {
+            if (reference.IsFunctionReference)
+            {
+                AddDependencyIfMissing(dependencies, CreateEdge(
+                    model.Name,
+                    source,
+                    Target(string.Empty, reference.ObjectName, SemanticObjectTypes.Function),
+                    SemanticDependencyKinds.FunctionCall,
+                    measure.RelativePath,
+                    reference.Text));
+                continue;
+            }
+
+            if (TryResolveDeclaredReportMeasure(
+                    reference, measure.References, reportMeasures, out var reportMeasureTarget) ||
+                modelLookup.TryResolveDax(
+                    reference,
+                    measure.Entity,
+                    out reportMeasureTarget,
+                    out var reason,
+                    out var resolutionOutcome))
+            {
+                AddDependencyIfMissing(dependencies, CreateEdge(
+                    model.Name,
+                    source,
+                    reportMeasureTarget,
+                    SemanticDependencyKinds.ReportMeasure,
+                    measure.RelativePath,
+                    reference.Text));
+            }
+            else
+            {
+                unresolved.Add(CreateUnresolved(
+                    model.Name,
+                    source,
+                    SemanticDependencyKinds.ReportMeasure,
+                    reference.Text,
+                    resolutionOutcome,
+                    reason,
+                    measure.RelativePath));
+            }
+        }
+    }
+
+    private static void AddDependencyIfMissing(
+        List<SemanticDependencyEdge> dependencies,
+        SemanticDependencyEdge candidate)
+    {
+        if (!dependencies.Any(edge => EquivalentDependency(edge, candidate)))
+        {
+            dependencies.Add(candidate);
+        }
+    }
+
+    private static bool TryResolveDeclaredReportMeasure(
+        DaxReferenceExtractor.DaxReference reference,
+        IReadOnlyList<ReportMeasureReferenceInventory> declaredReferences,
+        IReadOnlyDictionary<string, SemanticNode> reportMeasures,
+        out SemanticNode target)
+    {
+        var matches = declaredReferences
+            .Where(candidate => candidate.IsReportMeasureReference &&
+                                string.Equals(candidate.Name, reference.ObjectName, StringComparison.OrdinalIgnoreCase) &&
+                                (reference.Table is null || string.Equals(
+                                    candidate.Entity, reference.Table, StringComparison.OrdinalIgnoreCase)))
+            .Select(candidate => QualifiedKey(candidate.Entity, candidate.Name))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .Where(reportMeasures.ContainsKey)
+            .ToArray();
+        if (matches.Length == 1)
+        {
+            target = reportMeasures[matches[0]];
+            return true;
+        }
+
+        target = null!;
+        return false;
+    }
+
+    private static bool EquivalentDependency(SemanticDependencyEdge first, SemanticDependencyEdge second) =>
+        string.Equals(first.SemanticModel, second.SemanticModel, StringComparison.OrdinalIgnoreCase) &&
+        string.Equals(first.FromTable, second.FromTable, StringComparison.OrdinalIgnoreCase) &&
+        string.Equals(first.FromObjectName, second.FromObjectName, StringComparison.OrdinalIgnoreCase) &&
+        string.Equals(first.FromObjectType, second.FromObjectType, StringComparison.Ordinal) &&
+        string.Equals(first.FromHierarchyName, second.FromHierarchyName, StringComparison.OrdinalIgnoreCase) &&
+        string.Equals(first.ToTable, second.ToTable, StringComparison.OrdinalIgnoreCase) &&
+        string.Equals(first.ToObjectName, second.ToObjectName, StringComparison.OrdinalIgnoreCase) &&
+        string.Equals(first.ToObjectType, second.ToObjectType, StringComparison.Ordinal) &&
+        string.Equals(first.ToHierarchyName, second.ToHierarchyName, StringComparison.OrdinalIgnoreCase) &&
+        string.Equals(first.DependencyKind, second.DependencyKind, StringComparison.Ordinal);
 
     private static IEnumerable<VisualFieldReference> EnumerateReportFieldReferences(ReportInventory report) =>
         report.FieldReferences

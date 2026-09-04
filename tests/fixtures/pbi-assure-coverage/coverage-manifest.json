@@ -8,8 +8,8 @@
   },
   "globalExpectations": {
     "semanticUsageStates": ["DirectlyUsed", "IndirectlyUsed", "StructurallyRequired", "UsedOnlyByUnusedBranch", "ApparentlyUnused"],
-    "semanticModels": ["CoverageLimited", "EstablishedCoverage", "PbiAssureCoverage", "ReportLimited"],
-    "reports": ["BaseThemeOnly", "Diagnostics", "PbiAssureCoverage", "ReportLimited"],
+    "semanticModels": ["CoverageLimited", "EstablishedCoverage", "PbiAssureCoverage", "ReportLimited", "ReportMeasureLimited"],
+    "reports": ["BaseThemeOnly", "Diagnostics", "PbiAssureCoverage", "ReportLimited", "ReportMeasureLimited"],
     "dependencyKinds": ["AggregationMapping", "CalculationGroupItem", "ContainingTable", "Dax", "FieldParameter", "FunctionCall", "HierarchyLevel", "IncrementalRefreshPolicy", "ObjectLevelPermission", "PerspectiveMember", "RelationshipEndpoint", "ReportMeasure", "SortBy", "TablePermission"],
     "classificationConfidences": ["Established", "QualifiedByLimitation"],
     "reportSchemaObservationStates": ["RecognisedUnverifiedVersion", "VerifiedExact"],
@@ -75,7 +75,11 @@
       { "semanticModel": "PbiAssureCoverage", "table": "Metric Selector", "object": "Metric Selector Order", "state": "ApparentlyUnused", "confidence": "QualifiedByLimitation" },
       { "semanticModel": "PbiAssureCoverage", "table": "Fact", "object": "SelectorOnlyColumn", "state": "ApparentlyUnused", "confidence": "QualifiedByLimitation" },
       { "semanticModel": "ReportLimited", "table": "ReportLimitedTable", "object": "ReportLimitedDirectControl", "state": "DirectlyUsed", "confidence": "Established" },
-      { "semanticModel": "ReportLimited", "table": "ReportLimitedTable", "object": "ReportLimitedUnusedControl", "state": "ApparentlyUnused", "confidence": "QualifiedByLimitation" }
+      { "semanticModel": "ReportLimited", "table": "ReportLimitedTable", "object": "ReportLimitedUnusedControl", "state": "ApparentlyUnused", "confidence": "QualifiedByLimitation" },
+      { "semanticModel": "PbiAssureCoverage", "table": "Fact", "object": "UnusedReportExpressionOnlyColumn", "state": "UsedOnlyByUnusedBranch", "confidence": "QualifiedByLimitation" },
+      { "semanticModel": "ReportMeasureLimited", "table": "ReportMeasureLimitedTable", "object": "ExpressionOnlyColumn", "state": "IndirectlyUsed", "confidence": "Established" },
+      { "semanticModel": "ReportMeasureLimited", "table": "ReportMeasureLimitedTable", "object": "DeclaredMeasure", "state": "IndirectlyUsed", "confidence": "Established" },
+      { "semanticModel": "ReportMeasureLimited", "table": "ReportMeasureLimitedTable", "object": "UnrecognizedUnusedControl", "state": "ApparentlyUnused", "confidence": "QualifiedByLimitation" }
     ],
     "dependencies": [
       { "semanticModel": "PbiAssureCoverage", "kind": "AggregationMapping", "fromTable": "AggregationCoverage", "fromObject": "AggregatedAmount", "toTable": "Fact", "toObject": "AggregationDetail" },
@@ -93,6 +97,9 @@
       { "semanticModel": "PbiAssureCoverage", "kind": "PerspectiveMember", "fromTable": "", "fromObject": "CoveragePerspective", "toTable": "Fact", "toObject": "PerspectiveOnlyMeasure" },
       { "semanticModel": "PbiAssureCoverage", "kind": "RelationshipEndpoint", "fromTable": "", "fromObject": "ActiveRelationship", "toTable": "Dimension", "toObject": "StructurallyRequiredColumn" },
       { "semanticModel": "PbiAssureCoverage", "kind": "ReportMeasure", "fromTable": "Fact", "fromObject": "ActiveReportMeasure", "toTable": "Fact", "toObject": "ReportMeasureActiveSource" },
+      { "semanticModel": "PbiAssureCoverage", "kind": "ReportMeasure", "fromTable": "Fact", "fromObject": "UnusedReportMeasure", "toTable": "Fact", "toObject": "UnusedReportExpressionOnlyColumn" },
+      { "semanticModel": "ReportMeasureLimited", "kind": "ReportMeasure", "fromTable": "ReportMeasureLimitedTable", "fromObject": "ExpressionDependencyReportMeasure", "toTable": "ReportMeasureLimitedTable", "toObject": "ExpressionOnlyColumn" },
+      { "semanticModel": "ReportMeasureLimited", "kind": "ReportMeasure", "fromTable": "ReportMeasureLimitedTable", "fromObject": "ExpressionDependencyReportMeasure", "toTable": "ReportMeasureLimitedTable", "toObject": "DeclaredMeasure" },
       { "semanticModel": "PbiAssureCoverage", "kind": "SortBy", "fromTable": "Fact", "fromObject": "SortLabel", "toTable": "Fact", "toObject": "SortKey" },
       { "semanticModel": "PbiAssureCoverage", "kind": "TablePermission", "fromTable": "", "fromObject": "CoverageRlsRole", "toTable": "Fact", "toObject": "RlsColumn" },
       { "semanticModel": "PbiAssureCoverage", "kind": "FunctionCall", "fromTable": "Fact", "fromObject": "ReportRootedUdfMeasure", "toTable": "", "toObject": "ReportRootedCoverageFunction" },
@@ -124,7 +131,8 @@
     ],
     "reportMeasureReachability": [
       { "semanticModel": "PbiAssureCoverage", "table": "Fact", "object": "ActiveReportMeasure", "reachableFromReport": true },
-      { "semanticModel": "PbiAssureCoverage", "table": "Fact", "object": "UnusedReportMeasure", "reachableFromReport": false }
+      { "semanticModel": "PbiAssureCoverage", "table": "Fact", "object": "UnusedReportMeasure", "reachableFromReport": false },
+      { "semanticModel": "ReportMeasureLimited", "table": "ReportMeasureLimitedTable", "object": "ExpressionDependencyReportMeasure", "reachableFromReport": true }
     ],
     "directUsageNegativeControls": [
       { "semanticModel": "PbiAssureCoverage", "table": "Fact", "object": "SelectorOnlyColumn", "userFacing": "No" }
@@ -138,6 +146,15 @@
         "constructType": "unrecognizedReportDefinitionFile",
         "artifactPath": "ReportLimited.Report/definition/semanticBindings.json",
         "supportState": "Unrecognized",
+        "dependencyImpact": "MayCreateDependencies"
+      },
+      {
+        "limitationId": "PBI-LIMIT-REPORT-MEASURE-REFERENCES",
+        "scope": "Report",
+        "semanticModel": "ReportMeasureLimited",
+        "constructType": "reportMeasure",
+        "artifactPath": "ReportMeasureLimited.Report/definition/reportExtensions.json",
+        "supportState": "PartiallyAnalyzed",
         "dependencyImpact": "MayCreateDependencies"
       }
     ]
@@ -1069,6 +1086,36 @@
       "documentedUsage": "DirectlyUsed / Established",
       "documentedDependencyKinds": [],
       "documentedDependencyTargets": [],
+      "documentedFindingRuleIds": [],
+      "documentedSurfaces": ["Semantic model", "Analysis coverage"]
+    },
+    {
+      "id": "SM-REPORTMEASURE-03",
+      "name": "ExpressionDependencyReportMeasure",
+      "capability": "report-measure-expression-dependencies",
+      "documentedUsage": "Report-rooted expression dependencies become IndirectlyUsed",
+      "documentedDependencyKinds": ["ReportMeasure"],
+      "documentedDependencyTargets": ["ReportMeasureLimitedTable[ExpressionOnlyColumn]", "ReportMeasureLimitedTable[DeclaredMeasure]"],
+      "documentedFindingRuleIds": [],
+      "documentedSurfaces": ["Semantic model", "Report pages", "Analysis coverage"]
+    },
+    {
+      "id": "SM-REPORTMEASURE-04",
+      "name": "UnusedReportExpressionOnlyColumn",
+      "capability": "unused-report-measure-expression-dependency",
+      "documentedUsage": "UsedOnlyByUnusedBranch",
+      "documentedDependencyKinds": ["ReportMeasure"],
+      "documentedDependencyTargets": ["Fact[UnusedReportExpressionOnlyColumn]"],
+      "documentedFindingRuleIds": [],
+      "documentedSurfaces": ["Semantic model"]
+    },
+    {
+      "id": "COV-REPORTMEASURE-01",
+      "name": "ExpressionDependencyReportMeasure incomplete references",
+      "capability": "report-measure-incomplete-reference-limitation",
+      "documentedUsage": "UnrecognizedUnusedControl qualified; positive dependencies established",
+      "documentedDependencyKinds": ["ReportMeasure"],
+      "documentedDependencyTargets": ["ReportMeasureLimitedTable[UnrecognizedUnusedControl]"],
       "documentedFindingRuleIds": [],
       "documentedSurfaces": ["Semantic model", "Analysis coverage"]
     },
