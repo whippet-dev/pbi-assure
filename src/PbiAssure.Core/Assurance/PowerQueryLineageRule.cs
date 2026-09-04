@@ -18,6 +18,7 @@ internal sealed class PowerQueryLineageRule : IAssuranceRule
             }
 
             if (usage.SourceKind == PowerQuerySourceKinds.NamedExpression &&
+                !usage.IsParameter &&
                 usage.QueryRole == PowerQueryRoles.ApparentlyOrphaned)
             {
                 yield return CreateFinding(

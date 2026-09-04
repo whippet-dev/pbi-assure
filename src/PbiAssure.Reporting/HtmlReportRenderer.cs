@@ -514,7 +514,7 @@ public static partial class HtmlReportRenderer
         AppendInvestigationStart(html, "query", "Search queries", "Search query names, connectors, dependencies or model tables");
         AppendInvestigationFacet(html, "query", "load-state", "Load state", "All load states", inventory.PowerQueryUsages.Select(usage => usage.UsageState).Distinct(StringComparer.OrdinalIgnoreCase).OrderBy(value => value).Select(value => new FindingFacetOption(value, value == PowerQueryUsageStates.LoadedToModel ? "Loaded to model" : value == PowerQueryUsageStates.SupportingQuery ? "Supporting query" : "Apparently unused")));
         AppendInvestigationFacet(html, "query", "connector", "Connector type", "All connector types", inventory.DataSources.Select(source => source.ConnectorFamily).Where(value => !string.IsNullOrWhiteSpace(value)).Distinct(StringComparer.OrdinalIgnoreCase).OrderBy(value => value).Select(value => new FindingFacetOption(value!, value!)));
-        AppendInvestigationFacet(html, "query", "role", "How query is used", "All uses", inventory.PowerQueryUsages.Select(usage => usage.QueryRole).Where(value => !string.IsNullOrWhiteSpace(value)).Distinct(StringComparer.OrdinalIgnoreCase).OrderBy(value => value).Select(value => new FindingFacetOption(value!, PowerQueryRoleLabel(inventory.PowerQueryUsages.First(usage => usage.QueryRole == value)))));
+        AppendInvestigationFacet(html, "query", "role", "How query is used", "All uses", inventory.PowerQueryUsages.Select(PowerQueryPresentationRole).Where(value => !string.IsNullOrWhiteSpace(value)).Distinct(StringComparer.OrdinalIgnoreCase).OrderBy(value => value).Select(value => new FindingFacetOption(value!, PowerQueryRoleLabel(inventory.PowerQueryUsages.First(usage => PowerQueryPresentationRole(usage) == value)))));
         AppendInvestigationEnd(html, "query", inventory.PowerQueryUsages.Count, "query", "queries");
         html.AppendLine("      <div id=\"query-list\">");
 
@@ -547,11 +547,13 @@ public static partial class HtmlReportRenderer
                 html.Append("        <details id=\"").Append(Encode(PowerQueryAnchor(usage)))
                     .Append("\" class=\"semantic-table power-query-card\" data-investigation-item=\"query\" data-search-text=\"").Append(Encode(searchText))
                     .Append("\" data-filter-load-state=\"").Append(Encode(usage.UsageState)).Append("\" data-filter-connector=\"").Append(Encode(string.Join('\u001f', connectors)))
-                    .Append("\" data-filter-role=\"").Append(Encode(usage.QueryRole ?? string.Empty)).Append("\"><summary><span class=\"summary-copy\"><strong>")
+                    .Append("\" data-filter-role=\"").Append(Encode(PowerQueryPresentationRole(usage) ?? string.Empty)).Append("\"><summary><span class=\"summary-copy\"><strong>")
                     .Append(Encode(usage.QueryName)).Append("</strong><span>")
                     .Append(Encode(PowerQuerySubtitle(usage, targets.Length, usedBy.Length)))
                     .Append("</span></span><span class=\"badge ").Append(UsageClass(
-                        usage.UsageState == PowerQueryUsageStates.ApparentlyUnused
+                        usage.IsParameter
+                            ? SemanticUsageStates.IndirectlyUsed
+                            : usage.UsageState == PowerQueryUsageStates.ApparentlyUnused
                             ? SemanticUsageStates.ApparentlyUnused
                             : usage.UsageState == PowerQueryUsageStates.LoadedToModel
                                 ? SemanticUsageStates.DirectlyUsed
@@ -564,6 +566,24 @@ public static partial class HtmlReportRenderer
                 {
                     html.Append("            <p class=\"query-model-association\">Loads into model table <strong>")
                         .Append(Encode(usage.Table)).AppendLine("</strong>.</p>");
+                }
+                if (usage.IsParameter)
+                {
+                    html.AppendLine("            <dl class=\"query-dependency-grid\">");
+                    AppendTechnicalDefinition(html, "Power Query object", "Parameter");
+                    if (!string.IsNullOrWhiteSpace(usage.ParameterType))
+                    {
+                        AppendTechnicalDefinition(html, "Parameter type", usage.ParameterType!);
+                    }
+                    if (usage.IsParameterRequired is not null)
+                    {
+                        AppendTechnicalDefinition(html, "Required", usage.IsParameterRequired.Value ? "Yes" : "No");
+                    }
+                    if (usage.RefreshPolicyTables.Count > 0)
+                    {
+                        AppendTechnicalDefinition(html, "Incremental refresh", string.Join(", ", usage.RefreshPolicyTables));
+                    }
+                    html.AppendLine("            </dl>");
                 }
                 html.AppendLine("            <section class=\"query-dependencies\" aria-label=\"Query dependencies\">");
                 html.AppendLine("              <h4>Dependencies</h4>");
@@ -771,7 +791,12 @@ public static partial class HtmlReportRenderer
         _ => "Built dynamically or not available in the report metadata",
     };
 
-    private static string PowerQueryRoleLabel(PowerQueryUsage usage) => usage.QueryRole switch
+    private static string? PowerQueryPresentationRole(PowerQueryUsage usage) =>
+        usage.IsParameter ? "Parameter" : usage.QueryRole;
+
+    private static string PowerQueryRoleLabel(PowerQueryUsage usage) => usage.IsParameter
+        ? "Power Query parameter"
+        : usage.QueryRole switch
     {
         PowerQueryRoles.LoadedAndSupporting => "Loaded into model and used by other queries",
         PowerQueryRoles.LoadedOnly => "Loaded into model only",
@@ -780,7 +805,9 @@ public static partial class HtmlReportRenderer
         _ => "How this query is used needs review",
     };
 
-    private static string PowerQueryRoleBadgeLabel(PowerQueryUsage usage) => usage.QueryRole switch
+    private static string PowerQueryRoleBadgeLabel(PowerQueryUsage usage) => usage.IsParameter
+        ? "Parameter"
+        : usage.QueryRole switch
     {
         PowerQueryRoles.LoadedAndSupporting => "Loaded to model + used by other queries",
         PowerQueryRoles.LoadedOnly => "Loaded to model",
@@ -793,6 +820,16 @@ public static partial class HtmlReportRenderer
     {
         var usedByText = usedByCount == 1 ? "supports 1 query" : $"supports {usedByCount} queries";
         var usesText = usesCount == 1 ? "uses 1 query" : $"uses {usesCount} queries";
+        if (usage.IsParameter)
+        {
+            if (usage.RefreshPolicyTables.Count > 0)
+            {
+                return $"Parameter · used by incremental refresh for {string.Join(", ", usage.RefreshPolicyTables)}";
+            }
+
+            return usedByCount > 0 ? $"Parameter · {usedByText}" : "Parameter · no static consumers found";
+        }
+
         return usage.QueryRole switch
         {
             PowerQueryRoles.LoadedAndSupporting => $"Loads into the model · {usedByText}",

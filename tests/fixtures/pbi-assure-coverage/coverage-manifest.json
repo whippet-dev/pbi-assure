@@ -128,12 +128,18 @@
     ],
     "powerQueryDependencies": [
       { "semanticModel": "PbiAssureCoverage", "fromQuery": "LoadedFactQuery", "fromSourceKind": "TablePartition", "toQuery": "ReferencedQuery", "toSourceKind": "NamedExpression" },
+      { "semanticModel": "PbiAssureCoverage", "fromQuery": "LoadedFactQuery", "fromSourceKind": "TablePartition", "toQuery": "ParameterConsumerQuery", "toSourceKind": "NamedExpression" },
+      { "semanticModel": "PbiAssureCoverage", "fromQuery": "ParameterConsumerQuery", "fromSourceKind": "NamedExpression", "toQuery": "ReferencedParameter", "toSourceKind": "NamedExpression" },
       { "semanticModel": "PbiAssureCoverage", "fromQuery": "LineageTransformQuery", "fromSourceKind": "NamedExpression", "toQuery": "Fact", "toSourceKind": "TablePartition" },
       { "semanticModel": "PbiAssureCoverage", "fromQuery": "AddColumnLineageQuery", "fromSourceKind": "NamedExpression", "toQuery": "Fact", "toSourceKind": "TablePartition" },
       { "semanticModel": "PbiAssureCoverage", "fromQuery": "GroupLineageQuery", "fromSourceKind": "NamedExpression", "toQuery": "Fact", "toSourceKind": "TablePartition" },
       { "semanticModel": "PbiAssureCoverage", "fromQuery": "CombineLineageQuery", "fromSourceKind": "NamedExpression", "toQuery": "Fact", "toSourceKind": "TablePartition" },
       { "semanticModel": "PbiAssureCoverage", "fromQuery": "CombineLineageQuery", "fromSourceKind": "NamedExpression", "toQuery": "Dimension", "toSourceKind": "TablePartition" },
       { "semanticModel": "PbiAssureCoverage", "fromQuery": "UnpivotLineageQuery", "fromSourceKind": "NamedExpression", "toQuery": "Fact", "toSourceKind": "TablePartition" }
+    ],
+    "powerQueryParameters": [
+      { "semanticModel": "PbiAssureCoverage", "query": "ReferencedParameter", "type": "Number", "required": true, "state": "SupportingQuery", "referencedBy": "ParameterConsumerQuery", "orphanFinding": false },
+      { "semanticModel": "PbiAssureCoverage", "query": "UnreferencedParameterControl", "type": "Text", "required": false, "state": "ApparentlyUnused", "orphanFinding": false }
     ],
     "powerQueryColumnUsages": [
       { "semanticModel": "PbiAssureCoverage", "sourceQuery": "Fact", "sourceTable": "Fact", "sourceColumn": "LineageAddLeft", "consumerQuery": "AddColumnLineageQuery", "usageKind": "AddedColumnExpression", "mFunction": "Table.AddColumn", "stepName": "Added" },
@@ -305,7 +311,7 @@
       "capability": "power-query-load-state",
       "documentedUsage": "LoadedToModel",
       "documentedDependencyKinds": [],
-      "documentedDependencyTargets": ["ReferencedQuery", "DynamicQuery", "LineageTransformQuery", "LocalFileQuery", "NetworkFileQuery", "RelativeFileQuery", "WebSourceQuery", "NamedServerQuery", "DynamicSourceQuery"],
+      "documentedDependencyTargets": ["ReferencedQuery", "ParameterConsumerQuery", "DynamicQuery", "LineageTransformQuery", "LocalFileQuery", "NetworkFileQuery", "RelativeFileQuery", "WebSourceQuery", "NamedServerQuery", "DynamicSourceQuery"],
       "documentedFindingRuleIds": [],
       "documentedSurfaces": ["Power Query"]
     },
@@ -338,6 +344,26 @@
       "documentedDependencyTargets": ["ReferencedQuery"],
       "documentedFindingRuleIds": ["PBI-QUERY-001"],
       "documentedSurfaces": ["Power Query", "Findings"]
+    },
+    {
+      "id": "PQ-PARAM-01",
+      "name": "ReferencedParameter",
+      "capability": "power-query-parameter-identity-and-dependency",
+      "documentedUsage": "Parameter / SupportingQuery",
+      "documentedDependencyKinds": [],
+      "documentedDependencyTargets": ["ParameterConsumerQuery"],
+      "documentedFindingRuleIds": [],
+      "documentedSurfaces": ["Power Query"]
+    },
+    {
+      "id": "PQ-PARAM-02",
+      "name": "UnreferencedParameterControl",
+      "capability": "power-query-parameter-orphan-suppression",
+      "documentedUsage": "Parameter / no static consumers",
+      "documentedDependencyKinds": [],
+      "documentedDependencyTargets": [],
+      "documentedFindingRuleIds": [],
+      "documentedSurfaces": ["Power Query"]
     },
     {
       "id": "PQ-COLUMN-01",

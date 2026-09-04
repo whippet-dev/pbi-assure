@@ -47,8 +47,25 @@ public sealed class CoverageFixtureSliceOneTests
         AssertQuery(inventory, "UnusedQuery", PowerQueryUsageStates.ApparentlyUnused);
         var dynamicQuery = AssertQuery(inventory, "DynamicQuery", PowerQueryUsageStates.SupportingQuery);
         Assert.True(dynamicQuery.HasDynamicReferences);
+        var referencedParameter = AssertQuery(inventory, "ReferencedParameter", PowerQueryUsageStates.SupportingQuery);
+        Assert.True(referencedParameter.IsParameter);
+        Assert.Equal("Number", referencedParameter.ParameterType);
+        Assert.True(referencedParameter.IsParameterRequired);
+        Assert.Contains(referencedParameter.ReferencedBy, reference =>
+            reference.FromQueryName == "ParameterConsumerQuery");
+        var unreferencedParameter = AssertQuery(
+            inventory, "UnreferencedParameterControl", PowerQueryUsageStates.ApparentlyUnused);
+        Assert.True(unreferencedParameter.IsParameter);
+        Assert.Null(unreferencedParameter.QueryRole);
+        Assert.DoesNotContain(inventory.Findings, finding =>
+            finding.RuleId == "PBI-QUERY-002" && finding.ObjectName == "UnreferencedParameterControl");
+        Assert.Contains(inventory.Findings, finding =>
+            finding.RuleId == "PBI-QUERY-002" && finding.ObjectName == "UnusedQuery");
+        Assert.Equal(1, inventory.ApparentlyUnusedPowerQueryCount);
         AssertQueryDependency(inventory, "LoadedFactQuery", PowerQuerySourceKinds.TablePartition,
             "ReferencedQuery", PowerQuerySourceKinds.NamedExpression);
+        AssertQueryDependency(inventory, "ParameterConsumerQuery", PowerQuerySourceKinds.NamedExpression,
+            "ReferencedParameter", PowerQuerySourceKinds.NamedExpression);
         AssertQueryDependency(inventory, "LineageTransformQuery", PowerQuerySourceKinds.NamedExpression,
             "Fact", PowerQuerySourceKinds.TablePartition);
         AssertQuery(inventory, "AddColumnLineageQuery", PowerQueryUsageStates.SupportingQuery);

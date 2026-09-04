@@ -1,3 +1,5 @@
+using System.Text.Json.Serialization;
+
 namespace PbiAssure.Core.Inventory;
 
 public sealed record PowerQueryUsage(
@@ -11,7 +13,24 @@ public sealed record PowerQueryUsage(
     string UsageState,
     string? QueryRole,
     bool HasDynamicReferences,
-    IReadOnlyList<PowerQueryReferenceEvidence> ReferencedBy);
+    IReadOnlyList<PowerQueryReferenceEvidence> ReferencedBy)
+{
+    /// <summary>Whether this named expression is explicitly marked as an M parameter.</summary>
+    [JsonIgnore]
+    public bool IsParameter { get; init; }
+
+    /// <summary>The literal parameter type persisted in M metadata, without evaluating its value.</summary>
+    [JsonIgnore]
+    public string? ParameterType { get; init; }
+
+    /// <summary>The persisted IsParameterQueryRequired value, when present.</summary>
+    [JsonIgnore]
+    public bool? IsParameterRequired { get; init; }
+
+    /// <summary>Tables whose local refresh-policy source expression statically references this parameter.</summary>
+    [JsonIgnore]
+    public IReadOnlyList<string> RefreshPolicyTables { get; init; } = [];
+}
 
 public sealed record PowerQueryReferenceEvidence(
     string FromQueryName,

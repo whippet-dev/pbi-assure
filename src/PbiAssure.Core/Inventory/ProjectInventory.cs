@@ -80,7 +80,7 @@ public sealed record ProjectInventory(
     public int PowerQueryCount => PowerQueryUsages.Count;
 
     public int ApparentlyUnusedPowerQueryCount => PowerQueryUsages.Count(usage =>
-        usage.UsageState == PowerQueryUsageStates.ApparentlyUnused);
+        usage.UsageState == PowerQueryUsageStates.ApparentlyUnused && !usage.IsParameter);
 
     public int DataSourceCount => DataSources.Count;
 

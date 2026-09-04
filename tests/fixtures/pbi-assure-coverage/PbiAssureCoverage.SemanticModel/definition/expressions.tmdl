@@ -1,5 +1,11 @@
 expression ReferencedQuery = #table(type table [Value = number], {{1}})
 
+expression ReferencedParameter = 10 meta [IsParameterQuery=true, Type="Number", IsParameterQueryRequired=true]
+
+expression UnreferencedParameterControl = "control" meta [IsParameterQuery=true, Type="Text", IsParameterQueryRequired=false]
+
+expression ParameterConsumerQuery = #table(type table [Value = number], {{ReferencedParameter}})
+
 expression UnusedQuery = #table(type table [Value = number], {{2}})
 
 expression DynamicQuery = Expression.Evaluate("ReferencedQuery", #shared)

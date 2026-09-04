@@ -331,15 +331,55 @@ internal static class TmdlSemanticModelParser
             }
 
             var endIndex = FindBlockEnd(lines, index);
+            var expressionText = ReadExpression(lines, index, endIndex, inlineExpression) ?? string.Empty;
+            var parameter = ParseParameterMetadata(expressionText);
             expressions.Add(new SemanticNamedExpressionInventory(
                 Name: name,
-                Expression: ReadExpression(lines, index, endIndex, inlineExpression) ?? string.Empty,
+                Expression: expressionText,
                 Kind: FindProperty(lines, index, endIndex, "kind"),
-                RelativePath: path));
+                RelativePath: path)
+            {
+                IsParameter = parameter.IsParameter,
+                ParameterType = parameter.Type,
+                IsParameterRequired = parameter.IsRequired,
+            });
             index = endIndex - 1;
         }
 
         return expressions.OrderBy(expression => expression.Name, StringComparer.OrdinalIgnoreCase).ToArray();
+    }
+
+    /// <summary>
+    /// Recognises the Desktop-evidenced inline M metadata record only. The value expression remains
+    /// retained verbatim and is never evaluated.
+    /// </summary>
+    private static ParameterMetadata ParseParameterMetadata(string expression)
+    {
+        var metadata = Regex.Match(
+            expression,
+            @"\bmeta\s*\[(?<fields>[^\]]*)\]\s*$",
+            RegexOptions.IgnoreCase | RegexOptions.CultureInvariant | RegexOptions.Singleline);
+        if (!metadata.Success || !Regex.IsMatch(
+                metadata.Groups["fields"].Value,
+                @"(?:^|,)\s*IsParameterQuery\s*=\s*true\s*(?:,|$)",
+                RegexOptions.IgnoreCase | RegexOptions.CultureInvariant))
+        {
+            return new ParameterMetadata(false, null, null);
+        }
+
+        var fields = metadata.Groups["fields"].Value;
+        var type = Regex.Match(
+            fields,
+            "(?:^|,)\\s*Type\\s*=\\s*\"(?<value>(?:[^\"]|\"\")*)\"\\s*(?:,|$)",
+            RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
+        var required = Regex.Match(
+            fields,
+            @"(?:^|,)\s*IsParameterQueryRequired\s*=\s*(?<value>true|false)\s*(?:,|$)",
+            RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
+        return new ParameterMetadata(
+            true,
+            type.Success ? type.Groups["value"].Value.Replace("\"\"", "\"", StringComparison.Ordinal) : null,
+            required.Success ? bool.Parse(required.Groups["value"].Value) : null);
     }
 
     private static SemanticCalculationGroupInventory ParseCalculationGroup(
@@ -1353,4 +1393,6 @@ internal static class TmdlSemanticModelParser
     }
 
     private sealed record TmdlLine(string Text, string Trimmed, int Indent);
+
+    private sealed record ParameterMetadata(bool IsParameter, string? Type, bool? IsRequired);
 }

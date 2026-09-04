@@ -37,10 +37,12 @@ internal static class PowerQueryLineageAnalyzer
                                     !string.IsNullOrWhiteSpace(partition.Expression))
                 .Select(partition => new QuerySource(
                     table.Name, PowerQuerySourceKinds.TablePartition, table.Name, partition.Name,
-                    partition.Expression!, table.RelativePath, IsLoaded: true)))
+                    partition.Expression!, table.RelativePath, IsLoaded: true,
+                    IsParameter: false, ParameterType: null, IsParameterRequired: null)))
             .Concat(model.NamedExpressions.Select(expression => new QuerySource(
                 expression.Name, PowerQuerySourceKinds.NamedExpression, null, null,
-                expression.Expression, expression.RelativePath, IsLoaded: false)))
+                expression.Expression, expression.RelativePath, IsLoaded: false,
+                expression.IsParameter, expression.ParameterType, expression.IsParameterRequired)))
             .ToArray();
         var knownNames = sources.Select(source => source.QueryName)
             .Distinct(StringComparer.OrdinalIgnoreCase).ToArray();
@@ -86,7 +88,13 @@ internal static class PowerQueryLineageAnalyzer
                     : reachable.Contains(source.QueryName) ? PowerQueryUsageStates.SupportingQuery
                     : PowerQueryUsageStates.ApparentlyUnused,
                 QueryRole(source, referencedBy, hasDynamicReferences),
-                hasDynamicReferences, referencedBy));
+                hasDynamicReferences, referencedBy)
+            {
+                IsParameter = source.IsParameter,
+                ParameterType = source.ParameterType,
+                IsParameterRequired = source.IsParameterRequired,
+                RefreshPolicyTables = RefreshPolicyTables(model, source, knownNames),
+            });
         }
     }
 
@@ -95,6 +103,11 @@ internal static class PowerQueryLineageAnalyzer
         PowerQueryReferenceEvidence[] referencedBy,
         bool hasDynamicReferences)
     {
+        if (source.IsParameter)
+        {
+            return null;
+        }
+
         if (source.IsLoaded)
         {
             return referencedBy.Length > 0
@@ -110,6 +123,26 @@ internal static class PowerQueryLineageAnalyzer
         return hasDynamicReferences
             ? null
             : PowerQueryRoles.ApparentlyOrphaned;
+    }
+
+    private static string[] RefreshPolicyTables(
+        SemanticModelInventory model,
+        QuerySource source,
+        IReadOnlyCollection<string> knownNames)
+    {
+        if (!source.IsParameter)
+        {
+            return [];
+        }
+
+        return model.Tables
+            .Where(table => !string.IsNullOrWhiteSpace(table.RefreshPolicy?.SourceExpression))
+            .Where(table => MReferenceExtractor.Extract(table.RefreshPolicy!.SourceExpression!, knownNames)
+                .Contains(source.QueryName, StringComparer.OrdinalIgnoreCase))
+            .Select(table => table.Name)
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .OrderBy(name => name, StringComparer.OrdinalIgnoreCase)
+            .ToArray();
     }
 
     private static HashSet<string> Traverse(
@@ -142,5 +175,8 @@ internal static class PowerQueryLineageAnalyzer
         string? Partition,
         string Expression,
         string ArtifactPath,
-        bool IsLoaded);
+        bool IsLoaded,
+        bool IsParameter,
+        string? ParameterType,
+        bool? IsParameterRequired);
 }
