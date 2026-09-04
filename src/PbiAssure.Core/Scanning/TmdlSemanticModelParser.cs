@@ -134,6 +134,11 @@ internal static class TmdlSemanticModelParser
                         index,
                         endIndex,
                         "detailRowsDefinition"),
+                    FormatStringExpression = ReadAssignmentExpression(
+                        lines,
+                        index,
+                        endIndex,
+                        "formatStringDefinition"),
                 });
             }
             else if (TryParseDeclaration(lines[index].Trimmed, "hierarchy", out var hierarchyName, out _))

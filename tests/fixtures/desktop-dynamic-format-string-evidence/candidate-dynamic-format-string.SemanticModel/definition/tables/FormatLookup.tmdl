@@ -1,0 +1,35 @@
+table FormatLookup
+	lineageTag: 6b1f0c74-6f8e-4a21-9a1c-2f5c0d0a1101
+
+	column FormatKey
+		dataType: string
+		lineageTag: 6b1f0c74-6f8e-4a21-9a1c-2f5c0d0a1102
+		summarizeBy: none
+		sourceColumn: FormatKey
+
+		annotation SummarizationSetBy = Automatic
+
+	column FormatString
+		dataType: string
+		lineageTag: 6b1f0c74-6f8e-4a21-9a1c-2f5c0d0a1103
+		summarizeBy: none
+		sourceColumn: FormatString
+
+		annotation SummarizationSetBy = Automatic
+
+	partition FormatLookup = m
+		mode: import
+		source =
+				let
+				  Source = Table.FromRows(
+				      {
+				          {"Currency", "$#,0.00"},
+				          {"Percent", "0.0%"}
+				      },
+				      type table [FormatKey = text, FormatString = text]
+				  )
+				in
+				  Source
+
+	annotation PBI_ResultType = Table
+

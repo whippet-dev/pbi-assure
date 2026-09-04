@@ -1,0 +1,20 @@
+model Model
+	culture: en-US
+	defaultPowerBIDataSourceVersion: powerBI_V3
+	sourceQueryCulture: en-GB
+	valueFilterBehavior: independent
+	dataAccessOptions
+		legacyRedirects
+		returnErrorValuesAsNull
+
+annotation __PBI_TimeIntelligenceEnabled = 1
+
+annotation PBI_QueryOrder = ["FormatLookup","Fact"]
+
+annotation PBI_ProTooling = ["DevMode"]
+
+ref table FormatLookup
+ref table Fact
+
+ref cultureInfo en-US
+

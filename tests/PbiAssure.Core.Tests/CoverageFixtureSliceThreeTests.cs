@@ -36,6 +36,7 @@ public sealed class CoverageFixtureSliceThreeTests
         AssertDependency(inventory, SemanticDependencyKinds.CalculationGroupItem, "Time Intelligence", "Time Intelligence", "Time Intelligence", "CoverageYTD");
         AssertDependency(inventory, SemanticDependencyKinds.Dax, "Fact", "KpiBase", "Fact", "KpiTargetOnly");
         AssertDependency(inventory, SemanticDependencyKinds.Dax, "Fact", "DetailRowsBase", "Fact", "DetailRowsOnly");
+        AssertDependency(inventory, SemanticDependencyKinds.Dax, "Fact", "DynamicFormatStringMeasure", "Fact", "DynamicFormatStringOnlyColumn");
         AssertDependency(inventory, SemanticDependencyKinds.IncrementalRefreshPolicy, "Fact", "Fact", "Fact", "RefreshWatermark");
         AssertDependency(inventory, SemanticDependencyKinds.AggregationMapping, "AggregationCoverage", "AggregatedAmount", "Fact", "AggregationDetail");
         AssertDependency(inventory, SemanticDependencyKinds.TablePermission, string.Empty, "CoverageRlsRole", "Fact", "RlsColumn");
@@ -49,6 +50,8 @@ public sealed class CoverageFixtureSliceThreeTests
 
         AssertUsage(inventory, "PbiAssureCoverage", "Fact", "KpiTargetOnly", SemanticUsageStates.IndirectlyUsed);
         AssertUsage(inventory, "PbiAssureCoverage", "Fact", "DetailRowsOnly", SemanticUsageStates.IndirectlyUsed);
+        AssertUsage(inventory, "PbiAssureCoverage", "Fact", "DynamicFormatStringMeasure", SemanticUsageStates.IndirectlyUsed);
+        AssertUsage(inventory, "PbiAssureCoverage", "Fact", "DynamicFormatStringOnlyColumn", SemanticUsageStates.IndirectlyUsed);
         AssertUsage(inventory, "PbiAssureCoverage", "Fact", "RefreshWatermark", SemanticUsageStates.StructurallyRequired);
         AssertUsage(inventory, "PbiAssureCoverage", "Fact", "ReportMeasureActiveSource", SemanticUsageStates.IndirectlyUsed);
         AssertUsage(inventory, "PbiAssureCoverage", "Fact", "ReportMeasureUnusedSource", SemanticUsageStates.UsedOnlyByUnusedBranch);

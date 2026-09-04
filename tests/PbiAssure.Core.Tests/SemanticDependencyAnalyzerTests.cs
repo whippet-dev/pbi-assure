@@ -441,6 +441,32 @@ public sealed class SemanticDependencyAnalyzerTests
         Assert.Empty(analysis.ObjectUsages);
     }
 
+    [Fact]
+    public void DynamicFormatStringMeasureReferenceInheritsOwnerReachability()
+    {
+        var model = Model(
+            "Sales",
+            Table(
+                "Fact",
+                measures:
+                [
+                    Measure("Owner", "1") with { FormatStringExpression = "[Format Only]" },
+                    Measure("Format Only", "1"),
+                ]));
+
+        var analysis = SemanticDependencyAnalyzer.Analyze(
+            [model],
+            Usages(model, directlyUsed: [("Fact", "Owner")]),
+            []);
+
+        Assert.Equal(SemanticUsageStates.DirectlyUsed, State(analysis, "Fact", "Owner"));
+        Assert.Equal(SemanticUsageStates.IndirectlyUsed, State(analysis, "Fact", "Format Only"));
+        Assert.Contains(analysis.Dependencies, dependency =>
+            dependency.DependencyKind == SemanticDependencyKinds.Dax &&
+            dependency.FromObjectName == "Owner" &&
+            dependency.ToObjectName == "Format Only");
+    }
+
     // ---- Helpers ----------------------------------------------------------------------------
 
     private static string State(

@@ -148,13 +148,20 @@ table Fact
 		dataType: string
 		sourceColumn: DetailRowsOnly
 
+	column DynamicFormatStringOnlyColumn
+		dataType: string
+		sourceColumn: DynamicFormatStringOnlyColumn
+
 	column UnresolvedSortColumn
 		dataType: string
 		sourceColumn: UnresolvedSortColumn
 		sortByColumn: MissingSortTarget
 
-	measure DirectlyUsedMeasure = [IndirectlyUsedMeasure] + SUM(Fact[IndirectlyUsedColumn]) + SUM(Fact[CalculatedDependencyColumn])
+	measure DirectlyUsedMeasure = [IndirectlyUsedMeasure] + [DynamicFormatStringMeasure] + SUM(Fact[IndirectlyUsedColumn]) + SUM(Fact[CalculatedDependencyColumn])
 		formatString: 0
+
+	measure DynamicFormatStringMeasure = SUM(Fact[BaseAmount])
+		formatStringDefinition = SELECTEDVALUE(Fact[DynamicFormatStringOnlyColumn], "#,0")
 
 	measure IndirectlyUsedMeasure = SUM(Fact[BaseAmount])
 		formatString: 0

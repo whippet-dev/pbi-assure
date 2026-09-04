@@ -25,4 +25,11 @@ public sealed record SemanticMeasureInventory(
     /// </summary>
     [JsonIgnore]
     public string? DetailRowsDefinitionExpression { get; init; }
+
+    /// <summary>
+    /// Measure-owned dynamic format-string DAX retained only for dependency analysis. Literal
+    /// <see cref="FormatString"/> metadata remains separate and unchanged.
+    /// </summary>
+    [JsonIgnore]
+    public string? FormatStringExpression { get; init; }
 }

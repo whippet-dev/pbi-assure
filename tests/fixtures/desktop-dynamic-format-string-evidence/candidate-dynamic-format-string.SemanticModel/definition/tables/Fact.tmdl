@@ -1,0 +1,42 @@
+table Fact
+	lineageTag: 6b1f0c74-6f8e-4a21-9a1c-2f5c0d0a2201
+
+	measure 'Base Amount' = SUM ( Fact[Amount] )
+		formatString: #,0
+		lineageTag: 6b1f0c74-6f8e-4a21-9a1c-2f5c0d0a2202
+
+	measure 'Dynamic Amount' = [Base Amount]
+		lineageTag: 6b1f0c74-6f8e-4a21-9a1c-2f5c0d0a2203
+
+		formatStringDefinition =
+				VAR SelectedFormat =
+				    SELECTEDVALUE ( FormatLookup[FormatString], "#,0" )
+				VAR AmountValue = [Base Amount]
+				RETURN
+				    IF ( ISBLANK ( AmountValue ), "#,0", SelectedFormat )
+
+	column Amount
+		dataType: int64
+		formatString: 0
+		lineageTag: 6b1f0c74-6f8e-4a21-9a1c-2f5c0d0a2204
+		summarizeBy: sum
+		sourceColumn: Amount
+
+		annotation SummarizationSetBy = Automatic
+
+	partition Fact = m
+		mode: import
+		source =
+				let
+				  Source = Table.FromRows(
+				      {
+				          {100},
+				          {250}
+				      },
+				      type table [Amount = Int64.Type]
+				  )
+				in
+				  Source
+
+	annotation PBI_ResultType = Table
+

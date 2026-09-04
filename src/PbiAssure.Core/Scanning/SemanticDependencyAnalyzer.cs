@@ -654,6 +654,7 @@ internal static class SemanticDependencyAnalyzer
                          measure.Kpi?.StatusExpression,
                          measure.Kpi?.TrendExpression,
                          measure.DetailRowsDefinitionExpression,
+                         measure.FormatStringExpression,
                      }.Where(expression => !string.IsNullOrWhiteSpace(expression)))
             {
                 AddDaxDependencies(

@@ -62,6 +62,8 @@
       { "semanticModel": "PbiAssureCoverage", "table": "Fact", "object": "ReportMeasureActiveSource", "state": "IndirectlyUsed", "confidence": "Established" },
       { "semanticModel": "PbiAssureCoverage", "table": "Fact", "object": "KpiTargetOnly", "state": "IndirectlyUsed", "confidence": "Established" },
       { "semanticModel": "PbiAssureCoverage", "table": "Fact", "object": "DetailRowsOnly", "state": "IndirectlyUsed", "confidence": "Established" },
+      { "semanticModel": "PbiAssureCoverage", "table": "Fact", "object": "DynamicFormatStringMeasure", "state": "IndirectlyUsed", "confidence": "Established" },
+      { "semanticModel": "PbiAssureCoverage", "table": "Fact", "object": "DynamicFormatStringOnlyColumn", "state": "IndirectlyUsed", "confidence": "Established" },
       { "semanticModel": "PbiAssureCoverage", "table": "Fact", "object": "RefreshWatermark", "state": "StructurallyRequired", "confidence": "Established" },
       { "semanticModel": "PbiAssureCoverage", "table": "Fact", "object": "AutoDateSource", "state": "StructurallyRequired", "confidence": "Established" },
       { "semanticModel": "PbiAssureCoverage", "table": "Fact", "object": "RlsColumn", "state": "StructurallyRequired", "confidence": "Established" },
@@ -87,6 +89,8 @@
       { "semanticModel": "PbiAssureCoverage", "kind": "CalculationGroupItem", "fromTable": "Time Intelligence", "fromObject": "Time Intelligence", "toTable": "Time Intelligence", "toObject": "Coverage measure only" },
       { "semanticModel": "PbiAssureCoverage", "kind": "ContainingTable", "fromTable": "Fact", "fromObject": "DirectlyUsedMeasure", "toTable": "Fact", "toObject": "Fact" },
       { "semanticModel": "PbiAssureCoverage", "kind": "Dax", "fromTable": "Fact", "fromObject": "DirectlyUsedMeasure", "toTable": "Fact", "toObject": "IndirectlyUsedMeasure" },
+      { "semanticModel": "PbiAssureCoverage", "kind": "Dax", "fromTable": "Fact", "fromObject": "DirectlyUsedMeasure", "toTable": "Fact", "toObject": "DynamicFormatStringMeasure" },
+      { "semanticModel": "PbiAssureCoverage", "kind": "Dax", "fromTable": "Fact", "fromObject": "DynamicFormatStringMeasure", "toTable": "Fact", "toObject": "DynamicFormatStringOnlyColumn" },
       { "semanticModel": "PbiAssureCoverage", "kind": "Dax", "fromTable": "Fact", "fromObject": "UnusedBranchMeasure", "toTable": "Fact", "toObject": "UnusedBranchColumn" },
       { "semanticModel": "PbiAssureCoverage", "kind": "Dax", "fromTable": "Fact", "fromObject": "ReportMeasureUnusedSource", "toTable": "Fact", "toObject": "UnusedReportMeasureTerminal" },
       { "semanticModel": "PbiAssureCoverage", "kind": "Dax", "fromTable": "Time Intelligence", "fromObject": "Coverage measure only", "toTable": "Fact", "toObject": "CalculationItemOnlyColumn" },
@@ -111,7 +115,8 @@
       { "semanticModel": "PbiAssureCoverage", "kind": "Dax", "fromTable": "Fact", "fromObject": "DirectlyUsedMeasure", "toTable": "Fact", "toObject": "IndirectlyUsedMeasure" },
       { "semanticModel": "PbiAssureCoverage", "kind": "Dax", "fromTable": "Fact", "fromObject": "UnusedBranchMeasure", "toTable": "Fact", "toObject": "UnusedBranchColumn" },
       { "semanticModel": "PbiAssureCoverage", "kind": "Dax", "fromTable": "Fact", "fromObject": "ReportMeasureUnusedSource", "toTable": "Fact", "toObject": "UnusedReportMeasureTerminal" },
-      { "semanticModel": "PbiAssureCoverage", "kind": "Dax", "fromTable": "Time Intelligence", "fromObject": "Coverage measure only", "toTable": "Fact", "toObject": "CalculationItemOnlyColumn" }
+      { "semanticModel": "PbiAssureCoverage", "kind": "Dax", "fromTable": "Time Intelligence", "fromObject": "Coverage measure only", "toTable": "Fact", "toObject": "CalculationItemOnlyColumn" },
+      { "semanticModel": "PbiAssureCoverage", "kind": "Dax", "fromTable": "Fact", "fromObject": "DynamicFormatStringMeasure", "toTable": "Fact", "toObject": "DynamicFormatStringOnlyColumn" }
     ],
     "semanticTableUsages": [
       { "semanticModel": "PbiAssureCoverage", "table": "Fact", "state": "DirectlyUsed" },
@@ -924,6 +929,16 @@
       "documentedUsage": "StructurallyRequired",
       "documentedDependencyKinds": ["ObjectLevelPermission"],
       "documentedDependencyTargets": ["Fact[OlsColumn]"],
+      "documentedFindingRuleIds": [],
+      "documentedSurfaces": ["Semantic model"]
+    },
+    {
+      "id": "SM-DAX-03",
+      "name": "DynamicFormatStringMeasure",
+      "capability": "measure-dynamic-format-string-dependency",
+      "documentedUsage": "IndirectlyUsed",
+      "documentedDependencyKinds": ["Dax"],
+      "documentedDependencyTargets": ["Fact[DynamicFormatStringOnlyColumn]"],
       "documentedFindingRuleIds": [],
       "documentedSurfaces": ["Semantic model"]
     },
