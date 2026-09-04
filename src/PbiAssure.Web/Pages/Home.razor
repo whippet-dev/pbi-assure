@@ -92,29 +92,87 @@
     @if (inventory is not null)
     {
         var assurance = WebAssuranceSummary.FromFindings(inventory.Findings);
+        <section class="output-actions" aria-labelledby="output-actions-heading">
+            <h2 id="output-actions-heading">Next steps</h2>
+            <p class="output-lede">Analysis complete. Start with the interactive report, export reusable metadata, or review the summary below.</p>
+            <div class="output-primary">
+                <button @onclick="OpenHtmlAsync" disabled="@isBusy" aria-describedby="open-report-help">Open interactive report</button>
+                <p id="open-report-help">Start here to explore model usage, dependencies, report structure and findings.</p>
+            </div>
+            <div class="output-secondary">
+                <div class="output-action">
+                    <button class="secondary-button" @onclick="() => exportPanelOpen = !exportPanelOpen" disabled="@isBusy" aria-expanded="@exportPanelOpen">Export data</button>
+                    <p>Data Catalogue or Usage Mapping CSV.</p>
+                </div>
+                <div class="output-action">
+                    <button @onclick="DownloadHtmlAsync" class="secondary-button" disabled="@isBusy">Download HTML report</button>
+                    <p>Save a copy to review elsewhere.</p>
+                </div>
+            </div>
+            @if (exportPanelOpen && selection is not null)
+            {
+                <ExportCsvPanel @key="exportPanelKey" Inventory="@inventory" ProjectDisplayName="@selection.DisplayName"
+                                OnClose="() => exportPanelOpen = false" />
+            }
+            <details class="summary-help legacy-output">
+                <summary>Advanced: legacy export</summary>
+                <div class="output-action">
+                    <p>The existing fixed semantic-usage CSV remains available for technical and compatibility workflows.</p>
+                    <button @onclick="DownloadCsvAsync" class="secondary-button" disabled="@isBusy">Download semantic usage CSV</button>
+                </div>
+            </details>
+            <p class="sensitivity"><strong>Before sharing generated outputs:</strong> HTML and CSV files may contain sensitive project metadata, including paths, expressions, source details and model/report metadata. Review before sharing; outputs are not automatically redacted.</p>
+        </section>
+
         <section class="results" aria-labelledby="results-title">
             <h2 id="results-title">Analysis summary</h2>
-            <details class="summary-help">
+            <details class="summary-help summary-guide">
                 <summary>How to read these results</summary>
-                <dl>
-                    <div><dt>Assurance</dt><dd>Non-accessibility issues and review items found by the automated checks.</dd></div>
-                    <div><dt>Errors</dt><dd>Higher-confidence issues that would normally merit attention.</dd></div>
-                    <div><dt>Warnings</dt><dd>Potential problems, good-practice concerns or lower-confidence issues worth reviewing.</dd></div>
-                    <div><dt>Review required</dt><dd>Situations that need human judgement or contextual review; they are not necessarily defects.</dd></div>
-                    <div><dt>Total findings</dt><dd>All non-accessibility issues and review items found by the automated checks.</dd></div>
-                    <div><dt>Project</dt><dd>Counts of the main report and model content found in the selected project.</dd></div>
-                    <div><dt>Power Query queries</dt><dd>Power Query queries found in this project.</dd></div>
-                    <div><dt>Data source types</dt><dd>Different types of recognised data sources used by those queries. This is not the number of individual connections.</dd></div>
-                    <div><dt>Data source references</dt><dd>Recognised data source functions found in Power Query, counted once per query and function.</dd></div>
-                    <div><dt>Semantic usage</dt><dd>How columns, measures and other objects in your model are used by the report and by one another.</dd></div>
-                    <div><dt>Directly used</dt><dd>Used somewhere in the report, such as a visual, filter, tooltip or drillthrough setting.</dd></div>
-                    <div><dt>Indirectly used</dt><dd>Not used directly in the report, but needed by something that is.</dd></div>
-                    <div><dt>Structurally required</dt><dd>Needed for the model to work, for example in a relationship, hierarchy or sort-by setting.</dd></div>
-                    <div><dt>Only used by unused items</dt><dd>Only used by other model items that themselves have no detected report usage.</dd></div>
-                    <div><dt>Apparently unused</dt><dd>PBI Assure could not find anything in this project that uses it. Check before removing it because external reports and dynamic behaviour may not be visible here.</dd></div>
-                </dl>
+                <div class="summary-guide-groups">
+                    <section>
+                        <h4>Semantic usage</h4>
+                        <dl>
+                            <div class="metric-used"><dt>Directly used</dt><dd>Used somewhere in the report, such as a visual, filter, tooltip or drillthrough setting.</dd></div>
+                            <div class="metric-indirect"><dt>Indirectly used</dt><dd>Not used directly in the report, but needed by something that is.</dd></div>
+                            <div class="metric-structural"><dt>Structurally required</dt><dd>Needed for the model to work, for example in a relationship, hierarchy or sort-by setting.</dd></div>
+                            <div class="metric-branch"><dt>Only used by unused items</dt><dd>Only used by other model items that themselves have no detected report usage.</dd></div>
+                            <div class="metric-unused"><dt>Apparently unused</dt><dd>PBI Assure could not find anything in this project that uses it. Check before removing it because external reports and dynamic behaviour may not be visible here.</dd></div>
+                        </dl>
+                    </section>
+                    <section>
+                        <h4>Project</h4>
+                        <dl>
+                            <div><dt>Reports</dt><dd>Reports found in the analysed project.</dd></div>
+                            <div><dt>Pages</dt><dd>Report pages found across those reports.</dd></div>
+                            <div><dt>Visuals</dt><dd>Visuals found on those pages.</dd></div>
+                            <div><dt>Your model objects</dt><dd>Columns, measures and other model objects that you authored.</dd></div>
+                            <div><dt>System-generated model objects</dt><dd>Objects Power BI generated itself, counted separately from your own.</dd></div>
+                        </dl>
+                    </section>
+                    <section>
+                        <h4>Power Query</h4>
+                        <dl>
+                            <div><dt>Power Query queries</dt><dd>Power Query queries found in this project.</dd></div>
+                            <div><dt>Data source types</dt><dd>Different types of recognised data sources used by those queries. This is not the number of individual connections.</dd></div>
+                            <div><dt>Data source references</dt><dd>Recognised data source functions found in Power Query, counted once per query and function. This is not a count of physical connections either.</dd></div>
+                        </dl>
+                    </section>
+                    <section>
+                        <h4>Assurance</h4>
+                        <dl>
+                            <div class="metric-error"><dt>Errors</dt><dd>Higher-confidence issues that would normally merit attention.</dd></div>
+                            <div class="metric-warning"><dt>Warnings</dt><dd>Potential problems, good-practice concerns or lower-confidence issues worth reviewing.</dd></div>
+                            <div class="metric-review"><dt>Review required</dt><dd>Situations that need human judgement or contextual review; they are not necessarily defects.</dd></div>
+                            <div><dt>Total findings</dt><dd>All non-accessibility issues and review items found by the automated checks.</dd></div>
+                        </dl>
+                        <p class="summary-guide-note">Accessibility observations are not part of these counts. They stay in the HTML report’s Accessibility review.</p>
+                    </section>
+                </div>
             </details>
-            <h3>Semantic usage</h3>
+            <div class="summary-group">
+                <h3>Semantic usage</h3>
+                <p>How model objects are used by the report and by one another.</p>
+            </div>
             <div class="metrics">
                 <Metric Label="Directly used" Value="@UsageCount(SemanticUsageStates.DirectlyUsed)" State="used" />
                 <Metric Label="Indirectly used" Value="@UsageCount(SemanticUsageStates.IndirectlyUsed)" State="indirect" />
@@ -126,7 +184,10 @@
                 <summary>What does “Apparently unused” mean?</summary>
                 <p>PBI Assure could not find anything in this project that uses it. This does not prove it is safe to delete; external reports and dynamic behaviour may not be visible here.</p>
             </details>
-            <h3>Project</h3>
+            <div class="summary-group">
+                <h3>Project</h3>
+                <p>Counts of the report, pages, visuals and model objects found.</p>
+            </div>
             <div class="metrics project-metrics">
                 <Metric Label="Reports" Value="@inventory.ReportCount" />
                 <Metric Label="Pages" Value="@inventory.PageCount" />
@@ -134,13 +195,19 @@
                 <Metric Label="Your model objects" Value="@inventory.DeveloperSemanticObjectCount" />
                 <Metric Label="System-generated model objects" Value="@inventory.SystemGeneratedSemanticObjectCount" />
             </div>
-            <h3>Power Query</h3>
+            <div class="summary-group">
+                <h3>Power Query</h3>
+                <p>Queries and recognised data-source references found in the project.</p>
+            </div>
             <div class="metrics power-query-metrics">
                 <Metric Label="Power Query queries" Value="@inventory.PowerQueryCount" />
                 <Metric Label="Data source types" Value="@inventory.DistinctConnectorFamilyCount" />
                 <Metric Label="Data source references" Value="@inventory.DataSourceCount" />
             </div>
-            <h3>Assurance</h3>
+            <div class="summary-group">
+                <h3>Assurance</h3>
+                <p>Non-accessibility issues and review items found by the automated checks.</p>
+            </div>
             <div class="metrics">
                 <Metric Label="Errors" Value="@assurance.Errors" State="error" />
                 <Metric Label="Warnings" Value="@assurance.Warnings" State="warning" />
@@ -148,42 +215,13 @@
                 <Metric Label="Total findings" Value="@assurance.TotalFindings" />
             </div>
             <p class="metrics-note">Accessibility observations are excluded from these Assurance counts and remain available separately in the HTML report’s Accessibility review.</p>
-            <section class="output-actions" aria-labelledby="output-actions-heading">
-                <h3 id="output-actions-heading">Next steps</h3>
-                <div class="output-primary">
-                    <button @onclick="OpenHtmlAsync" disabled="@isBusy" aria-describedby="open-report-help">Open interactive report</button>
-                    <p id="open-report-help">Start here to explore model usage, dependencies, report structure and findings.</p>
-                </div>
-                <div class="output-secondary">
-                    <div class="output-action">
-                        <button class="secondary-button" @onclick="() => exportPanelOpen = !exportPanelOpen" disabled="@isBusy" aria-expanded="@exportPanelOpen">Export data</button>
-                        <p>Data Catalogue or Usage Mapping CSV.</p>
-                    </div>
-                    <div class="output-action">
-                        <button @onclick="DownloadHtmlAsync" class="secondary-button" disabled="@isBusy">Download HTML report</button>
-                        <p>Save a copy to review elsewhere.</p>
-                    </div>
-                </div>
-                @if (exportPanelOpen && selection is not null)
-                {
-                    <ExportCsvPanel @key="exportPanelKey" Inventory="@inventory" ProjectDisplayName="@selection.DisplayName"
-                                    OnClose="() => exportPanelOpen = false" />
-                }
-                <details class="summary-help legacy-output">
-                    <summary>Advanced: legacy export</summary>
-                    <div class="output-action">
-                        <p>The existing fixed semantic-usage CSV remains available for technical and compatibility workflows.</p>
-                        <button @onclick="DownloadCsvAsync" class="secondary-button" disabled="@isBusy">Download semantic usage CSV</button>
-                    </div>
-                </details>
-                <p class="sensitivity"><strong>Before sharing generated outputs:</strong> HTML and CSV files may contain sensitive project metadata, including paths, expressions, source details and model/report metadata. Review before sharing; outputs are not automatically redacted.</p>
-            </section>
-            @if (!string.IsNullOrWhiteSpace(outputMessage))
-            {
-                <p class="message" role="status">@outputMessage</p>
-            }
-            <p class="diagnostic">@TimingSummary</p>
         </section>
+
+        @if (!string.IsNullOrWhiteSpace(outputMessage))
+        {
+            <p class="message" role="status">@outputMessage</p>
+        }
+        <p class="diagnostic">@TimingSummary</p>
     }
 </section>
 
