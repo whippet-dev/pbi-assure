@@ -190,7 +190,58 @@ internal static class TmdlSemanticModelParser
         {
             RefreshPolicy = refreshPolicy,
             Description = ReadDescription(lines, tableDeclarationIndex),
+            UnanalyzedDependencyConstructs = UnanalyzedTableDependencyConstructs(
+                lines, tableDeclarationIndex, objectIndent),
         };
+    }
+
+    /// <summary>
+    /// Table-level constructs that hold a DAX expression which can reference model objects, and that
+    /// this version does not parse.
+    ///
+    /// This is an explicit list rather than "anything unrecognised". Roles and perspectives can deny by
+    /// default because their child vocabulary is small and almost entirely reference-free; a table's is
+    /// neither, so denying by default would mark nearly every model partial and make qualification
+    /// meaningless. Adding to this list needs the same evidence any parser change needs.
+    /// </summary>
+    private static readonly HashSet<string> TableConstructsWithUnanalyzedReferences =
+        new(StringComparer.OrdinalIgnoreCase)
+        {
+            // Table-owned Detail Rows. Its DAX can name columns and measures, and only the
+            // measure-owned form is parsed today.
+            "defaultDetailRowsDefinition",
+        };
+
+    /// <summary>
+    /// Scans the whole table file at the table's own child indent rather than only the property block
+    /// before the first child object. TMDL does not require a table's properties to precede its
+    /// objects — the specification says child objects need not be contiguous — and Desktop's convention
+    /// of writing them first is a convention, not a guarantee.
+    ///
+    /// Matching on the child indent keeps this exact: a measure's own <c>detailRowsDefinition</c> sits
+    /// one level deeper and is never mistaken for the table-owned construct.
+    /// </summary>
+    private static string[] UnanalyzedTableDependencyConstructs(
+        IReadOnlyList<TmdlLine> lines,
+        int declarationIndex,
+        int objectIndent)
+    {
+        var found = new List<string>();
+        for (var index = declarationIndex + 1; index < lines.Count; index++)
+        {
+            if (string.IsNullOrWhiteSpace(lines[index].Text) || lines[index].Indent != objectIndent)
+            {
+                continue;
+            }
+
+            var keyword = LeadingKeyword(lines[index].Trimmed);
+            if (TableConstructsWithUnanalyzedReferences.Contains(keyword))
+            {
+                found.Add(keyword);
+            }
+        }
+
+        return found.Distinct(StringComparer.OrdinalIgnoreCase).ToArray();
     }
 
     private static SemanticRefreshPolicyInventory ParseRefreshPolicy(

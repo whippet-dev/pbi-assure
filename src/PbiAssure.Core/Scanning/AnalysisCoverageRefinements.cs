@@ -40,6 +40,24 @@ internal static class AnalysisCoverageRefinements
         return refinements;
     }
 
+    /// <summary>
+    /// Tables whose file holds a construct known to reference model objects that this version does not
+    /// parse. The registry classifies the tables directory as fully analysed, which is true of every
+    /// construct the parser reads — so where the parser positively recognised one it does not read, that
+    /// specific file needs a limitation the registry cannot supply.
+    /// </summary>
+    public static IReadOnlyList<UnanalyzedTableConstructs> BuildUnanalyzedTableConstructs(
+        IReadOnlyList<SemanticModelInventory> semanticModels) =>
+        semanticModels
+            .SelectMany(model => model.Tables.Select(table => (model, table)))
+            .Where(pair => !pair.table.DependencyContentFullyAccountedFor)
+            .Select(pair => new UnanalyzedTableConstructs(
+                pair.model.Name,
+                pair.table.Name,
+                pair.table.RelativePath,
+                pair.table.UnanalyzedDependencyConstructs))
+            .ToArray();
+
     public static IReadOnlySet<string> BuildFullyAccountedRolePaths(
         IReadOnlyList<SemanticModelInventory> semanticModels) =>
         new HashSet<string>(
@@ -49,3 +67,12 @@ internal static class AnalysisCoverageRefinements
                 .Select(role => role.RelativePath),
             StringComparer.OrdinalIgnoreCase);
 }
+
+/// <summary>
+/// One table file holding constructs that reference model objects and are not parsed by this version.
+/// </summary>
+internal sealed record UnanalyzedTableConstructs(
+    string SemanticModel,
+    string Table,
+    string RelativePath,
+    IReadOnlyList<string> Constructs);

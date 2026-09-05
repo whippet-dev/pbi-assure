@@ -20,7 +20,8 @@ internal static class AnalysisLimitationDetector
         IReadOnlyDictionary<string, string>? refinedDependencyImpacts = null,
         IReadOnlySet<string>? fullyAccountedRolePaths = null,
         IReadOnlyList<ReportInventory>? reports = null,
-        IReadOnlyList<UnresolvedSemanticDependency>? unresolvedDependencies = null)
+        IReadOnlyList<UnresolvedSemanticDependency>? unresolvedDependencies = null,
+        IReadOnlyList<UnanalyzedTableConstructs>? unanalyzedTableConstructs = null)
     {
         var refinements = refinedDependencyImpacts ?? new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
         var accountedRolePaths = fullyAccountedRolePaths ?? new HashSet<string>(StringComparer.OrdinalIgnoreCase);
@@ -36,6 +37,7 @@ internal static class AnalysisLimitationDetector
         return semanticLimitations
             .Concat(reportLimitations)
             .Concat(DetectForUnresolvedDependencies(unresolvedDependencies ?? []))
+            .Concat(DetectForUnanalyzedTableConstructs(unanalyzedTableConstructs ?? []))
             .OrderBy(limitation => limitation.SemanticModel, StringComparer.OrdinalIgnoreCase)
             .ThenBy(limitation => limitation.ArtifactPath, StringComparer.OrdinalIgnoreCase)
             .ToArray();
@@ -55,6 +57,39 @@ internal static class AnalysisLimitationDetector
     /// a name that resolved to nothing could have been any object in that model. Positive states are
     /// untouched — the qualifier only ever marks the two absence states.
     /// </summary>
+    /// <summary>
+    /// The tables directory is registered as fully analysed, which holds for every construct the table
+    /// parser reads. Where the parser positively recognised a table-level construct it does not read and
+    /// that can reference model objects, that specific file is partially analysed and the registry
+    /// cannot say so — the classification is per directory, not per file.
+    ///
+    /// Only files the parser flagged reach here, so ordinary tables emit nothing and qualification stays
+    /// meaningful.
+    /// </summary>
+    private static IEnumerable<AnalysisLimitation> DetectForUnanalyzedTableConstructs(
+        IReadOnlyList<UnanalyzedTableConstructs> unanalyzedTableConstructs)
+    {
+        return unanalyzedTableConstructs
+            .Where(table => table.Constructs.Count > 0)
+            .Select(table => new AnalysisLimitation(
+                LimitationId: "PBI-LIMIT-MODEL-TABLE-REFERENCES",
+                Cause: AnalysisLimitationCauses.ConstructNotSupported,
+                SupportState: ConstructSupportStates.PartiallyAnalyzed,
+                ConstructType: "table",
+                Scope: AnalysisLimitationScopes.SemanticModel,
+                SemanticModel: table.SemanticModel,
+                Table: table.Table,
+                ObjectName: null,
+                ArtifactPath: table.RelativePath,
+                EvidencePath: AnalysisLimitation.WholeFileEvidence,
+                DependencyImpact: ConstructDependencyImpacts.MayCreateDependencies,
+                Concerns: [AnalysisConcerns.Dependency],
+                Reason: $"Table '{table.Table}' declares " +
+                        string.Join(", ", table.Constructs.Select(construct => $"'{construct}'")) +
+                        ". The DAX in that construct can reference model objects and is not analysed by " +
+                        "this version, so dependencies it creates are absent from the graph."));
+    }
+
     private static IEnumerable<AnalysisLimitation> DetectForUnresolvedDependencies(
         IReadOnlyList<UnresolvedSemanticDependency> unresolvedDependencies)
     {
