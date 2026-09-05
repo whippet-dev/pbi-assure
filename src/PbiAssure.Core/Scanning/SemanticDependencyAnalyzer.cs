@@ -1708,6 +1708,7 @@ internal static class SemanticDependencyAnalyzer
     private sealed class ModelLookup
     {
         private readonly Dictionary<string, SemanticNode> columns;
+        private readonly Dictionary<string, int> columnCountsByName;
         private readonly Dictionary<string, SemanticNode> measuresByQualifiedName;
         private readonly Dictionary<string, SemanticNode[]> measuresByName;
 
@@ -1729,6 +1730,9 @@ internal static class SemanticDependencyAnalyzer
                     usage => QualifiedKey(usage.Table, usage.ObjectName),
                     usage => Source(usage),
                     StringComparer.OrdinalIgnoreCase);
+            columnCountsByName = columns.Values
+                .GroupBy(column => column.ObjectName, StringComparer.OrdinalIgnoreCase)
+                .ToDictionary(group => group.Key, group => group.Count(), StringComparer.OrdinalIgnoreCase);
             measuresByQualifiedName = usages
                 .Where(usage => usage.ObjectType == SemanticObjectTypes.Measure)
                 .ToDictionary(
@@ -1788,7 +1792,12 @@ internal static class SemanticDependencyAnalyzer
 
             measuresByName.TryGetValue(reference.ObjectName, out var measures);
             columns.TryGetValue(QualifiedKey(currentTable, reference.ObjectName), out var localColumn);
-            var candidateCount = (measures?.Length ?? 0) + (localColumn is null ? 0 : 1);
+            // The expression owner's table does not prove the row context of an unqualified column.
+            // Other same-named columns can collide with that fallback (for example inside SUMX).
+            // Count them as doubt, never as targets: without a local column, retain the existing
+            // measure lookup / NotFound behaviour rather than guessing an iterator's table.
+            var candidateCount = (measures?.Length ?? 0) +
+                                 (localColumn is null ? 0 : columnCountsByName[reference.ObjectName]);
             if (candidateCount == 1)
             {
                 target = localColumn ?? measures![0];
