@@ -153,6 +153,30 @@ internal static class AnalysisLimitationDetector
             ? report.ModelConnection.TargetSemanticModelName
             : null;
 
+        // Page directories on disk but nothing parsed from them means the report's own field usage is
+        // missing from the analysis, which turns every object it used into an absence conclusion. That
+        // must never again be reported at full confidence, whatever the reason the pages went unread.
+        var pagesDirectory = ProjectFilePaths.Combine(artifact.RelativePath, "definition", "pages");
+        if (report is { Pages.Count: 0 } && source.EnumerateDirectories(pagesDirectory).Any())
+        {
+            yield return new AnalysisLimitation(
+                LimitationId: "PBI-LIMIT-REPORT-PAGES-UNREAD",
+                Cause: AnalysisLimitationCauses.ParseFailed,
+                SupportState: ConstructSupportStates.PartiallyAnalyzed,
+                ConstructType: "pageDefinition",
+                Scope: AnalysisLimitationScopes.Report,
+                SemanticModel: semanticModel,
+                Table: null,
+                ObjectName: null,
+                ArtifactPath: pagesDirectory,
+                EvidencePath: AnalysisLimitation.WholeFileEvidence,
+                DependencyImpact: ConstructDependencyImpacts.MayCreateDependencies,
+                Concerns: [AnalysisConcerns.Dependency],
+                Reason: $"Report '{artifact.Name}' has page directories but no page was parsed from " +
+                        "them. Any model object this report uses is therefore missing from the " +
+                        "analysis, so absence conclusions may be incomplete.");
+        }
+
         foreach (var file in source.EnumerateFiles(artifact.RelativePath))
         {
             if (!ReportDefinitionFileRegistry.IsDefinitionArtifact(file.RelativePath))

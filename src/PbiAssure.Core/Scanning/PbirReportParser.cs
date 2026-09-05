@@ -39,45 +39,27 @@ internal static class PbirReportParser
         var pagesDirectory = ProjectFilePaths.Combine(reportDirectory, "definition", "pages");
         var pagesMetadataPath = ProjectFilePaths.Combine(pagesDirectory, "pages.json");
 
-        if (!source.FileExists(pagesMetadataPath))
-        {
-            return new ReportInventory(
-                Name: reportName,
-                RelativePath: relativeReportPath,
-                ModelConnection: modelConnection,
-                DefinitionPath: source.FileExists(reportDefinitionPath)
-                    ? reportDefinitionPath
-                    : null,
-                SchemaUri: reportSchemaUri,
-                PagesSchemaUri: null,
-                ActivePageName: null,
-                LandingPageName: null,
-                Pages: [],
-                Filters: reportFilters,
-                FieldReferences: reportFieldReferences,
-                ReportExtensionsPath: reportExtensions.Path,
-                ReportExtensionsSchemaUri: reportExtensions.SchemaUri,
-                ReportMeasures: reportExtensions.Measures,
-                BookmarksSchemaUri: bookmarkResult.SchemaUri,
-                BookmarkOrder: bookmarkResult.BookmarkOrder,
-                Bookmarks: bookmarkResult.Bookmarks)
-            {
-                SchemaObservations = OrderObservations(schemaObservations),
-                VersionMetadataPath = versionMetadata.Path,
-                PbirDefinitionVersion = versionMetadata.Version,
-                Theme = theme,
-                ThemeReview = ThemeReviewAnalyzer.Analyze(theme, []),
-            };
-        }
+        // pages.json is optional in PBIR: Microsoft documents the pages\ folder as required and
+        // pages.json as not. It is an index over the page directories, not the thing that makes them
+        // exist, so its absence means the ordering and active/landing metadata are unknown — never that
+        // the report has no pages. Treating it as zero pages silently turned every model object the
+        // report used into an absence conclusion at full confidence.
+        string? schemaUri = null;
+        string? activePageName = null;
+        string? landingPageName = null;
+        var pageOrder = new Dictionary<string, int>(StringComparer.Ordinal);
 
-        using var pagesMetadata = OpenJsonDocument(source, pagesMetadataPath);
-        var metadataRoot = pagesMetadata.RootElement;
-        var schemaUri = GetString(metadataRoot, "$schema");
-        schemaObservations.Add(PbirSchemaObservationFactory.Create(
-            ReportSchemaArtifactKinds.PagesMetadata, pagesMetadataPath, metadataRoot));
-        var activePageName = GetString(metadataRoot, "activePageName");
-        var landingPageName = GetString(metadataRoot, "landingPageName");
-        var pageOrder = ReadPageOrder(metadataRoot);
+        if (source.FileExists(pagesMetadataPath))
+        {
+            using var pagesMetadata = OpenJsonDocument(source, pagesMetadataPath);
+            var metadataRoot = pagesMetadata.RootElement;
+            schemaUri = GetString(metadataRoot, "$schema");
+            schemaObservations.Add(PbirSchemaObservationFactory.Create(
+                ReportSchemaArtifactKinds.PagesMetadata, pagesMetadataPath, metadataRoot));
+            activePageName = GetString(metadataRoot, "activePageName");
+            landingPageName = GetString(metadataRoot, "landingPageName");
+            pageOrder = ReadPageOrder(metadataRoot);
+        }
 
         var pages = source
             .EnumerateDirectories(pagesDirectory)

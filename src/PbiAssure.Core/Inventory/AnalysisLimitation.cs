@@ -8,7 +8,10 @@ public static class AnalysisLimitationCauses
     /// <summary>The construct type is not supported by this version.</summary>
     public const string ConstructNotSupported = "ConstructNotSupported";
 
-    /// <summary>The construct was present but could not be parsed. Not yet emitted; see the design note on this file.</summary>
+    /// <summary>
+    /// The construct was present but could not be parsed. Emitted when a report has page directories
+    /// from which no page was read, so the report's field usage is missing from the analysis.
+    /// </summary>
     public const string ParseFailed = "ParseFailed";
 
     /// <summary>The persisted artifact explicitly states that its dependency metadata is incomplete.</summary>
