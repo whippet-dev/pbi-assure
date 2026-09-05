@@ -5,16 +5,25 @@ namespace PbiAssure.Core.Scanning;
 
 internal static partial class MReferenceExtractor
 {
+    /// <summary>
+    /// M identifiers are case-sensitive, so <c>data</c> and <c>Data</c> are different names. Matching
+    /// them case-insensitively was wrong in both directions: a local binding <c>data = 5</c> suppressed
+    /// a genuine reference to a global query <c>Data</c>, erasing a real dependency and reporting that
+    /// query as having no known use; and a differently-cased identifier could match a query it has
+    /// nothing to do with.
+    ///
+    /// Ordering stays case-insensitive: that is presentation, not identity.
+    /// </summary>
     public static string[] Extract(string expression, IReadOnlyCollection<string> knownQueryNames)
     {
         var searchable = RemoveStringsAndComments(expression);
         var localBindings = LocalBindingRegex().Matches(searchable)
             .Select(match => NormalizeIdentifier(match.Groups[1].Value))
-            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+            .ToHashSet(StringComparer.Ordinal);
 
         return knownQueryNames
             .Where(name => !localBindings.Contains(name) && ContainsIdentifier(searchable, name))
-            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .Distinct(StringComparer.Ordinal)
             .OrderBy(name => name, StringComparer.OrdinalIgnoreCase)
             .ToArray();
     }
@@ -27,7 +36,7 @@ internal static partial class MReferenceExtractor
     private static bool ContainsIdentifier(string expression, string name)
     {
         var quoted = "#\"" + name.Replace("\"", "\"\"") + "\"";
-        if (expression.Contains(quoted, StringComparison.OrdinalIgnoreCase))
+        if (expression.Contains(quoted, StringComparison.Ordinal))
         {
             return true;
         }
@@ -35,7 +44,7 @@ internal static partial class MReferenceExtractor
         return Regex.IsMatch(
             expression,
             $@"(?<![A-Za-z0-9_]){Regex.Escape(name)}(?![A-Za-z0-9_.])",
-            RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
+            RegexOptions.CultureInvariant);
     }
 
     private static string NormalizeIdentifier(string value)
