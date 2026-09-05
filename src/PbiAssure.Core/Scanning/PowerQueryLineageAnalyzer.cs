@@ -73,6 +73,9 @@ internal static class PowerQueryLineageAnalyzer
         var modelDependencies = allDependencies.Where(edge => edge.SemanticModel == model.Name).ToArray();
         var reachable = Traverse(
             sources.Where(source => source.IsLoaded).Select(source => source.QueryName), modelDependencies);
+        var modelHasUnresolvableScope = sources.Any(source =>
+            MReferenceExtractor.HasUnresolvableBindingScope(source.Expression));
+
         foreach (var source in sources)
         {
             var referencedBy = modelDependencies.Where(edge =>
@@ -81,13 +84,18 @@ internal static class PowerQueryLineageAnalyzer
                     edge.FromQueryName, edge.FromSourceKind, edge.FromTable, edge.FromPartition, edge.ArtifactPath))
                 .Distinct().ToArray();
             var hasDynamicReferences = MReferenceExtractor.HasDynamicReferences(source.Expression);
+            // Scope doubt lives in the expression that does the referencing, not in the query being
+            // judged: a binding the flat model mis-scopes suppresses a reference to some *other* query,
+            // which is what would make that query look orphaned. So an unresolvable let anywhere in the
+            // model withholds the confident orphan conclusion, exactly as a dynamic reference does.
+            // Usage states are untouched; only the role, and with it PBI-QUERY-002, is withheld.
             allUsages.Add(new PowerQueryUsage(
                 model.Name, source.QueryName, source.SourceKind, source.Table, source.Partition,
                 source.Expression, source.ArtifactPath,
                 source.IsLoaded ? PowerQueryUsageStates.LoadedToModel
                     : reachable.Contains(source.QueryName) ? PowerQueryUsageStates.SupportingQuery
                     : PowerQueryUsageStates.ApparentlyUnused,
-                QueryRole(source, referencedBy, hasDynamicReferences),
+                QueryRole(source, referencedBy, hasDynamicReferences || modelHasUnresolvableScope),
                 hasDynamicReferences, referencedBy)
             {
                 IsParameter = source.IsParameter,

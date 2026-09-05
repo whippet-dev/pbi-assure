@@ -402,3 +402,22 @@ Established by [the aggregation mapping evidence review](../reviews/aggregation-
   reachability [design decision]. Keep the existing five usage states. When no user-authored structural
   root also reaches an object, explain it as required only by Power BI-generated Auto Date/Time structure;
   an ordinary relationship or any other user-authored structural root preserves normal presentation.
+
+### Power Query named-expression name casing
+
+- **Desktop rejects sibling named expressions whose names differ only by case.** A project declaring
+  `expression Data` and `expression data` in the same `expressions.tmdl` fails to load: Desktop shows
+  *Issues were found*, the shell stays `Untitled`, no engine starts, and no file is rewritten
+  [verified by Desktop experiment, 2026-09-05].
+- **The rejection is caused by the collision, not by the project shape.** A byte-identical control using
+  `Data` / `DataLower` opens, refreshes and renders both chains to their own distinct values
+  [verified]. The experiment fixture was deleted rather than retained: an intentionally invalid PBIP is
+  not evidence anyone can re-run against.
+- Therefore the case-insensitive de-duplication of `knownQueryNames` in `PowerQueryLineageAnalyzer` is
+  **not an actionable defect** for case-distinct sibling named expressions — that state cannot exist in a
+  Desktop project. Do not "fix" it.
+- The committed M case-sensitivity fix stays necessary for a different reason: a **local M binding**
+  `data` versus a **global query** `Data`. Local binding names live inside an expression, never in the
+  model's expression collection, so they are not subject to this constraint.
+- Untested: whether the same collision rule applies across different collections, such as a table
+  partition and a named expression.
