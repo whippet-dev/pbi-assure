@@ -29,12 +29,15 @@ public sealed class WebNewcomerOrientationTests
         Assert.Contains("@page \"/about\"", about, StringComparison.Ordinal);
         Assert.Contains("<PageTitle>What PBI Assure does — PBI Assure</PageTitle>", about, StringComparison.Ordinal);
         Assert.Contains("<h1 id=\"about-title\" tabindex=\"-1\">What PBI Assure does</h1>", about, StringComparison.Ordinal);
-        foreach (var heading in new[] { "What is PBI Assure?", "What can it help me understand?", "What does it analyse?", "What do I get after a scan?", "Typical workflow", "Important limitations", "Privacy and read-only analysis" })
+        // "What does it analyse?" moved to /coverage. About must not carry a second copy of it.
+        Assert.DoesNotContain("What does it analyse?", about, StringComparison.Ordinal);
+        Assert.DoesNotContain("information-definitions", about, StringComparison.Ordinal);
+        foreach (var heading in new[] { "What is PBI Assure?", "What can it help me understand?", "What do I get after a scan?", "Typical workflow", "Important limitations", "Privacy and read-only analysis" })
         {
             Assert.Contains($">{heading}</h3>", about, StringComparison.Ordinal);
         }
 
-        foreach (var fact in new[] { "Interactive HTML report", "Start here", "Data Catalogue CSV", "Usage Mapping CSV", "zero detected usage", "optional metadata such as Description", "one row per logical direct report usage", "legacy technical/compatibility export", "Apparently unused does not mean safe to delete", "not a WCAG compliance verdict", "partial or version-specific coverage", "does not validate runtime data correctness", "directly used does not automatically mean Yes", "No means no qualifying evidence was found", "application-managed persistent browser storage", "secure memory deletion is not guaranteed", "normal site/runtime requests", "static same-origin viewer shell", "ordinary request metadata", "after the application has loaded", "PRIVACY.md" })
+        foreach (var fact in new[] { "Interactive HTML report", "Start here", "Data Catalogue CSV", "Usage Mapping CSV", "zero detected usage", "optional metadata such as Description", "one row per logical direct report usage", "legacy technical/compatibility export", "Apparently unused does not mean safe to delete", "does not validate runtime data correctness","directly used does not automatically mean Yes", "No means no qualifying evidence was found", "application-managed persistent browser storage", "secure memory deletion is not guaranteed", "normal site/runtime requests", "static same-origin viewer shell", "ordinary request metadata", "after the application has loaded", "PRIVACY.md" })
         {
             Assert.Contains(fact, about, StringComparison.Ordinal);
         }
@@ -52,12 +55,19 @@ public sealed class WebNewcomerOrientationTests
         var home = ReadWeb("Pages/Home.razor");
         Assert.Contains("HasActiveProject=\"@(selection is not null || inventory is not null || isBusy)\"", home, StringComparison.Ordinal);
         Assert.Contains("<nav class=\"app-navigation\" aria-label=\"Application\">", navigation, StringComparison.Ordinal);
-        Assert.Contains("aria-current=\"@(IsInformationPage ? null : \"page\")\"", navigation, StringComparison.Ordinal);
-        Assert.Contains("aria-current=\"@(IsInformationPage ? \"page\" : null)\"", navigation, StringComparison.Ordinal);
-        Assert.Contains("target=\"@(HasActiveProject ? \"_blank\" : null)\"", navigation, StringComparison.Ordinal);
+        // Three destinations need a current-page value, not the old two-destination boolean. Exactly
+        // one link can carry aria-current, and each page declares which one it is.
+        foreach (var page in new[] { "Analyse", "Coverage", "About" })
+        {
+            Assert.Contains($"aria-current=\"@AriaCurrent(AppPage.{page})\"", navigation, StringComparison.Ordinal);
+        }
+
+        Assert.Contains("target=\"@(LeavesWorkingState ? \"_blank\" : null)\"", navigation, StringComparison.Ordinal);
         Assert.Contains("noopener noreferrer", navigation, StringComparison.Ordinal);
         Assert.Contains("(opens in new tab)", navigation, StringComparison.Ordinal);
-        Assert.Contains("<AppNavigation IsInformationPage=\"true\" />", ReadWeb("Pages/About.razor"), StringComparison.Ordinal);
+        Assert.Contains("<AppNavigation Current=\"AppPage.About\" />", ReadWeb("Pages/About.razor"), StringComparison.Ordinal);
+        Assert.Contains("<AppNavigation Current=\"AppPage.Coverage\" />", ReadWeb("Pages/Coverage.razor"), StringComparison.Ordinal);
+        Assert.Contains("Current=\"AppPage.Analyse\"", home, StringComparison.Ordinal);
         Assert.Contains("<FocusOnNavigate RouteData=\"routeData\" Selector=\"h1\" />", ReadWeb("App.razor"), StringComparison.Ordinal);
         // The focus treatment is shared with the generated report, so it lives in the design-system core
         // stylesheet that index.html links alongside app.css.
@@ -101,7 +111,6 @@ public sealed class WebNewcomerOrientationTests
     private static readonly (string Field, string Fragment, string Label)[] AboutTabs =
     [
         ("Overview", "overview", "Overview"),
-        ("Analysis", "analysis", "Analysis"),
         ("Outputs", "outputs", "Outputs"),
         ("Trust", "trust", "Trust & limits"),
     ];

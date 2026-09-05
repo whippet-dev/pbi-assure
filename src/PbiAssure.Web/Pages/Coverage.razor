@@ -1,0 +1,353 @@
+@page "/coverage"
+
+<PageTitle>What PBI Assure analyses — PBI Assure</PageTitle>
+
+<AppNavigation Current="AppPage.Coverage" />
+
+<article class="shell information-page coverage-page" aria-labelledby="coverage-title">
+    <header>
+        <p class="eyebrow">Model intelligence</p>
+        <h1 id="coverage-title" tabindex="-1">What PBI Assure analyses</h1>
+        <p>Coverage describes what is read from the files in a local Power BI project, and where the evidence in those files runs out. Everything below is what this version does today.</p>
+        <ul class="coverage-scope" aria-label="Project files PBI Assure reads">
+            <li><span>PBIP</span> the project launcher and its item folders</li>
+            <li><span>PBIR</span> the report definition: pages, visuals, filters, bookmarks</li>
+            <li><span>TMDL</span> the semantic model definition: tables, measures, roles</li>
+        </ul>
+    </header>
+
+    <details class="summary-help coverage-legend">
+        <summary class="disclosure-marker">How to read this page</summary>
+        <dl>
+            <div><dt>Analysed</dt><dd>PBI Assure interprets this and uses it in its conclusions.</dd></div>
+            <div><dt>Partial</dt><dd>Specific, named forms are analysed. Each row says which.</dd></div>
+        </dl>
+        <p>Each area also lists its <strong>boundaries</strong>: things a local project file cannot establish, however well it is parsed. Those are not gaps waiting to be filled — they are the edge of what this kind of analysis can know.</p>
+    </details>
+
+    <section class="coverage-band" aria-labelledby="band-model">
+        <h2 id="band-model">Model intelligence</h2>
+        <p class="coverage-band-lede">What the semantic model contains, and what depends on what.</p>
+
+        <details class="coverage-row">
+            <summary class="disclosure-marker">
+                <span class="coverage-head">
+                    <span class="coverage-name">Semantic model</span>
+                    <span class="coverage-status">Analysed</span>
+                </span>
+                <span class="coverage-lede">What the model is made of, and the metadata that gives each object meaning.</span>
+                <span class="coverage-keywords">Tables · Columns · Measures · Calculated columns and tables · Hierarchies · Calculation groups · Field parameters · KPIs · Detail Rows · Refresh policies · Aggregations · Partitions · DAX functions · Descriptions</span>
+            </summary>
+            <div class="coverage-detail">
+                <h3>What is analysed</h3>
+                <p>Tables, columns and measures, with the calculations behind calculated columns and calculated tables. Hierarchies and their levels. Calculation groups and calculation items. Field parameters. KPI target, status and trend expressions. Detail Rows expressions defined on a measure. Incremental refresh policies. Aggregation mappings between a detail table and its summary table. Partitions and shared named expressions. DAX user-defined functions and their call sites.</p>
+                <p>Dynamic format-string expressions are analysed as a second dependency-bearing expression on a measure, separate from the measure's own DAX, so a column used only to choose a format string is still seen as used.</p>
+                <p>Descriptions are <strong>retained as metadata</strong> and can be included in the Data Catalogue export. PBI Assure does not judge whether a description is present, accurate or well written.</p>
+                <div class="coverage-boundary">
+                    <h3>Boundaries</h3>
+                    <p>Detail Rows defined on a <em>table</em> rather than on a measure are not analysed. A semantic model stored in the older TMSL <code>model.bim</code> format is not analysed and is rejected as unsupported input — convert the model to TMDL first. Aggregation and refresh metadata is read as model structure, not as evidence about query or refresh performance.</p>
+                </div>
+            </div>
+        </details>
+
+        <details class="coverage-row">
+            <summary class="disclosure-marker">
+                <span class="coverage-head">
+                    <span class="coverage-name">Usage &amp; dependencies</span>
+                    <span class="coverage-status">Analysed</span>
+                </span>
+                <span class="coverage-lede">Where each model object is used, what depends on it, and how confident that answer is.</span>
+                <span class="coverage-keywords">Five usage states · Dependency evidence · DAX and structural links · Unresolved references · Confidence</span>
+            </summary>
+            <div class="coverage-detail">
+                <h3>What is analysed</h3>
+                <p>Every developer-authored column and measure is placed in one of five states, ordered by how much evidence of use was found.</p>
+                <dl class="coverage-states">
+                    <div class="metric-used"><dt>Directly used</dt><dd>The report uses it — in a visual, filter, tooltip, sort or drillthrough setting.</dd></div>
+                    <div class="metric-indirect"><dt>Indirectly used</dt><dd>The report does not use it, but something the report does use depends on it.</dd></div>
+                    <div class="metric-structural"><dt>Structurally required</dt><dd>The model needs it: a relationship endpoint, hierarchy level, sort-by column or security filter.</dd></div>
+                    <div class="metric-branch"><dt>Only used by unused items</dt><dd>Used only by other objects that themselves have no detected report usage.</dd></div>
+                    <div class="metric-unused"><dt>Apparently unused</dt><dd>Nothing in the analysed project was found to use it.</dd></div>
+                </dl>
+                <p>Dependencies are followed through both DAX expressions and structural model metadata — calculation-group items, field parameters, hierarchy levels, sort-by settings, relationship endpoints, aggregation mappings, refresh policies, security permissions, perspective membership, report-level measures and DAX function calls.</p>
+                <p>Each state carries the evidence behind it: which report, page and visual, and in what role. A reference that cannot be resolved to a model object is recorded as unresolved rather than dropped, and metadata that could bear on a dependency but was not analysed <strong>qualifies</strong> the conclusion instead of being ignored.</p>
+                <div class="coverage-boundary">
+                    <h3>Boundaries</h3>
+                    <p><strong>Apparently unused means no evidence of use was found within the analysed local project. It is not permission to delete the object.</strong> Another report, a downstream model or behaviour that only exists at runtime can all use something this project never mentions.</p>
+                </div>
+            </div>
+        </details>
+
+        <details class="coverage-row">
+            <summary class="disclosure-marker">
+                <span class="coverage-head">
+                    <span class="coverage-name">Relationships</span>
+                    <span class="coverage-status">Analysed</span>
+                </span>
+                <span class="coverage-lede">How tables are joined, and which joins the report actually activates.</span>
+                <span class="coverage-keywords">Active and inactive · Cardinality · Cross-filter direction · USERELATIONSHIP evidence · Auto Date/Time provenance</span>
+            </summary>
+            <div class="coverage-detail">
+                <h3>What is analysed</h3>
+                <p>Every relationship in the model, with its active or inactive state, cardinality and cross-filter direction. Columns on either end are treated as structurally required, so a key column with no report usage is not mistaken for dead metadata.</p>
+                <p>Inactive relationships are matched against structured <code>USERELATIONSHIP</code> evidence in measure DAX, so an inactive relationship that a measure activates is distinguishable from one nothing uses. Relationships and tables generated by Auto Date/Time are identified as system-generated and reported separately from the ones you authored.</p>
+                <p>Bidirectional and many-to-many relationships are raised for review, because both are worth a deliberate decision rather than because either is wrong.</p>
+                <div class="coverage-boundary">
+                    <h3>Boundaries</h3>
+                    <p>PBI Assure reports what the relationships are, not whether they are correct. It does not evaluate filter propagation at runtime, detect ambiguity in the join graph, or make performance judgements.</p>
+                </div>
+            </div>
+        </details>
+
+        <details class="coverage-row">
+            <summary class="disclosure-marker">
+                <span class="coverage-head">
+                    <span class="coverage-name">Security</span>
+                    <span class="coverage-status">Partial</span>
+                </span>
+                <span class="coverage-lede">Security metadata stored in the model, and the objects it depends on.</span>
+                <span class="coverage-keywords">Row-level security filters · Column-level OLS · Table-level OLS</span>
+            </summary>
+            <div class="coverage-detail">
+                <h3>What is analysed</h3>
+                <p>Row-level security table filter expressions are parsed, and the columns they reference are treated as structurally required — so a column that exists only to filter a role is not reported as unused.</p>
+                <p>Object-level security is analysed in both persisted forms: explicitly named <strong>column-level</strong> permissions, and <strong>table-level</strong> restriction expressed as a restrictive metadata permission on the table.</p>
+                <div class="coverage-boundary">
+                    <h3>Boundaries</h3>
+                    <p>PBI Assure reads security metadata that the model file stores. It cannot determine who is in a role, because role membership lives in the Power BI service and never in the project. Workspace and app permissions, runtime identity and effective access are all outside a local project file.</p>
+                    <p>This area is marked Partial because a role can carry content beyond the forms above, and PBI Assure does not claim to have accounted for all of it.</p>
+                </div>
+            </div>
+        </details>
+    </section>
+
+    <section class="coverage-band" aria-labelledby="band-query">
+        <h2 id="band-query">Query intelligence</h2>
+        <p class="coverage-band-lede">How data reaches the model, and what it passes through on the way.</p>
+
+        <details class="coverage-row">
+            <summary class="disclosure-marker">
+                <span class="coverage-head">
+                    <span class="coverage-name">Power Query</span>
+                    <span class="coverage-status">Analysed</span>
+                </span>
+                <span class="coverage-lede">Understand how queries feed the model and one another.</span>
+                <span class="coverage-keywords">Query states · Query dependencies · Parameters · Refresh policy association</span>
+            </summary>
+            <div class="coverage-detail">
+                <h3>What is analysed</h3>
+                <p>Each query is placed in one of three states: <strong>loaded</strong> into the model, <strong>supporting</strong> another query, or with <strong>no known use</strong> in this project. Query-to-query references are followed, so you can see what a change to one query would reach.</p>
+                <p>M parameters are recognised as parameters in their own right, not as ordinary queries, and their references are resolved. That distinction matters: an unreferenced parameter is a normal, deliberate thing, so it is not reported as an orphan query the way an unreferenced ordinary query is.</p>
+                <p>Where a query is deterministically associated with a persisted incremental refresh policy, that association is retained as a dependency.</p>
+                <div class="coverage-boundary">
+                    <h3>Boundaries</h3>
+                    <p>PBI Assure reads M; it does not run it. It does not determine query folding, predict whether a refresh would succeed, or test credentials, gateways or connectivity to any source. Nothing in a scan contacts an external system.</p>
+                </div>
+            </div>
+        </details>
+
+        <details class="coverage-row">
+            <summary class="disclosure-marker">
+                <span class="coverage-head">
+                    <span class="coverage-name">Sources &amp; connectors</span>
+                    <span class="coverage-status">Partial</span>
+                </span>
+                <span class="coverage-lede">Which kinds of source the queries in this project refer to.</span>
+                <span class="coverage-keywords">Recognised connector functions · Source location classification · Portability findings</span>
+            </summary>
+            <div class="coverage-detail">
+                <h3>What is analysed</h3>
+                <p>Recognised connector functions across relational, file, web, service and Fabric/OneLake sources are extracted from query expressions and grouped by source type. File and folder sources are additionally classified by location — local path, network share, relative path or dynamically constructed.</p>
+                <p>Local and network file sources are raised for review, because a source that resolves on one developer's machine may not resolve for a colleague or a refresh service.</p>
+                <div class="coverage-boundary">
+                    <h3>Boundaries</h3>
+                    <p>This is recognition of source metadata written in the query, not proof that a connection exists or would succeed. A source PBI Assure does not recognise is reported as unrecognised rather than guessed at, and a reference built dynamically cannot be resolved to a source at all.</p>
+                </div>
+            </div>
+        </details>
+
+        <details class="coverage-row">
+            <summary class="disclosure-marker">
+                <span class="coverage-head">
+                    <span class="coverage-name">Column lineage</span>
+                    <span class="coverage-status">Partial</span>
+                </span>
+                <span class="coverage-lede">Follow a model column back through the query that produced it.</span>
+                <span class="coverage-keywords">Static transformation analysis · Named transformation families</span>
+            </summary>
+            <div class="coverage-detail">
+                <h3>What is analysed</h3>
+                <p>Column lineage is traced statically through a named set of transformations:</p>
+                <ul class="coverage-transformations">
+                    <li><code>Table.SelectColumns</code></li>
+                    <li><code>Table.RemoveColumns</code></li>
+                    <li><code>Table.RenameColumns</code></li>
+                    <li><code>Table.TransformColumnTypes</code></li>
+                    <li><code>Table.AddColumn</code></li>
+                    <li><code>Table.Group</code></li>
+                    <li><code>Table.Combine</code></li>
+                    <li><code>Table.UnpivotOtherColumns</code></li>
+                    <li><code>Table.Join</code></li>
+                    <li><code>Table.NestedJoin</code></li>
+                    <li><code>Table.ExpandTableColumn</code></li>
+                </ul>
+                <p>Where a model column can be followed back to the query step that introduced or renamed it, that link is retained, so a Power Query change can be connected to the model objects downstream of it.</p>
+                <div class="coverage-boundary">
+                    <h3>Boundaries</h3>
+                    <p>This is not general M lineage. Only statically identifiable shapes are followed: lineage stops at transformations outside the set above, and at any schema derived dynamically at refresh time. Where lineage stops, PBI Assure records that it stopped rather than inferring the rest.</p>
+                </div>
+            </div>
+        </details>
+    </section>
+
+    <section class="coverage-band" aria-labelledby="band-report">
+        <h2 id="band-report">Report intelligence</h2>
+        <p class="coverage-band-lede">What the report is made of, and everywhere the model shows up in it.</p>
+
+        <details class="coverage-row">
+            <summary class="disclosure-marker">
+                <span class="coverage-head">
+                    <span class="coverage-name">Report structure</span>
+                    <span class="coverage-status">Analysed</span>
+                </span>
+                <span class="coverage-lede">The shape of the report and how well its format was recognised.</span>
+                <span class="coverage-keywords">Pages · Visuals · Nested groups · Hidden state · Mobile layout · Landing page · Schema versions</span>
+            </summary>
+            <div class="coverage-detail">
+                <h3>What is analysed</h3>
+                <p>Pages, visuals and nested visual groups, each with the persisted identity that lets a finding point at a specific object rather than at a description of one. Hidden state is retained for both pages and visuals, and a hidden ancestor is taken into account rather than only the object itself. Mobile layout and the configured landing page are read where present.</p>
+                <p>PBI Assure also records how well it recognised the report format itself: whether each definition file matched a schema version it verifies exactly, a recognised family at a version it has not verified, or a family it does not know.</p>
+                <p>That last case matters. An unrecognised report artefact that could carry a dependency does not simply get skipped — it <strong>qualifies absence-based conclusions</strong> for that report, so "apparently unused" is reported with lower confidence rather than with false certainty.</p>
+                <div class="coverage-boundary">
+                    <h3>Boundaries</h3>
+                    <p>The report is read as persisted metadata. PBI Assure does not render visuals, run report queries, or reproduce what a reader would see on screen.</p>
+                </div>
+            </div>
+        </details>
+
+        <details class="coverage-row">
+            <summary class="disclosure-marker">
+                <span class="coverage-head">
+                    <span class="coverage-name">Report usage &amp; context</span>
+                    <span class="coverage-status">Analysed</span>
+                </span>
+                <span class="coverage-lede">Every context in which the report refers to the model.</span>
+                <span class="coverage-keywords">Projections · Hidden projections · Filters · Sorting · Formatting references · Report-level measures</span>
+            </summary>
+            <div class="coverage-detail">
+                <h3>What is analysed</h3>
+                <p>Field usage is read in every context the report format records: projections on a visual, filters at report, page and visual level, sort definitions, and formatting expressions such as conditional colours, dynamic titles, reference lines and data-bound icons. Each use is retained with its context and role, which is what makes the evidence behind a usage state specific.</p>
+                <p>Report-level measures are read from the report's own extensions, and the DAX inside them is analysed, so a column used only by a report-level measure is not mistaken for unused.</p>
+                <p>A projection can be persisted as <strong>hidden</strong>. PBI Assure keeps two facts apart here: a hidden projection is still genuinely <strong>Directly used</strong>, because the visual requires it, but it is not treated as <strong>user-facing</strong>, because a report reader never sees it.</p>
+                <div class="coverage-boundary">
+                    <h3>Boundaries</h3>
+                    <p>Visual calculations are not a separate source of model dependencies. A visual calculation can only refer to fields already projected on its visual, so the dependency is carried by that projection and PBI Assure already sees it.</p>
+                </div>
+            </div>
+        </details>
+
+        <details class="coverage-row">
+            <summary class="disclosure-marker">
+                <span class="coverage-head">
+                    <span class="coverage-name">Navigation &amp; behaviour</span>
+                    <span class="coverage-status">Analysed</span>
+                </span>
+                <span class="coverage-lede">The interactive wiring of a report, and whether it still points at things that exist.</span>
+                <span class="coverage-keywords">Bookmarks · Actions · Page navigation · Drillthrough · Tooltips · Visual interactions</span>
+            </summary>
+            <div class="coverage-detail">
+                <h3>What is analysed</h3>
+                <p>Bookmarks and their targets, including bookmarks whose definition is missing from the report's list and definitions the list does not include. Button and visual actions, and whether an enabled action has a complete type and target. Page-navigation destinations. Drillthrough configuration: its fields, whether each field is bound to a page filter, and whether that filter exists. Report-page and visual-header tooltips, including whether the destination is configured as a tooltip page. Visual interactions and whether both endpoints still exist. The configured landing page.</p>
+                <p>These are integrity checks: they find wiring that points at something no longer there, or that is enabled but incomplete. Actions and tooltips whose target is set dynamically are identified as needing manual testing rather than reported as broken.</p>
+                <div class="coverage-boundary">
+                    <h3>Boundaries</h3>
+                    <p>PBI Assure checks that the configuration is coherent, not that the resulting experience is good. Whether a navigation path makes sense to a reader is a judgement it does not attempt.</p>
+                </div>
+            </div>
+        </details>
+    </section>
+
+    <section class="coverage-band" aria-labelledby="band-reviews">
+        <h2 id="band-reviews">Reviews &amp; confidence</h2>
+        <p class="coverage-band-lede">Narrow, named checks — and how PBI Assure qualifies its own conclusions.</p>
+
+        <details class="coverage-row">
+            <summary class="disclosure-marker">
+                <span class="coverage-head">
+                    <span class="coverage-name">Accessibility review</span>
+                    <span class="coverage-status">Partial</span>
+                </span>
+                <span class="coverage-lede">Five specific checks against persisted report settings.</span>
+                <span class="coverage-keywords">Alt text · Tab order · Tab-order exclusion · Visual titles · Drillthrough Back action</span>
+            </summary>
+            <div class="coverage-detail">
+                <h3>What is analysed</h3>
+                <ul>
+                    <li><strong>Missing alt text</strong> — visuals included in the tab order with no configured alternative text.</li>
+                    <li><strong>Duplicate tab order</strong> — page items in the same group scope sharing the same explicit tab-order value.</li>
+                    <li><strong>Visual excluded from tab order</strong> — visible, non-decorative visuals explicitly removed from keyboard navigation.</li>
+                    <li><strong>Visual title disabled</strong> — keyboard-reachable visuals whose title has been explicitly turned off.</li>
+                    <li><strong>Drillthrough page missing Back action</strong> — drillthrough pages with no enabled way back.</li>
+                </ul>
+                <div class="coverage-boundary">
+                    <h3>Boundaries</h3>
+                    <p><strong>This supports manual accessibility review. It is not WCAG certification and does not certify anything.</strong> Rendered colour contrast, screen-reader behaviour and actual keyboard operation are runtime properties that persisted report files cannot show. Use these checks to clear the obvious gaps quickly, then review properly.</p>
+                </div>
+            </div>
+        </details>
+
+        <details class="coverage-row">
+            <summary class="disclosure-marker">
+                <span class="coverage-head">
+                    <span class="coverage-name">Theme Review</span>
+                    <span class="coverage-status">Partial</span>
+                </span>
+                <span class="coverage-lede">Theme resolution, and a deliberately narrow set of title formatting observations.</span>
+                <span class="coverage-keywords">Theme status · Title font size · Title text colour · Title background colour · Peer consistency</span>
+            </summary>
+            <div class="coverage-detail">
+                <h3>What is analysed</h3>
+                <p>Which theme the report resolves to: a custom theme applied over a base theme, a base theme only, or a configured theme resource that cannot be resolved or read. An unresolvable custom theme is reported as a finding, because the report will not look the way its author intended.</p>
+                <p>Within visuals, three persisted properties are recognised: <strong>title font size</strong>, <strong>title text colour</strong> and <strong>title background colour</strong>. Where several visuals of the same type carry one of those, PBI Assure reports the dominant value and any visual that departs from it — which is how you find the one chart somebody restyled by hand.</p>
+                <p>Saved-versus-theme comparison is narrower again: it currently resolves <strong>title font size on clustered column charts</strong> against the theme's own rule.</p>
+                <div class="coverage-boundary">
+                    <h3>Boundaries</h3>
+                    <p>Theme Review does not reproduce Power BI's formatting engine and does not predict how a visual will render. Properties beyond the three above are not compared, and selector-scoped formatting is not resolved. It is deliberately narrow and still early — treat it as a targeted check, not a formatting audit.</p>
+                </div>
+            </div>
+        </details>
+
+        <details class="coverage-row">
+            <summary class="disclosure-marker">
+                <span class="coverage-head">
+                    <span class="coverage-name">Analysis coverage &amp; confidence</span>
+                    <span class="coverage-status">Analysed</span>
+                </span>
+                <span class="coverage-lede">What PBI Assure did and did not read in your project, and how that changes its conclusions.</span>
+                <span class="coverage-keywords">Recognised artefacts · Analysis limitations · Dependency impact · Established or qualified</span>
+            </summary>
+            <div class="coverage-detail">
+                <h3>What is analysed</h3>
+                <p>Definition artefacts that PBI Assure recognises are classified by how they are handled — parsed into the analysis, recognised content this version does not yet parse, packaging content that is correctly not parsed, or unrecognised. Unrecognised dependency-capable artefacts can qualify absence-based conclusions rather than being silently treated as understood.</p>
+                <p>Where a construct is only partly understood, the analysis says which part. Security roles are the clearest example: row-level filters and explicitly named object-level permissions are analysed, and the rest of a role's content is not claimed.</p>
+                <p>This matters most for conclusions based on <em>absence</em>. If a project contains metadata that was not analysed and that could create a dependency, then <strong>Apparently unused</strong> in that model is reported as <strong>qualified by limitation</strong> rather than <strong>established</strong>. The usage state does not change; the confidence in it does. A qualified absence is a prompt to look at the thing that was not read.</p>
+                <div class="coverage-boundary">
+                    <h3>Boundaries</h3>
+                    <p>Coverage reporting describes this version of PBI Assure against your project. It is not a claim that unread metadata does or does not create a dependency — only that it could, and was not analysed.</p>
+                </div>
+            </div>
+        </details>
+    </section>
+
+    <section class="coverage-closing" aria-labelledby="coverage-boundary-heading">
+        <h2 id="coverage-boundary-heading">Where the boundary sits</h2>
+        <p>PBI Assure reads project files. Some things are simply not in those files, and no amount of parsing will recover them:</p>
+        <ul>
+            <li><strong>Service, workspace and app permissions</strong>, and who an app or report is shared with.</li>
+            <li><strong>Runtime identity and effective security</strong> — which role a given person lands in, and what they can actually see.</li>
+            <li><strong>Refresh history, gateway and credential availability, and query folding.</strong></li>
+            <li><strong>Data correctness, runtime rendering, and usage by reports outside this project.</strong></li>
+        </ul>
+        <p>For how to interpret the evidence PBI Assure does produce, and how it handles your project's data, see <a href="about">What PBI Assure does</a>.</p>
+    </section>
+</article>

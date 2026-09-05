@@ -9,7 +9,7 @@
 
 <PageTitle>Analyse — PBI Assure</PageTitle>
 
-<AppNavigation HasActiveProject="@(selection is not null || inventory is not null || isBusy)" />
+<AppNavigation Current="AppPage.Analyse" HasActiveProject="@(selection is not null || inventory is not null || isBusy)" />
 
 <section class="shell" aria-labelledby="page-title" data-pbiassure-app-ready="true">
     <header class="page-header @(HasProject ? "page-header-compact" : null)">
@@ -24,6 +24,7 @@
                 <li>Understand model and Power Query dependencies</li>
                 <li>Export catalogue and usage metadata</li>
             </ul>
+            <p class="coverage-pointer">Want to know exactly what gets analysed? <a href="coverage">View coverage</a></p>
         }
     </header>
 

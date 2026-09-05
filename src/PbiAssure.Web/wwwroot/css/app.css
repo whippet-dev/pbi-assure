@@ -496,3 +496,167 @@ button:disabled:hover { background: var(--pa-accent); border-color: var(--pa-acc
   .project-metrics .metric:last-child { grid-column: auto; }
   .metrics { grid-template-columns: repeat(auto-fit, minmax(7rem, 1fr)); }
 }
+
+/* ---------------------------------------------------------------- coverage */
+
+/* Coverage is a scope page, so it is composed as a hairline rail rather than as tiles. A capability
+   area is a section, and the design system is explicit that sections are not cards: hierarchy comes
+   from type, space and 1px rules. Twelve bordered panels would read as a feature grid and would say
+   nothing the rows do not. */
+
+.coverage-page { line-height: 1.6; }
+.coverage-page > header { display: grid; gap: 0.5rem; }
+
+/* Three facts about what a scan reads. Divided by hairlines like the counts rail, not boxed. */
+.coverage-scope {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0 1.5rem;
+  margin: 0.5rem 0 0;
+  padding: 0;
+  border-top: 1px solid var(--pa-line);
+  list-style: none;
+}
+
+.coverage-scope li {
+  display: grid;
+  gap: 0.125rem;
+  max-width: none;
+  padding: 0.625rem 0 0;
+  color: var(--pa-text-3);
+  font-size: var(--pa-t-xs);
+}
+
+.coverage-scope span {
+  color: var(--pa-text);
+  font-family: var(--pa-font-mono);
+  font-size: var(--pa-t-2xs);
+  font-weight: 600;
+  letter-spacing: 0.04em;
+}
+
+.coverage-legend { margin: 0; }
+.coverage-legend dl { max-width: 60rem; }
+.coverage-legend p { margin: 0.75rem 0 0; font-size: var(--pa-t-sm); }
+
+.coverage-band { display: grid; gap: 0; }
+.coverage-band > h2 { margin: 0; }
+
+.coverage-band-lede {
+  margin: 0.125rem 0 0.5rem;
+  max-width: 72ch;
+  color: var(--pa-text-3);
+  font-size: var(--pa-t-xs);
+}
+
+/* One capability area. The hairline sits on the row, so an open row stays visually attached to its
+   own detail instead of floating between two separators. */
+.coverage-row { border-top: 1px solid var(--pa-line); }
+.coverage-band .coverage-row:last-of-type { border-bottom: 1px solid var(--pa-line); }
+
+.coverage-row > summary {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 0.875rem;
+  column-gap: 1rem;
+  row-gap: 0.25rem;
+  padding: 0.875rem 0;
+  color: var(--pa-text);
+  font-weight: 400;
+}
+
+.coverage-row > summary:hover { color: var(--pa-text); }
+.coverage-row > summary:hover .coverage-name { color: var(--pa-accent); }
+
+/* The chevron is the only accent on a closed row: it carries the affordance without turning twelve
+   headings indigo, which would read as a link list rather than as a reference page. */
+.coverage-row > summary::after {
+  grid-column: 2;
+  grid-row: 1;
+  align-self: center;
+  background: var(--pa-accent);
+}
+
+.coverage-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0.25rem 0.75rem; grid-column: 1; }
+.coverage-name { color: inherit; font-family: var(--pa-font-display); font-size: var(--pa-t-md); font-weight: 600; letter-spacing: -0.01em; }
+
+/* Analysed and Partial are informational, never severity. They deliberately borrow no status hue:
+   the palette reserves colour for finding severity and semantic usage. */
+.coverage-status {
+  padding: 0.0625rem 0.375rem;
+  border: 1px solid var(--pa-line-strong);
+  border-radius: var(--pa-r1);
+  color: var(--pa-text-3);
+  font-size: var(--pa-t-3xs);
+  font-weight: 650;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.coverage-lede { grid-column: 1; max-width: 74ch; color: var(--pa-text-2); font-size: var(--pa-t-sm); }
+
+/* Keywords are set as text, not pills. Six pills across twelve rows is noise. */
+.coverage-keywords {
+  grid-column: 1;
+  max-width: 88ch;
+  color: var(--pa-text-3);
+  font-family: var(--pa-font-mono);
+  font-size: var(--pa-t-2xs);
+  line-height: 1.55;
+}
+
+.coverage-detail { display: grid; gap: 0.75rem; padding: 0 0 1.25rem; max-width: 82ch; }
+.coverage-detail h3 { margin: 0; color: var(--pa-text-3); font-size: var(--pa-t-3xs); font-weight: 650; letter-spacing: 0.08em; text-transform: uppercase; }
+.coverage-detail p { margin: 0; color: var(--pa-text-2); font-size: var(--pa-t-sm); }
+.coverage-detail ul { gap: 0.375rem; font-size: var(--pa-t-sm); }
+.coverage-detail li { color: var(--pa-text-2); }
+
+/* Boundaries are prose in their own block, never a third badge. A badge would put them on the same
+   scale as the coverage labels, which is exactly the misreading to avoid. */
+.coverage-boundary {
+  display: grid;
+  gap: 0.375rem;
+  margin-top: 0.25rem;
+  padding-left: 0.875rem;
+  border-left: 2px solid var(--pa-line-strong);
+}
+
+.coverage-states { display: grid; gap: 0.375rem; margin: 0; }
+.coverage-states div { display: grid; gap: 0.0625rem; }
+.coverage-states dt { display: flex; align-items: center; gap: 0.4375rem; color: var(--pa-text); font-size: var(--pa-t-sm); font-weight: 600; }
+.coverage-states dd { margin: 0 0 0 1.125rem; color: var(--pa-text-2); font-size: var(--pa-t-sm); line-height: 1.45; }
+
+.coverage-transformations {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 13rem), 1fr));
+  gap: 0.25rem 1.5rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.coverage-transformations li { color: var(--pa-text-2); }
+
+.coverage-closing { display: grid; gap: 0.75rem; margin-top: 0.5rem; }
+.coverage-closing h2 { margin: 0; }
+
+/* The one line on Analyse that points here. Quiet by design: Analyse must not get wordier. */
+.coverage-pointer { margin: 0.5rem 0 0; color: var(--pa-text-3); font-size: var(--pa-t-xs); }
+
+@media (max-width: 46rem) {
+  .coverage-scope { grid-template-columns: minmax(0, 1fr); gap: 0; }
+  .coverage-scope li { padding: 0.5rem 0; border-bottom: 1px solid var(--pa-line); }
+  .coverage-scope li:last-child { border-bottom: 0; }
+  .coverage-transformations { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+@media (max-width: 34rem) {
+  /* Status drops under the title so a long capability name never collides with it, and the summary
+     keeps a comfortable tap target. Keywords wrap as ordinary text: nothing scrolls sideways. */
+  .coverage-head { flex-direction: column; align-items: flex-start; gap: 0.25rem; }
+  .coverage-row > summary { padding: 1rem 0; column-gap: 0.75rem; }
+  .coverage-name { font-size: var(--pa-t-sm); }
+  .coverage-detail { padding-bottom: 1rem; }
+  .coverage-transformations { grid-template-columns: minmax(0, 1fr); }
+  .coverage-band-lede { margin-bottom: 0.375rem; }
+}
