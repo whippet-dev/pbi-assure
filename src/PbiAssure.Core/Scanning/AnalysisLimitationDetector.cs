@@ -19,7 +19,8 @@ internal static class AnalysisLimitationDetector
         IReadOnlyList<ArtifactInventory> artifacts,
         IReadOnlyDictionary<string, string>? refinedDependencyImpacts = null,
         IReadOnlySet<string>? fullyAccountedRolePaths = null,
-        IReadOnlyList<ReportInventory>? reports = null)
+        IReadOnlyList<ReportInventory>? reports = null,
+        IReadOnlyList<UnresolvedSemanticDependency>? unresolvedDependencies = null)
     {
         var refinements = refinedDependencyImpacts ?? new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
         var accountedRolePaths = fullyAccountedRolePaths ?? new HashSet<string>(StringComparer.OrdinalIgnoreCase);
@@ -32,10 +33,59 @@ internal static class AnalysisLimitationDetector
             .Where(artifact => artifact.Kind == ArtifactKinds.Report)
             .SelectMany(artifact => DetectForReport(source, artifact, reportsByPath));
 
-        return semanticLimitations.Concat(reportLimitations)
+        return semanticLimitations
+            .Concat(reportLimitations)
+            .Concat(DetectForUnresolvedDependencies(unresolvedDependencies ?? []))
             .OrderBy(limitation => limitation.SemanticModel, StringComparer.OrdinalIgnoreCase)
             .ThenBy(limitation => limitation.ArtifactPath, StringComparer.OrdinalIgnoreCase)
             .ToArray();
+    }
+
+    /// <summary>
+    /// A reference PBI Assure read but could not bind is doubt about the dependency graph, so it has to
+    /// reach confidence the same way every other doubt does — as an <see cref="AnalysisLimitation"/>
+    /// carrying <see cref="ConstructDependencyImpacts.MayCreateDependencies"/>. Routing it here keeps
+    /// <see cref="SemanticUsageConfidenceQualifier"/> with a single input rather than giving confidence
+    /// a second, parallel source of truth.
+    ///
+    /// Only <c>NotFound</c> and <c>Ambiguous</c> qualify. Both mean the edge that reference would have
+    /// created is missing from the graph, which is exactly what an absence conclusion depends on.
+    ///
+    /// Scope is the semantic model, because an unresolved reference does not say which object it meant:
+    /// a name that resolved to nothing could have been any object in that model. Positive states are
+    /// untouched — the qualifier only ever marks the two absence states.
+    /// </summary>
+    private static IEnumerable<AnalysisLimitation> DetectForUnresolvedDependencies(
+        IReadOnlyList<UnresolvedSemanticDependency> unresolvedDependencies)
+    {
+        return unresolvedDependencies
+            .Where(dependency =>
+                dependency.ResolutionOutcome is UnresolvedSemanticDependencyResolutionOutcomes.NotFound
+                    or UnresolvedSemanticDependencyResolutionOutcomes.Ambiguous)
+            .DistinctBy(dependency => (
+                dependency.SemanticModel,
+                dependency.FromTable,
+                dependency.FromObjectName,
+                dependency.DependencyKind,
+                dependency.ReferenceText,
+                dependency.ResolutionOutcome))
+            .Select(dependency => new AnalysisLimitation(
+                LimitationId: "PBI-LIMIT-MODEL-UNRESOLVED-REFERENCE",
+                Cause: AnalysisLimitationCauses.ReferenceUnresolved,
+                SupportState: ConstructSupportStates.PartiallyAnalyzed,
+                ConstructType: "semanticReference",
+                Scope: AnalysisLimitationScopes.SemanticModel,
+                SemanticModel: dependency.SemanticModel,
+                Table: dependency.FromTable,
+                ObjectName: dependency.FromObjectName,
+                ArtifactPath: dependency.EvidencePath,
+                EvidencePath: dependency.EvidencePath,
+                DependencyImpact: ConstructDependencyImpacts.MayCreateDependencies,
+                Concerns: [AnalysisConcerns.Dependency],
+                Reason: $"'{dependency.FromTable}[{dependency.FromObjectName}]' references " +
+                        $"'{dependency.ReferenceText}', which could not be resolved to a model object " +
+                        $"({dependency.ResolutionOutcome}). The dependency it would have created is " +
+                        "absent from the graph, so absence conclusions in this model may be incomplete."));
     }
 
     private static IEnumerable<AnalysisLimitation> DetectForModel(

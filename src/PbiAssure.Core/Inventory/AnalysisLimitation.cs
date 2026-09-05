@@ -13,6 +13,14 @@ public static class AnalysisLimitationCauses
 
     /// <summary>The persisted artifact explicitly states that its dependency metadata is incomplete.</summary>
     public const string DependencyMetadataIncomplete = "DependencyMetadataIncomplete";
+
+    /// <summary>
+    /// An expression was parsed, but a reference inside it could not be bound to a model object — it
+    /// matched nothing, or matched more than one candidate. The dependency that reference would have
+    /// created is therefore missing from the graph, so absence conclusions in that model rest on an
+    /// incomplete picture.
+    /// </summary>
+    public const string ReferenceUnresolved = "ReferenceUnresolved";
 }
 
 /// <summary>
