@@ -15,6 +15,7 @@ internal static class PbirReportParser
 
         var relativeReportPath = ProjectFilePaths.Normalize(reportDirectory);
         var schemaObservations = new List<ReportSchemaObservation>();
+        var unresolvedAliases = new List<UnresolvedReportAlias>();
         var modelConnection = ParseModelConnection(source, reportDirectory, schemaObservations);
         var versionMetadata = ParseVersionMetadata(source, reportDirectory, schemaObservations);
         var bookmarkResult = PbirBookmarkParser.Parse(source, reportDirectory, schemaObservations);
@@ -32,7 +33,7 @@ internal static class PbirReportParser
             schemaObservations.Add(PbirSchemaObservationFactory.Create(
                 ReportSchemaArtifactKinds.Report, reportDefinitionPath, reportDefinition.RootElement));
             theme = PbirThemeParser.Parse(source, reportDirectory, reportDefinition.RootElement);
-            reportFieldReferences = PbirFieldReferenceExtractor.Extract(reportDefinition.RootElement);
+            reportFieldReferences = ExtractReferences(reportDefinition.RootElement, reportDefinitionPath, unresolvedAliases);
             reportFilters = ParseFilters(reportDefinition.RootElement);
         }
 
@@ -69,7 +70,7 @@ internal static class PbirReportParser
                 pageOrder,
                 activePageName,
                 theme,
-                schemaObservations))
+                schemaObservations, unresolvedAliases))
             .Where(page => page is not null)
             .Cast<PageInventory>()
             .OrderBy(page => page.Order ?? int.MaxValue)
@@ -98,12 +99,18 @@ internal static class PbirReportParser
             Bookmarks: bookmarkResult.Bookmarks)
         {
             SchemaObservations = OrderObservations(schemaObservations),
+            UnresolvedAliases = unresolvedAliases.Distinct().ToArray(),
             VersionMetadataPath = versionMetadata.Path,
             PbirDefinitionVersion = versionMetadata.Version,
             Theme = theme,
             ThemeReview = ThemeReviewAnalyzer.Analyze(theme, pages),
         };
     }
+
+    private static VisualFieldReference[] ExtractReferences(
+        JsonElement root, string artifactPath, ICollection<UnresolvedReportAlias> unresolvedAliases) =>
+        PbirFieldReferenceExtractor.Extract(root, (evidencePath, alias) =>
+            unresolvedAliases.Add(new UnresolvedReportAlias(artifactPath, evidencePath, alias)));
 
     private static ReportModelConnectionInventory ParseModelConnection(
         IProjectFileSource source,
@@ -281,7 +288,8 @@ internal static class PbirReportParser
         Dictionary<string, int> pageOrder,
         string? activePageName,
         ThemeInventory theme,
-        List<ReportSchemaObservation> schemaObservations)
+        List<ReportSchemaObservation> schemaObservations,
+        ICollection<UnresolvedReportAlias> unresolvedAliases)
     {
         var pagePath = ProjectFilePaths.Combine(pageDirectory, "page.json");
         if (!source.FileExists(pagePath))
@@ -296,7 +304,7 @@ internal static class PbirReportParser
         var name = GetString(pageRoot, "name") ?? ProjectFilePaths.GetFileName(pageDirectory);
         var displayName = GetString(pageRoot, "displayName") ?? name;
         var visualsDirectory = ProjectFilePaths.Combine(pageDirectory, "visuals");
-        var containers = ParseContainers(source, visualsDirectory, theme, schemaObservations);
+        var containers = ParseContainers(source, visualsDirectory, theme, schemaObservations, unresolvedAliases);
 
         return new PageInventory(
             Name: name,
@@ -313,7 +321,7 @@ internal static class PbirReportParser
             Width: GetDouble(pageRoot, "width"),
             Height: GetDouble(pageRoot, "height"),
             Filters: ParseFilters(pageRoot),
-            FieldReferences: PbirFieldReferenceExtractor.Extract(pageRoot),
+            FieldReferences: ExtractReferences(pageRoot, pagePath, unresolvedAliases),
             VisualInteractions: ParseVisualInteractions(pageRoot),
             VisualGroups: containers.Groups,
             Visuals: containers.Visuals);
@@ -367,12 +375,13 @@ internal static class PbirReportParser
         IProjectFileSource source,
         string visualsDirectory,
         ThemeInventory theme,
-        ICollection<ReportSchemaObservation> schemaObservations)
+        ICollection<ReportSchemaObservation> schemaObservations,
+        ICollection<UnresolvedReportAlias> unresolvedAliases)
     {
         var containers = source
             .EnumerateFiles(visualsDirectory)
             .Where(file => string.Equals(ProjectFilePaths.GetFileName(file.RelativePath), "visual.json", StringComparison.OrdinalIgnoreCase))
-            .Select(file => ParseContainer(source, file.RelativePath, theme, schemaObservations))
+            .Select(file => ParseContainer(source, file.RelativePath, theme, schemaObservations, unresolvedAliases))
             .ToArray();
 
         return new ContainerParseResult(
@@ -390,7 +399,8 @@ internal static class PbirReportParser
         IProjectFileSource source,
         string visualPath,
         ThemeInventory theme,
-        ICollection<ReportSchemaObservation> schemaObservations)
+        ICollection<ReportSchemaObservation> schemaObservations,
+        ICollection<UnresolvedReportAlias> unresolvedAliases)
     {
         using var visualDocument = OpenJsonDocument(source, visualPath);
         var visualRoot = visualDocument.RootElement;
@@ -429,7 +439,7 @@ internal static class PbirReportParser
             using var mobileDocument = OpenJsonDocument(source, mobilePath);
             schemaObservations.Add(PbirSchemaObservationFactory.Create(
                 ReportSchemaArtifactKinds.VisualContainerMobileState, mobilePath, mobileDocument.RootElement));
-            mobileReferences = PbirFieldReferenceExtractor.Extract(mobileDocument.RootElement);
+            mobileReferences = ExtractReferences(mobileDocument.RootElement, mobilePath, unresolvedAliases);
         }
 
         return new ParsedContainer(ParseVisual(
@@ -440,7 +450,7 @@ internal static class PbirReportParser
             parentGroupName,
             parsedPosition,
             theme,
-            mobileReferences), null);
+            mobileReferences, unresolvedAliases), null);
     }
 
     private static VisualInventory ParseVisual(
@@ -451,13 +461,14 @@ internal static class PbirReportParser
         string? parentGroupName,
         VisualPosition position,
         ThemeInventory theme,
-        IReadOnlyList<VisualFieldReference> mobileReferences)
+        IReadOnlyList<VisualFieldReference> mobileReferences,
+        ICollection<UnresolvedReportAlias> unresolvedAliases)
     {
         var visualType = TryGetObject(visualRoot, "visual", out var visualElement)
             ? GetString(visualElement, "visualType")
             : null;
         var onCanvasText = PbirVisualTextParser.Parse(visualElement);
-        var references = PbirFieldReferenceExtractor.Extract(visualRoot)
+        var references = ExtractReferences(visualRoot, visualPath, unresolvedAliases)
             .Concat(mobileReferences)
             .Distinct()
             .ToArray();

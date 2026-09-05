@@ -5,11 +5,11 @@ namespace PbiAssure.Core.Scanning;
 
 internal static class PbirFieldReferenceExtractor
 {
-    public static VisualFieldReference[] Extract(JsonElement root)
+    public static VisualFieldReference[] Extract(JsonElement root, Action<string, string>? onUnresolvedAlias = null)
     {
         var references = new List<VisualFieldReference>();
-        var sourceAliases = ReadSourceAliases(root);
-        Visit(root, "$", [], sourceAliases, references, isHiddenProjection: false);
+        var sourceAliases = new Dictionary<string, HashSet<string>>(StringComparer.Ordinal);
+        Visit(root, "$", [], sourceAliases, references, isHiddenProjection: false, onUnresolvedAlias);
 
         return references
             .Distinct()
@@ -26,15 +26,29 @@ internal static class PbirFieldReferenceExtractor
         IReadOnlyList<string> ancestors,
         IReadOnlyDictionary<string, HashSet<string>> sourceAliases,
         ICollection<VisualFieldReference> references,
-        bool isHiddenProjection)
+        bool isHiddenProjection,
+        Action<string, string>? onUnresolvedAlias)
     {
         if (element.ValueKind == JsonValueKind.Object)
         {
+            // Each semantic query/filter owns its direct From declarations. Nested queries
+            // replace the environment, including when their From is missing or malformed.
+            if (OwnsQueryScope(element))
+            {
+                sourceAliases = ReadSourceAliases(element);
+            }
             var descendantIsHiddenProjection = isHiddenProjection || IsHiddenRoleProjection(element, ancestors);
             foreach (var property in element.EnumerateObject())
             {
                 var propertyPath = $"{path}.{property.Name}";
                 var nextAncestors = Append(ancestors, property.Name);
+                if (property.Name == "SourceRef" &&
+                    GetString(property.Value, "Entity") is null &&
+                    GetString(property.Value, "Source") is { } alias &&
+                    (!sourceAliases.TryGetValue(alias, out var targets) || targets.Count != 1))
+                {
+                    onUnresolvedAlias?.Invoke(propertyPath, alias);
+                }
 
                 if (TryReadReference(
                         property.Name,
@@ -49,7 +63,7 @@ internal static class PbirFieldReferenceExtractor
                 }
 
                 Visit(property.Value, propertyPath, nextAncestors, sourceAliases, references,
-                    descendantIsHiddenProjection);
+                    descendantIsHiddenProjection, onUnresolvedAlias);
             }
 
             return;
@@ -63,7 +77,7 @@ internal static class PbirFieldReferenceExtractor
         var index = 0;
         foreach (var item in element.EnumerateArray())
         {
-            Visit(item, $"{path}[{index}]", ancestors, sourceAliases, references, isHiddenProjection);
+            Visit(item, $"{path}[{index}]", ancestors, sourceAliases, references, isHiddenProjection, onUnresolvedAlias);
             index++;
         }
     }
@@ -437,6 +451,11 @@ internal static class PbirFieldReferenceExtractor
         return aliases;
     }
 
+    private static bool OwnsQueryScope(JsonElement element) => element.EnumerateObject().Any(property =>
+        property.Name.Equals("From", StringComparison.OrdinalIgnoreCase) ||
+        property.Name.Equals("Select", StringComparison.OrdinalIgnoreCase) ||
+        property.Name.Equals("Where", StringComparison.OrdinalIgnoreCase));
+
     private static void CollectSourceAliases(
         JsonElement element,
         IDictionary<string, HashSet<string>> aliases)
@@ -452,7 +471,7 @@ internal static class PbirFieldReferenceExtractor
                     {
                         var alias = GetString(source, "Name") ?? GetString(source, "name");
                         var entity = GetString(source, "Entity") ?? GetString(source, "entity");
-                        if (alias is null || entity is null)
+                        if (alias is null)
                         {
                             continue;
                         }
@@ -463,18 +482,14 @@ internal static class PbirFieldReferenceExtractor
                             aliases.Add(alias, entities);
                         }
 
-                        entities.Add(entity);
+                        entities.Add(entity ?? string.Empty);
                     }
                 }
-
-                CollectSourceAliases(property.Value, aliases);
             }
-        }
-        else if (element.ValueKind == JsonValueKind.Array)
-        {
-            foreach (var item in element.EnumerateArray())
+            // A missing Entity cannot borrow a duplicate declaration's valid target.
+            foreach (var entities in aliases.Values.Where(entities => entities.Contains(string.Empty)))
             {
-                CollectSourceAliases(item, aliases);
+                entities.Clear();
             }
         }
     }

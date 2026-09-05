@@ -21,7 +21,8 @@ internal static class AnalysisLimitationDetector
         IReadOnlySet<string>? fullyAccountedRolePaths = null,
         IReadOnlyList<ReportInventory>? reports = null,
         IReadOnlyList<UnresolvedSemanticDependency>? unresolvedDependencies = null,
-        IReadOnlyList<UnanalyzedTableConstructs>? unanalyzedTableConstructs = null)
+        IReadOnlyList<UnanalyzedTableConstructs>? unanalyzedTableConstructs = null,
+        IReadOnlyList<SemanticModelInventory>? semanticModels = null)
     {
         var refinements = refinedDependencyImpacts ?? new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
         var accountedRolePaths = fullyAccountedRolePaths ?? new HashSet<string>(StringComparer.OrdinalIgnoreCase);
@@ -32,7 +33,7 @@ internal static class AnalysisLimitationDetector
             .ToDictionary(report => report.RelativePath, StringComparer.OrdinalIgnoreCase);
         var reportLimitations = artifacts
             .Where(artifact => artifact.Kind == ArtifactKinds.Report)
-            .SelectMany(artifact => DetectForReport(source, artifact, reportsByPath));
+            .SelectMany(artifact => DetectForReport(source, artifact, reportsByPath, semanticModels ?? []));
 
         return semanticLimitations
             .Concat(reportLimitations)
@@ -180,7 +181,8 @@ internal static class AnalysisLimitationDetector
     private static IEnumerable<AnalysisLimitation> DetectForReport(
         IProjectFileSource source,
         ArtifactInventory artifact,
-        Dictionary<string, ReportInventory> reportsByPath)
+        Dictionary<string, ReportInventory> reportsByPath,
+        IReadOnlyList<SemanticModelInventory> semanticModels)
     {
         var prefix = ProjectFilePaths.Normalize(artifact.RelativePath).TrimEnd('/') + "/";
         reportsByPath.TryGetValue(ProjectFilePaths.Normalize(artifact.RelativePath), out var report);
@@ -248,6 +250,25 @@ internal static class AnalysisLimitationDetector
         if (report is null)
         {
             yield break;
+        }
+
+        foreach (var alias in report.UnresolvedAliases)
+        {
+            yield return new AnalysisLimitation(
+                LimitationId: "PBI-LIMIT-REPORT-UNRESOLVED-ALIAS",
+                Cause: AnalysisLimitationCauses.ReferenceUnresolved,
+                SupportState: ConstructSupportStates.PartiallyAnalyzed,
+                ConstructType: "reportSourceAlias",
+                Scope: AnalysisLimitationScopes.Report,
+                SemanticModel: ReportModelBinder.FindLocalModel(report, semanticModels)?.Name,
+                Table: null,
+                ObjectName: null,
+                ArtifactPath: alias.ArtifactPath,
+                EvidencePath: alias.EvidencePath,
+                DependencyImpact: ConstructDependencyImpacts.MayCreateDependencies,
+                Concerns: [AnalysisConcerns.Dependency],
+                Reason: $"Source alias '{alias.Alias}' could not be resolved within its owning PBIR " +
+                        "query/filter scope. Its semantic references may be absent from the graph.");
         }
 
         foreach (var measure in report.ReportMeasures.Where(measure => measure.HasUnrecognizedReferences))

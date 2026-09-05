@@ -19,6 +19,10 @@ public sealed record ReportInventory(
     IReadOnlyList<string> BookmarkOrder,
     IReadOnlyList<BookmarkInventory> Bookmarks)
 {
+    // Parser-only evidence is converted to the existing AnalysisLimitations contract.
+    [System.Text.Json.Serialization.JsonIgnore]
+    internal IReadOnlyList<UnresolvedReportAlias> UnresolvedAliases { get; init; } = [];
+
     /// <summary>
     /// Report-side PBIR schema declarations observed while parsing this report. Exact fixture-backed
     /// baselines are retained for technical inventory but remain silent in normal coverage presentation.
@@ -59,3 +63,5 @@ public sealed record ReportInventory(
         .Distinct(StringComparer.OrdinalIgnoreCase)
         .Count();
 }
+
+internal sealed record UnresolvedReportAlias(string ArtifactPath, string EvidencePath, string Alias);

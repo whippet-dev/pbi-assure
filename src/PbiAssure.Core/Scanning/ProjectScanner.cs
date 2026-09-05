@@ -47,7 +47,8 @@ public static class ProjectScanner
             AnalysisCoverageRefinements.BuildFullyAccountedRolePaths(semanticModels),
             reports,
             dependencyAnalysis.UnresolvedDependencies,
-            AnalysisCoverageRefinements.BuildUnanalyzedTableConstructs(semanticModels));
+            AnalysisCoverageRefinements.BuildUnanalyzedTableConstructs(semanticModels),
+            semanticModels);
 
         // Applied once, after usage states are final and the limitations are known. Usage states are not
         // changed here; only the orthogonal confidence marker is set.
