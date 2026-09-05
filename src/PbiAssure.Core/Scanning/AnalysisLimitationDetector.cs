@@ -190,11 +190,8 @@ internal static class AnalysisLimitationDetector
             ? report.ModelConnection.TargetSemanticModelName
             : null;
 
-        // Page directories on disk but nothing parsed from them means the report's own field usage is
-        // missing from the analysis, which turns every object it used into an absence conclusion. That
-        // must never again be reported at full confidence, whatever the reason the pages went unread.
-        var pagesDirectory = ProjectFilePaths.Combine(artifact.RelativePath, "definition", "pages");
-        if (report is { Pages.Count: 0 } && source.EnumerateDirectories(pagesDirectory).Any())
+        // Every failed page matters, even when other pages supplied valid positive evidence.
+        foreach (var page in report?.UnreadPages ?? [])
         {
             yield return new AnalysisLimitation(
                 LimitationId: "PBI-LIMIT-REPORT-PAGES-UNREAD",
@@ -202,15 +199,15 @@ internal static class AnalysisLimitationDetector
                 SupportState: ConstructSupportStates.PartiallyAnalyzed,
                 ConstructType: "pageDefinition",
                 Scope: AnalysisLimitationScopes.Report,
-                SemanticModel: semanticModel,
+                SemanticModel: ReportModelBinder.FindLocalModel(report!, semanticModels)?.Name,
                 Table: null,
                 ObjectName: null,
-                ArtifactPath: pagesDirectory,
+                ArtifactPath: page.DefinitionPath,
                 EvidencePath: AnalysisLimitation.WholeFileEvidence,
                 DependencyImpact: ConstructDependencyImpacts.MayCreateDependencies,
                 Concerns: [AnalysisConcerns.Dependency],
-                Reason: $"Report '{artifact.Name}' has page directories but no page was parsed from " +
-                        "them. Any model object this report uses is therefore missing from the " +
+                Reason: $"Report '{artifact.Name}' could not parse page '{page.DefinitionPath}'. " +
+                        page.Reason + " Semantic references from this page may be missing from the " +
                         "analysis, so absence conclusions may be incomplete.");
         }
 

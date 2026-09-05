@@ -23,6 +23,9 @@ public sealed record ReportInventory(
     [System.Text.Json.Serialization.JsonIgnore]
     internal IReadOnlyList<UnresolvedReportAlias> UnresolvedAliases { get; init; } = [];
 
+    [System.Text.Json.Serialization.JsonIgnore]
+    internal IReadOnlyList<UnreadReportPage> UnreadPages { get; init; } = [];
+
     /// <summary>
     /// Report-side PBIR schema declarations observed while parsing this report. Exact fixture-backed
     /// baselines are retained for technical inventory but remain silent in normal coverage presentation.
@@ -65,3 +68,5 @@ public sealed record ReportInventory(
 }
 
 internal sealed record UnresolvedReportAlias(string ArtifactPath, string EvidencePath, string Alias);
+
+internal sealed record UnreadReportPage(string DefinitionPath, string Reason);

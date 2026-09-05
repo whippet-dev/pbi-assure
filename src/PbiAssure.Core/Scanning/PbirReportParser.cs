@@ -62,17 +62,43 @@ internal static class PbirReportParser
             pageOrder = ReadPageOrder(metadataRoot);
         }
 
-        var pages = source
-            .EnumerateDirectories(pagesDirectory)
-            .Select(directory => ParsePage(
-                source,
-                ProjectFilePaths.Combine(pagesDirectory, directory),
-                pageOrder,
-                activePageName,
-                theme,
-                schemaObservations, unresolvedAliases))
-            .Where(page => page is not null)
-            .Cast<PageInventory>()
+        // Infer actual child directories from descendant files, excluding direct files such as pages.json.
+        var pagesPrefix = pagesDirectory.TrimEnd('/') + "/";
+        var pageDirectories = source.EnumerateFiles(pagesDirectory)
+            .Select(file => file.RelativePath[pagesPrefix.Length..])
+            .Where(path => path.Contains('/'))
+            .Select(path => path[..path.IndexOf('/')])
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .OrderBy(name => name, StringComparer.OrdinalIgnoreCase);
+        var parsedPages = new List<PageInventory>();
+        var unreadPages = new List<UnreadReportPage>();
+        foreach (var directory in pageDirectories)
+        {
+            var pageDirectory = ProjectFilePaths.Combine(pagesDirectory, directory);
+            var definitionPath = ProjectFilePaths.Combine(pageDirectory, "page.json");
+            var pageObservations = new List<ReportSchemaObservation>();
+            var pageAliases = new List<UnresolvedReportAlias>();
+            try
+            {
+                var page = ParsePage(source, pageDirectory, pageOrder, activePageName, theme,
+                    pageObservations, pageAliases);
+                if (page is null)
+                {
+                    unreadPages.Add(new UnreadReportPage(definitionPath, "The page definition is missing."));
+                    continue;
+                }
+
+                parsedPages.Add(page);
+                schemaObservations.AddRange(pageObservations);
+                unresolvedAliases.AddRange(pageAliases);
+            }
+            catch (Exception exception) when (exception is InvalidDataException or IOException or UnauthorizedAccessException)
+            {
+                unreadPages.Add(new UnreadReportPage(definitionPath, exception.Message));
+            }
+        }
+
+        var pages = parsedPages
             .OrderBy(page => page.Order ?? int.MaxValue)
             .ThenBy(page => page.DisplayName, StringComparer.OrdinalIgnoreCase)
             .ToArray();
@@ -100,6 +126,7 @@ internal static class PbirReportParser
         {
             SchemaObservations = OrderObservations(schemaObservations),
             UnresolvedAliases = unresolvedAliases.Distinct().ToArray(),
+            UnreadPages = unreadPages.ToArray(),
             VersionMetadataPath = versionMetadata.Path,
             PbirDefinitionVersion = versionMetadata.Version,
             Theme = theme,
@@ -299,6 +326,10 @@ internal static class PbirReportParser
 
         using var pageDocument = OpenJsonDocument(source, pagePath);
         var pageRoot = pageDocument.RootElement;
+        if (pageRoot.ValueKind != JsonValueKind.Object)
+        {
+            throw new InvalidDataException($"The PBIR page definition must be a JSON object: {pagePath}");
+        }
         schemaObservations.Add(PbirSchemaObservationFactory.Create(
             ReportSchemaArtifactKinds.Page, pagePath, pageRoot));
         var name = GetString(pageRoot, "name") ?? ProjectFilePaths.GetFileName(pageDirectory);
