@@ -93,6 +93,7 @@
     @if (inventory is not null)
     {
         var assurance = WebAssuranceSummary.FromFindings(inventory.Findings);
+        var confidence = WebConfidenceSummary.FromInventory(inventory);
         <section class="output-actions" aria-labelledby="output-actions-heading">
             <h2 id="output-actions-heading">Next steps</h2>
             <p class="output-lede">Analysis complete. Start with the interactive report, export reusable metadata, or review the summary below.</p>
@@ -181,6 +182,13 @@
                 <Metric Label="Only used by unused items" Value="@UsageCount(SemanticUsageStates.UsedOnlyByUnusedBranch)" State="branch" />
                 <Metric Label="Apparently unused" Value="@inventory.DeveloperApparentlyUnusedSemanticObjectCount" State="unused" />
             </div>
+            @if (confidence.HasQualifiedAbsence)
+            {
+                <p class="confidence-notice">
+                    <strong>@WebConfidenceSummary.Headline</strong>
+                    @confidence.Detail @WebConfidenceSummary.Guidance
+                </p>
+            }
             <details class="summary-help">
                 <summary>What does “Apparently unused” mean?</summary>
                 <p>PBI Assure could not find anything in this project that uses it. This does not prove it is safe to delete; external reports and dynamic behaviour may not be visible here.</p>

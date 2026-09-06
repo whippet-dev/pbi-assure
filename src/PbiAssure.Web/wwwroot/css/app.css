@@ -150,7 +150,23 @@ button:disabled:hover { background: var(--pa-accent); border-color: var(--pa-acc
 
 /* ------------------------------------------------------------ disclosures */
 
-.guidance-panel, .picker-help, .summary-help {
+.guidance-panel, .picker-help, /* A confidence disclosure, not a finding: neutral hairline rail, no accent and no severity colour,
+   so it reads as context beside the counts rather than as a problem with the model. */
+.confidence-notice {
+  max-width: 82ch;
+  margin: 0.75rem 0 0;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--pa-line);
+  border-left: 3px solid var(--pa-line-strong);
+  border-radius: var(--pa-r2);
+  background: var(--pa-surface);
+  color: var(--pa-text-2);
+  font-size: var(--pa-t-xs);
+}
+
+.confidence-notice strong { display: block; color: var(--pa-text); font-weight: 600; }
+
+.summary-help {
   border: 1px solid var(--pa-line);
   border-radius: var(--pa-r2);
   background: var(--pa-surface);
