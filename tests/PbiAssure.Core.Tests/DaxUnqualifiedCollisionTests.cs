@@ -7,6 +7,70 @@ namespace PbiAssure.Core.Tests;
 public sealed class DaxUnqualifiedCollisionTests
 {
     [Theory]
+    [InlineData("Date", "YEAR([Date])")]
+    [InlineData("Date", "MONTH([Date])")]
+    [InlineData("Date", "DAY([Date])")]
+    [InlineData("Date", "FORMAT([Date], \"MMMM\")")]
+    [InlineData("MonthNo", "INT(([MonthNo] + 2) / 3)")]
+    [InlineData("QuarterNo", "\"Qtr \" & [QuarterNo]")]
+    public void CalculatedColumnRetainsItsLocalRowDespiteRemoteNameCollision(string column, string expression)
+    {
+        var inventory = Scan("SUM(Fact[Computed])", factColumn: column, dimColumn: column,
+            extraFact: "\tcolumn Computed = " + expression + "\n\t\tdataType: int64\n");
+        Assert.DoesNotContain(inventory.UnresolvedSemanticDependencies, item => item.FromObjectName == "Computed");
+        Assert.Contains(inventory.SemanticDependencies, edge => edge.FromObjectName == "Computed" &&
+            edge.ToTable == "Fact" && edge.ToObjectName == column && edge.ToObjectType == SemanticObjectTypes.Column);
+        Assert.Equal(SemanticUsageStates.IndirectlyUsed, Usage(inventory, "Fact", column).UsageState);
+        Assert.Equal(ClassificationConfidences.Established, Usage(inventory, "Fact", column).ClassificationConfidence);
+        Assert.DoesNotContain(inventory.AnalysisLimitations, item => item.ConstructType == "semanticReference");
+    }
+
+    [Theory]
+    [InlineData("SUMX(Dim, [X])")]
+    [InlineData("SUMX(Dim, INT(([X] + 1) / 2))")]
+    [InlineData("COUNTROWS(FILTER(Dim, [X] > 0))")]
+    [InlineData("COUNTROWS(SELECTCOLUMNS(Dim, \"Value\", [X]))")]
+    [InlineData("SUMX /* context comment */ (Dim, [X])")]
+    [InlineData("MAXX(Dim, [X])")]
+    [InlineData("Custom.YEAR([X])")]
+    public void CalculatedColumnDoesNotBorrowOwnerRowInsideIteratorOrUnknownCall(string expression)
+    {
+        var inventory = Scan("SUM(Fact[Computed])",
+            extraFact: "\tcolumn Computed = " + expression + "\n\t\tdataType: int64\n");
+        Assert.DoesNotContain(inventory.SemanticDependencies, edge =>
+            edge.FromObjectName == "Computed" && edge.ToObjectType == SemanticObjectTypes.Column);
+        Assert.Contains(inventory.UnresolvedSemanticDependencies, item => item.FromObjectName == "Computed" &&
+            item.ResolutionOutcome == UnresolvedSemanticDependencyResolutionOutcomes.Ambiguous);
+        Assert.Equal(ClassificationConfidences.QualifiedByLimitation, Usage(inventory, "Dim", "X").ClassificationConfidence);
+    }
+
+    [Fact]
+    public void IdenticalReferencesInOwnerAndIteratorScopesKeepBothKindsOfEvidence()
+    {
+        var inventory = Scan("SUM(Fact[Computed])",
+            extraFact: "\tcolumn Computed = [X] + SUMX(Dim, [X])\n\t\tdataType: int64\n");
+        Assert.Contains(inventory.SemanticDependencies, edge => edge.FromObjectName == "Computed" &&
+            edge.ToTable == "Fact" && edge.ToObjectName == "X");
+        Assert.Contains(inventory.UnresolvedSemanticDependencies, item => item.FromObjectName == "Computed" &&
+            item.ReferenceText == "[X]" && item.ResolutionOutcome == UnresolvedSemanticDependencyResolutionOutcomes.Ambiguous);
+        Assert.Equal(ClassificationConfidences.QualifiedByLimitation, Usage(inventory, "Dim", "X").ClassificationConfidence);
+    }
+
+    [Theory]
+    [InlineData("SUMX({[X], 2}, 1)", true)]
+    [InlineData("SUMX({1, 2}, [X])", false)]
+    [InlineData("SUMX(Dim, [X]) + [X]", true)]
+    [InlineData("YEAR /* ( , */ ([X])", true)]
+    [InlineData("FORMAT([X], \"SUMX(Dim,\")", true)]
+    public void LexicalContextTracksArgumentsNestingAndScopeRestoration(string expression, bool expectedOwnerContext)
+    {
+        var reference = DaxReferenceExtractor.Extract(expression,
+            new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "Fact", "Dim" })
+            .Last(item => item.Table is null && item.ObjectName == "X");
+        Assert.Equal(expectedOwnerContext, reference.CanUseOwnerRowContext);
+    }
+
+    [Theory]
     [InlineData("X")]
     [InlineData("x")]
     public void IteratorCollisionRetainsAmbiguityRatherThanChoosingTheHomeColumn(string dimColumn)
