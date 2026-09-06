@@ -17,10 +17,18 @@ public sealed class PrivacyWorkflowTests(PrivacyE2EFixture fixture)
         await LoadUntilReadyAsync(page);
         await page.WaitForFunctionAsync("document.activeElement?.id === 'page-title'");
         Assert.Equal("none", await page.Locator("#page-title").EvaluateAsync<string>("element => getComputedStyle(element).outlineStyle"));
-        // The primary task is one Tab away from the page title; the preparation guide follows it.
+        // Tab order out of the page title: the header's coverage pointer comes first, then the primary
+        // task. Each stop is named, so a change to the header's reading order fails here rather than
+        // silently moving the primary task further from the keyboard.
+        await page.Keyboard.PressAsync("Tab");
+        var coverage = page.GetByRole(AriaRole.Link, new() { Name = "View coverage", Exact = true });
+        Assert.Equal("View coverage", await page.EvaluateAsync<string>("() => document.activeElement?.textContent?.trim()"));
+        Assert.True(await coverage.EvaluateAsync<bool>("element => element === document.activeElement && element.matches(':focus-visible')"));
+        Assert.Equal("2px", await coverage.EvaluateAsync<string>("element => getComputedStyle(element).outlineWidth"));
         await page.Keyboard.PressAsync("Tab");
         var picker = page.GetByRole(AriaRole.Button, new() { Name = "Choose Power BI project", Exact = true });
-        Assert.True(await picker.EvaluateAsync<bool>("element => element.matches(':focus-visible')"));
+        Assert.Equal("Choose Power BI project", await page.EvaluateAsync<string>("() => document.activeElement?.textContent?.trim()"));
+        Assert.True(await picker.EvaluateAsync<bool>("element => element === document.activeElement && element.matches(':focus-visible')"));
         Assert.Equal("2px", await picker.EvaluateAsync<string>("element => getComputedStyle(element).outlineWidth"));
         await page.Locator("details.guidance-panel > summary").FocusAsync();
         Assert.Equal("2px", await page.Locator("details.guidance-panel > summary").EvaluateAsync<string>("element => getComputedStyle(element).outlineWidth"));
