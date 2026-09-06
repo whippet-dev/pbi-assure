@@ -1,5 +1,6 @@
 using System.Text;
 using PbiAssure.Core.Inventory;
+using PbiAssure.Core.Scanning;
 
 namespace PbiAssure.Reporting;
 
@@ -20,6 +21,8 @@ public static class SemanticUsageCsvRenderer
         "PowerQueryRoles",
         "PowerQueryEvidence",
         "ReviewCandidate",
+        "ClassificationConfidence",
+        "QualifyingLimitations",
     ];
 
     public static string Render(ProjectInventory inventory)
@@ -69,6 +72,8 @@ public static class SemanticUsageCsvRenderer
                 JoinDistinct(powerQueryUsages.Select(powerQueryUsage => PowerQueryRoleLabel(powerQueryUsage.UsageKind))),
                 JoinDistinct(powerQueryUsages.Select(powerQueryUsage => powerQueryUsage.MFunction)),
                 IsReviewCandidate(usage.UsageState) ? "Yes" : "No",
+                usage.ClassificationConfidence,
+                QualifyingLimitations(inventory, usage),
             ]);
         }
 
@@ -175,6 +180,21 @@ public static class SemanticUsageCsvRenderer
         SemanticUsageStates.ApparentlyUnused => "Apparently unused",
         _ => usageState,
     };
+
+    /// <summary>
+    /// The limitation identifiers behind a qualified conclusion, so a reviewer can tell an absence PBI
+    /// Assure is sure of from one it is not. Identifiers only: the prose belongs in the report's
+    /// Analysis coverage, not repeated on every row.
+    ///
+    /// Which limitations apply is decided by the confidence model itself rather than re-derived here,
+    /// and the result is deduplicated and ordered so the file is byte-stable between runs.
+    /// </summary>
+    private static string QualifyingLimitations(ProjectInventory inventory, SemanticObjectUsage usage) =>
+        string.Join(" | ", SemanticUsageConfidenceQualifier
+            .Qualifying(usage, inventory.AnalysisLimitations)
+            .Select(limitation => limitation.LimitationId)
+            .Distinct(StringComparer.Ordinal)
+            .OrderBy(limitationId => limitationId, StringComparer.Ordinal));
 
     private static bool IsReviewCandidate(string usageState) => usageState is
         SemanticUsageStates.ApparentlyUnused or SemanticUsageStates.UsedOnlyByUnusedBranch;

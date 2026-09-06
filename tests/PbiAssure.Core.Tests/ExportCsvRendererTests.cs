@@ -212,8 +212,8 @@ public sealed class ExportCsvRendererTests
         var catalogue = DataCatalogueCsvRenderer.Render(inventory, new ExportRequest(ExportPreset.DataCatalogue, ["Object"]));
         Assert.Equal("Object\r\n\"'=Formula,\"\"quoted\"\"\n\"\r\n", catalogue);
         Assert.Equal(
-            "Report,Table,Object,ObjectType,SemanticUsage,SemanticReason,ReportLocationCount,ReportLocations,PowerQueryUsed,PowerQueryConsumers,PowerQueryRoles,PowerQueryEvidence,ReviewCandidate\r\n" +
-            "Model,Fact,\"'=Formula,\"\"quoted\"\"\n\",Measure,Apparently unused,,0,,No,,,,Yes\r\n",
+            "Report,Table,Object,ObjectType,SemanticUsage,SemanticReason,ReportLocationCount,ReportLocations,PowerQueryUsed,PowerQueryConsumers,PowerQueryRoles,PowerQueryEvidence,ReviewCandidate,ClassificationConfidence,QualifyingLimitations\r\n" +
+            "Model,Fact,\"'=Formula,\"\"quoted\"\"\n\",Measure,Apparently unused,,0,,No,,,,Yes,Established,\r\n",
             SemanticUsageCsvRenderer.Render(inventory));
     }
 

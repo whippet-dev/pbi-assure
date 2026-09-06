@@ -56,6 +56,27 @@ internal static class SemanticUsageConfidenceQualifier
     }
 
     /// <summary>
+    /// Which limitations put this usage's confidence in question, by the same rule <see cref="Apply"/>
+    /// uses to set the confidence in the first place. Exports name the cause rather than restating the
+    /// rule, so the answer has to come from here and not from a second copy of the mapping.
+    ///
+    /// Returns nothing for a usage whose confidence is <c>Established</c>, because the two conditions
+    /// are the same condition.
+    /// </summary>
+    public static IEnumerable<AnalysisLimitation> Qualifying(
+        SemanticObjectUsage usage,
+        IEnumerable<AnalysisLimitation> limitations)
+    {
+        ArgumentNullException.ThrowIfNull(usage);
+        ArgumentNullException.ThrowIfNull(limitations);
+
+        return limitations.Where(limitation =>
+            string.Equals(limitation.SemanticModel, usage.SemanticModel, StringComparison.OrdinalIgnoreCase) &&
+            QualifiedStates(limitation.DependencyImpact)
+                .Contains(usage.UsageState, StringComparer.OrdinalIgnoreCase));
+    }
+
+    /// <summary>
     /// The usage states a single unanalysed construct could bear on. Unknown impact values qualify
     /// nothing: a value this version does not recognise is not silently treated as dangerous, because
     /// every value the registry can currently produce is handled explicitly.

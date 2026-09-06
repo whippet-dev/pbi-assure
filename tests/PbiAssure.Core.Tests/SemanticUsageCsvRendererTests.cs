@@ -42,7 +42,7 @@ public sealed class SemanticUsageCsvRendererTests : IDisposable
         var sourceDescription = RowFor(rows, header, "Source", "Description");
 
         Assert.Equal(
-            ["Report", "Table", "Object", "ObjectType", "SemanticUsage", "SemanticReason", "ReportLocationCount", "ReportLocations", "PowerQueryUsed", "PowerQueryConsumers", "PowerQueryRoles", "PowerQueryEvidence", "ReviewCandidate"],
+            ["Report", "Table", "Object", "ObjectType", "SemanticUsage", "SemanticReason", "ReportLocationCount", "ReportLocations", "PowerQueryUsed", "PowerQueryConsumers", "PowerQueryRoles", "PowerQueryEvidence", "ReviewCandidate", "ClassificationConfidence", "QualifyingLimitations"],
             header);
         Assert.Equal(inventory.DeveloperSemanticObjectCount, rows.Count - 1);
         Assert.DoesNotContain(rows.Skip(1), row => Value(row, header, "Table") == "LocalDateTable_generated");
