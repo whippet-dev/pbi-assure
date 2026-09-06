@@ -22,7 +22,8 @@ internal static class AnalysisLimitationDetector
         IReadOnlyList<ReportInventory>? reports = null,
         IReadOnlyList<UnresolvedSemanticDependency>? unresolvedDependencies = null,
         IReadOnlyList<UnanalyzedTableConstructs>? unanalyzedTableConstructs = null,
-        IReadOnlyList<SemanticModelInventory>? semanticModels = null)
+        IReadOnlyList<SemanticModelInventory>? semanticModels = null,
+        IReadOnlyList<IncompleteQueryReferences>? incompleteQueryReferences = null)
     {
         var refinements = refinedDependencyImpacts ?? new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
         var accountedRolePaths = fullyAccountedRolePaths ?? new HashSet<string>(StringComparer.OrdinalIgnoreCase);
@@ -39,6 +40,7 @@ internal static class AnalysisLimitationDetector
             .Concat(reportLimitations)
             .Concat(DetectForUnresolvedDependencies(unresolvedDependencies ?? []))
             .Concat(DetectForUnanalyzedTableConstructs(unanalyzedTableConstructs ?? []))
+            .Concat(DetectForIncompleteQueryReferences(incompleteQueryReferences ?? []))
             .OrderBy(limitation => limitation.SemanticModel, StringComparer.OrdinalIgnoreCase)
             .ThenBy(limitation => limitation.ArtifactPath, StringComparer.OrdinalIgnoreCase)
             .ToArray();
@@ -90,6 +92,46 @@ internal static class AnalysisLimitationDetector
                         ". The DAX in that construct can reference model objects and is not analysed by " +
                         "this version, so dependencies it creates are absent from the graph."));
     }
+
+    /// <summary>
+    /// An M expression whose reference discovery did not complete is doubt about the dependency graph,
+    /// so it reaches confidence the same way every other doubt does. Without this, the model-wide orphan
+    /// safety net silently withheld the orphan role while Analysis Coverage still reported the model as
+    /// fully checked for Power Query.
+    ///
+    /// Only <c>Incomplete</c> reaches here. <c>Dynamic</c> discovery is a separate, already-stated
+    /// condition: the query keeps its references, carries <c>HasDynamicReferences</c> and raises
+    /// PBI-QUERY-001, so recording it again as unanalysed metadata would overstate what was missed.
+    ///
+    /// Scope is the semantic model, because a discarded reference does not say which query it named —
+    /// any other query in that model could be the one whose use is now invisible.
+    /// </summary>
+    private static IEnumerable<AnalysisLimitation> DetectForIncompleteQueryReferences(
+        IReadOnlyList<IncompleteQueryReferences> incompleteQueryReferences)
+    {
+        return incompleteQueryReferences
+            .DistinctBy(reference => (reference.SemanticModel, reference.Table, reference.QueryName))
+            .Select(reference => new AnalysisLimitation(
+                LimitationId: "PBI-LIMIT-MODEL-QUERY-REFERENCES",
+                Cause: AnalysisLimitationCauses.ParseFailed,
+                SupportState: ConstructSupportStates.PartiallyAnalyzed,
+                ConstructType: "powerQueryExpression",
+                Scope: AnalysisLimitationScopes.SemanticModel,
+                SemanticModel: reference.SemanticModel,
+                Table: reference.Table,
+                ObjectName: reference.QueryName,
+                ArtifactPath: reference.ArtifactPath,
+                EvidencePath: "M expression",
+                DependencyImpact: ConstructDependencyImpacts.MayCreateDependencies,
+                Concerns: [AnalysisConcerns.Dependency],
+                Reason: Describe(reference) + " uses Power Query syntax this version could not read to " +
+                        "the end, so no reference it makes to another query was kept. Queries it uses " +
+                        "may therefore appear to have no known use."));
+    }
+
+    private static string Describe(IncompleteQueryReferences reference) => reference.QueryName is null
+        ? $"The refresh policy source expression on table '{reference.Table}'"
+        : $"Power Query expression '{reference.QueryName}'";
 
     private static IEnumerable<AnalysisLimitation> DetectForUnresolvedDependencies(
         IReadOnlyList<UnresolvedSemanticDependency> unresolvedDependencies)

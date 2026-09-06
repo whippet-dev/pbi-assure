@@ -10,7 +10,9 @@ public static class AnalysisLimitationCauses
 
     /// <summary>
     /// The construct was present but could not be parsed. Emitted when a report has page directories
-    /// from which no page was read, so the report's field usage is missing from the analysis.
+    /// from which no page was read, so the report's field usage is missing from the analysis, and when
+    /// reference discovery in a Power Query expression did not complete, so the references that
+    /// expression makes to other queries were discarded.
     /// </summary>
     public const string ParseFailed = "ParseFailed";
 

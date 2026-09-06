@@ -4,15 +4,20 @@ namespace PbiAssure.Core.Scanning;
 
 internal static class PowerQueryLineageAnalyzer
 {
-    public static (PowerQueryUsage[] Usages, PowerQueryDependencyEdge[] Dependencies, DataSourceInventory[] DataSources) Analyze(
+    public static (
+        PowerQueryUsage[] Usages,
+        PowerQueryDependencyEdge[] Dependencies,
+        DataSourceInventory[] DataSources,
+        IncompleteQueryReferences[] IncompleteReferences) Analyze(
         IReadOnlyList<SemanticModelInventory> semanticModels)
     {
         var usages = new List<PowerQueryUsage>();
         var dependencies = new List<PowerQueryDependencyEdge>();
         var dataSources = new List<DataSourceInventory>();
+        var incompleteReferences = new List<IncompleteQueryReferences>();
         foreach (var model in semanticModels)
         {
-            AnalyzeModel(model, usages, dependencies, dataSources);
+            AnalyzeModel(model, usages, dependencies, dataSources, incompleteReferences);
         }
 
         return (
@@ -23,14 +28,19 @@ internal static class PowerQueryLineageAnalyzer
                 .ThenBy(edge => edge.ToQueryName, StringComparer.OrdinalIgnoreCase).ToArray(),
             dataSources.Distinct().OrderBy(source => source.SemanticModel, StringComparer.OrdinalIgnoreCase)
                 .ThenBy(source => source.QueryName, StringComparer.OrdinalIgnoreCase)
-                .ThenBy(source => source.ConnectorFamily, StringComparer.OrdinalIgnoreCase).ToArray());
+                .ThenBy(source => source.ConnectorFamily, StringComparer.OrdinalIgnoreCase).ToArray(),
+            incompleteReferences.Distinct()
+                .OrderBy(reference => reference.SemanticModel, StringComparer.OrdinalIgnoreCase)
+                .ThenBy(reference => reference.QueryName, StringComparer.OrdinalIgnoreCase)
+                .ThenBy(reference => reference.Table, StringComparer.OrdinalIgnoreCase).ToArray());
     }
 
     private static void AnalyzeModel(
         SemanticModelInventory model,
         List<PowerQueryUsage> allUsages,
         List<PowerQueryDependencyEdge> allDependencies,
-        List<DataSourceInventory> allDataSources)
+        List<DataSourceInventory> allDataSources,
+        List<IncompleteQueryReferences> allIncompleteReferences)
     {
         var sources = model.Tables.SelectMany(table => table.Partitions
                 .Where(partition => string.Equals(partition.SourceType, "m", StringComparison.OrdinalIgnoreCase) &&
@@ -77,9 +87,24 @@ internal static class PowerQueryLineageAnalyzer
             sources.Where(source => source.IsLoaded).Select(source => source.QueryName), modelDependencies);
         var policyReferenceResults = model.Tables
             .Where(table => !string.IsNullOrWhiteSpace(table.RefreshPolicy?.SourceExpression))
-            .Select(table => MReferenceExtractor.Analyze(table.RefreshPolicy!.SourceExpression!, knownNames));
-        var modelHasIncompleteReferences = referenceResults.Values.Concat(policyReferenceResults)
+            .Select(table => (Table: table,
+                Result: MReferenceExtractor.Analyze(table.RefreshPolicy!.SourceExpression!, knownNames)))
+            .ToArray();
+        var modelHasIncompleteReferences = referenceResults.Values
+            .Concat(policyReferenceResults.Select(policy => policy.Result))
             .Any(result => result.Incomplete || result.Dynamic);
+
+        // Incomplete discovery discards that expression's references entirely, so the edges it would
+        // have contributed are missing from the graph. Dynamic discovery is deliberately not recorded
+        // here: it is already stated per query by HasDynamicReferences and PBI-QUERY-001.
+        allIncompleteReferences.AddRange(sources
+            .Where(source => referenceResults[source].Incomplete)
+            .Select(source => new IncompleteQueryReferences(
+                model.Name, source.Table, source.QueryName, source.ArtifactPath)));
+        allIncompleteReferences.AddRange(policyReferenceResults
+            .Where(policy => policy.Result.Incomplete)
+            .Select(policy => new IncompleteQueryReferences(
+                model.Name, policy.Table.Name, QueryName: null, policy.Table.RelativePath)));
 
         foreach (var source in sources)
         {
@@ -190,3 +215,14 @@ internal static class PowerQueryLineageAnalyzer
         string? ParameterType,
         bool? IsParameterRequired);
 }
+
+/// <summary>
+/// One Power Query expression whose reference discovery did not complete, so no reference it contains
+/// was retained. <see cref="QueryName"/> is null for a refresh policy's source expression, which is M
+/// that is analysed for references but is not itself a query.
+/// </summary>
+internal sealed record IncompleteQueryReferences(
+    string SemanticModel,
+    string? Table,
+    string? QueryName,
+    string ArtifactPath);

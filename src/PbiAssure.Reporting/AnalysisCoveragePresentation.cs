@@ -218,6 +218,7 @@ internal static class AnalysisCoveragePresentation
         "modelDefinition" => "Model-level settings",
         "database" => "Database settings",
         "dataSource" => "Data source definitions",
+        "powerQueryExpression" => "Power Query expressions",
         _ => HumanReadable(constructType),
     };
 

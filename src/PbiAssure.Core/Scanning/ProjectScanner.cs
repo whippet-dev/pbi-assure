@@ -48,7 +48,8 @@ public static class ProjectScanner
             reports,
             dependencyAnalysis.UnresolvedDependencies,
             AnalysisCoverageRefinements.BuildUnanalyzedTableConstructs(semanticModels),
-            semanticModels);
+            semanticModels,
+            powerQueryAnalysis.IncompleteReferences);
 
         // Applied once, after usage states are final and the limitations are known. Usage states are not
         // changed here; only the orthogonal confidence marker is set.
