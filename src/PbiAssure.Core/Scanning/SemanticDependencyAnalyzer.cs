@@ -958,7 +958,8 @@ internal static class SemanticDependencyAnalyzer
                     contextTableName,
                     out var target,
                     out var reason,
-                    out var resolutionOutcome))
+                    out var resolutionOutcome,
+                    hasOwnerRowContext: source.ObjectType == SemanticObjectTypes.Column && dependencyKind == SemanticDependencyKinds.Dax))
             {
                 dependencies.Add(CreateEdge(
                     model.Name,
@@ -1762,7 +1763,8 @@ internal static class SemanticDependencyAnalyzer
             string currentTable,
             out SemanticNode target,
             out string reason,
-            out string resolutionOutcome)
+            out string resolutionOutcome,
+            bool hasOwnerRowContext = false)
         {
             if (reference.IsTableReference)
             {
@@ -1797,7 +1799,8 @@ internal static class SemanticDependencyAnalyzer
             // Count them as doubt, never as targets: without a local column, retain the existing
             // measure lookup / NotFound behaviour rather than guessing an iterator's table.
             var candidateCount = (measures?.Length ?? 0) +
-                                 (localColumn is null ? 0 : columnCountsByName[reference.ObjectName]);
+                                 (localColumn is null ? 0 : hasOwnerRowContext && reference.CanUseOwnerRowContext
+                                     ? 1 : columnCountsByName[reference.ObjectName]);
             if (candidateCount == 1)
             {
                 target = localColumn ?? measures![0];

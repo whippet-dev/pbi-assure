@@ -7,6 +7,27 @@ internal static class DaxReferenceExtractor
 
     private static readonly HashSet<string> NoKnownFunctions = new(StringComparer.OrdinalIgnoreCase);
 
+    // Evidenced scalar wrappers in Desktop auto-date calculated columns. Other calls receive no
+    // owner-row privilege until their context behaviour is accounted for explicitly.
+    private static readonly HashSet<string> OwnerRowScalarFunctions = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "YEAR", "MONTH", "DAY", "FORMAT", "INT",
+    };
+
+    private sealed class ReferenceContext(char delimiter, string? function)
+    {
+        public char Delimiter { get; } = delimiter;
+        public string? Function { get; } = function;
+        public int Argument { get; set; }
+
+        public bool PreservesOwnerRow => Function is null || OwnerRowScalarFunctions.Contains(Function) ||
+            // The table argument is evaluated in the incoming context; the subsequent row expressions
+            // of these evidenced iterators are deliberately not bound to an inferred iterator target.
+            (Function.Equals("SUMX", StringComparison.OrdinalIgnoreCase) ||
+             Function.Equals("FILTER", StringComparison.OrdinalIgnoreCase) ||
+             Function.Equals("SELECTCOLUMNS", StringComparison.OrdinalIgnoreCase)) && Argument == 0;
+    }
+
     /// <summary>
     /// Extracts model references, and calls to declared user-defined functions.
     ///
@@ -21,22 +42,28 @@ internal static class DaxReferenceExtractor
     {
         var references = new List<DaxReference>();
         var index = 0;
+        var contexts = new Stack<ReferenceContext>();
+        string? pendingFunction = null;
+        var malformedContext = false;
 
         while (index < expression.Length)
         {
-            if (TrySkipComment(expression, ref index) || TrySkipString(expression, ref index))
+            if (TrySkipComment(expression, ref index))
             {
                 continue;
             }
+            if (TrySkipString(expression, ref index)) { pendingFunction = null; continue; }
 
             if (expression[index] == '\'')
             {
+                pendingFunction = null;
                 ReadQuotedIdentifierReference(expression, knownTables, references, ref index);
                 continue;
             }
 
             if (expression[index] == '[')
             {
+                pendingFunction = null;
                 var previousIndex = PreviousNonWhitespace(expression, index - 1);
                 if (previousIndex >= 0 && expression[previousIndex] == '.')
                 {
@@ -51,7 +78,10 @@ internal static class DaxReferenceExtractor
                         Table: null,
                         ObjectName: objectName,
                         IsTableReference: false,
-                        Text: expression[startIndex..index]));
+                        Text: expression[startIndex..index])
+                    {
+                        CanUseOwnerRowContext = !malformedContext && contexts.All(context => context.PreservesOwnerRow),
+                    });
                 }
 
                 continue;
@@ -59,13 +89,34 @@ internal static class DaxReferenceExtractor
 
             if (IsUnquotedIdentifierStart(expression[index]))
             {
+                var identifierStart = index;
+                var identifierEnd = index + 1;
+                while (identifierEnd < expression.Length && IsUnquotedIdentifierPart(expression[identifierEnd])) identifierEnd++;
                 ReadUnquotedIdentifierReference(expression, knownTables, knownFunctions, references, ref index);
+                var previous = PreviousNonWhitespace(expression, identifierStart - 1);
+                pendingFunction = index == identifierEnd
+                    ? (previous >= 0 && expression[previous] == '.' ? "." : string.Empty) + expression[identifierStart..identifierEnd]
+                    : null;
                 continue;
             }
+
+            var character = expression[index];
+            if (character is '(' or '{')
+            {
+                contexts.Push(new ReferenceContext(character, character == '(' ? pendingFunction : null));
+            }
+            else if (character is ')' or '}')
+            {
+                if (!contexts.TryPop(out var context) || context.Delimiter != (character == ')' ? '(' : '{')) malformedContext = true;
+            }
+            else if (character is ',' or ';' && contexts.TryPeek(out var context)) context.Argument++;
+            if (!char.IsWhiteSpace(character)) pendingFunction = null;
 
             index++;
         }
 
+        if (malformedContext || contexts.Count != 0)
+            references = references.Select(reference => reference with { CanUseOwnerRowContext = false }).ToList();
         return references.Distinct().ToArray();
     }
 
@@ -521,6 +572,9 @@ internal static class DaxReferenceExtractor
     {
         /// <summary>A call to a declared user-defined function rather than a model object reference.</summary>
         public bool IsFunctionReference { get; init; }
+
+        /// <summary>Occurrence is outside row-changing or unaccounted call scopes; not a table binding.</summary>
+        public bool CanUseOwnerRowContext { get; init; }
     }
 
     internal sealed record DaxQualifiedColumnReference(string Table, string Column);
