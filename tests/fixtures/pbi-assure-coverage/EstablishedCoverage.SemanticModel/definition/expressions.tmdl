@@ -1,0 +1,1 @@
+expression UnusedQuery = #table(type table [Value = number], {{2}})

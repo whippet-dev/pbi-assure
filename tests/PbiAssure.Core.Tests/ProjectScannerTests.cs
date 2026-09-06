@@ -2026,14 +2026,14 @@ public sealed class ProjectScannerTests : IDisposable
             result.PowerQueryUsages.Single(usage => usage.QueryName == "Loaded").QueryRole);
         Assert.Equal(PowerQueryRoles.HelperOrStaging,
             result.PowerQueryUsages.Single(usage => usage.QueryName == "Staging").QueryRole);
-        Assert.Equal(PowerQueryRoles.ApparentlyOrphaned,
-            result.PowerQueryUsages.Single(usage => usage.QueryName == "Unused").QueryRole);
+        // Dynamic name discovery in another query prevents proving that this query is orphaned.
+        Assert.Null(result.PowerQueryUsages.Single(usage => usage.QueryName == "Unused").QueryRole);
         var dynamicQuery = result.PowerQueryUsages.Single(usage => usage.QueryName == "Dynamic");
         Assert.True(dynamicQuery.HasDynamicReferences);
         Assert.Null(dynamicQuery.QueryRole);
         Assert.Contains(result.Findings, finding =>
             finding.RuleId == "PBI-QUERY-001" && finding.ObjectName == "Dynamic");
-        Assert.Contains(result.Findings, finding =>
+        Assert.DoesNotContain(result.Findings, finding =>
             finding.RuleId == "PBI-QUERY-002" && finding.ObjectName == "Unused");
         Assert.DoesNotContain(result.Findings, finding =>
             finding.RuleId == "PBI-QUERY-002" && finding.ObjectName == "Dynamic");
