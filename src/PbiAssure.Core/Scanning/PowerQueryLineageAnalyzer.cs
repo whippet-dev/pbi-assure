@@ -48,6 +48,8 @@ internal static class PowerQueryLineageAnalyzer
             .Distinct(StringComparer.OrdinalIgnoreCase).ToArray();
         var sourcesByName = sources.GroupBy(source => source.QueryName, StringComparer.OrdinalIgnoreCase)
             .ToDictionary(group => group.Key, group => group.ToArray(), StringComparer.OrdinalIgnoreCase);
+        var referenceResults = sources.ToDictionary(source => source,
+            source => MReferenceExtractor.Analyze(source.Expression, knownNames));
 
         foreach (var source in sources)
         {
@@ -58,7 +60,7 @@ internal static class PowerQueryLineageAnalyzer
                     connector.Family, connector.Function, connector.LocationKind, source.ArtifactPath));
             }
 
-            foreach (var targetName in MReferenceExtractor.Extract(source.Expression, knownNames)
+            foreach (var targetName in referenceResults[source].References
                          .Where(name => !string.Equals(name, source.QueryName, StringComparison.OrdinalIgnoreCase)))
             {
                 foreach (var target in sourcesByName[targetName])
@@ -73,8 +75,11 @@ internal static class PowerQueryLineageAnalyzer
         var modelDependencies = allDependencies.Where(edge => edge.SemanticModel == model.Name).ToArray();
         var reachable = Traverse(
             sources.Where(source => source.IsLoaded).Select(source => source.QueryName), modelDependencies);
-        var modelHasUnresolvableScope = sources.Any(source =>
-            MReferenceExtractor.HasUnresolvableBindingScope(source.Expression));
+        var policyReferenceResults = model.Tables
+            .Where(table => !string.IsNullOrWhiteSpace(table.RefreshPolicy?.SourceExpression))
+            .Select(table => MReferenceExtractor.Analyze(table.RefreshPolicy!.SourceExpression!, knownNames));
+        var modelHasIncompleteReferences = referenceResults.Values.Concat(policyReferenceResults)
+            .Any(result => result.Incomplete || result.Dynamic);
 
         foreach (var source in sources)
         {
@@ -83,19 +88,16 @@ internal static class PowerQueryLineageAnalyzer
                 .Select(edge => new PowerQueryReferenceEvidence(
                     edge.FromQueryName, edge.FromSourceKind, edge.FromTable, edge.FromPartition, edge.ArtifactPath))
                 .Distinct().ToArray();
-            var hasDynamicReferences = MReferenceExtractor.HasDynamicReferences(source.Expression);
-            // Scope doubt lives in the expression that does the referencing, not in the query being
-            // judged: a binding the flat model mis-scopes suppresses a reference to some *other* query,
-            // which is what would make that query look orphaned. So an unresolvable let anywhere in the
-            // model withholds the confident orphan conclusion, exactly as a dynamic reference does.
-            // Usage states are untouched; only the role, and with it PBI-QUERY-002, is withheld.
+            var hasDynamicReferences = referenceResults[source].Dynamic;
+            // Unknown syntax/dynamic discovery in a consumer can hide references to other queries.
+            // Recognised lexical scopes do not trigger this model-wide orphan safety net.
             allUsages.Add(new PowerQueryUsage(
                 model.Name, source.QueryName, source.SourceKind, source.Table, source.Partition,
                 source.Expression, source.ArtifactPath,
                 source.IsLoaded ? PowerQueryUsageStates.LoadedToModel
                     : reachable.Contains(source.QueryName) ? PowerQueryUsageStates.SupportingQuery
                     : PowerQueryUsageStates.ApparentlyUnused,
-                QueryRole(source, referencedBy, hasDynamicReferences || modelHasUnresolvableScope),
+                QueryRole(source, referencedBy, modelHasIncompleteReferences),
                 hasDynamicReferences, referencedBy)
             {
                 IsParameter = source.IsParameter,

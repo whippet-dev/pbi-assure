@@ -73,6 +73,22 @@ public sealed class CoverageFixtureManifestTests
                 dependency.ToSourceKind == Text(expected, "toSourceKind"));
         }
 
+        // The confident orphan and the model-wide suppression that withholds it must stay provable
+        // independently, which means they must live in different semantic models.
+        foreach (var expected in root.GetProperty("machineContract").GetProperty("powerQueryOrphanStates").EnumerateArray())
+        {
+            var semanticModel = Text(expected, "semanticModel");
+            var query = Text(expected, "query");
+            var usage = Assert.Single(inventory.PowerQueryUsages, candidate =>
+                candidate.SemanticModel == semanticModel && candidate.QueryName == query);
+            Assert.False(usage.IsParameter);
+            Assert.Equal(Text(expected, "state"), usage.UsageState);
+            Assert.Equal(expected.GetProperty("role").GetString(), usage.QueryRole);
+            Assert.Equal(expected.GetProperty("orphanFinding").GetBoolean(), inventory.Findings.Any(finding =>
+                finding.RuleId == "PBI-QUERY-002" && finding.SemanticModel == semanticModel &&
+                finding.ObjectName == query));
+        }
+
         foreach (var expected in root.GetProperty("machineContract").GetProperty("powerQueryParameters").EnumerateArray())
         {
             var semanticModel = Text(expected, "semanticModel");

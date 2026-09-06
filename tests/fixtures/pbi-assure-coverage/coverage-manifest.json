@@ -137,6 +137,10 @@
       { "semanticModel": "PbiAssureCoverage", "fromQuery": "CombineLineageQuery", "fromSourceKind": "NamedExpression", "toQuery": "Dimension", "toSourceKind": "TablePartition" },
       { "semanticModel": "PbiAssureCoverage", "fromQuery": "UnpivotLineageQuery", "fromSourceKind": "NamedExpression", "toQuery": "Fact", "toSourceKind": "TablePartition" }
     ],
+    "powerQueryOrphanStates": [
+      { "semanticModel": "EstablishedCoverage", "query": "UnusedQuery", "state": "ApparentlyUnused", "role": "ApparentlyOrphaned", "orphanFinding": true },
+      { "semanticModel": "PbiAssureCoverage", "query": "DynamicSuppressedOrphanControl", "state": "ApparentlyUnused", "role": null, "orphanFinding": false }
+    ],
     "powerQueryParameters": [
       { "semanticModel": "PbiAssureCoverage", "query": "ReferencedParameter", "type": "Number", "required": true, "state": "SupportingQuery", "referencedBy": "ParameterConsumerQuery", "orphanFinding": false },
       { "semanticModel": "PbiAssureCoverage", "query": "UnreferencedParameterControl", "type": "Text", "required": false, "state": "ApparentlyUnused", "orphanFinding": false }
@@ -334,6 +338,16 @@
       "documentedDependencyTargets": [],
       "documentedFindingRuleIds": ["PBI-QUERY-002"],
       "documentedSurfaces": ["Power Query", "Findings"]
+    },
+    {
+      "id": "PQ-STATE-05",
+      "name": "DynamicSuppressedOrphanControl",
+      "capability": "power-query-orphan-suppression-by-dynamic-reference",
+      "documentedUsage": "ApparentlyUnused",
+      "documentedDependencyKinds": [],
+      "documentedDependencyTargets": [],
+      "documentedFindingRuleIds": [],
+      "documentedSurfaces": ["Power Query"]
     },
     {
       "id": "PQ-STATE-04",

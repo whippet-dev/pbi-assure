@@ -4,19 +4,75 @@ using PbiAssure.Core.Scanning;
 
 namespace PbiAssure.Core.Tests;
 
-/// <summary>
-/// Two separate M defects, handled differently because only one is safely fixable without a parser.
-///
-/// Field names are recognisable by adjacency alone — <c>[Bar]</c>, <c>Rec[Bar]</c>, <c>[Bar = 1]</c> —
-/// so those occurrences stop being read as references to a global query <c>Bar</c>. A name used
-/// somewhere else in the same expression still counts, so genuine references survive.
-///
-/// Lexical scope is not fixable this way. Instead, the shapes the flat binding model demonstrably
-/// cannot scope are detected and the confident orphan conclusion is withheld, reusing the same
-/// mechanism a dynamic reference already uses.
-/// </summary>
 public sealed class MFieldAccessAndScopeTests
 {
+    [Theory]
+    [InlineData("Table.FromRecords({[Alpha = List.Contains({true}, Bar = 1)]})")]
+    [InlineData("Table.FromRecords({[Alpha = List.Last({false, Bar = 1})]})")]
+    [InlineData("Table.FromRecords({[Alpha = Bar]})")]
+    [InlineData("Table.FromRecords({[Alpha = List.Contains({true},\n Bar = 1)]})")]
+    [InlineData("let\n Rec = [\n Bar = 1\n ],\n Result = Bar\nin Table.FromValue(Result)")]
+    public void RecordValueExpressionsRetainGenuineQueryReferences(string expression)
+    {
+        var inventory = Scan(expression);
+        Assert.Contains(inventory.PowerQueryDependencies,
+            edge => edge.FromQueryName == "Probe" && edge.ToQueryName == "Bar");
+        Assert.Equal(PowerQueryUsageStates.SupportingQuery, Query(inventory, "Bar").UsageState);
+        Assert.DoesNotContain(inventory.Findings, finding => finding.RuleId == "PBI-QUERY-002");
+    }
+
+    [Theory]
+    [InlineData("[Bar = 1]")]
+    [InlineData("[A = 1, Bar = 2]")]
+    [InlineData("[A = List.Count({1, 2}), Bar = 2]")]
+    [InlineData("[A = [B = 1], Bar = 2]")]
+    [InlineData("[#\"A(\" = 1, Bar = 2]")]
+    [InlineData("Rec[Bar]")]
+    [InlineData("each [Bar]")]
+    [InlineData("Table.FromRecords({[Bar = 1, Alpha = Bar]})")]
+    [InlineData("Table.FromValue([#\"Bar\" = 1][#\"Bar\"])")]
+    [InlineData("Table.FromRecords({[let = 1]})")]
+    public void ProvenFieldPositionsDoNotCreateQueryReferences(string expression)
+    {
+        var inventory = Scan(expression);
+        Assert.DoesNotContain(inventory.PowerQueryDependencies, edge => edge.ToQueryName == "Bar");
+        Assert.Equal(PowerQueryRoles.ApparentlyOrphaned, Query(inventory, "Bar").QueryRole);
+    }
+
+    [Fact]
+    public void QuotedLetFieldDoesNotSuppressOrphanFindings()
+    {
+        const string expression = "Table.FromRecords({[#\"let\" = 1]})";
+        Assert.False(MReferenceExtractor.HasIncompleteReferences(expression));
+        var inventory = Scan(expression);
+        Assert.Equal(PowerQueryRoles.ApparentlyOrphaned, Query(inventory, "Bar").QueryRole);
+        Assert.Contains(inventory.Findings, finding => finding.RuleId == "PBI-QUERY-002");
+    }
+
+    [Theory]
+    [InlineData("#\"let\"")]
+    [InlineData("#\"a\"\"let\"")]
+    [InlineData("\"let let\"")]
+    [InlineData("/* let let */ 1")]
+    [InlineData("// let let\n1")]
+    [InlineData("let\n  Step = [#\"let\" = 1]\nin\n  Step")]
+    public void NonKeywordLetTextDoesNotCreateScopeDoubt(string expression)
+    {
+        Assert.False(MReferenceExtractor.HasIncompleteReferences(expression));
+    }
+
+    [Theory]
+    [InlineData("let #\"Step\" = 1 in #\"Step\"")]
+    [InlineData("let\n  Step = (let\n    Other = 1\n  in Other)\nin Step")]
+    [InlineData("{(let\n  A = 1\nin A), (let\n  B = 2\nin B)}")]
+    public void RecognizedLetScopesDoNotSuppressOrphanFindings(string expression)
+    {
+        Assert.False(MReferenceExtractor.HasIncompleteReferences(expression));
+        var inventory = Scan(expression);
+        Assert.Equal(PowerQueryRoles.ApparentlyOrphaned, Query(inventory, "Bar").QueryRole);
+        Assert.Contains(inventory.Findings, finding => finding.RuleId == "PBI-QUERY-002");
+    }
+
     [Fact]
     public void RecordKeyIsNotAReferenceToAGlobalQuery()
     {
@@ -45,11 +101,6 @@ public sealed class MFieldAccessAndScopeTests
         Assert.Equal(PowerQueryUsageStates.SupportingQuery, Query(inventory, "Bar").UsageState);
     }
 
-    /// <summary>
-    /// A record <em>value</em> is an ordinary expression, so a name there is a real reference. This is
-    /// the boundary the adjacency rule has to respect: excluding everything inside brackets would erase
-    /// it, which is the dangerous direction.
-    /// </summary>
     [Fact]
     public void ANameUsedAsARecordValueIsStillAReference()
     {
@@ -58,54 +109,36 @@ public sealed class MFieldAccessAndScopeTests
         Assert.Contains(inventory.PowerQueryDependencies, edge => edge.ToQueryName == "Bar");
     }
 
-    /// <summary>
-    /// The false-orphan direction, which is the dangerous one. A binding inside a nested scope is
-    /// collected as though it applied to the whole expression, so it erases the genuine outer reference
-    /// to the global <c>Bar</c> and would leave it looking unused. The state is still wrong — that needs
-    /// a real resolver — but the confident orphan conclusion is withheld.
-    /// </summary>
     [Fact]
-    public void UnscopableLetWithholdsTheConfidentOrphanConclusion()
+    public void NestedLetRetainsTheOuterGlobalReference()
     {
         var inventory = Scan(
             "let\n  Outer = Bar,\n  Inner =\n    let\n  Bar = 99\n    in\n      Bar\nin\n  Table.FromValue(Outer)");
 
         var bar = Query(inventory, "Bar");
-        Assert.Equal(PowerQueryUsageStates.ApparentlyUnused, bar.UsageState);
-        Assert.Null(bar.QueryRole);
+        Assert.Equal(PowerQueryUsageStates.SupportingQuery, bar.UsageState);
+        Assert.Equal(PowerQueryRoles.HelperOrStaging, bar.QueryRole);
         Assert.DoesNotContain(inventory.Findings, finding => finding.RuleId == "PBI-QUERY-002");
     }
 
-    /// <summary>
-    /// A known remaining defect, asserted so it stays visible. A binding that does not start a line is
-    /// invisible to the flat model, so the inner <c>Bar</c> is read as a reference to the global one and
-    /// the query is wrongly reported as supporting. That is a false positive, not a false absence, so it
-    /// cannot be corrected by withholding a conclusion — it needs a lexical resolver. This test should
-    /// be rewritten, not deleted, when one lands.
-    /// </summary>
     [Fact]
-    public void InlineNestedBindingIsStillReadAsAReference()
+    public void InlineNestedBindingDoesNotInventAGlobalReference()
     {
         var inventory = Scan("let\n  Inner = (let Bar = 99 in Bar)\nin\n  Table.FromValue(Inner)");
 
-        Assert.Equal(PowerQueryUsageStates.SupportingQuery, Query(inventory, "Bar").UsageState);
+        Assert.Equal(PowerQueryUsageStates.ApparentlyUnused, Query(inventory, "Bar").UsageState);
+        Assert.Equal(PowerQueryRoles.ApparentlyOrphaned, Query(inventory, "Bar").QueryRole);
     }
 
     [Fact]
-    public void SingleLineLetAlsoWithholdsTheConfidentOrphanConclusion()
+    public void SingleLineLetRetainsTheConfidentOrphanConclusion()
     {
-        // One let, but its first binding follows it on the same line and is invisible to the line-anchored
-        // binding regex.
         var inventory = Scan("let Step = 1 in Table.FromValue(Step)");
 
-        Assert.Null(Query(inventory, "Bar").QueryRole);
-        Assert.DoesNotContain(inventory.Findings, finding => finding.RuleId == "PBI-QUERY-002");
+        Assert.Equal(PowerQueryRoles.ApparentlyOrphaned, Query(inventory, "Bar").QueryRole);
+        Assert.Contains(inventory.Findings, finding => finding.RuleId == "PBI-QUERY-002");
     }
 
-    /// <summary>
-    /// The ordinary Desktop-generated shape — one let alone on its line — must stay confident, or the
-    /// signal is worthless.
-    /// </summary>
     [Fact]
     public void OrdinaryLetStillProducesAConfidentOrphanConclusion()
     {
@@ -117,7 +150,6 @@ public sealed class MFieldAccessAndScopeTests
         Assert.Contains(inventory.Findings, finding => finding.RuleId == "PBI-QUERY-002");
     }
 
-    /// <summary>Parameters are never orphan candidates, and that is unchanged by any of this.</summary>
     [Fact]
     public void ParameterBehaviourIsUnchanged()
     {

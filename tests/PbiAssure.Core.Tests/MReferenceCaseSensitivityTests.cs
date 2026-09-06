@@ -4,16 +4,6 @@ using PbiAssure.Core.Scanning;
 
 namespace PbiAssure.Core.Tests;
 
-/// <summary>
-/// M identifiers are case-sensitive: <c>data</c> and <c>Data</c> are different names. Matching them
-/// case-insensitively was wrong in both directions — a local binding could erase a genuine dependency
-/// on a differently-cased global query and report it as having no known use, and a differently-cased
-/// identifier could be read as a reference to a query it has nothing to do with.
-///
-/// This slice fixes only the comparison. Lexical scoping and field-access handling remain unfixed, so
-/// a local binding still suppresses its name for the whole query and a record field still reads as a
-/// reference. Those are separate remediations.
-/// </summary>
 public sealed class MReferenceCaseSensitivityTests
 {
     [Fact]
@@ -41,10 +31,6 @@ public sealed class MReferenceCaseSensitivityTests
             finding => finding.RuleId == "PBI-QUERY-002" && finding.Message.Contains("Data", StringComparison.Ordinal));
     }
 
-    /// <summary>
-    /// Scopedness is unchanged in this slice: a same-case local binding still suppresses the global
-    /// name for the whole query, whether or not that is where the reference actually is.
-    /// </summary>
     [Fact]
     public void SameCaseLocalBindingStillSuppressesTheGlobalQuery()
     {

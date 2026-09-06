@@ -6,7 +6,7 @@ expression UnreferencedParameterControl = "control" meta [IsParameterQuery=true,
 
 expression ParameterConsumerQuery = #table(type table [Value = number], {{ReferencedParameter}})
 
-expression UnusedQuery = #table(type table [Value = number], {{2}})
+expression DynamicSuppressedOrphanControl = #table(type table [Value = number], {{2}})
 
 expression DynamicQuery = Expression.Evaluate("ReferencedQuery", #shared)
 

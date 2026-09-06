@@ -44,9 +44,21 @@ public sealed class CoverageFixtureSliceOneTests
 
         AssertQuery(inventory, "LoadedFactQuery", PowerQueryUsageStates.LoadedToModel);
         AssertQuery(inventory, "ReferencedQuery", PowerQueryUsageStates.SupportingQuery);
-        AssertQuery(inventory, "UnusedQuery", PowerQueryUsageStates.ApparentlyUnused);
+        // UnusedQuery lives in EstablishedCoverage, a model with no dynamic or unparsed query
+        // discovery, so the orphan conclusion there is provable rather than withheld.
+        var unusedQuery = AssertQuery(inventory, "UnusedQuery", PowerQueryUsageStates.ApparentlyUnused);
+        Assert.Equal("EstablishedCoverage", unusedQuery.SemanticModel);
+        Assert.Equal(PowerQueryRoles.ApparentlyOrphaned, unusedQuery.QueryRole);
         var dynamicQuery = AssertQuery(inventory, "DynamicQuery", PowerQueryUsageStates.SupportingQuery);
         Assert.True(dynamicQuery.HasDynamicReferences);
+        // Its model keeps the matching control: an unreferenced static query whose orphan role is
+        // withheld because DynamicQuery could reach it by a name this analysis cannot see.
+        var suppressed = AssertQuery(
+            inventory, "DynamicSuppressedOrphanControl", PowerQueryUsageStates.ApparentlyUnused);
+        Assert.Equal("PbiAssureCoverage", suppressed.SemanticModel);
+        Assert.Null(suppressed.QueryRole);
+        Assert.DoesNotContain(inventory.Findings, finding =>
+            finding.RuleId == "PBI-QUERY-002" && finding.ObjectName == "DynamicSuppressedOrphanControl");
         var referencedParameter = AssertQuery(inventory, "ReferencedParameter", PowerQueryUsageStates.SupportingQuery);
         Assert.True(referencedParameter.IsParameter);
         Assert.Equal("Number", referencedParameter.ParameterType);
@@ -61,7 +73,7 @@ public sealed class CoverageFixtureSliceOneTests
             finding.RuleId == "PBI-QUERY-002" && finding.ObjectName == "UnreferencedParameterControl");
         Assert.Contains(inventory.Findings, finding =>
             finding.RuleId == "PBI-QUERY-002" && finding.ObjectName == "UnusedQuery");
-        Assert.Equal(1, inventory.ApparentlyUnusedPowerQueryCount);
+        Assert.Equal(2, inventory.ApparentlyUnusedPowerQueryCount);
         AssertQueryDependency(inventory, "LoadedFactQuery", PowerQuerySourceKinds.TablePartition,
             "ReferencedQuery", PowerQuerySourceKinds.NamedExpression);
         AssertQueryDependency(inventory, "ParameterConsumerQuery", PowerQuerySourceKinds.NamedExpression,
