@@ -91,7 +91,7 @@ public partial class MainWindow : Window
                 CsvPathTextBox.Text = string.Empty;
                 OutputFolderTextBox.Text = outputFolderPath is null ? string.Empty : Path.GetFullPath(outputFolderPath);
                 OpenSemanticCsvButton.IsEnabled = false;
-                StatusTextBlock.Text = $"HTML report created, but the semantic CSV could not be created: {result.outputResult.SemanticUsageCsvError}";
+                StatusTextBlock.Text = $"No output was written. The report and semantic CSV are saved together, and the CSV could not be created: {result.outputResult.SemanticUsageCsvError}";
             }
         }
         catch (UnsupportedProjectInputException exception)

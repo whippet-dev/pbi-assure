@@ -38,15 +38,29 @@ static async Task<int> RunAsync(string[] arguments)
         {
             var outputResult = await AssuranceOutputWriter.WriteDefaultOutputsAsync(inventory, projectPath!, localScanTime);
             Console.Out.WriteLine($"HTML report written to {Path.GetFullPath(outputResult.HtmlOutput.HistoricalPath)}");
-            Console.Out.WriteLine($"Latest HTML report updated at {Path.GetFullPath(outputResult.HtmlOutput.LatestPath!)}");
+            if (outputResult.HtmlOutput.LatestPath is not null)
+            {
+                Console.Out.WriteLine($"Latest HTML report updated at {Path.GetFullPath(outputResult.HtmlOutput.LatestPath)}");
+            }
+
             if (outputResult.SemanticUsageCsvOutput is not null)
             {
                 Console.Out.WriteLine($"Semantic usage CSV written to {Path.GetFullPath(outputResult.SemanticUsageCsvOutput.HistoricalPath)}");
-                Console.Out.WriteLine($"Latest semantic usage CSV updated at {Path.GetFullPath(outputResult.SemanticUsageCsvOutput.LatestPath!)}");
+                if (outputResult.SemanticUsageCsvOutput.LatestPath is not null)
+                {
+                    Console.Out.WriteLine($"Latest semantic usage CSV updated at {Path.GetFullPath(outputResult.SemanticUsageCsvOutput.LatestPath)}");
+                }
+
+                if (outputResult.LatestUpdateError is not null)
+                {
+                    Console.Error.WriteLine(outputResult.LatestUpdateError);
+                    return 1;
+                }
+
                 return 0;
             }
 
-            Console.Error.WriteLine($"HTML report was created, but the semantic usage CSV could not be created: {outputResult.SemanticUsageCsvError}");
+            Console.Error.WriteLine($"No output was written. The run's HTML report and semantic usage CSV are saved together, and the CSV could not be created: {outputResult.SemanticUsageCsvError}");
             return 1;
         }
 
