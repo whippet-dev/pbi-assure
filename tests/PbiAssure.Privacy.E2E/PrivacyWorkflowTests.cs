@@ -21,8 +21,8 @@ public sealed class PrivacyWorkflowTests(PrivacyE2EFixture fixture)
         // task. Each stop is named, so a change to the header's reading order fails here rather than
         // silently moving the primary task further from the keyboard.
         await page.Keyboard.PressAsync("Tab");
-        var coverage = page.GetByRole(AriaRole.Link, new() { Name = "View coverage", Exact = true });
-        Assert.Equal("View coverage", await page.EvaluateAsync<string>("() => document.activeElement?.textContent?.trim()"));
+        var coverage = page.GetByRole(AriaRole.Link, new() { Name = "See exactly what PBI Assure analyses", Exact = true });
+        Assert.Equal("See exactly what PBI Assure analyses", await page.EvaluateAsync<string>("() => document.activeElement?.textContent?.trim()"));
         Assert.True(await coverage.EvaluateAsync<bool>("element => element === document.activeElement && element.matches(':focus-visible')"));
         Assert.Equal("2px", await coverage.EvaluateAsync<string>("element => getComputedStyle(element).outlineWidth"));
         await page.Keyboard.PressAsync("Tab");
