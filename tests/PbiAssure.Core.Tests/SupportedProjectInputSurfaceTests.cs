@@ -11,12 +11,23 @@ public sealed class SupportedProjectInputSurfaceTests
         var guidanceDisclosure = browser.IndexOf("<details class=\"guidance-panel\">", StringComparison.Ordinal);
         var alwaysVisibleIntro = browser[..guidanceDisclosure];
 
+        var guidance = browser[guidanceDisclosure..];
+
         Assert.Contains("Check or prepare your Power BI project", browser, StringComparison.Ordinal);
-        Assert.Contains("model.bim</code> (TMSL) is not supported yet", browser, StringComparison.Ordinal);
-        Assert.Contains("For supported local semantic-model analysis", alwaysVisibleIntro, StringComparison.Ordinal);
-        Assert.Contains("PBIR and TMDL", alwaysVisibleIntro, StringComparison.Ordinal);
-        Assert.Contains(".SemanticModel/definition/", alwaysVisibleIntro, StringComparison.Ordinal);
-        Assert.Contains("Local <code>model.bim</code> (TMSL) models are not supported", alwaysVisibleIntro, StringComparison.Ordinal);
+        // The boundary is still stated on this page, in the preparation guidance where someone who
+        // needs it is already looking, and in full by the exception when a TMSL project is chosen.
+        Assert.Contains("model.bim</code> (TMSL) is not supported yet", guidance, StringComparison.Ordinal);
+        Assert.Contains("PBIR and TMDL", guidance, StringComparison.Ordinal);
+        Assert.Contains(".SemanticModel", guidance, StringComparison.Ordinal);
+        // It is deliberately not in the copy a newcomer reads before choosing anything: none of it
+        // means anything until you have a project that hits it.
+        foreach (var vocabulary in new[] { "PBIR", "TMDL", "TMSL", "model.bim", ".SemanticModel" })
+        {
+            Assert.DoesNotContain(vocabulary, alwaysVisibleIntro, StringComparison.OrdinalIgnoreCase);
+        }
+
+        // What the newcomer copy says instead: which folder to choose.
+        Assert.Contains("Power BI Project (<code>.pbip</code>) folder", alwaysVisibleIntro, StringComparison.Ordinal);
         Assert.Contains("catch (UnsupportedProjectInputException exception)", browser, StringComparison.Ordinal);
         Assert.Contains("message = exception.Message;", browser, StringComparison.Ordinal);
         Assert.Contains("catch (UnsupportedProjectInputException exception)", desktop, StringComparison.Ordinal);

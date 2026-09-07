@@ -2,24 +2,67 @@ namespace PbiAssure.Core.Tests;
 
 public sealed class WebNewcomerOrientationTests
 {
+    /// <summary>
+    /// The first screen has to answer what this tool does, what it can do for me, whether it will
+    /// change my project, and what I have to choose — in the words a Power BI user already has.
+    /// PBI Assure's own vocabulary belongs on Coverage.
+    /// </summary>
     [Fact]
     public void AnalyseOrientsWithoutReplacingPreparationPickerOrScanActions()
     {
         var home = ReadWeb("Pages/Home.razor");
         Assert.Contains("Understand your Power BI project", home, StringComparison.Ordinal);
-        Assert.Contains("read-only analysis of Power BI project metadata", home, StringComparison.Ordinal);
-        foreach (var outcome in new[] { "Find model objects with no detected usage", "Trace where fields and measures are used", "Understand model and Power Query dependencies", "Export catalogue and usage metadata" })
+        Assert.Contains("read-only snapshot of your Power BI project", home, StringComparison.Ordinal);
+        Assert.Contains("What can I use PBI Assure for?", home, StringComparison.Ordinal);
+
+        // The things someone can do, named with the Power BI nouns they already use.
+        foreach (var familiar in new[] { "columns, measures", "pages and visuals", "Power Query", "tables relate to one another", "security roles", "accessibility", "data catalogue" })
         {
-            Assert.Contains(outcome, home, StringComparison.Ordinal);
+            Assert.Contains(familiar, home, StringComparison.Ordinal);
         }
 
-        foreach (var retained in new[] { "Check or prepare your Power BI project", "folder-example", "<strong>project root</strong>", "ChooseProjectAsync(false)", "ChooseProjectAsync(true)", "RunAssuranceAsync", "projects-overview", "projects-report", "projects-dataset", "How privacy works", "processed locally in your browser" })
+        // Read-only is stated as a plain fact, not as a disclaimer.
+        Assert.Contains("Your Power BI project is not changed.", home, StringComparison.Ordinal);
+        Assert.Contains("processed locally in your browser", home, StringComparison.Ordinal);
+
+        // What to select, and the way out for someone holding only a .pbix.
+        Assert.Contains("Power BI Project (<code>.pbip</code>) folder", home, StringComparison.Ordinal);
+        Assert.Contains("<code>.pbix</code> file", home, StringComparison.Ordinal);
+
+        Assert.Contains("href=\"coverage\"", home, StringComparison.Ordinal);
+        foreach (var retained in new[] { "Check or prepare your Power BI project", "folder-example", "<strong>project root</strong>", "ChooseProjectAsync(false)", "ChooseProjectAsync(true)", "RunAssuranceAsync", "projects-overview", "projects-report", "projects-dataset", "How privacy works" })
         {
             Assert.Contains(retained, home, StringComparison.Ordinal);
         }
 
         Assert.DoesNotContain("full assurance", home, StringComparison.OrdinalIgnoreCase);
         Assert.True(home.IndexOf("<AppNavigation", StringComparison.Ordinal) < home.IndexOf("guidance-panel", StringComparison.Ordinal));
+    }
+
+    /// <summary>
+    /// The implementation vocabulary still exists where it earns its place — inside the preparation
+    /// guidance and on Coverage — but a newcomer meets none of it before choosing a project.
+    /// </summary>
+    [Fact]
+    public void TheNewcomerCopyUsesNoneOfPbiAssuresOwnVocabulary()
+    {
+        var home = ReadWeb("Pages/Home.razor");
+        var newcomerCopy = ExtractBetween(home, "@if (!HasProject)", "@if (HasProject)");
+
+        foreach (var jargon in new[] { "PBIR", "TMDL", "TMSL", "model.bim", ".SemanticModel", "semantic model", "model objects", "metadata" })
+        {
+            Assert.DoesNotContain(jargon, newcomerCopy, StringComparison.OrdinalIgnoreCase);
+        }
+
+        // Nothing here promises completeness or that anything is safe to remove.
+        foreach (var overclaim in new[] { "safe to delete", "unused objects", "fully compliant", "all accessibility" })
+        {
+            Assert.DoesNotContain(overclaim, newcomerCopy, StringComparison.OrdinalIgnoreCase);
+        }
+
+        Assert.Contains("do not appear to be used", newcomerCopy, StringComparison.Ordinal);
+        // The detail a reader may still want has a home, and it is not this page.
+        Assert.Contains("TMSL", ExtractBetween(home, "guidance-panel", "</details>"), StringComparison.Ordinal);
     }
 
     [Fact]

@@ -17,20 +17,23 @@
         <h1 id="page-title" tabindex="-1">@(HasProject ? selection!.DisplayName : "Understand your Power BI project")</h1>
         @if (!HasProject)
         {
-            <p class="page-lede">PBI Assure performs read-only analysis of Power BI project metadata: how your semantic model — tables, fields and calculations — fits together with Power Query and the report.</p>
+            <p class="page-lede">PBI Assure gives you a read-only snapshot of your Power BI project — how it is built, what is being used, and what may be worth investigating. <strong>Your Power BI project is not changed.</strong></p>
+            <h2 class="orientation-heading">What can I use PBI Assure for?</h2>
             <ul class="orientation-outcomes">
-                <li>Find model objects with no detected usage</li>
-                <li>Trace where fields and measures are used</li>
-                <li>Understand model and Power Query dependencies</li>
-                <li>Export catalogue and usage metadata</li>
+                <li>Find columns, measures and other model items that do not appear to be used</li>
+                <li>See which pages and visuals use a particular column or measure</li>
+                <li>Understand what depends on what across measures, tables and Power Query</li>
+                <li>See how tables relate to one another, and where security roles apply</li>
+                <li>Check for common accessibility, formatting and theme issues</li>
+                <li>Export a data catalogue and a usage list to work through in Excel</li>
             </ul>
-            <p class="coverage-pointer">Want to know exactly what gets analysed? <a href="coverage">View coverage</a></p>
+            <p class="coverage-pointer">Want the technical detail? <a href="coverage">See exactly what PBI Assure analyses</a>.</p>
         }
     </header>
 
     @if (!HasProject || !string.IsNullOrWhiteSpace(message))
     {
-        <p class="supported-input">For supported local semantic-model analysis, use a PBIP project with PBIR and TMDL (<code>.SemanticModel/definition/</code>). Local <code>model.bim</code> (TMSL) models are not supported by this version yet.</p>
+        <p class="supported-input"><strong>What do I need?</strong> Choose a Power BI Project (<code>.pbip</code>) folder. PBI Assure reads the report and model files inside it on your device. Only have a <code>.pbix</code> file? Save it as a Power BI Project first — <strong>Check or prepare your Power BI project</strong> below shows how.</p>
     }
 
     @if (HasProject)
