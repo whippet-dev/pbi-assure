@@ -24,7 +24,14 @@ public sealed record BrowserProjectSelection(
     List<BrowserProjectFileManifest> Files,
     long TotalBytes,
     int VisitedEntries,
-    int MaximumDepth);
+    int MaximumDepth)
+{
+    /// <summary>
+    /// Whether the browser retained a directory handle this session can enumerate again. False for the
+    /// fallback picker, which hands over a one-time snapshot of files and no way back to the folder.
+    /// </summary>
+    public bool CanRefresh { get; init; }
+}
 
 public sealed class BrowserProjectSelectionException : Exception
 {

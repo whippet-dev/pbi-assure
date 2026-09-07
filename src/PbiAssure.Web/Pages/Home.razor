@@ -236,6 +236,7 @@
 
 @code {
     private BrowserProjectSelection? selection;
+    private IBrowserProjectFileAccess? fileAccessInstance;
     private ProjectInventory? inventory;
     private string? message;
     private string? outputMessage;
@@ -252,6 +253,8 @@
 
     // Analyse is three states, not one accumulating page: choosing a project, a project ready to
     // analyse, and results. Setup material stops competing with results once it has served its turn.
+    private IBrowserProjectFileAccess fileAccess => fileAccessInstance ??= new JsFileAccess(JS);
+
     private bool HasProject => selection is not null;
 
     private bool HasResults => inventory is not null;
@@ -338,8 +341,16 @@
 
     private async Task RunAssuranceAsync()
     {
-        if (selection is null)
+        var action = BrowserProjectAnalysis.Decide(selection, HasResults);
+        if (action == BrowserProjectRerunAction.None)
         {
+            return;
+        }
+
+        if (action == BrowserProjectRerunAction.RequiresReselection)
+        {
+            // The result already on screen stays: it was true of the folder when it was read.
+            message = BrowserProjectAnalysis.ReselectionRequiredMessage;
             return;
         }
 
@@ -349,16 +360,15 @@
         try
         {
             var readStopwatch = Stopwatch.StartNew();
-            var files = new List<ProjectFileContent>(selection.Files.Count);
-            foreach (var file in selection.Files)
-            {
-                var contents = await JS.InvokeAsync<byte[]>("pbiAssureProjectPicker.read", file.RelativePath);
-                files.Add(new ProjectFileContent(file.RelativePath, contents));
-            }
+            // Analysing again re-enumerates the folder first, so files saved since the last run are
+            // found and deleted ones stop being read. Nothing is scanned until that has validated.
+            var prepared = await BrowserProjectAnalysis.PrepareAsync(
+                selection!, fileAccess, action == BrowserProjectRerunAction.RefreshThenAnalyse);
+            selection = prepared.Selection;
 
             fileReadElapsed = readStopwatch.Elapsed;
             var scanStopwatch = Stopwatch.StartNew();
-            inventory = ProjectScanner.Scan(new InMemoryProjectFileSource(selection.DisplayName, files));
+            inventory = ProjectScanner.Scan(new InMemoryProjectFileSource(selection.DisplayName, prepared.Files));
             exportPanelOpen = false;
             exportPanelKey++;
             scanElapsed = scanStopwatch.Elapsed;
@@ -366,6 +376,11 @@
             csvRenderElapsed = null;
             htmlLength = 0;
             csvLength = 0;
+        }
+        catch (BrowserProjectSelectionException exception)
+        {
+            // Re-reading the folder failed, so there is no new answer. The previous one is left alone.
+            message = exception.Message;
         }
         catch (UnsupportedProjectInputException exception)
         {
@@ -376,6 +391,12 @@
         {
             message = "The selected project could not be analysed. Check that its PBIP, PBIR and semantic-model files are complete and valid.";
             inventory = null;
+        }
+        catch (JSException exception) when (exception.Message.Contains("NO_HANDLE", StringComparison.OrdinalIgnoreCase) ||
+                                            exception.Message.Contains("REFRESH_FAILED", StringComparison.OrdinalIgnoreCase) ||
+                                            exception.Message.Contains("BLOCKED", StringComparison.OrdinalIgnoreCase))
+        {
+            message = "The project folder could not be read again, so the analysis already shown is unchanged. Choose the folder again to analyse its current contents.";
         }
         catch (JSException)
         {
@@ -391,6 +412,17 @@
         {
             isBusy = false;
         }
+    }
+
+    /// <summary>Browser file access for the analysis rules, kept to the two JS calls they need.</summary>
+    private sealed class JsFileAccess(IJSRuntime js) : IBrowserProjectFileAccess
+    {
+        public async ValueTask<BrowserProjectSelection> RefreshAsync() =>
+            await js.InvokeAsync<BrowserProjectSelection>(
+                "pbiAssureProjectPicker.refresh", BrowserProjectSelectionLimits.Default);
+
+        public async ValueTask<byte[]> ReadAsync(string relativePath) =>
+            await js.InvokeAsync<byte[]>("pbiAssureProjectPicker.read", relativePath);
     }
 
     private async Task DownloadHtmlAsync()

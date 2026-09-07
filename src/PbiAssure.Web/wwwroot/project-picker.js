@@ -1,5 +1,8 @@
 (() => {
     const files = new Map();
+    // Kept so a rerun can enumerate the project again. The fallback picker cannot provide one, and a
+    // selection made through it is a snapshot that must never be presented as a fresh read.
+    let directory = null;
     const allowedExtensions = new Set([".pbip", ".pbir", ".json", ".tmdl", ".bim", ".pbism"]);
     const reportSuffix = ".report";
     const modelSuffix = ".semanticmodel";
@@ -114,8 +117,7 @@
         }
     }
 
-    async function chooseDirectoryHandle(limits) {
-        const directoryHandle = await window.showDirectoryPicker({ mode: "read" });
+    async function enumerateDirectory(directoryHandle, limits) {
         const rootEntries = [];
         const collector = createCollector(limits);
         for await (const [name, handle] of directoryHandle.entries()) {
@@ -136,6 +138,12 @@
         }
 
         return { displayName: directoryHandle.name, ...collector.result() };
+    }
+
+    async function chooseDirectoryHandle(limits) {
+        const directoryHandle = await window.showDirectoryPicker({ mode: "read" });
+        const picked = await enumerateDirectory(directoryHandle, limits);
+        return { handle: directoryHandle, ...picked };
     }
 
     function chooseFallback(limits) {
@@ -190,29 +198,37 @@
     }
 
     function setFiles(projectFiles) {
+        const replacement = new Map();
+        for (const item of projectFiles) replacement.set(item.path, item.file);
         files.clear();
-        for (const item of projectFiles) files.set(item.path, item.file);
+        for (const [path, file] of replacement) files.set(path, file);
         return [...files].map(([relativePath, file]) => ({ relativePath, length: file.size }));
+    }
+
+    function describe(picked, manifest) {
+        return {
+            displayName: picked.displayName,
+            files: manifest,
+            totalBytes: picked.totalBytes,
+            visitedEntries: picked.visitedEntries,
+            maximumDepth: picked.maximumDepth,
+            canRefresh: directory !== null
+        };
     }
 
     window.pbiAssureProjectPicker = {
         async choose(forceFallback, limits) {
             files.clear();
+            directory = null;
             try {
                 let picked;
                 if (!forceFallback && "showDirectoryPicker" in window) {
                     picked = await chooseDirectoryHandle(limits);
+                    directory = picked.handle;
                 } else {
                     picked = await chooseFallback(limits);
                 }
-                const manifest = setFiles(picked.selected);
-                return {
-                    displayName: picked.displayName,
-                    files: manifest,
-                    totalBytes: picked.totalBytes,
-                    visitedEntries: picked.visitedEntries,
-                    maximumDepth: picked.maximumDepth
-                };
+                return describe(picked, setFiles(picked.selected));
             } catch (error) {
                 if (error && error.message && error.message.includes("[PBIASSURE:")) throw error;
                 if (error && error.name === "AbortError") throw pickerError("CANCELLED", "Project selection was cancelled.");
@@ -220,6 +236,23 @@
                     throw pickerError("BLOCKED", "Folder access was blocked. Try the alternate folder picker.");
                 }
                 throw pickerError("PICKER_FAILED", "The project folder could not be opened. Try the alternate folder picker.");
+            }
+        },
+        // Reads the project as it is now. The retained map is left untouched unless a whole
+        // enumeration succeeds, so a failure here leaves the previous analysis readable.
+        async refresh(limits) {
+            if (directory === null) {
+                throw pickerError("NO_HANDLE", "This selection cannot be refreshed. Choose the project folder again.");
+            }
+            try {
+                const picked = await enumerateDirectory(directory, limits);
+                return describe(picked, setFiles(picked.selected));
+            } catch (error) {
+                if (error && error.message && error.message.includes("[PBIASSURE:")) throw error;
+                if (error && (error.name === "NotAllowedError" || error.name === "SecurityError")) {
+                    throw pickerError("BLOCKED", "Access to the project folder was withdrawn. Choose the folder again.");
+                }
+                throw pickerError("REFRESH_FAILED", "The project folder could not be read again.");
             }
         },
         async read(relativePath) {
