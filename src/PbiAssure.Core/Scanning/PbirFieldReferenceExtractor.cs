@@ -8,7 +8,7 @@ internal static class PbirFieldReferenceExtractor
     public static VisualFieldReference[] Extract(JsonElement root, Action<string, string>? onUnresolvedAlias = null)
     {
         var references = new List<VisualFieldReference>();
-        var sourceAliases = new Dictionary<string, HashSet<string>>(StringComparer.Ordinal);
+        var sourceAliases = new Dictionary<string, SourceAlias>(StringComparer.Ordinal);
         Visit(root, "$", [], sourceAliases, references, isHiddenProjection: false, onUnresolvedAlias);
 
         return references
@@ -24,7 +24,7 @@ internal static class PbirFieldReferenceExtractor
         JsonElement element,
         string path,
         IReadOnlyList<string> ancestors,
-        IReadOnlyDictionary<string, HashSet<string>> sourceAliases,
+        IReadOnlyDictionary<string, SourceAlias> sourceAliases,
         ICollection<VisualFieldReference> references,
         bool isHiddenProjection,
         Action<string, string>? onUnresolvedAlias)
@@ -45,7 +45,7 @@ internal static class PbirFieldReferenceExtractor
                 if (property.Name == "SourceRef" &&
                     GetString(property.Value, "Entity") is null &&
                     GetString(property.Value, "Source") is { } alias &&
-                    (!sourceAliases.TryGetValue(alias, out var targets) || targets.Count != 1))
+                    !IsResolved(sourceAliases, alias))
                 {
                     onUnresolvedAlias?.Invoke(propertyPath, alias);
                 }
@@ -87,7 +87,7 @@ internal static class PbirFieldReferenceExtractor
         JsonElement expression,
         string evidencePath,
         IReadOnlyList<string> ancestors,
-        IReadOnlyDictionary<string, HashSet<string>> sourceAliases,
+        IReadOnlyDictionary<string, SourceAlias> sourceAliases,
         bool isHiddenProjection,
         out VisualFieldReference reference)
     {
@@ -360,7 +360,7 @@ internal static class PbirFieldReferenceExtractor
 
     private static string? FindTable(
         JsonElement element,
-        IReadOnlyDictionary<string, HashSet<string>> sourceAliases)
+        IReadOnlyDictionary<string, SourceAlias> sourceAliases)
     {
         if (element.ValueKind == JsonValueKind.Object)
         {
@@ -373,10 +373,10 @@ internal static class PbirFieldReferenceExtractor
                 }
 
                 if (GetString(sourceReference, "Source") is { } alias &&
-                    sourceAliases.TryGetValue(alias, out var entities) &&
-                    entities.Count == 1)
+                    sourceAliases.TryGetValue(alias, out var source) &&
+                    !source.IsDerived && source.Entities.Count == 1)
                 {
-                    return entities.Single();
+                    return source.Entities.Single();
                 }
             }
 
@@ -404,7 +404,7 @@ internal static class PbirFieldReferenceExtractor
 
     private static bool TryReadPropertyVariationSource(
         JsonElement element,
-        IReadOnlyDictionary<string, HashSet<string>> sourceAliases,
+        IReadOnlyDictionary<string, SourceAlias> sourceAliases,
         out string table,
         out string column)
     {
@@ -444,12 +444,24 @@ internal static class PbirFieldReferenceExtractor
         return false;
     }
 
-    private static Dictionary<string, HashSet<string>> ReadSourceAliases(JsonElement root)
+    private static Dictionary<string, SourceAlias> ReadSourceAliases(JsonElement root)
     {
-        var aliases = new Dictionary<string, HashSet<string>>(StringComparer.Ordinal);
+        var aliases = new Dictionary<string, SourceAlias>(StringComparer.Ordinal);
         CollectSourceAliases(root, aliases);
         return aliases;
     }
+
+    /// <summary>
+    /// Whether a <c>SourceRef</c> naming this alias points at something this scope declared. A derived
+    /// table counts as declared even though it names no model entity: the subquery producing it is
+    /// persisted beside it, and its own field references are read from its nested scope.
+    ///
+    /// An alias declared both ways in one scope resolves neither way. Which meaning applies is not
+    /// recoverable from the metadata, so the existing unresolved treatment is kept.
+    /// </summary>
+    private static bool IsResolved(IReadOnlyDictionary<string, SourceAlias> aliases, string alias) =>
+        aliases.TryGetValue(alias, out var source) &&
+        (source.IsDerived ? source.Entities.Count == 0 : source.Entities.Count == 1);
 
     private static bool OwnsQueryScope(JsonElement element) => element.EnumerateObject().Any(property =>
         property.Name.Equals("From", StringComparison.OrdinalIgnoreCase) ||
@@ -458,7 +470,7 @@ internal static class PbirFieldReferenceExtractor
 
     private static void CollectSourceAliases(
         JsonElement element,
-        IDictionary<string, HashSet<string>> aliases)
+        IDictionary<string, SourceAlias> aliases)
     {
         if (element.ValueKind == JsonValueKind.Object)
         {
@@ -476,22 +488,52 @@ internal static class PbirFieldReferenceExtractor
                             continue;
                         }
 
-                        if (!aliases.TryGetValue(alias, out var entities))
+                        if (!aliases.TryGetValue(alias, out var declared))
                         {
-                            entities = new HashSet<string>(StringComparer.Ordinal);
-                            aliases.Add(alias, entities);
+                            declared = new SourceAlias(new HashSet<string>(StringComparer.Ordinal));
+                            aliases.Add(alias, declared);
                         }
 
-                        entities.Add(entity ?? string.Empty);
+                        // A source with no Entity is recognised only when it declares the subquery that
+                        // produces it. Anything else with no Entity stays the existing unknown marker.
+                        if (entity is null && DeclaresSubquery(source))
+                        {
+                            declared.IsDerived = true;
+                            continue;
+                        }
+
+                        declared.Entities.Add(entity ?? string.Empty);
                     }
                 }
             }
             // A missing Entity cannot borrow a duplicate declaration's valid target.
-            foreach (var entities in aliases.Values.Where(entities => entities.Contains(string.Empty)))
+            foreach (var declared in aliases.Values.Where(item => item.Entities.Contains(string.Empty)))
             {
-                entities.Clear();
+                declared.Entities.Clear();
             }
         }
+    }
+
+    /// <summary>
+    /// A From entry whose source is a derived table persists it as <c>Expression.Subquery.Query</c>
+    /// beside the alias. Only that exact shape is recognised. The subquery is not read here: the
+    /// ordinary walk already visits it as a scope of its own, which is where its model-field
+    /// references come from.
+    /// </summary>
+    private static bool DeclaresSubquery(JsonElement source) =>
+        source.ValueKind == JsonValueKind.Object &&
+        source.TryGetProperty("Expression", out var expression) &&
+        expression.ValueKind == JsonValueKind.Object &&
+        expression.TryGetProperty("Subquery", out var subquery) &&
+        subquery.ValueKind == JsonValueKind.Object &&
+        subquery.TryGetProperty("Query", out var query) &&
+        query.ValueKind == JsonValueKind.Object;
+
+    /// <summary>What one alias was declared as within a single query scope.</summary>
+    private sealed record SourceAlias(HashSet<string> Entities)
+    {
+        /// <summary>Declared as a derived table, and so naming no model entity.</summary>
+        public bool IsDerived { get; set; }
     }
 
     private static string? FindStringProperty(JsonElement element, string propertyName)

@@ -60,6 +60,20 @@ internal static class ReportDefinitionFileRegistry
             "Bookmark definitions are analysed."),
         Packaging("PBI-LIMIT-REPORT-RESOURCE", "reportResource", "StaticResources",
             "Static report resources are recognised packaging. They are not report semantic-reference artifacts."),
+        Packaging("PBI-LIMIT-REPORT-CUSTOM-VISUAL", "customVisualPackage",
+            "CustomVisuals/*/package.json",
+            "An imported custom visual package is the visual itself: its manifest, role slots, "
+            + "assets and compiled code. It ships identically to every report that imports it, "
+            + "so it carries no reference to this model. The fields a custom visual instance is "
+            + "bound to are persisted in that visual's own visual.json, which is analysed.",
+            ReportDefinitionFileMatch.PathTemplate),
+        Packaging("PBI-LIMIT-REPORT-CUSTOM-VISUAL", "customVisualPackage",
+            "CustomVisuals/*/resources/*.pbiviz.json",
+            "An imported custom visual package is the visual itself: its manifest, role slots, "
+            + "assets and compiled code. It ships identically to every report that imports it, "
+            + "so it carries no reference to this model. The fields a custom visual instance is "
+            + "bound to are persisted in that visual's own visual.json, which is analysed.",
+            ReportDefinitionFileMatch.PathTemplate),
         Packaging("PBI-LIMIT-REPORT-LOCAL-SETTINGS", "reportLocalSettings", ".pbi",
             "Local report settings are recognised packaging and are not part of the persisted report definition."),
     ];
@@ -138,8 +152,9 @@ internal static class ReportDefinitionFileRegistry
         string limitationId,
         string constructType,
         string pattern,
-        string reason) => new(
-        limitationId, constructType, pattern, ReportDefinitionFileMatch.DirectoryTree,
+        string reason,
+        ReportDefinitionFileMatch matchKind = ReportDefinitionFileMatch.DirectoryTree) => new(
+        limitationId, constructType, pattern, matchKind,
         ConstructClassifications.Packaging, ConstructSupportStates.NotYetAnalyzed,
         ConstructDependencyImpacts.NoKnownDependencyEffect, [], reason);
 }
