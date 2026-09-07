@@ -472,10 +472,10 @@
             var html = HtmlReportRenderer.Render(inventory);
             htmlRenderElapsed = stopwatch.Elapsed;
             htmlLength = System.Text.Encoding.UTF8.GetByteCount(html);
-            var opened = await JS.InvokeAsync<bool>("pbiAssureDownload.open", "text/html;charset=utf-8", html);
-            outputMessage = opened
-                ? "HTML report opened in a new tab."
-                : "The browser blocked the new tab. Allow pop-ups for this site or download the HTML report instead.";
+            // Resolves only once the viewer acknowledges the report, so success is never claimed for
+            // a tab that opened but never received anything.
+            var status = await JS.InvokeAsync<string>("pbiAssureDownload.open", "text/html;charset=utf-8", html);
+            outputMessage = WebReportViewerStatus.Describe(status);
         }
         catch (Exception)
         {

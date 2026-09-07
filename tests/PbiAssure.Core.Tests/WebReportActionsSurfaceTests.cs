@@ -26,7 +26,11 @@ public sealed class WebReportActionsSurfaceTests
         Assert.Contains("event.source !== sourceWindow", viewer, StringComparison.Ordinal);
         Assert.Contains("window.opener = null", viewer, StringComparison.Ordinal);
         Assert.Contains("document.write(event.data.content)", viewer, StringComparison.Ordinal);
-        Assert.Contains("The browser blocked the new tab.", markup, StringComparison.Ordinal);
+        // The open outcomes moved out of the page and into WebReportViewerStatus when opening the
+        // report became a handshake with several distinct failures rather than a boolean.
+        var status = File.ReadAllText(Path.Combine(repositoryRoot, "src", "PbiAssure.Web", "WebReportViewerStatus.cs"));
+        Assert.Contains("The browser blocked the new tab.", status, StringComparison.Ordinal);
+        Assert.Contains("WebReportViewerStatus.Describe(status)", markup, StringComparison.Ordinal);
     }
 
     [Fact]
