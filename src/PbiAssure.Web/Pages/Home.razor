@@ -236,7 +236,8 @@
 
 @code {
     private BrowserProjectSelection? selection;
-    private IBrowserProjectFileAccess? fileAccessInstance;
+    private JsFileAccess? fileAccessInstance;
+    private bool isChoosingProject;
     private ProjectInventory? inventory;
     private string? message;
     private string? outputMessage;
@@ -253,15 +254,19 @@
 
     // Analyse is three states, not one accumulating page: choosing a project, a project ready to
     // analyse, and results. Setup material stops competing with results once it has served its turn.
-    private IBrowserProjectFileAccess fileAccess => fileAccessInstance ??= new JsFileAccess(JS);
+    private JsFileAccess browserAccess => fileAccessInstance ??= new JsFileAccess(JS);
+
+    private IBrowserProjectFileAccess fileAccess => browserAccess;
+
+    private IBrowserProjectPicker picker => browserAccess;
 
     private bool HasProject => selection is not null;
 
     private bool HasResults => inventory is not null;
 
-    // A project is only ever on screen while it is being analysed, never while one is being chosen:
-    // ChooseProjectAsync clears the selection before it awaits, so the picker is showing instead.
-    private bool IsAnalysing => isBusy && HasProject;
+    // The project now stays on screen while a replacement is being chosen, so "busy with a project
+    // selected" no longer means a scan is running. Choosing is excluded explicitly.
+    private bool IsAnalysing => isBusy && HasProject && !isChoosingProject;
 
     private string RunLabel => IsAnalysing ? "Analysing…" : HasResults ? "Analyse again" : "Run analysis";
 
@@ -294,50 +299,51 @@
     private async Task ChooseProjectAsync(bool useFallback)
     {
         isBusy = true;
+        isChoosingProject = true;
         message = null;
         outputMessage = null;
-        inventory = null;
-        selection = null;
-        exportPanelOpen = false;
-        exportPanelKey++;
         try
         {
             var stopwatch = Stopwatch.StartNew();
-            var picked = await JS.InvokeAsync<BrowserProjectSelection>(
-                "pbiAssureProjectPicker.choose",
-                useFallback,
-                BrowserProjectSelectionLimits.Default);
-            selection = BrowserProjectSelectionValidator.Validate(picked);
-            selectionElapsed = stopwatch.Elapsed;
-        }
-        catch (BrowserProjectSelectionException exception)
-        {
-            message = exception.Message;
-            selection = null;
-        }
-        catch (JSException exception) when (exception.Message.Contains("CANCELLED", StringComparison.OrdinalIgnoreCase))
-        {
-            message = "Project selection was cancelled.";
-        }
-        catch (JSException exception) when (exception.Message.Contains("BLOCKED", StringComparison.OrdinalIgnoreCase))
-        {
-            message = "Folder access was blocked. Open ‘Having trouble selecting a folder?’ and try the alternative folder picker.";
-        }
-        catch (JSException exception)
-        {
-            message = PickerErrorMessage(exception.Message);
-            selection = null;
-        }
-        catch (Exception)
-        {
-            message = "The project folder could not be validated. Choose the folder again and retry.";
-            selection = null;
+            // Nothing on screen is cleared up front. A picker that is cancelled or fails leaves the
+            // project, its analysis and its export configuration exactly where they were.
+            var outcome = await BrowserProjectSelectionWorkflow.ChooseAsync(
+                Workspace, picker, useFallback, DescribeSelectionFailure);
+            ApplyWorkspace(outcome.Workspace);
+            message = outcome.Message;
+            if (outcome.Replaced)
+            {
+                selectionElapsed = stopwatch.Elapsed;
+            }
         }
         finally
         {
+            isChoosingProject = false;
             isBusy = false;
         }
     }
+
+    private BrowserProjectWorkspace Workspace =>
+        new(selection, inventory, exportPanelKey, exportPanelOpen);
+
+    private void ApplyWorkspace(BrowserProjectWorkspace workspace)
+    {
+        selection = workspace.Selection;
+        inventory = workspace.Inventory;
+        exportPanelKey = workspace.ExportConfigurationVersion;
+        exportPanelOpen = workspace.ExportPanelOpen;
+    }
+
+    private static string DescribeSelectionFailure(Exception exception) => exception switch
+    {
+        BrowserProjectSelectionException selectionException => selectionException.Message,
+        JSException jsException when jsException.Message.Contains("CANCELLED", StringComparison.OrdinalIgnoreCase) =>
+            BrowserProjectSelectionWorkflow.CancelledMessage,
+        JSException jsException when jsException.Message.Contains("BLOCKED", StringComparison.OrdinalIgnoreCase) =>
+            "Folder access was blocked. Open ‘Having trouble selecting a folder?’ and try the alternative folder picker.",
+        JSException jsException => PickerErrorMessage(jsException.Message),
+        _ => "The project folder could not be validated. Choose the folder again and retry.",
+    };
 
     private async Task RunAssuranceAsync()
     {
@@ -415,8 +421,12 @@
     }
 
     /// <summary>Browser file access for the analysis rules, kept to the two JS calls they need.</summary>
-    private sealed class JsFileAccess(IJSRuntime js) : IBrowserProjectFileAccess
+    private sealed class JsFileAccess(IJSRuntime js) : IBrowserProjectFileAccess, IBrowserProjectPicker
     {
+        public async ValueTask<BrowserProjectSelection> ChooseAsync(bool useFallback) =>
+            await js.InvokeAsync<BrowserProjectSelection>(
+                "pbiAssureProjectPicker.choose", useFallback, BrowserProjectSelectionLimits.Default);
+
         public async ValueTask<BrowserProjectSelection> RefreshAsync() =>
             await js.InvokeAsync<BrowserProjectSelection>(
                 "pbiAssureProjectPicker.refresh", BrowserProjectSelectionLimits.Default);

@@ -217,18 +217,19 @@
     }
 
     window.pbiAssureProjectPicker = {
+        // Replacing a project is staged. The picked folder is enumerated in full before the active
+        // files or handle are touched, so cancelling or failing here leaves the project already loaded
+        // exactly as it was - including for a later refresh, which still has its original handle.
         async choose(forceFallback, limits) {
-            files.clear();
-            directory = null;
+            let picked;
+            let pickedHandle = null;
             try {
-                let picked;
                 if (!forceFallback && "showDirectoryPicker" in window) {
                     picked = await chooseDirectoryHandle(limits);
-                    directory = picked.handle;
+                    pickedHandle = picked.handle;
                 } else {
                     picked = await chooseFallback(limits);
                 }
-                return describe(picked, setFiles(picked.selected));
             } catch (error) {
                 if (error && error.message && error.message.includes("[PBIASSURE:")) throw error;
                 if (error && error.name === "AbortError") throw pickerError("CANCELLED", "Project selection was cancelled.");
@@ -237,6 +238,9 @@
                 }
                 throw pickerError("PICKER_FAILED", "The project folder could not be opened. Try the alternate folder picker.");
             }
+
+            directory = pickedHandle;
+            return describe(picked, setFiles(picked.selected));
         },
         // Reads the project as it is now. The retained map is left untouched unless a whole
         // enumeration succeeds, so a failure here leaves the previous analysis readable.
