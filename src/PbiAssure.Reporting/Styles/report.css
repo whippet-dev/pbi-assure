@@ -629,7 +629,10 @@ label { display: block; margin-bottom: 0.25rem; color: var(--pa-text-2); font-si
 
 /* Objects inside an already-bordered card are laid out as a hairline matrix rather than as a grid
    of little cards: each cell draws its own 1px ring, neighbouring rings overlap in the 1px gap,
-   and the result reads as one table instead of boxes inside a box. */
+   and the result reads as one table instead of boxes inside a box.
+   The matrix draws at the stronger line weight so one object is separable from the next at a
+   glance. The dividers inside an object stay at the lighter weight, which is what keeps them
+   subordinate to the cell that contains them. */
 .object-list, .semantic-object-list, .related-findings {
   display: grid;
   min-width: 0;
@@ -637,7 +640,7 @@ label { display: block; margin-bottom: 0.25rem; color: var(--pa-text-2); font-si
   gap: 1px;
   margin: 0.5rem 0 0.875rem;
   padding: 0;
-  border: 1px solid var(--pa-line);
+  border: 1px solid var(--pa-line-strong);
   border-radius: var(--pa-r2);
   background: var(--pa-surface);
   list-style: none;
@@ -651,7 +654,7 @@ label { display: block; margin-bottom: 0.25rem; color: var(--pa-text-2); font-si
   max-width: 100%;
   padding: 0.4375rem 0.625rem;
   background: var(--pa-surface);
-  box-shadow: 0 0 0 1px var(--pa-line);
+  box-shadow: 0 0 0 1px var(--pa-line-strong);
   font-size: var(--pa-t-xs);
   overflow-wrap: anywhere;
 }
