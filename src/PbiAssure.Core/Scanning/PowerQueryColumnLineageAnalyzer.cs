@@ -90,6 +90,14 @@ internal static class PowerQueryColumnLineageAnalyzer
             .ToArray();
     }
 
+    /// <summary>
+    /// Finds the semantic column a query output column feeds, following the query's own renames until a
+    /// column claims that name.
+    ///
+    /// The name to match on is the column's persisted <c>sourceColumn</c>, not its display name: a
+    /// column renamed in the model keeps the query-side name in <c>sourceColumn</c>, so matching by
+    /// display name silently lost the evidence for every renamed column.
+    /// </summary>
     private static string? ResolveSemanticColumn(
         string referencedColumn,
         SemanticTableInventory table,
@@ -99,11 +107,20 @@ internal static class PowerQueryColumnLineageAnalyzer
         var visited = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         while (visited.Add(current))
         {
-            var column = table.Columns.FirstOrDefault(candidate =>
-                string.Equals(candidate.Name, current, StringComparison.OrdinalIgnoreCase));
-            if (column is not null)
+            var matches = table.Columns
+                .Where(candidate => string.Equals(
+                    QueryColumnName(candidate), current, StringComparison.OrdinalIgnoreCase))
+                .ToArray();
+            if (matches.Length == 1)
             {
-                return column.Name;
+                return matches[0].Name;
+            }
+
+            if (matches.Length > 1)
+            {
+                // More than one column claims this query column. Picking one would state a lineage the
+                // metadata does not establish, so nothing is recorded for it.
+                return null;
             }
 
             if (!renames.TryGetValue(current, out current!))
@@ -114,6 +131,15 @@ internal static class PowerQueryColumnLineageAnalyzer
 
         return null;
     }
+
+    /// <summary>
+    /// The name this column has in the query that produces it. TMDL persists that as <c>sourceColumn</c>,
+    /// which differs from the column name whenever the column was renamed in the model. Absent for
+    /// calculated columns and anything Desktop had no source name for, where the column name is the only
+    /// name there is. Never inferred from anything else.
+    /// </summary>
+    private static string QueryColumnName(SemanticColumnInventory column) =>
+        string.IsNullOrWhiteSpace(column.SourceColumn) ? column.Name : column.SourceColumn;
 
     private static string UsageIdentity(PowerQueryUsage usage) =>
         string.Join('\u001f', usage.QueryName, usage.SourceKind, usage.Partition ?? string.Empty);
