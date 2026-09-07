@@ -356,14 +356,10 @@ public static partial class HtmlReportRenderer
         html.Append("              <p class=\"coverage-reason\">").Append(Encode(group.Reason)).AppendLine("</p>");
         html.Append("              <p class=\"coverage-artifacts\">")
             .Append(Pluralize(group.ArtifactPaths.Count, "File", "Files")).Append(": ");
-        for (var index = 0; index < group.ArtifactPaths.Count; index++)
+        // No separators: each path is its own block, so a comma would sit on a line of its own.
+        foreach (var artifactPath in group.ArtifactPaths)
         {
-            if (index > 0)
-            {
-                html.Append(", ");
-            }
-
-            html.Append("<code>").Append(Encode(DisplayPath(group.ArtifactPaths[index]))).Append("</code>");
+            html.Append("<code>").Append(Encode(DisplayPath(artifactPath))).Append("</code>");
         }
 
         html.AppendLine("</p>");

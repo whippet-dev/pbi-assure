@@ -842,6 +842,9 @@ public static class DesignSystem
         .coverage-item-qualifying .coverage-impact { color: var(--pa-info); }
         .coverage-reason { margin-top: 0.3125rem !important; max-width: 74ch; color: var(--pa-text-2); font-size: var(--pa-t-xs); }
         .coverage-artifacts { margin-top: 0.375rem !important; color: var(--pa-text-3); font-size: var(--pa-t-2xs); }
+        /* One path per line. Paths contain spaces, so a wrapped comma-separated list let the
+           next path start at the end of the previous one's last line. */
+        .coverage-artifacts code { display: block; margin-top: 0.125rem; }
         .coverage-other { margin: 0; }
 
         .coverage-other > summary {
