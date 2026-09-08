@@ -1801,7 +1801,9 @@ internal static class SemanticDependencyAnalyzer
             var candidateCount = (measures?.Length ?? 0) +
                                  (localColumn is null ? 0 : hasOwnerRowContext && reference.CanUseOwnerRowContext
                                      ? 1 : columnCountsByName[reference.ObjectName]);
-            if (candidateCount == 1)
+            // A virtual row column is not in columnCountsByName. A unique persisted candidate does
+            // not therefore prove a binding inside an iterator whose source we have not accounted for.
+            if (candidateCount == 1 && !(localColumn is not null && reference.HasUnboundIteratorRowContext))
             {
                 target = localColumn ?? measures![0];
                 reason = string.Empty;

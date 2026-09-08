@@ -14,18 +14,22 @@ internal static class DaxReferenceExtractor
         "YEAR", "MONTH", "DAY", "FORMAT", "INT",
     };
 
-    private sealed class ReferenceContext(char delimiter, string? function)
+    private static bool IsRowIterator(string? function) =>
+        function is not null && (function.Equals("SUMX", StringComparison.OrdinalIgnoreCase) ||
+            function.Equals("FILTER", StringComparison.OrdinalIgnoreCase) ||
+            function.Equals("SELECTCOLUMNS", StringComparison.OrdinalIgnoreCase));
+
+    private sealed class ReferenceContext(char delimiter, string? function, bool hasPersistedRowSource)
     {
         public char Delimiter { get; } = delimiter;
         public string? Function { get; } = function;
         public int Argument { get; set; }
+        public bool HasUnboundIteratorRow => IsRowIterator(Function) && Argument > 0 && !hasPersistedRowSource;
 
         public bool PreservesOwnerRow => Function is null || OwnerRowScalarFunctions.Contains(Function) ||
             // The table argument is evaluated in the incoming context; the subsequent row expressions
             // of these evidenced iterators are deliberately not bound to an inferred iterator target.
-            (Function.Equals("SUMX", StringComparison.OrdinalIgnoreCase) ||
-             Function.Equals("FILTER", StringComparison.OrdinalIgnoreCase) ||
-             Function.Equals("SELECTCOLUMNS", StringComparison.OrdinalIgnoreCase)) && Argument == 0;
+            IsRowIterator(Function) && Argument == 0;
     }
 
     /// <summary>
@@ -81,6 +85,7 @@ internal static class DaxReferenceExtractor
                         Text: expression[startIndex..index])
                     {
                         CanUseOwnerRowContext = !malformedContext && contexts.All(context => context.PreservesOwnerRow),
+                        HasUnboundIteratorRowContext = contexts.Any(context => context.HasUnboundIteratorRow),
                     });
                 }
 
@@ -103,7 +108,9 @@ internal static class DaxReferenceExtractor
             var character = expression[index];
             if (character is '(' or '{')
             {
-                contexts.Push(new ReferenceContext(character, character == '(' ? pendingFunction : null));
+                contexts.Push(new ReferenceContext(character, character == '(' ? pendingFunction : null,
+                    character == '(' && IsRowIterator(pendingFunction) &&
+                    HasPersistedRowSource(expression, index + 1, knownTables)));
             }
             else if (character is ')' or '}')
             {
@@ -118,6 +125,33 @@ internal static class DaxReferenceExtractor
         if (malformedContext || contexts.Count != 0)
             references = references.Select(reference => reference with { CanUseOwnerRowContext = false }).ToList();
         return references.Distinct().ToArray();
+    }
+
+    // Only an entire first argument naming a known table is accounted for here. Table expressions,
+    // variables and constructors can introduce virtual columns; their row source is not inferred.
+    private static bool HasPersistedRowSource(string expression, int index, IReadOnlySet<string> knownTables)
+    {
+        SkipTrivia();
+        string table;
+        if (index < expression.Length && expression[index] == '\'')
+        {
+            if (!ReadQuotedIdentifier(expression, ref index, out table)) return false;
+        }
+        else
+        {
+            if (index >= expression.Length || !IsUnquotedIdentifierStart(expression[index])) return false;
+            var start = index++;
+            while (index < expression.Length && IsUnquotedIdentifierPart(expression[index])) index++;
+            table = expression[start..index];
+        }
+        SkipTrivia();
+        return knownTables.Contains(table) && index < expression.Length && expression[index] is ',' or ';';
+
+        void SkipTrivia()
+        {
+            index = NextNonWhitespace(expression, index);
+            while (TrySkipComment(expression, ref index)) index = NextNonWhitespace(expression, index);
+        }
     }
 
     /// <summary>
@@ -575,6 +609,9 @@ internal static class DaxReferenceExtractor
 
         /// <summary>Occurrence is outside row-changing or unaccounted call scopes; not a table binding.</summary>
         public bool CanUseOwnerRowContext { get; init; }
+
+        /// <summary>A recognised iterator's row expression over an unbound table expression.</summary>
+        public bool HasUnboundIteratorRowContext { get; init; }
     }
 
     internal sealed record DaxQualifiedColumnReference(string Table, string Column);

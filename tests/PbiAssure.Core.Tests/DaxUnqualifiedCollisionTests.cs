@@ -7,6 +7,60 @@ namespace PbiAssure.Core.Tests;
 public sealed class DaxUnqualifiedCollisionTests
 {
     [Theory]
+    [InlineData("SUMX(SELECTCOLUMNS(Dim, \"X\", Dim[Value]), [X])")]
+    [InlineData("SUMX(\n SELECTCOLUMNS(Dim, \"X\", Dim[Value]),\n INT([X]))")]
+    [InlineData("SUMX(FILTER(SELECTCOLUMNS(Dim, \"X\", Dim[Value]), [X] > 0), [X])")]
+    public void VirtualIteratorColumnCannotBorrowUniquePersistedHomeColumn(string expression)
+    {
+        var inventory = Scan(expression, dimColumn: "Value");
+        Assert.DoesNotContain(inventory.SemanticDependencies, edge =>
+            edge.FromObjectName == "Result" && edge.ToTable == "Fact" && edge.ToObjectName == "X");
+        Assert.Contains(inventory.SemanticDependencies, edge =>
+            edge.FromObjectName == "Result" && edge.ToTable == "Dim" && edge.ToObjectName == "Value");
+        Assert.Equal(SemanticUsageStates.IndirectlyUsed, Usage(inventory, "Dim", "Value").UsageState);
+        Assert.Equal(ClassificationConfidences.Established, Usage(inventory, "Dim", "Value").ClassificationConfidence);
+        Assert.Equal(SemanticUsageStates.ApparentlyUnused, Usage(inventory, "Fact", "X").UsageState);
+        Assert.Equal(ClassificationConfidences.QualifiedByLimitation, Usage(inventory, "Fact", "X").ClassificationConfidence);
+        Assert.Contains(inventory.UnresolvedSemanticDependencies, item => item.FromObjectName == "Result" &&
+            item.ReferenceText == "[X]" && item.ResolutionOutcome == UnresolvedSemanticDependencyResolutionOutcomes.Ambiguous);
+        Assert.Contains(inventory.AnalysisLimitations, item =>
+            item.LimitationId == "PBI-LIMIT-MODEL-UNRESOLVED-REFERENCE" && item.SemanticModel == "Model" &&
+            item.DependencyImpact == ConstructDependencyImpacts.MayCreateDependencies);
+        Assert.Equal("0.26", inventory.SchemaVersion);
+    }
+
+    [Theory]
+    [InlineData("SUMX(Fact, [X])")]
+    [InlineData("SUMX(/* source */ 'Fact' /* boundary */, [X])")]
+    [InlineData("SUMX(SELECTCOLUMNS(Dim, \"Virtual\", Dim[Value]), Fact[X])")]
+    public void AccountedPersistedSourceAndExplicitReferencesRemainUnchanged(string expression)
+    {
+        var inventory = Scan(expression, dimColumn: "Value");
+        Assert.Empty(inventory.UnresolvedSemanticDependencies);
+        Assert.Equal(SemanticUsageStates.IndirectlyUsed, Usage(inventory, "Fact", "X").UsageState);
+        Assert.Equal(ClassificationConfidences.Established, Usage(inventory, "Fact", "X").ClassificationConfidence);
+    }
+
+    [Fact]
+    public void MeasureInsideUnboundIteratorStillResolves()
+    {
+        var inventory = Scan("SUMX(SELECTCOLUMNS(Dim, \"Virtual\", Dim[Value]), [SomeMeasure])",
+            dimColumn: "Value", extraFact: "\tmeasure SomeMeasure = 1\n");
+        Assert.Empty(inventory.UnresolvedSemanticDependencies);
+        Assert.Equal(SemanticUsageStates.IndirectlyUsed, Usage(inventory, "Fact", "SomeMeasure").UsageState);
+    }
+
+    [Fact]
+    public void VirtualIteratorContextDoesNotLeakToLaterOwnerRowReference()
+    {
+        var inventory = Scan("SUM(Fact[Computed])", dimColumn: "Value",
+            extraFact: "\tcolumn Computed = SUMX(SELECTCOLUMNS(Dim, \"Virtual\", Dim[Value]), 1) + YEAR([X])\n\t\tdataType: int64\n");
+        Assert.Empty(inventory.UnresolvedSemanticDependencies);
+        Assert.Contains(inventory.SemanticDependencies, edge => edge.FromObjectName == "Computed" &&
+            edge.ToTable == "Fact" && edge.ToObjectName == "X");
+    }
+
+    [Theory]
     [InlineData("Date", "YEAR([Date])")]
     [InlineData("Date", "MONTH([Date])")]
     [InlineData("Date", "DAY([Date])")]
@@ -165,7 +219,8 @@ public sealed class DaxUnqualifiedCollisionTests
         {
             ["Model.pbip"] = "{}",
             ["Model.SemanticModel/definition/tables/Fact.tmdl"] =
-                "table Fact\n\tmeasure Result = " + expression + "\n" + Column(factColumn) + extraFact,
+                "table Fact\n\tmeasure Result =\n\t\t" + expression.Replace("\n", "\n\t\t", StringComparison.Ordinal) +
+                "\n" + Column(factColumn) + extraFact,
             ["Model.SemanticModel/definition/tables/Dim.tmdl"] = "table Dim\n" + Column(dimColumn),
             ["Model.Report/definition.pbir"] = "{\"datasetReference\":{\"byPath\":{\"path\":\"../Model.SemanticModel\"}}}",
             ["Model.Report/definition/report.json"] =
