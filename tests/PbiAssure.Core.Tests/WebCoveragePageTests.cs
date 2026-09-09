@@ -112,6 +112,8 @@ public sealed class WebCoveragePageTests
         // The page names them rather than counting them, and never claims general M lineage.
         Assert.Contains("This is not general M lineage.", coverage, StringComparison.Ordinal);
         Assert.Contains("does not determine query folding", coverage, StringComparison.Ordinal);
+        Assert.Contains("Unrecognised source functions may be absent", coverage, StringComparison.Ordinal);
+        Assert.DoesNotContain("reported as unrecognised rather than guessed at", coverage, StringComparison.Ordinal);
     }
 
     /// <summary>
@@ -140,6 +142,8 @@ public sealed class WebCoveragePageTests
         }
 
         Assert.Contains("does not reproduce Power BI's formatting engine", coverage, StringComparison.Ordinal);
+        Assert.Contains("not proof of a manual edit", coverage, StringComparison.Ordinal);
+        Assert.DoesNotContain("restyled by hand", coverage, StringComparison.Ordinal);
     }
 
     [Fact]

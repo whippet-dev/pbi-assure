@@ -46,4 +46,4 @@ those Desktop interactions.
 semantic reachability. It also retains a bounded `USERELATIONSHIP` call only where it has exactly two
 explicit qualified columns, resolves that pair only to one exact relationship and shows the resulting
 inactive-relationship review context. See
-`docs/reviews/userelationship-inactive-relationship-evidence-2026-08-21.md`.
+the current `DesktopUserRelationshipEvidenceFixtureTests` and [usage classification](../../../docs/usage-classification.md).

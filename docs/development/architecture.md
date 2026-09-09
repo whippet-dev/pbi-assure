@@ -13,7 +13,7 @@ PBIP project
   -> normalised artifact inventory
   -> dependency graph
   -> versioned assurance rules
-  -> JSON inventory / HTML report / semantic-usage CSV / CI results
+  -> JSON inventory / interactive HTML / Semantic Usage CSV / Data Catalogue / Usage Mapping
 ```
 
 Each stage has one responsibility:
@@ -37,7 +37,7 @@ Provides automation, default output naming, and file writing. A default scan cre
 
 ### `PbiAssure.Reporting`
 
-Renders normalized inventories into accessible HTML and focused semantic-usage CSV outputs. It depends on the core domain model but contains no scanning or Power BI parsing logic.
+Renders normalized inventories into interactive HTML and the Semantic Usage, Data Catalogue and Usage Mapping CSV outputs. It depends on the core domain model but contains no scanning or Power BI parsing logic.
 
 ### `PbiAssure.Desktop`
 
@@ -48,7 +48,7 @@ Provides the lightweight Windows workflow over the shared scanner and output wri
 Provides a standalone Blazor WebAssembly frontend over Core and Reporting. Browser directory APIs create
 a bounded, canonical, in-memory project-file source; analysis and report rendering then run locally in
 the browser. Web contains no independent semantic analysis, backend, upload or telemetry path. See
-[Browser application](browser-app.md) and [Browser privacy](browser-privacy.md).
+[usage](../usage.md) and [privacy verification](testing.md).
 
 ## Dependency graph
 
@@ -60,7 +60,7 @@ Power Query lineage is a separate directed graph over M-backed table partitions 
 
 Connector extraction runs over the same M expressions but emits a minimised inventory: connector family, connector function, coarse location category, query identity, and source artifact path. Literal connector arguments are used transiently only to distinguish local, network, relative, web, named-server, or dynamic locations and are not retained in connector records.
 
-Initial usage states are:
+Semantic usage states are:
 
 - Directly used.
 - Indirectly used.
@@ -68,7 +68,7 @@ Initial usage states are:
 - Used only by an otherwise unused branch.
 - Apparently unused within scope.
 
-References that cannot be resolved are emitted separately with their evidence and reason. See [usage classification](usage-classification.md) for state precedence and current analysis boundaries.
+References that cannot be resolved are emitted separately with their evidence and reason. See [usage classification](../usage-classification.md) for state precedence and current analysis boundaries.
 
 Report filters, page filters, drillthrough parameters, and visual references all provide direct roots for the semantic dependency graph. Evidence locations use nullable page and visual identifiers plus an artifact path, allowing report-, page-, and visual-scoped references to share one explainable usage model without placeholder object names. Automatic date-hierarchy variations are normalized to their underlying model column because their generated levels are not standalone TMDL hierarchy objects.
 
@@ -78,10 +78,18 @@ Page visual interactions are reconciled against the visuals on their own page. R
 
 Visual semantic references are also classified by their PBIR role and relevance. Active projections, filters, sorts, tooltips, drillthrough fields, and executable formatting expressions remain dependency evidence. Selector identities are correlated with current visual bindings: confidently persisted historical selectors do not establish direct semantic usage or missing-object errors, while ambiguous selectors remain visible as review evidence. This prevents stale formatting state from being treated like executable report behaviour without weakening active conditional-formatting dependencies.
 
-## Format evolution
+## Format evolution and confidence
 
-PBIR files declare JSON schemas and format versions. Parsers must record the encountered schema and fail with a useful unsupported-version finding rather than silently misinterpreting a newer format. Parser fixtures should cover each supported version.
+PBIR schema observations distinguish exactly verified versions, recognised families at unverified versions, and unrecognised families. An unverified version is not automatically a parser failure. Supported properties are analysed; dependency-bearing unread content, unresolved aliases and individually unread page directories retain limitations. Missing `pages.json` alone does not qualify an otherwise readable report.
 
-## Decision records
+Recognised custom visual package files are packaging with no known dependency effect. Instance bindings remain in ordinary visual metadata. Unknown dependency-capable files are not treated as understood merely because they occur beside a recognised package.
 
-Important choices and their trade-offs live in `docs/decisions`. This supports long-term maintenance and keeps project knowledge available to future contributors.
+The confidence qualifier consumes limitation impacts at semantic-model scope, separately from usage state. Missing or unknown dependency effects qualify absence-based states; the reserved invalidation impact can also qualify positive states. Do not turn every unfamiliar metadata property into a model-wide warning. See [usage classification](../usage-classification.md).
+
+Query-reference discovery uses the bounded token-aware M lexical resolver. Local scopes and identifier occurrences are case-sensitive; recognised `let`, function and record scopes do not themselves trigger incomplete-reference protection. Unsupported lexical syntax or dynamic discovery retains conservative orphan protection. Column lineage is a narrower diagnostic pass: local steps take precedence over global names, and an uncertain origin must not become an invented global source.
+
+## Evidence boundaries
+
+Persisted expressions are not proof of successful execution. Report-measure expressions require trustworthy local model binding; remote metadata must not be joined to local objects by name. Bookmark state can retain stale references, so it is not automatically a semantic root. A reader such as `Json.Document` is not itself proof of an external connector.
+
+Theme values establish saved metadata and bounded comparisons, not manual editing history. Accessibility metadata does not establish decorative intent, rendered contrast or actual keyboard/screen-reader behaviour. Preserve the distinction between supported local analysis and runtime properties.

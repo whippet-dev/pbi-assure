@@ -172,7 +172,7 @@ account.
 
 ## Release verification
 
-Before publishing a beta:
+Before publishing:
 
 1. Build from a committed and identifiable revision with the clean publish script.
 2. Confirm the footer shows the expected version and short revision without `-dirty`.

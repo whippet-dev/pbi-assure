@@ -1,161 +1,68 @@
 # PBI Assure
 
-PBI Assure is a general-purpose, read-only Power BI pre-flight checker. It inspects Power BI Project (PBIP) source, documents the report and semantic model, traces dependencies, and produces evidence-led quality and accessibility findings.
+**Understand your Power BI project: how it is built, what is being used, and what may be worth investigating.**
 
-The shared scanner discovers the report and semantic-model parts of a PBIP project; resolves each report's local semantic-model connection from `definition.pbir`; distinguishes local, remote, and missing model targets; parses PBIR pages, page roles, filters, drillthrough bindings, visual interactions, report tooltips, bookmarks, visual actions, report extensions, and report-level measures; inventories TMDL tables, columns, measures, hierarchies, partitions, relationships, field parameters, calculation groups, and calculation items; and builds an evidence-backed dependency graph across report and model metadata.
+[Open PBI Assure](https://pbiassure.pages.dev/) in desktop Edge or Chrome. No installation or account is needed.
 
-The semantic graph classifies model objects as directly used, indirectly used, structurally required, used only by an unused branch, or apparently unused within the analysed scope. Power BI-generated Auto Date/Time tables remain in that analysis but are identified separately from developer-authored objects. A relationship inventory shows endpoints, cardinality, active state and cross-filter direction, with review findings for bidirectional and many-to-many configurations. Power Query analysis separately traces query-level dependencies between M-backed table partitions and named expressions, plus explicit column-level merge, expand, select, rename, remove, and type-transform evidence. Recognised connector calls are summarised by family and location category without copying their arguments into connector records. Dynamic M and consumers outside the selected PBIP project remain analysis boundaries, so “apparently unused” does not mean “safe to delete.” See [usage classification](docs/usage-classification.md) for the exact contract.
+PBI Assure gives you a read-only snapshot of the tables, fields, calculations, queries and report pages in a Power BI project. Explore where objects are used and what depends on them, with evidence behind the results. Your source project is not changed.
 
-The scanner also emits versioned assurance findings with severities, evidence paths, remediation guidance, assessment type, and authoritative references. Current rules cover unresolved report bindings, relationship configurations worth reviewing, Power BI Q&A retirement, alternative text, duplicate or excluded tab-order entries, explicitly disabled data-visual titles, broken or incomplete bookmark and page navigation, drillthrough configuration, visual-interaction endpoints, and report-tooltip targets. See the [rule catalog](docs/rule-catalog.md).
+## Start with your project
 
-The generated HTML also includes an informational Theme Review. It identifies the active PBIR base and custom theme resources, summarizes bounded theme metadata, and classifies saved evidence for a deliberately small set of title and data-colour formatting properties. This first phase does not assess theme alignment, infer manual changes, resolve final rendered colours, or produce accessibility findings.
+1. Save a Power BI Project (**PBIP**) using the structured **PBIR** report and **TMDL** model formats. See [preparation guidance](docs/preparing-power-bi-project.md) if you currently have a PBIX.
+2. Open the tool and choose the folder containing the `.pbip` file and its report and model folders.
+3. Select **Run analysis**, then start with the interactive HTML report.
+4. Export a catalogue or usage mapping when you want to work with the metadata in a spreadsheet.
 
-## Ways to run PBI Assure
+After saving changes in Power BI Desktop, use **Analyse again** to read the current folder, including added, changed and deleted files. If you used the alternate folder picker, choose the folder again: that picker supplies a snapshot that cannot be refreshed in place.
 
-The same analysis and reporting libraries support three frontends:
+See [using PBI Assure](docs/usage.md) for browser limits, exports and local command-line/Windows options.
 
-- a local browser/WebAssembly application that processes selected project files without uploading them;
-- a command-line tool for developer and automation workflows; and
-- a lightweight Windows desktop application.
+## What you can investigate
 
-## Privacy and security
+- Where columns and measures appear in report pages, visuals, filters, sorting and supported formatting expressions.
+- Dependencies through calculations and model structure, including relationships, security metadata, perspectives and calculation groups.
+- How Power Query queries feed the model and one another, recognised parameters and connectors, and bounded static column-lineage evidence.
+- Report structure and navigation, including bookmarks, drillthrough, tooltips and hidden items.
+- Selected accessibility settings and narrow theme comparisons that support manual review.
 
-Your Power BI project is processed locally in your browser. PBI Assure's project-processing code does
-not upload selected project files, their contents or generated results. Loading the browser application
-still creates normal requests for static application files from Cloudflare Pages.
+Custom visual instance bindings are read from ordinary report metadata. Recognised visual packages are packaging, not automatically a reason to qualify every unused result; their executable code and runtime behaviour are not analysed.
 
-See [Privacy](PRIVACY.md) for the exact boundary and independent verification steps. Report potential
-security or privacy vulnerabilities using the private route described in [Security](SECURITY.md).
+The tool reads metadata. It does not run DAX or M, contact data sources, reproduce Power BI rendering, or assess refresh performance. Power Query column lineage follows supported static transformations; missing lineage is not proof of no use. Accessibility review is not WCAG certification. Theme Review reports saved values and limited comparisons, not manual editing history or final rendered appearance.
 
-## Prerequisites
+See [what PBI Assure analyses](https://pbiassure.pages.dev/coverage) and the [rule catalog](docs/rule-catalog.md).
 
-- Windows, macOS, or Linux for the command-line scanner and browser application. The desktop application requires Windows.
-- .NET 10 SDK. The repository pins the supported feature band in `global.json`.
-- Git.
-- A PBIP project for real-world testing. Do not commit real reports or data to this repository.
+## Results and exports
 
-## Build and test
+| Output | Use it for |
+| --- | --- |
+| **Interactive HTML report** | Explore model usage, dependencies, Power Query, relationships, report structure, findings and Analysis Coverage. Search and filter the evidence; open it in the browser or download a self-contained report. |
+| **Data Catalogue CSV** | One row per eligible developer-authored column or measure, including objects with no detected usage. Choose metadata such as usage, confidence, counts, user-facing evidence and descriptions. |
+| **Usage Mapping CSV** | One row per logical direct report usage: where and how an object is referenced, with optional technical provenance. This is not a transitive dependency export. |
+| **Semantic Usage CSV** | The existing fixed technical export, including semantic usage, Power Query column evidence, review flags, `ClassificationConfidence` and `QualifyingLimitations`. |
 
-```powershell
-dotnet restore PbiAssure.slnx
-dotnet build PbiAssure.slnx --no-restore
-dotnet test PbiAssure.slnx --no-build
-```
+Data Catalogue and Usage Mapping offer selectable columns in the browser and Windows Export Builder. The command-line tool also supports a JSON inventory.
 
-The solution test run includes the browser privacy end-to-end tests that guard the local-processing
-claim, so it also needs Node.js and a Playwright Chromium build. Install the browser once per checkout:
+## Used, unused and incomplete evidence
 
-```powershell
-.\tests\PbiAssure.Privacy.E2E\bin\Debug\net10.0\playwright.ps1 install chromium
-```
+Usage has five states: **Directly used**, **Indirectly used**, **Structurally required**, **Only used by unused items**, and **Apparently unused**.
 
-See [browser privacy model](docs/browser-privacy.md) for what those tests assert and how to run them on
-their own.
+Confidence is separate. **Established** means this scan identified no limitation that qualifies that object's state within the analysed scope. **QualifiedByLimitation**, presented as an incomplete usage check, means missing or partly understood evidence could affect the conclusion. The usage state itself does not change. **Analysis Coverage** explains the causes for the affected model.
 
-## Generate assurance results
+**Apparently unused is a review candidate, never permission to delete.** Other reports, external consumers and runtime behaviour may use an object that this project does not mention. A CSV review flag does not override its confidence. See [usage classification](docs/usage-classification.md).
 
-For real-world local testing, place a PBIP/PBIR project under `samples-local/<report name>/`. This folder is intentionally ignored by Git so real reports and generated outputs stay local.
+## Local and read-only
 
-Scan a project and save an accessible, self-contained HTML report automatically:
+Your project is processed locally in your browser. Application code does not upload selected project files or generated results. Loading the site still requests application assets from its static host; opening the report loads a same-origin viewer shell and transfers report content locally.
 
-```powershell
-dotnet run --project src/PbiAssure.Cli -- scan "samples-local\Columns Usage"
-```
+Generated outputs can contain sensitive project metadata. In particular, the detailed HTML includes full Power Query expressions, which may contain paths, server names or hard-coded values. Review exports before sharing them.
 
-The output is saved beside the selected project, for example:
+Read [Privacy](PRIVACY.md) for the exact boundary and verification steps, and [Security](SECURITY.md) for vulnerability reporting.
 
-```text
-samples-local/Columns Usage/outputs/latest.pbiassure.html
-samples-local/Columns Usage/outputs/latest.semantic-usage.csv
-samples-local/Columns Usage/outputs/assurance_2026-08-09_09-55-32.pbiassure.html
-samples-local/Columns Usage/outputs/assurance_2026-08-09_09-55-32.semantic-usage.csv
-```
+## Build or contribute
 
-Historical filenames use the machine's local time in sortable `yyyy-MM-dd_HH-mm-ss` form. Each default run retains timestamped HTML and semantic-usage CSV files, then updates `latest.pbiassure.html` and `latest.semantic-usage.csv` for quick reopening. The CSV has one row per developer-authored semantic object, including semantic usage, friendly report locations, concise static Power Query column-lineage evidence, and a cautious review flag; it deliberately excludes M expressions, connection values, and source paths. The HTML report itself records the source project path and its UTC scan timestamp. Keep deterministic synthetic fixtures in `tests/`; do not commit reports or generated outputs in `samples-local/`.
+The same Core and Reporting libraries serve the browser, command-line and Windows applications. The repository includes synthetic regression projects and documented Desktop persistence fixtures.
 
-Write to a specific location when needed:
-
-```powershell
-dotnet run --project src/PbiAssure.Cli -- scan "C:\path\to\YourProject" --output assurance.pbiassure.html
-```
-
-Write the machine-readable JSON inventory:
-
-```powershell
-dotnet run --project src/PbiAssure.Cli -- scan "C:\path\to\YourProject" --output inventory.pbiassure.json
-```
-
-Write only a semantic-usage CSV when needed:
-
-```powershell
-dotnet run --project src/PbiAssure.Cli -- scan "C:\path\to\YourProject" --output semantic-usage.csv
-```
-
-The output format is inferred from `.html` and `.csv` extensions and otherwise defaults to JSON when `--output` is supplied. Without `--output`, HTML is the default and its companion semantic-usage CSV is created automatically; use `--format json` or `--format csv` to create only that timestamped output type instead. Explicit output paths continue to create only the requested file. The scanner is read-only with respect to the selected Power BI project; it writes only generated output files.
-
-## Desktop app (Windows)
-
-For a simple local developer workflow, run the lightweight desktop app:
-
-```powershell
-dotnet run --project src/PbiAssure.Desktop
-```
-
-Choose the folder containing the PBIP/PBIR project, select **Run assurance**, then use **Open latest report**, **Open semantic CSV**, or **Open output folder**. The app uses the same scanner and renderers as the command-line tool. It saves timestamped HTML and CSV outputs plus stable latest copies in the selected project's `outputs/` folder, and does not change the Power BI project itself.
-
-After user-facing desktop changes, refresh the Windows publish output with:
-
-```powershell
-dotnet publish src/PbiAssure.Desktop -c Release -o artifacts/desktop
-```
-
-The HTML report is organised as expandable review cards rather than long data tables. Each report page contains collapsible visual summaries showing the visible title or on-canvas label, friendly visual type, approximate page position, referenced columns and measures, behaviour, accessibility metadata, and related findings. Findings, report pages, Power Query, relationships, and semantic-model objects provide context-specific search and filtering. Internal PBIR identifiers remain available only inside technical details.
-
-## Browser application
-
-`PbiAssure.Web` is a standalone Blazor WebAssembly frontend. It lets a user select one PBIP project folder, runs the shared scanner locally in the browser, shows a concise assurance summary, and creates local downloads of the existing self-contained HTML report and semantic-usage CSV. It has no project-processing backend or upload endpoint.
-
-For full assurance, prepare a PBIP using PBIR and a local TMDL semantic model, then select the project root folder containing the `.pbip`, `.Report`, and `.SemanticModel` items. A local `model.bim` TMSL semantic model is not supported yet; PBI Assure stops without generating output rather than producing an incomplete review. See [Prepare a Power BI project for PBI Assure](docs/preparing-power-bi-project.md) for the PBIX-to-PBIP steps and current Microsoft guidance.
-
-```powershell
-.\scripts\Publish-Web.cmd
-```
-
-Serve `artifacts/web/wwwroot` with a normal static web server. Current desktop Edge and Chrome are the supported first-beta browsers; Firefox and Safari are best effort only after fallback testing, and mobile or older enterprise browsers are not initially supported.
-
-Choose the folder that directly contains one `.pbip` file. Browser ingestion is bounded to 10,000 visited entries, 5,000 accepted metadata files, 25 MiB per file, 100 MiB total and 64 directory levels. The HTML export contains detailed project metadata and full M expressions and should be reviewed before sharing.
-
-See [the browser application guide](docs/browser-app.md), [browser privacy model](docs/browser-privacy.md), and [static-hosting requirements](docs/browser-hosting.md).
-
-## Repository structure
-
-```text
-src/PbiAssure.Core/       Domain types and analysis logic
-src/PbiAssure.Reporting/  Accessible human-readable report rendering
-src/PbiAssure.Cli/        Thin command-line entry point
-src/PbiAssure.Desktop/     Lightweight Windows desktop workflow
-src/PbiAssure.Web/         Local standalone browser frontend
-tests/                    Automated tests using synthetic files
-docs/                     Architecture, assurance, and security decisions
-samples-local/            Ignored local PBIP/PBIR projects and scan outputs
-```
-
-Start with [the architecture overview](docs/architecture.md), [the product roadmap](docs/roadmap.md), [the rule catalog](docs/rule-catalog.md), and [the contributor guide](CONTRIBUTING.md).
-
-Working on this repository with a coding agent? Start instead at [the agent handover](docs/agent/HANDOVER.md), which records the current state, the immediate next task, and the decisions not to reopen.
-
-## Current boundaries
-
-- PBIP/PBIR and local TMDL semantic models are the initial supported input formats. A local TMSL `model.bim` semantic model is rejected before analysis; it is not partially scanned.
-- Explicit `byPath` report connections are resolved to local semantic models even when report and model names differ or several reports share one model. `byConnection` reports are identified as remote and excluded from local unused-object conclusions.
-- Analysis is metadata-only by default.
-- Current dependency analysis covers report, page, and visual PBIR references, report-level measure references, DAX expressions, field-parameter choices, calculation groups and items, sort-by columns, hierarchy levels, relationship endpoints, static Power Query references, and a privacy-minimised inventory of common M connector families. It does not yet inspect bookmark-captured semantic state, complete dynamic M, or detailed external data-source lineage.
-- A finding is evidence for review, not a declaration of legal or WCAG compliance.
-- “Unused” always means “not referenced within the analysed scope,” never automatically “safe to delete.”
-
-## Security and licensing
-
-See [security and data handling](docs/security-and-data-handling.md) for the local-processing and output-sensitivity boundaries.
+Start with [Contributing](CONTRIBUTING.md), [architecture](docs/development/architecture.md), [testing](docs/development/testing.md) and [hosting](docs/development/hosting.md). Local builds require the SDK pinned in `global.json`; browser users do not need it.
 
 ## Licence
 

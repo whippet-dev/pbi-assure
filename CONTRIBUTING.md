@@ -1,38 +1,35 @@
 # Contributing
 
-This repository should remain understandable to Power BI specialists who may be newer to application development.
+Keep the project understandable to Power BI specialists and occasional contributors. Make one coherent change at a time, and add or update focused tests for behaviour changes.
 
-## Development workflow
+## Build and test
 
-1. Create a short-lived Git branch for one coherent change.
-2. Add or update automated tests for behavioural changes.
-3. Run `dotnet format --verify-no-changes`, `dotnet build`, and `dotnet test`. The solution test run includes the browser privacy end-to-end tests, which need Node.js and a Playwright Chromium build; see [Build and test](README.md#build-and-test).
-4. Keep generated reports, real PBIP projects, secrets, and report data out of Git.
-5. Record significant architectural decisions under `docs/decisions/`.
-6. After user-facing desktop feature changes, refresh the Windows publish output with `dotnet publish src/PbiAssure.Desktop -c Release -o artifacts/desktop`.
+A Windows checkout supports the complete solution, including the Windows desktop application. Install Git, the .NET SDK pinned in `global.json`, and Node.js for the browser publish and privacy tests. The command-line and browser projects can also be built separately on other platforms.
+
+```powershell
+dotnet restore PbiAssure.slnx
+dotnet build PbiAssure.slnx --no-restore
+.\tests\PbiAssure.Privacy.E2E\bin\Debug\net10.0\playwright.ps1 install chromium
+dotnet test PbiAssure.slnx --no-build
+```
+
+Use focused tests while developing; the solution run includes Privacy E2E. See [testing](docs/development/testing.md) for privacy verification and [hosting](docs/development/hosting.md) for clean Web publishing. Generated outputs belong in ignored `artifacts/` or local project output folders.
+
+## Implementation guidance
+
+- Keep Core independent of frontends. Parsing discovers facts; rules interpret them.
+- Retain evidence and stable identifiers. Do not turn incomplete evidence into confident absence or invented dependencies.
+- Keep analysis local and read-only. Do not add network calls to the analysis path.
+- Use redistribution-safe synthetic projects or documented Desktop persistence fixtures. Preserve origin and sanitisation notes beside fixtures; never commit operational reports, credentials or private data.
+- Update public claims when behaviour changes. Explain durable architectural choices in [architecture](docs/development/architecture.md), not a new status ledger.
+- Contribute only material you have the right to share, and retain relevant copyright/licence notices.
 
 ## Visual design
 
-The design system is shared by the browser application and the generated HTML report. Its tokens and
-primitives live in `src/PbiAssure.Web/wwwroot/css/core.css`, the report's presentation layer in
-`src/PbiAssure.Reporting/Styles/report.css`. After editing either, run
-`node scripts/Sync-DesignTokens.mjs` to regenerate `src/PbiAssure.Reporting/DesignSystem.cs`;
-`DesignSystemSourceTests` fails when the copies drift. See
-[docs/design/visual-identity.md](docs/design/visual-identity.md).
+Shared tokens and primitives live in `src/PbiAssure.Web/wwwroot/css/core.css`; report presentation lives in `src/PbiAssure.Reporting/Styles/report.css`. After editing either, run `node scripts/Sync-DesignTokens.mjs` to regenerate `src/PbiAssure.Reporting/DesignSystem.cs`. `DesignSystemSourceTests` detects drift. See [visual identity](docs/development/visual-identity.md).
 
-## Design rules
+After desktop UI changes, a local review publish can be created with:
 
-- Keep `PbiAssure.Core` independent of the command line and any future UI.
-- Parsing discovers facts; rules interpret those facts. Do not combine both responsibilities.
-- Findings must contain evidence and a stable rule identifier.
-- Do not modify an analysed report or model unless a future feature explicitly requests and confirms that operation.
-- Avoid network access in the core analysis path.
-- Use synthetic fixtures in tests. Never copy operational or organisation-specific report content into the test suite.
-
-## Terminology
-
-- **Artifact**: a Power BI report, semantic model, project, or a component within one.
-- **Reference**: an observed link from one artifact to another.
-- **Finding**: a rule result supported by evidence.
-- **Analysed scope**: the exact local project or set of Fabric items included in a scan.
-- **Apparently unused**: no inbound usage was found inside the analysed scope.
+```powershell
+dotnet publish src/PbiAssure.Desktop -c Release -o artifacts/desktop
+```

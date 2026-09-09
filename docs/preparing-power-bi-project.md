@@ -1,6 +1,6 @@
 # Prepare a Power BI project for PBI Assure
 
-PBI Assure provides full assurance for a Power BI Project (PBIP) that uses the Power BI enhanced report format (PBIR) and Tabular Model Definition Language (TMDL) semantic model format. These formats store the report and model as structured project files that PBI Assure can analyse locally.
+PBI Assure analyses a Power BI Project (PBIP) that uses the Power BI enhanced report format (PBIR) and Tabular Model Definition Language (TMDL) semantic model format. These formats store the report and model as structured project files that PBI Assure can analyse locally.
 
 ## Start with a PBIX
 
@@ -36,7 +36,7 @@ you to save the conversion. That conversion cannot be undone.
 
 PBI Assure reads the structured report, semantic-model, DAX, relationship, and Power Query metadata in the selected project. It processes selected files locally in your browser; project files and analysis results are not uploaded to PBI Assure.
 
-A standard PBIX is not the full-assurance input format. PBIR-enabled PBIX can expose report content, but does not provide the complete structured semantic-model and Power Query metadata used by PBI Assure's full analysis. Save as PBIP with PBIR and a local TMDL semantic model to use the complete workflow.
+A PBIX is not a supported scan input. Save as PBIP with PBIR and a local TMDL semantic model to expose the structured metadata used by this analysis. These formats enable the supported workflow; they do not make every dependency or runtime behaviour knowable. See [usage classification](usage-classification.md) for the evidence boundaries.
 
 ## Microsoft guidance
 

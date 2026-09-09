@@ -22,7 +22,7 @@
             <div><dt>Analysed</dt><dd>PBI Assure interprets this and uses it in its conclusions.</dd></div>
             <div><dt>Partial</dt><dd>Specific, named forms are analysed. Each row says which.</dd></div>
         </dl>
-        <p>Each area also lists its <strong>boundaries</strong>: things a local project file cannot establish, however well it is parsed. Those are not gaps waiting to be filled — they are the edge of what this kind of analysis can know.</p>
+        <p>Each area also lists its <strong>boundaries</strong>: forms this version does not analyse, and things project files cannot establish, such as runtime behaviour or external consumers. These are different limits; more parsing can address only the first.</p>
     </details>
 
     <section class="coverage-band" aria-labelledby="band-model">
@@ -161,7 +161,7 @@
                 <p>Local and network file sources are raised for review, because a source that resolves on one developer's machine may not resolve for a colleague or a refresh service.</p>
                 <div class="coverage-boundary">
                     <h3>Boundaries</h3>
-                    <p>This is recognition of source metadata written in the query, not proof that a connection exists or would succeed. A source PBI Assure does not recognise is reported as unrecognised rather than guessed at, and a reference built dynamically cannot be resolved to a source at all.</p>
+                    <p>This is recognition of source metadata written in the query, not proof that a connection exists or would succeed. Unrecognised source functions may be absent from the inventory. A recognised connector can still be listed when its location is dynamic or unspecified; the actual destination may remain unresolved.</p>
                 </div>
             </div>
         </details>
@@ -217,7 +217,7 @@
                 <h3>What is analysed</h3>
                 <p>Pages, visuals and nested visual groups, each with the persisted identity that lets a finding point at a specific object rather than at a description of one. Hidden state is retained for both pages and visuals, and a hidden ancestor is taken into account rather than only the object itself. Mobile layout and the configured landing page are read where present.</p>
                 <p>PBI Assure also records how well it recognised the report format itself: whether each definition file matched a schema version it verifies exactly, a recognised family at a version it has not verified, or a family it does not know.</p>
-                <p>That last case matters. An unrecognised report artefact that could carry a dependency does not simply get skipped — it <strong>qualifies absence-based conclusions</strong> for that report, so "apparently unused" is reported with lower confidence rather than with false certainty.</p>
+                <p>That last case matters. An unrecognised report artefact that could carry a dependency does not simply get skipped — it <strong>qualifies absence-based conclusions</strong> for that report, so "apparently unused" is marked as an incomplete usage check rather than treated as established.</p>
                 <div class="coverage-boundary">
                     <h3>Boundaries</h3>
                     <p>The report is read as persisted metadata. PBI Assure does not render visuals, run report queries, or reproduce what a reader would see on screen.</p>
@@ -231,13 +231,14 @@
                     <span class="coverage-name">Report usage &amp; context</span>
                     <span class="coverage-status">Analysed</span>
                 </span>
-                <span class="coverage-lede">Every context in which the report refers to the model.</span>
+                <span class="coverage-lede">Supported contexts in which the report refers to the model.</span>
                 <span class="coverage-keywords">Projections · Hidden projections · Filters · Sorting · Formatting references · Report-level measures</span>
             </summary>
             <div class="coverage-detail">
                 <h3>What is analysed</h3>
-                <p>Field usage is read in every context the report format records: projections on a visual, filters at report, page and visual level, sort definitions, and formatting expressions such as conditional colours, dynamic titles, reference lines and data-bound icons. Each use is retained with its context and role, which is what makes the evidence behind a usage state specific.</p>
-                <p>Report-level measures are read from the report's own extensions, and the DAX inside them is analysed, so a column used only by a report-level measure is not mistaken for unused.</p>
+                <p>Field usage is read in supported persisted contexts: projections on a visual, filters at report, page and visual level, sort definitions, and formatting expressions such as conditional colours, dynamic titles, reference lines and data-bound icons. Each use is retained with its context and role, which is what makes the evidence behind a usage state specific.</p>
+                <p>Report-level measures are read from the report's own extensions. Structured references and supported DAX references are followed when a local model is available; a remote model is not invented or joined by name.</p>
+                <p>Recognised custom visual package files are treated as packaging with no known dependency effect. Their instance bindings are read from ordinary visual metadata; package code and runtime behaviour are not analysed. Bookmark-captured semantic state is not a dependency source.</p>
                 <p>A projection can be persisted as <strong>hidden</strong>. PBI Assure keeps two facts apart here: a hidden projection is still genuinely <strong>Directly used</strong>, because the visual requires it, but it is not treated as <strong>user-facing</strong>, because a report reader never sees it.</p>
                 <div class="coverage-boundary">
                     <h3>Boundaries</h3>
@@ -285,7 +286,7 @@
                 <ul>
                     <li><strong>Missing alt text</strong> — visuals included in the tab order with no configured alternative text.</li>
                     <li><strong>Duplicate tab order</strong> — page items in the same group scope sharing the same explicit tab-order value.</li>
-                    <li><strong>Visual excluded from tab order</strong> — visible, non-decorative visuals explicitly removed from keyboard navigation.</li>
+                    <li><strong>Visual excluded from tab order</strong> — visible visuals explicitly removed from keyboard navigation, excluding image, shape and text-box types. Whether a visual is decorative still needs human review.</li>
                     <li><strong>Visual title disabled</strong> — keyboard-reachable visuals whose title has been explicitly turned off.</li>
                     <li><strong>Drillthrough page missing Back action</strong> — drillthrough pages with no enabled way back.</li>
                 </ul>
@@ -307,8 +308,8 @@
             </summary>
             <div class="coverage-detail">
                 <h3>What is analysed</h3>
-                <p>Which theme the report resolves to: a custom theme applied over a base theme, a base theme only, or a configured theme resource that cannot be resolved or read. An unresolvable custom theme is reported as a finding, because the report will not look the way its author intended.</p>
-                <p>Within visuals, three persisted properties are recognised: <strong>title font size</strong>, <strong>title text colour</strong> and <strong>title background colour</strong>. Where several visuals of the same type carry one of those, PBI Assure reports the dominant value and any visual that departs from it — which is how you find the one chart somebody restyled by hand.</p>
+                <p>Which theme the report resolves to: a custom theme applied over a base theme, a base theme only, or a configured theme resource that cannot be resolved or read. An unresolvable custom theme is reported as a finding, because the configured local resource is unavailable to this scan. This does not establish how Power BI will render it.</p>
+                <p>Within visuals, three persisted properties are recognised: <strong>title font size</strong>, <strong>title text colour</strong> and <strong>title background colour</strong>. Where several visuals of the same type carry one of those, PBI Assure reports the dominant value and any visual that departs from it — a saved-value difference to investigate, not proof of a manual edit.</p>
                 <p>Saved-versus-theme comparison is narrower again: it currently resolves <strong>title font size on clustered column charts</strong> against the theme's own rule.</p>
                 <div class="coverage-boundary">
                     <h3>Boundaries</h3>
@@ -330,7 +331,7 @@
                 <h3>What is analysed</h3>
                 <p>Definition artefacts that PBI Assure recognises are classified by how they are handled — parsed into the analysis, recognised content this version does not yet parse, packaging content that is correctly not parsed, or unrecognised. Unrecognised dependency-capable artefacts can qualify absence-based conclusions rather than being silently treated as understood.</p>
                 <p>Where a construct is only partly understood, the analysis says which part. Security roles are the clearest example: row-level filters and explicitly named object-level permissions are analysed, and the rest of a role's content is not claimed.</p>
-                <p>This matters most for conclusions based on <em>absence</em>. If a project contains metadata that was not analysed and that could create a dependency, then <strong>Apparently unused</strong> in that model is reported as <strong>qualified by limitation</strong> rather than <strong>established</strong>. The usage state does not change; the confidence in it does. A qualified absence is a prompt to look at the thing that was not read.</p>
+                <p>This matters most for conclusions based on <em>absence</em>. If a project contains metadata that was not analysed and that could create a dependency, then <strong>Apparently unused</strong> in that model is reported as <strong>qualified by limitation</strong> rather than <strong>established</strong>. Established means this scan identified no qualifying limitation within its supported scope; it is not proof of complete knowledge. The usage state does not change; the confidence in it does. A qualified absence is a prompt to look at the thing that was not read.</p>
                 <div class="coverage-boundary">
                     <h3>Boundaries</h3>
                     <p>Coverage reporting describes this version of PBI Assure against your project. It is not a claim that unread metadata does or does not create a dependency — only that it could, and was not analysed.</p>

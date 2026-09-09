@@ -5,10 +5,10 @@ PBI Assure classifies semantic-model objects by traversing an evidence-backed de
 ## Evidence currently included
 
 - PBIR report filters, page filters, drillthrough parameters, and visual projections, filters, sorting, and formatting references.
-- DAX references from measures, calculated columns, and calculated-table partition expressions.
+- Supported DAX references from measures, calculated columns, calculated-table partitions, measure dynamic format strings, KPI expressions and measure-owned Detail Rows. Ambiguous row contexts retain unresolved evidence rather than inventing a persisted column target.
 - Standard field-parameter choices declared through `NAMEOF(...)` references in a calculated table.
 - Calculation items, their DAX and format-string expressions, and calculation-group selection expressions.
-- Sort-by column links.
+- Sort-by column links, aggregation mappings and supported incremental-refresh policy associations.
 - Hierarchy levels and their backing columns.
 - Active and inactive relationship endpoint columns.
 - Row-level security table permission filter expressions, plus explicitly named column-level object-level security permissions. References inside a filter resolve against the table named by the permission, because Power BI Desktop serialises same-table column references unqualified.
@@ -24,9 +24,9 @@ Power BI-generated Auto Date/Time tables remain full participants in dependency 
 
 Developer-facing cleanup counts exclude objects owned by these generated tables and report their total separately. The HTML semantic-model view defaults to developer-authored objects, with a filter for all or Power BI-generated objects. This changes presentation and review emphasis only; it does not change any object's usage state.
 
-Power Query uses a separate lineage graph because query execution dependencies are not the same as report-facing semantic-object usage. Every M table partition is classified as `LoadedToModel`. A named expression reachable from a loaded partition through static query references is `SupportingQuery`; an unreachable named expression is `ApparentlyUnused`. Known query names inside text literals, comments, or local step declarations are excluded. Expressions using dynamic mechanisms such as `Expression.Evaluate`, `#shared`, or `Record.Field` are marked for manual review.
+Power Query uses a separate lineage graph because query execution dependencies are not the same as report-facing semantic-object usage. Every M table partition is classified as `LoadedToModel`. A named expression reachable from a loaded partition through static query references is `SupportingQuery`; an unreachable named expression is `ApparentlyUnused`. Query-reference discovery distinguishes genuine external references from local lexical bindings, function parameters, record field names and field selectors. Identifier occurrences are case-sensitive; strings and comments create no dependencies. Ordinary nested or multiline `let` scopes do not themselves make the check incomplete. Unsupported lexical syntax and dynamic discovery retain conservative model-wide orphan protection; parameters are identified separately and are not reported as ordinary orphan queries. Expressions using dynamic mechanisms such as `Expression.Evaluate`, `#shared`, or `Record.Field` are marked for manual review.
 
-Power Query column-level lineage is additional diagnostic evidence, not a semantic-usage root. The scanner records explicit static merge keys, expanded columns, selections, renames, removals, and type transformations. This evidence can explain why an apparently unused semantic column still matters during data preparation, but it does not change that column's semantic usage classification.
+Power Query column-level lineage is additional diagnostic evidence, not a semantic-usage root. The scanner records supported static merge, expand, select, rename, remove, type-transform, add-column, group, combine and unpivot evidence. Local steps take precedence over same-named global queries, and semantic mapping accounts for TMDL `sourceColumn`. Missing or uncertain lineage may be omitted without a separate notice; no recorded evidence is not proof of no Power Query use. This evidence can explain why an apparently unused semantic column still matters during data preparation, but it does not change that column's semantic usage classification.
 
 ## State precedence
 
@@ -66,8 +66,8 @@ Every classification also carries a confidence, and it is deliberately a separat
 sixth state. The state says what PBI Assure found. The confidence says how complete the evidence behind
 that answer is.
 
-- **Established**: nothing PBI Assure skipped in this model could change the object's state.
-- **Usage check incomplete**: this model contains metadata PBI Assure did not fully check, and it could
+- **Established**: this scan identified no limitation that qualifies the object's state within the analysed scope. It does not prove that unknown syntax or external consumers cannot matter.
+- **Usage check incomplete** (`QualifiedByLimitation` in JSON/CSV): this model contains metadata PBI Assure did not fully check, and it could
   bear on the object's state. The state itself is unchanged and remains the best answer available.
 
 An incomplete usage check is not the same as low confidence. PBI Assure may hold strong positive
@@ -115,3 +115,13 @@ An unresolved report reference or semantic dependency is retained as a separate 
 The graphs do not yet include bookmark-captured semantic state, full connector- and data-source-level lineage, external tools, thin reports outside the selected project, XMLA clients, Analyze in Excel, or other external consumers. Dynamic references assembled as text can also be impossible to prove statically; recognised dynamic M mechanisms are flagged but cannot be resolved automatically.
 
 For those reasons, `ApparentlyUnused` means “no usage found within the analysed scope.” It is a review candidate, never automatic permission to delete an object.
+
+## Coverage and exports
+
+Analysis Coverage groups relevant limitations by semantic model. Unresolved semantic dependencies, genuinely unresolved PBIR aliases and individually unread report pages can qualify absence conclusions through that existing path. Readable pages and explicit references remain evidence. A missing page index alone does not imply an unread report.
+
+Recognised custom visual package files are packaging, with no known dependency effect. Ordinary instance bindings are still analysed. This does not analyse custom visual code or runtime behaviour, and unknown dependency-capable report files can still qualify absence.
+
+Data Catalogue includes eligible developer-authored columns and measures, even with zero detected usage; Usage Mapping records logical direct report usages, not transitive dependency paths. `UserFacing` is separate from semantic usage: hidden supporting projections remain used, while No means no qualifying presentation/interaction evidence was found, not proof of invisibility at runtime.
+
+The fixed Semantic Usage CSV retains `ClassificationConfidence` and `QualifyingLimitations`. The latter names relevant limitation identifiers for qualified rows. `ReviewCandidate` remains a review flag for absence states, including qualified ones; it is not an independent completeness or deletion-safety check. Power Query column evidence is additional diagnostic information and never changes the five semantic usage states.

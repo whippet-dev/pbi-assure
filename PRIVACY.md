@@ -16,7 +16,7 @@ PBI Assure does not inspect imported model rows as part of this metadata analysi
 ## Where processing happens
 
 In the browser application, your Power BI project is processed locally in your browser's WebAssembly
-process. The generated findings, HTML report and semantic-usage CSV are created in browser memory.
+process. The generated findings, HTML report, Data Catalogue, Usage Mapping and Semantic Usage CSV files are created in browser memory.
 
 PBI Assure's project-processing code does not upload selected project files, their contents, analysis
 results or generated HTML/CSV files to PBI Assure, Cloudflare or another service. No account is required.
@@ -95,7 +95,7 @@ Run the optional read-only smoke test against the deployed application:
 ```
 
 The complete manual offline and online Network-panel procedure is in
-[Browser privacy and local processing](docs/browser-privacy.md#reproducible-privacy-verification).
+[Browser privacy and local processing](docs/development/testing.md#reproducible-privacy-verification).
 
 These checks demonstrate that no observable browser network request occurred during the tested
 scan/export workflow beyond the expected same-origin report-viewer shell. They do not prove that every

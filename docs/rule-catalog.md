@@ -6,10 +6,11 @@ PBI Assure rules turn parsed facts into reviewable results. Rule identifiers and
 
 | Rule | Version | Category | Severity | Assessment | Condition |
 | --- | --- | --- | --- | --- | --- |
-| `PBI-MODEL-001` | 1.0.0 | Model integrity | Error | Finding | A report-, page-, or visual-scoped PBIR field reference does not resolve to an object in the matching semantic model. Repeated evidence for the same container and object is grouped. |
+| `PBI-MODEL-001` | 1.1.0 | Model integrity | Error | Finding | A report-, page-, or visual-scoped PBIR field reference does not resolve to an object in the matching semantic model. Repeated evidence for the same container and object is grouped. |
 | `PBI-MODEL-002` | 1.0.0 | Model integrity | Error | Finding | A report's explicit local semantic-model path does not resolve to a model folder in the scanned project. Field references are not separately reported as broken until the model is available. |
 | `PBI-MODEL-003` | 1.0.0 | Model integrity | Information | Review required | A relationship uses bidirectional cross-filtering. This can be intentional; the finding prompts a developer to confirm the required filter behaviour. |
 | `PBI-MODEL-004` | 1.0.0 | Model integrity | Information | Review required | A relationship has many cardinality at both endpoints. This can be intentional; the finding prompts a developer to confirm the many-to-many design. |
+| `PBI-MODEL-005` | 1.0.0 | Model integrity | Warning | Finding | An explicit reference in a supported structured dependency has no target in the same semantic model. Ambiguous references and heuristic DAX resolutions are not reported as this missing-target finding. |
 | `PBI-QUERY-001` | 1.0.0 | Model integrity | Information | Review required | A Power Query M expression uses a dynamic reference mechanism such as `Expression.Evaluate`, `#shared`, or `Record.Field`, so static lineage may be incomplete. |
 | `PBI-QUERY-002` | 1.0.0 | Model integrity | Information | Review required | A named Power Query expression is not statically reachable from any loaded table query. Dynamic and external consumers must be ruled out before removal. |
 | `PBI-SOURCE-001` | 1.0.0 | Compatibility | Warning | Finding | A Power Query uses an absolute local or network file location that may not be portable to another developer or refresh service. The location value is withheld from the finding. |
