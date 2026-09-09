@@ -10,17 +10,20 @@ internal static partial class MColumnLineageExtractor
         string consumerQuery,
         IReadOnlyCollection<string> knownQueryNames)
     {
-        var known = knownQueryNames.ToHashSet(StringComparer.OrdinalIgnoreCase);
-        var states = new Dictionary<string, StepState>(StringComparer.OrdinalIgnoreCase);
+        // The lexical resolver decides which global names this expression actually references.
+        // A name appearing only as a local binding must never seed global column lineage.
+        var known = MReferenceExtractor.Extract(expression, knownQueryNames).ToHashSet(StringComparer.Ordinal);
+        var states = new Dictionary<string, StepState>(StringComparer.Ordinal);
         var references = new List<MColumnReference>();
 
         foreach (var binding in ReadBindings(expression))
         {
             var state = new StepState();
             var directIdentifier = ReadIdentifier(binding.Expression);
-            if (directIdentifier is not null && known.Contains(directIdentifier))
+            if (directIdentifier is not null)
             {
-                state.DirectQuery = directIdentifier;
+                InheritState(binding.Expression, states, state);
+                state.DirectQuery = ResolveQuery(binding.Expression, states, known);
                 states[binding.Name] = state;
                 continue;
             }
@@ -222,12 +225,14 @@ internal static partial class MColumnLineageExtractor
             return null;
         }
 
-        if (known.Contains(identifier))
+        // An established local step wins even when it has no known global origin. Falling through
+        // from an unknown local origin to a global name would invent a dependency.
+        if (states.TryGetValue(identifier, out var state))
         {
-            return identifier;
+            return state.DirectQuery;
         }
 
-        return states.TryGetValue(identifier, out var state) ? state.DirectQuery : null;
+        return known.Contains(identifier) ? identifier : null;
     }
 
     private static Binding[] ReadBindings(string expression)

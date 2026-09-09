@@ -194,7 +194,7 @@
                 <p>Where a model column can be followed back to the query step that introduced or renamed it, that link is retained, so a Power Query change can be connected to the model objects downstream of it.</p>
                 <div class="coverage-boundary">
                     <h3>Boundaries</h3>
-                    <p>This is not general M lineage. Only statically identifiable shapes are followed: lineage stops at transformations outside the set above, and at any schema derived dynamically at refresh time. Where lineage stops, PBI Assure records that it stopped rather than inferring the rest.</p>
+                    <p>This is not general M lineage. Only statically identifiable shapes are followed. Other transformations and schemas derived dynamically at refresh time can leave gaps. Missing or uncertain column lineage may be omitted without a separate notice, so no recorded lineage does not prove that a column is unused.</p>
                 </div>
             </div>
         </details>
