@@ -14,8 +14,8 @@ internal static class SemanticUsageReconciler
         foreach (var model in semanticModels)
         {
             var matchingReports = ReportModelBinder.FindReports(model, reports, semanticModels);
-            var allEvidenceByIdentity = ReadEvidence(matchingReports, includePersistedSelectors: true);
-            var usageEvidenceByIdentity = ReadEvidence(matchingReports, includePersistedSelectors: false);
+            var allEvidenceByIdentity = ReadEvidence(model, matchingReports, includePersistedSelectors: true);
+            var usageEvidenceByIdentity = ReadEvidence(model, matchingReports, includePersistedSelectors: false);
 
             foreach (var semanticObject in EnumerateObjects(model))
             {
@@ -65,7 +65,7 @@ internal static class SemanticUsageReconciler
                     continue;
                 }
 
-                var identity = FieldIdentity.Create(context.Reference);
+                var identity = Identity(matchingModel, context.Reference);
                 if (resolvedEvidence.Contains(string.Join('\u001f', matchingModel.Name, identity)))
                 {
                     continue;
@@ -106,6 +106,7 @@ internal static class SemanticUsageReconciler
     }
 
     private static Dictionary<string, IReadOnlyList<SemanticUsageEvidence>> ReadEvidence(
+        SemanticModelInventory model,
         IReadOnlyList<ReportInventory> reports,
         bool includePersistedSelectors)
     {
@@ -116,7 +117,7 @@ internal static class SemanticUsageReconciler
                     SemanticReportReferencePolicy.EstablishesDirectUsage(context.Reference))
                 .Select(context => new
                 {
-                    Identity = FieldIdentity.Create(context.Reference),
+                    Identity = Identity(model, context.Reference),
                     Evidence = new SemanticUsageEvidence(
                         Report: report.Name,
                         Page: context.Page,
@@ -137,6 +138,22 @@ internal static class SemanticUsageReconciler
                     .Distinct()
                     .ToArray(),
                 StringComparer.OrdinalIgnoreCase);
+    }
+
+    /// <summary>
+    /// The model object a report reference is evidence for. A visual bound to a KPI component
+    /// (<c>_Sales Goal</c>) is using the measure that owns the KPI, so the evidence lands on that
+    /// measure; the reference itself keeps the name the visual actually stores.
+    /// </summary>
+    private static string Identity(SemanticModelInventory model, VisualFieldReference reference)
+    {
+        if (reference.ObjectType == SemanticObjectTypes.Measure &&
+            KpiComponentReference.FindOwningMeasure(model, reference.Table, reference.ObjectName) is { } owner)
+        {
+            return FieldIdentity.Create(reference.Table, owner.Name, SemanticObjectTypes.Measure);
+        }
+
+        return FieldIdentity.Create(reference);
     }
 
     private static bool IsReportMeasureReference(ReportInventory report, VisualFieldReference reference)

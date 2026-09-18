@@ -59,7 +59,7 @@ internal static class DirectUsageProvenanceAnalyzer
         var report = FindReport(inventory, evidence);
         var page = FindPage(report, evidence.Page);
         var visual = FindVisual(page, evidence.Visual);
-        var reference = FindReference(visual, usage, evidence);
+        var reference = FindReference(inventory, visual, usage, evidence);
 
         return new DirectSemanticUsageProvenance(
             usage.SemanticModel,
@@ -205,16 +205,39 @@ internal static class DirectUsageProvenanceAnalyzer
     }
 
     private static VisualFieldReference? FindReference(
+        ProjectInventory inventory,
         VisualInventory? visual,
         SemanticObjectUsage usage,
         SemanticUsageEvidence evidence)
     {
         return visual?.FieldReferences.SingleOrDefault(reference =>
             string.Equals(reference.Table, usage.Table, StringComparison.OrdinalIgnoreCase) &&
-            string.Equals(reference.ObjectName, usage.ObjectName, StringComparison.OrdinalIgnoreCase) &&
+            (string.Equals(reference.ObjectName, usage.ObjectName, StringComparison.OrdinalIgnoreCase) ||
+             IsKpiComponentOf(inventory, reference, usage)) &&
             string.Equals(reference.ObjectType, usage.ObjectType, StringComparison.Ordinal) &&
             string.Equals(reference.HierarchyName, usage.HierarchyName, StringComparison.OrdinalIgnoreCase) &&
             string.Equals(reference.EvidencePath, evidence.EvidencePath, StringComparison.Ordinal));
+    }
+
+    /// <summary>
+    /// A visual bound to a measure's KPI component carries evidence for the owning measure, so the
+    /// reference that produced that evidence is named after the component, not the measure.
+    /// </summary>
+    private static bool IsKpiComponentOf(
+        ProjectInventory inventory,
+        VisualFieldReference reference,
+        SemanticObjectUsage usage)
+    {
+        if (usage.ObjectType != SemanticObjectTypes.Measure)
+        {
+            return false;
+        }
+
+        var model = inventory.SemanticModels.FirstOrDefault(candidate =>
+            string.Equals(candidate.Name, usage.SemanticModel, StringComparison.OrdinalIgnoreCase));
+        return model is not null &&
+               KpiComponentReference.FindOwningMeasure(model, reference.Table, reference.ObjectName) is { } owner &&
+               string.Equals(owner.Name, usage.ObjectName, StringComparison.OrdinalIgnoreCase);
     }
 
     private static string[] DistinctSorted(IEnumerable<string?> values) => values

@@ -92,6 +92,12 @@ internal static class SemanticDependencyAnalyzer
                 .Where(usage => usage.ObjectType == SemanticObjectTypes.Measure)
                 .ToDictionary(usage => QualifiedKey(usage.Table, usage.ObjectName), Source,
                     StringComparer.OrdinalIgnoreCase);
+            // Power BI's structured references can name a KPI component just as a visual can.
+            foreach (var (componentName, owner) in KpiComponentAliases(model, modelMeasures))
+            {
+                modelMeasures.TryAdd(QualifiedKey(owner.Table, componentName), owner);
+            }
+
             var reportMeasures = report.ReportMeasures.ToDictionary(
                 measure => QualifiedKey(measure.Entity, measure.Name),
                 measure => Target(measure.Entity, measure.Name, SemanticObjectTypes.ReportMeasure),
@@ -1706,6 +1712,23 @@ internal static class SemanticDependencyAnalyzer
     private static string QualifiedKey(string table, string objectName) =>
         string.Join('\u001f', table, objectName);
 
+    /// <summary>
+    /// The KPI component names each measure's kpi block exposes, paired with the node of the measure
+    /// that owns them. Only measures already in the lookup are aliased, so a component never points at
+    /// an object the graph does not hold.
+    /// </summary>
+    private static (string ComponentName, SemanticNode Owner)[] KpiComponentAliases(
+        SemanticModelInventory model,
+        IReadOnlyDictionary<string, SemanticNode> measuresByQualifiedName)
+    {
+        return model.Tables
+            .SelectMany(table => table.Measures.Select(measure => (Table: table, Measure: measure)))
+            .Where(item => measuresByQualifiedName.ContainsKey(QualifiedKey(item.Table.Name, item.Measure.Name)))
+            .SelectMany(item => KpiComponentReference.ComponentNames(item.Measure).Select(componentName =>
+                (componentName, measuresByQualifiedName[QualifiedKey(item.Table.Name, item.Measure.Name)])))
+            .ToArray();
+    }
+
     private sealed class ModelLookup
     {
         private readonly Dictionary<string, SemanticNode> columns;
@@ -1747,6 +1770,27 @@ internal static class SemanticDependencyAnalyzer
                     group => group.Key,
                     group => group.Select(Source).ToArray(),
                     StringComparer.OrdinalIgnoreCase);
+
+            // DAX can name a KPI component ('Fact'[_Actual/Plan Goal], or unqualified) exactly as a
+            // report can. Each resolves to the owning measure. A persisted measure that already holds
+            // a component's name keeps it: a name is aliased only where nothing is defined under it,
+            // and an unqualified alias shared by owners in several tables stays ambiguous.
+            var aliasesByName = new Dictionary<string, List<SemanticNode>>(StringComparer.OrdinalIgnoreCase);
+            foreach (var (componentName, owner) in KpiComponentAliases(model, measuresByQualifiedName))
+            {
+                measuresByQualifiedName.TryAdd(QualifiedKey(owner.Table, componentName), owner);
+                if (!aliasesByName.TryGetValue(componentName, out var owners))
+                {
+                    aliasesByName[componentName] = owners = [];
+                }
+
+                owners.Add(owner);
+            }
+
+            foreach (var (componentName, owners) in aliasesByName)
+            {
+                measuresByName.TryAdd(componentName, owners.ToArray());
+            }
         }
 
         public HashSet<string> TableNames { get; }
