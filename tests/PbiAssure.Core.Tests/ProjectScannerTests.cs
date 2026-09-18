@@ -2037,7 +2037,11 @@ public sealed class ProjectScannerTests : IDisposable
             finding.RuleId == "PBI-QUERY-002" && finding.ObjectName == "Unused");
         Assert.DoesNotContain(result.Findings, finding =>
             finding.RuleId == "PBI-QUERY-002" && finding.ObjectName == "Dynamic");
-        Assert.Equal(4, result.DataSourceCount);
+        // Four connector calls in Sources, plus the #table literal in Staging.
+        Assert.Equal(5, result.DataSourceCount);
+        Assert.Contains(result.DataSources, source =>
+            source.QueryName == "Staging" && source.ConnectorFamily == "Entered data" &&
+            source.LocationKind == DataSourceLocationKinds.EmbeddedInModel);
         Assert.Contains(result.DataSources, source =>
             source.ConnectorFamily == "File" && source.LocationKind == DataSourceLocationKinds.LocalFile);
         Assert.Contains(result.DataSources, source =>

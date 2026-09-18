@@ -784,6 +784,8 @@ public static partial class HtmlReportRenderer
         DataSourceLocationKinds.RelativeFile => "Relative file path",
         DataSourceLocationKinds.WebAddress => "Web or cloud address",
         DataSourceLocationKinds.NamedServer => "Named server or database",
+        DataSourceLocationKinds.EmbeddedInModel => "Stored inside the model",
+        DataSourceLocationKinds.OnlineService => "Online service",
         _ => "Built dynamically or not available in the report metadata",
     };
 
