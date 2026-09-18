@@ -20,7 +20,7 @@ Every edge records its source and target identities, dependency kind, source fil
 
 ## Power BI-generated objects
 
-Power BI-generated Auto Date/Time tables remain full participants in dependency and structural analysis. PBI Assure identifies them only when TMDL contains the explicit `__PBI_LocalDateTable = true` or `__PBI_TemplateDateTable = true` annotation. A hidden table, a matching-looking name, or an unused object is not sufficient evidence.
+Power BI-generated Auto Date/Time tables remain full participants in dependency and structural analysis. PBI Assure identifies them from the explicit `__PBI_LocalDateTable = true` or `__PBI_TemplateDateTable = true` annotation, or — because Desktop drops that annotation when it proxies a remote model's date table into a composite model — from the structure only Desktop produces, all of which must be present: a `LocalDateTable_<guid>` name, `showAsVariationsOnly`, and a `variation` on another table's column whose default hierarchy names the table. A hidden table, a matching-looking name, `showAsVariationsOnly` on its own, or an unused object is not sufficient evidence.
 
 Developer-facing cleanup counts exclude objects owned by these generated tables and report their total separately. The HTML semantic-model view defaults to developer-authored objects, with a filter for all or Power BI-generated objects. This changes presentation and review emphasis only; it does not change any object's usage state.
 

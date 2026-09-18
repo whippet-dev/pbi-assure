@@ -53,6 +53,11 @@ expression its `expressionSource` names, the expression is a supporting query, a
 attributed to the table. A partition whose `expressionSource` is missing or undefined raises
 `PBI-LIMIT-MODEL-PARTITION-SOURCE` instead of being skipped.
 
+The proxied `LocalDateTable_…` is recognised as a Power BI-generated Auto Date/Time table from
+what survives proxying — its name, `showAsVariationsOnly` and the `variation` on `testTable[Date]`
+that names it — so its eleven objects are excluded from developer counts and exports while staying
+in the dependency graph. See `docs/usage-classification.md`.
+
 The evidence covers DirectQuery to a Power BI semantic model only. Direct Lake models persist the
 same partition source type, but no Direct Lake file has been observed here; nothing Direct
 Lake-specific is inferred from this fixture.

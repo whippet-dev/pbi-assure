@@ -25,6 +25,7 @@ internal static class TmdlSemanticModelParser
                 .OrderBy(table => table.Name, StringComparer.OrdinalIgnoreCase)
                 .ToArray()
             : [];
+        tables = RecogniseProxiedAutoDateTimeTables(tables);
 
         var relationshipsPath = ProjectFilePaths.Combine(definitionDirectory, "relationships.tmdl");
         var relationships = source.FileExists(relationshipsPath)
@@ -117,6 +118,7 @@ internal static class TmdlSemanticModelParser
                 {
                     AlternateOf = ParseAlternateOf(lines, index, endIndex),
                     Description = ReadDescription(lines, index),
+                    VariationTargetTable = ParseVariationTargetTable(lines, index, endIndex),
                 });
             }
             else if (TryParseDeclaration(lines[index].Trimmed, "measure", out var measureName, out var measureExpression))
@@ -199,6 +201,7 @@ internal static class TmdlSemanticModelParser
             Description = ReadDescription(lines, tableDeclarationIndex),
             UnanalyzedDependencyConstructs = UnanalyzedTableDependencyConstructs(
                 lines, tableDeclarationIndex, objectIndent),
+            ShowAsVariationsOnly = HasFlag(lines, tableDeclarationIndex, tablePropertyEnd, "showAsVariationsOnly"),
         };
     }
 
@@ -300,6 +303,73 @@ internal static class TmdlSemanticModelParser
 
         return null;
     }
+
+    /// <summary>
+    /// The table a column's Desktop <c>variation</c> points to, read from the variation's
+    /// <c>defaultHierarchy: Table.'Hierarchy'</c>. Desktop writes one variation per Auto Date/Time
+    /// column; the first that names a hierarchy owner is taken.
+    /// </summary>
+    private static string? ParseVariationTargetTable(
+        IReadOnlyList<TmdlLine> lines,
+        int columnDeclarationIndex,
+        int columnEndIndex)
+    {
+        var variationIndent = lines[columnDeclarationIndex].Indent + 4;
+        for (var index = columnDeclarationIndex + 1; index < columnEndIndex; index++)
+        {
+            if (lines[index].Indent != variationIndent ||
+                !TryParseDeclaration(lines[index].Trimmed, "variation", out _, out _))
+            {
+                continue;
+            }
+
+            var defaultHierarchy = FindProperty(lines, index, FindBlockEnd(lines, index, columnEndIndex), "defaultHierarchy");
+            if (defaultHierarchy is not null && TryParseQualifiedName(defaultHierarchy, out var table, out _))
+            {
+                return table;
+            }
+        }
+
+        return null;
+    }
+
+    /// <summary>
+    /// Recognises an Auto Date/Time table whose explicit annotation is gone.
+    ///
+    /// When Desktop proxies a remote model's tables into a composite model, the generated date table
+    /// arrives without <c>__PBI_LocalDateTable</c> (Desktop-authored evidence:
+    /// tests/fixtures/desktop-entity-partition-evidence). What survives is the structure only Desktop
+    /// produces, and all of it is required: the <c>LocalDateTable_&lt;guid&gt;</c> name,
+    /// <c>showAsVariationsOnly</c>, and a variation on another table's column whose default hierarchy
+    /// names this table. A name alone is never evidence, nor is either of the other two on its own.
+    /// </summary>
+    private static SemanticTableInventory[] RecogniseProxiedAutoDateTimeTables(SemanticTableInventory[] tables)
+    {
+        var variationTargets = tables
+            .SelectMany(table => table.Columns
+                .Where(column => column.VariationTargetTable is not null)
+                .Select(column => (Owner: table.Name, Target: column.VariationTargetTable!)))
+            .ToArray();
+
+        return tables
+            .Select(table => table.SystemGeneratedKind is null &&
+                             table.ShowAsVariationsOnly &&
+                             LocalDateTableNamePattern.IsMatch(table.Name) &&
+                             variationTargets.Any(variation =>
+                                 !string.Equals(variation.Owner, table.Name, StringComparison.OrdinalIgnoreCase) &&
+                                 string.Equals(variation.Target, table.Name, StringComparison.OrdinalIgnoreCase))
+                ? table with
+                {
+                    IsSystemGenerated = true,
+                    SystemGeneratedKind = SystemGeneratedSemanticTableKinds.AutoDateTimeLocalTable,
+                }
+                : table)
+            .ToArray();
+    }
+
+    private static readonly Regex LocalDateTableNamePattern = new(
+        @"^LocalDateTable_[0-9A-Fa-f]{8}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{12}$",
+        RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
 
     /// <summary>
     /// Reads one property of an entity partition's <c>source</c> block. Unlike an M or calculated

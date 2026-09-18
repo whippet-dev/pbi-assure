@@ -20,5 +20,13 @@ public sealed record SemanticColumnInventory(
     /// </summary>
     public SemanticAggregationMappingInventory? AlternateOf { get; init; }
 
+    /// <summary>
+    /// The table named by this column's Desktop <c>variation</c> (its <c>defaultHierarchy</c> owner) —
+    /// the mechanism that swaps a date column for a generated Auto Date/Time hierarchy in the field
+    /// list. Retained in process only, to recognise a generated date table whose annotation was lost.
+    /// </summary>
+    [JsonIgnore]
+    public string? VariationTargetTable { get; init; }
+
     public bool IsCalculated => Expression is not null;
 }

@@ -51,6 +51,14 @@ public sealed record SemanticTableInventory(
     /// </summary>
     public SemanticRefreshPolicyInventory? RefreshPolicy { get; init; }
 
+    /// <summary>
+    /// The TMDL <c>showAsVariationsOnly</c> flag: the table is reachable only through a column's
+    /// variation, never listed on its own. Desktop sets it only on Auto Date/Time tables. Retained in
+    /// process only, as one of the structural signals that identify a generated date table.
+    /// </summary>
+    [JsonIgnore]
+    public bool ShowAsVariationsOnly { get; init; }
+
     public int ColumnCount => Columns.Count;
 
     public int MeasureCount => Measures.Count;
