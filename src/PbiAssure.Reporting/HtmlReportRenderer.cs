@@ -2218,7 +2218,7 @@ public static partial class HtmlReportRenderer
         html.AppendLine(isApparentlyUnused ? "                </aside>" : "                </details>");
     }
 
-    private static string PowerQueryColumnUsageLabel(PowerQueryColumnUsage usage) => usage.UsageKind switch
+    internal static string PowerQueryColumnUsageLabel(PowerQueryColumnUsage usage) => usage.UsageKind switch
     {
         PowerQueryColumnUsageKinds.MergeKey => $"Used as a merge key by Power Query {usage.ConsumerQuery}.",
         PowerQueryColumnUsageKinds.ExpandedColumn => $"Expanded into Power Query {usage.ConsumerQuery}.",
@@ -2921,7 +2921,7 @@ public static partial class HtmlReportRenderer
         return count == 1 ? singular : plural;
     }
 
-    private static string ProjectName(ProjectInventory inventory)
+    internal static string ProjectName(ProjectInventory inventory)
     {
         if (inventory.Reports.Count == 1)
         {
@@ -3793,7 +3793,7 @@ public static partial class HtmlReportRenderer
     /// Light or Dark never sees the other one flash past. Readers on System need nothing here:
     /// the stylesheet already follows <c>prefers-color-scheme</c>.
     /// </summary>
-    private const string AppearanceBootstrapScript = """
+    internal const string AppearanceBootstrapScript = """
     (() => {
       try {
         const stored = localStorage.getItem('pbiassure-appearance');

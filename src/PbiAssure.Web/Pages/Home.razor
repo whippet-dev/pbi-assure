@@ -99,10 +99,16 @@
         var confidence = WebConfidenceSummary.FromInventory(inventory);
         <section class="output-actions" aria-labelledby="output-actions-heading">
             <h2 id="output-actions-heading">Next steps</h2>
-            <p class="output-lede">Analysis complete. Start with the interactive report, export reusable metadata, or review the summary below.</p>
+            <p class="output-lede">Analysis complete. Start with the interactive report or the apparently-unused review list, export reusable metadata, or review the summary below.</p>
             <div class="output-primary">
-                <button @onclick="OpenHtmlAsync" disabled="@isBusy" aria-describedby="open-report-help">Open interactive report</button>
-                <p id="open-report-help">Start here to explore model usage, dependencies, report structure and findings.</p>
+                <div class="output-route">
+                    <button @onclick="OpenHtmlAsync" disabled="@isBusy" aria-describedby="open-report-help">Open interactive report</button>
+                    <p id="open-report-help">Start here to explore model usage, dependencies, report structure and findings.</p>
+                </div>
+                <div class="output-route">
+                    <button @onclick="OpenUnusedReviewAsync" disabled="@isBusy" aria-describedby="review-unused-help">Review apparently unused (@inventory.DeveloperApparentlyUnusedSemanticObjectCount)</button>
+                    <p id="review-unused-help">A short working list of the model objects PBI Assure found no usage evidence for.</p>
+                </div>
             </div>
             <div class="output-secondary">
                 <div class="output-action">
@@ -483,6 +489,30 @@
         catch (Exception)
         {
             outputMessage = "Analysis completed, but the HTML report could not be generated or opened.";
+        }
+    }
+
+    /// <summary>
+    /// The lighter review list travels exactly as the full report does: rendered locally, handed to
+    /// the same-origin viewer, and reported as opened only once that viewer has acknowledged it.
+    /// </summary>
+    private async Task OpenUnusedReviewAsync()
+    {
+        if (inventory is null)
+        {
+            return;
+        }
+
+        outputMessage = null;
+        try
+        {
+            var html = ApparentlyUnusedReportRenderer.Render(inventory);
+            var status = await JS.InvokeAsync<string>("pbiAssureDownload.open", "text/html;charset=utf-8", html);
+            outputMessage = WebReportViewerStatus.Describe(status);
+        }
+        catch (Exception)
+        {
+            outputMessage = "Analysis completed, but the apparently-unused review list could not be generated or opened.";
         }
     }
 

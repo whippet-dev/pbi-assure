@@ -29,6 +29,14 @@ public sealed class DesignSystemSourceTests
             Normalise(DesignSystem.Report));
     }
 
+    [Fact]
+    public void CompiledUnusedReviewPresentationMatchesItsStylesheet()
+    {
+        Assert.Equal(
+            ReadStylesheet("src", "PbiAssure.Reporting", "Styles", "unused-review.css"),
+            Normalise(DesignSystem.UnusedReview));
+    }
+
     /// <summary>
     /// The tokens are the contract between the two surfaces. If a status colour, the accent or a
     /// type step disappears, one of them silently falls back to an inherited value.
