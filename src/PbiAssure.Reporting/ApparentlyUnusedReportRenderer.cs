@@ -7,27 +7,31 @@ using PbiAssure.Core.Scanning;
 namespace PbiAssure.Reporting;
 
 /// <summary>
-/// A short working list of the developer-authored model objects for which the scan found no usage
-/// evidence: the "Measure Killer" view of a PBI Assure analysis.
+/// A short working list of the developer-authored model items for which the scan found no usage
+/// evidence: the answer to "what columns and measures don't appear to be used?". The page says
+/// "item" where the inventory says "object"; the semantic types themselves keep their names.
 ///
 /// It is a separate, lighter document rather than a filtered full report. It reads the scan's own
 /// classifications and recalculates nothing: an object is listed exactly when its state is
 /// <c>ApparentlyUnused</c> and its table is not Power BI-generated. <c>UsedOnlyByUnusedBranch</c>
 /// stays out — something in the model still references those objects — as do Power Query queries
-/// and every finding. Confidence is the one distinction the page insists on: an absence PBI Assure
-/// is sure of within the analysed scope, and one that metadata it could not fully check may bear on.
-/// Neither is presented as permission to delete.
+/// and every finding. Each object is presented as a row inside a card for its table; the only status
+/// the page draws attention to is a limited check, because an ordinary row needs nothing beyond its
+/// name and type. Nothing here is a deletion recommendation.
 /// </summary>
 public static class ApparentlyUnusedReportRenderer
 {
     internal const string Lede =
-        "PBI Assure found no evidence that these objects are used in the analysed project. Review them before making changes.";
+        "PBI Assure found no report or semantic-model usage for these items. Review them before removing anything.";
+
+    internal const string Caution =
+        "PBI Assure checks the project you selected. An item could still be used by something outside this project, so this is a review list rather than a deletion recommendation.";
 
     internal const string ZeroStateMessage =
-        "No developer-authored semantic objects were classified as apparently unused in this analysis.";
+        "No developer-authored model items were classified as apparently unused in this analysis.";
 
-    private const string EstablishedLabel = "Established";
-    private const string QualifiedLabel = "Usage check incomplete";
+    internal const string CompleteLabel = "Checks complete";
+    internal const string LimitedLabel = "Checks limited";
 
     public static string Render(ProjectInventory inventory)
     {
@@ -36,7 +40,7 @@ public static class ApparentlyUnusedReportRenderer
         var objects = Select(inventory);
         var qualifying = objects
             .SelectMany(item => SemanticUsageConfidenceQualifier.Qualifying(item.Usage, inventory.AnalysisLimitations))
-            .DistinctBy(limitation => LimitationKey(limitation), StringComparer.Ordinal)
+            .DistinctBy(LimitationKey, StringComparer.Ordinal)
             .OrderBy(limitation => limitation.SemanticModel, StringComparer.OrdinalIgnoreCase)
             .ThenBy(limitation => limitation.LimitationId, StringComparer.Ordinal)
             .ThenBy(limitation => limitation.Reason, StringComparer.Ordinal)
@@ -55,10 +59,13 @@ public static class ApparentlyUnusedReportRenderer
         {
             AppendLimitations(html, qualifying, limitationAnchors);
             AppendTools(html, objects);
+            html.AppendLine("    <div class=\"review-grid\">");
             foreach (var group in objects.GroupBy(item => (item.Usage.SemanticModel, item.Usage.Table)))
             {
-                AppendGroup(html, inventory, group.Key.SemanticModel, group.Key.Table, group.ToArray(), limitationAnchors);
+                AppendCard(html, inventory, group.Key.SemanticModel, group.Key.Table, group.ToArray(), limitationAnchors);
             }
+
+            html.AppendLine("    </div>");
         }
 
         AppendDocumentEnd(html, inventory, objects.Length > 0);
@@ -88,8 +95,7 @@ public static class ApparentlyUnusedReportRenderer
     private static void AppendDocumentStart(StringBuilder html, ProjectInventory inventory, ReviewObject[] objects)
     {
         var projectName = HtmlReportRenderer.ProjectName(inventory);
-        var established = objects.Count(item => !item.IsQualified);
-        var qualified = objects.Length - established;
+        var limited = objects.Count(item => item.IsQualified);
 
         html.AppendLine("<!doctype html>");
         html.AppendLine("<html lang=\"en-GB\">");
@@ -109,48 +115,39 @@ public static class ApparentlyUnusedReportRenderer
         html.AppendLine("<body class=\"unused-review\">");
         html.AppendLine("  <header class=\"review-header\">");
         html.AppendLine("    <div class=\"content\">");
-        html.Append("      <span class=\"brand\">").Append(BrandIdentity.MarkSvg)
-            .AppendLine("PBI Assure<span class=\"brand-qualifier\">Review list</span></span>");
-        html.AppendLine("      <p class=\"eyebrow\">Semantic model</p>");
-        html.Append("      <h1>").Append(Encode(projectName)).AppendLine("</h1>");
-        html.AppendLine("      <p class=\"review-title\">Apparently unused</p>");
+        html.AppendLine("      <div class=\"review-bar\">");
+        html.Append("        <span class=\"brand\">").Append(BrandIdentity.MarkSvg)
+            .AppendLine("PBI Assure<span class=\"brand-qualifier\">Apparently unused</span></span>");
+        HtmlReportRenderer.AppendAppearanceControl(html, "        ");
+        html.AppendLine("      </div>");
+        html.Append("      <p class=\"eyebrow\">").Append(Encode(projectName)).AppendLine("</p>");
+        html.Append("      <h1>").Append(Pluralise(objects.Length, "item")).AppendLine(" to review</h1>");
         html.Append("      <p class=\"review-lede\">").Append(Lede).AppendLine("</p>");
-        html.AppendLine("      <dl class=\"review-counts\">");
-        AppendCount(html, "review-count-total", "Apparently unused", objects.Length,
-            "developer-authored model objects with no usage evidence found");
-        AppendCount(html, "review-count-established", EstablishedLabel, established,
-            "no limitation in this analysis qualifies the result");
-        AppendCount(html, "review-count-qualified", QualifiedLabel, qualified,
-            "metadata PBI Assure could not fully check may bear on the result");
-        html.AppendLine("      </dl>");
-        html.AppendLine("      <p class=\"review-caution\"><strong>Neither count means an object is safe to delete.</strong> " +
-                        "“Apparently unused” is what this analysis found within the project files; it is not proof that " +
-                        "nothing outside them, such as another report, a composite model or an external tool, depends on the object.</p>");
-        html.AppendLine("      <dl class=\"review-meta\">");
-        html.Append("        <div><dt>Scanned</dt><dd>")
+        if (limited > 0)
+        {
+            // The headline already counts the list; the only summary worth a line is the part of it
+            // whose checks were limited, and only when that part exists.
+            html.Append("      <p class=\"review-limited-summary\"><a href=\"#review-limitations\">")
+                .Append(limited == 1 ? "1 item has" : limited.ToString(CultureInfo.InvariantCulture) + " items have")
+                .AppendLine(" limited usage checks</a>.</p>");
+        }
+
+        html.Append("      <p class=\"review-caution\">").Append(Caution).AppendLine("</p>");
+        html.Append("      <p class=\"review-meta\">Scanned ")
             .Append(Encode(inventory.ScannedAtUtc.UtcDateTime.ToString("d MMMM yyyy, HH:mm 'UTC'", CultureInfo.GetCultureInfo("en-GB"))))
-            .AppendLine("</dd></div>");
-        html.Append("        <div><dt>Source project</dt><dd>").Append(Encode(inventory.RootPath)).AppendLine("</dd></div>");
-        html.AppendLine("      </dl>");
+            .AppendLine("</p>");
         html.AppendLine("    </div>");
         html.AppendLine("  </header>");
         html.AppendLine("  <main class=\"content\" id=\"main-content\">");
     }
 
-    private static void AppendCount(StringBuilder html, string cssClass, string label, int value, string note)
-    {
-        html.Append("        <div class=\"review-count ").Append(cssClass).Append("\"><dt>").Append(Encode(label))
-            .Append("</dt><dd class=\"review-count-value\">").Append(value.ToString(CultureInfo.InvariantCulture))
-            .Append("</dd><dd class=\"review-count-note\">").Append(Encode(note)).AppendLine("</dd></div>");
-    }
-
     private static void AppendZeroState(StringBuilder html)
     {
         html.AppendLine("    <section class=\"review-zero\" aria-labelledby=\"review-zero-title\">");
-        html.AppendLine("      <h2 id=\"review-zero-title\">Nothing to review here</h2>");
+        html.AppendLine("      <h2 id=\"review-zero-title\">Nothing to review</h2>");
         html.Append("      <p>").Append(ZeroStateMessage).AppendLine("</p>");
-        html.AppendLine("      <p>This is not a statement that the model contains no unused objects: objects used only by other " +
-                        "unused objects, Power BI-generated date tables and anything outside the analysed project files are " +
+        html.AppendLine("      <p>This is not a statement that the model contains no unused items: items used only by other " +
+                        "unused items, Power BI-generated date tables and anything outside the analysed project files are " +
                         "not part of this list. The full report shows every classification.</p>");
         html.AppendLine("    </section>");
     }
@@ -165,9 +162,10 @@ public static class ApparentlyUnusedReportRenderer
             return;
         }
 
-        html.AppendLine("    <section class=\"review-limitations\" aria-labelledby=\"review-limitations-title\">");
-        html.Append("      <h2 id=\"review-limitations-title\">Why some usage checks are incomplete</h2>").AppendLine();
-        html.AppendLine("      <p>Objects marked “Usage check incomplete” keep their classification, but the metadata below was not fully analysed and could bear on it.</p>");
+        html.AppendLine("    <section class=\"review-limitations\" id=\"review-limitations\" aria-labelledby=\"review-limitations-title\">");
+        html.AppendLine("      <h2 id=\"review-limitations-title\">Why some checks are limited</h2>");
+        html.AppendLine("      <p>Items marked “" + LimitedLabel + "” keep their classification, but PBI Assure could not fully " +
+                        "analyse the metadata below, and it could bear on them.</p>");
         html.AppendLine("      <ul>");
         foreach (var limitation in limitations)
         {
@@ -184,10 +182,10 @@ public static class ApparentlyUnusedReportRenderer
         var types = objects.Select(item => item.Usage.ObjectType).Distinct(StringComparer.Ordinal)
             .OrderBy(ObjectTypeOrder).ToArray();
         html.AppendLine("    <div class=\"review-tools\" role=\"search\" aria-label=\"Filter the list\">");
-        html.AppendLine("      <label>Search<input type=\"search\" id=\"review-search\" placeholder=\"Table or object name\" autocomplete=\"off\"></label>");
+        html.AppendLine("      <label><span>Find</span><input type=\"search\" id=\"review-search\" placeholder=\"Table or item name\" autocomplete=\"off\"></label>");
         if (types.Length > 1)
         {
-            html.AppendLine("      <label>Type<select id=\"review-type\"><option value=\"\">All types</option>");
+            html.AppendLine("      <label><span>Type</span><select id=\"review-type\"><option value=\"\">All types</option>");
             foreach (var type in types)
             {
                 html.Append("        <option value=\"").Append(Encode(type)).Append("\">").Append(Encode(ObjectTypeLabel(type))).AppendLine("</option>");
@@ -198,17 +196,17 @@ public static class ApparentlyUnusedReportRenderer
 
         if (objects.Any(item => item.IsQualified) && objects.Any(item => !item.IsQualified))
         {
-            html.AppendLine("      <label>Confidence<select id=\"review-confidence\"><option value=\"\">All</option>" +
-                            "<option value=\"" + ClassificationConfidences.Established + "\">" + EstablishedLabel + "</option>" +
-                            "<option value=\"" + ClassificationConfidences.QualifiedByLimitation + "\">" + QualifiedLabel + "</option></select></label>");
+            html.AppendLine("      <label><span>Checks</span><select id=\"review-confidence\"><option value=\"\">All items</option>" +
+                            "<option value=\"" + ClassificationConfidences.Established + "\">" + CompleteLabel + "</option>" +
+                            "<option value=\"" + ClassificationConfidences.QualifiedByLimitation + "\">" + LimitedLabel + "</option></select></label>");
         }
 
         html.Append("      <p class=\"review-showing\" id=\"review-showing\" aria-live=\"polite\">Showing all ")
-            .Append(Pluralise(objects.Length, "object")).AppendLine(".</p>");
+            .Append(Pluralise(objects.Length, "item")).AppendLine(".</p>");
         html.AppendLine("    </div>");
     }
 
-    private static void AppendGroup(
+    private static void AppendCard(
         StringBuilder html,
         ProjectInventory inventory,
         string semanticModel,
@@ -232,44 +230,45 @@ public static class ApparentlyUnusedReportRenderer
             .OrderBy(name => name, StringComparer.OrdinalIgnoreCase)
             .ToArray();
 
-        html.Append("    <section class=\"review-group\" data-table=\"").Append(Encode(tableName)).AppendLine("\">");
-        html.AppendLine("      <div class=\"review-group-head\">");
+        html.Append("      <article class=\"review-card\" data-table=\"").Append(Encode(tableName)).AppendLine("\">");
+        html.AppendLine("        <header class=\"review-card-head\">");
+        html.Append("          <p class=\"eyebrow\">Table");
         if (inventory.SemanticModels.Count > 1)
         {
-            html.Append("        <p class=\"eyebrow\">").Append(Encode(semanticModel)).AppendLine("</p>");
+            html.Append(" · ").Append(Encode(semanticModel));
         }
 
-        html.Append("        <h2>").Append(Encode(tableName)).AppendLine("</h2>");
-        html.Append("        <span class=\"review-group-count\">").Append(Pluralise(objects.Length, "object")).AppendLine("</span>");
-        html.AppendLine("      </div>");
+        html.AppendLine("</p>");
+        html.Append("          <h2>").Append(Encode(tableName)).AppendLine("</h2>");
+        html.Append("          <p class=\"review-card-count\">").Append(Pluralise(objects.Length, "item")).AppendLine(" to review</p>");
+        html.AppendLine("        </header>");
         if (!string.IsNullOrWhiteSpace(table?.Description))
         {
-            html.Append("      <p class=\"review-group-note review-object-description\">").Append(Encode(table!.Description!)).AppendLine("</p>");
+            html.Append("        <p class=\"review-card-note review-description\">").Append(Encode(table!.Description!)).AppendLine("</p>");
         }
 
         if (wholeTableUnused)
         {
-            html.AppendLine("      <p class=\"review-group-note\"><strong>Whole table.</strong> No object in this table has any usage evidence, so the table itself is apparently unused.</p>");
+            html.AppendLine("        <p class=\"review-card-note\">No report or semantic-model usage was found for any item in this table.</p>");
         }
 
         if (downstreamQueries.Length > 0)
         {
-            html.Append("      <p class=\"review-group-note\"><strong>Still needed by Power Query.</strong> The query that loads this table is used by ")
-                .Append(Encode(string.Join(", ", downstreamQueries)))
-                .AppendLine(", so it is still required while the data is being prepared.</p>");
+            html.Append("        <p class=\"review-card-note review-card-preparation\"><strong>Used in Power Query.</strong> This table\u2019s query helps prepare ")
+                .Append(Encode(JoinNames(downstreamQueries))).AppendLine(".</p>");
         }
 
-        html.AppendLine("      <ul class=\"review-objects\">");
+        html.AppendLine("        <ul class=\"review-rows\">");
         foreach (var item in objects)
         {
-            AppendObject(html, inventory, item, anchors);
+            AppendRow(html, inventory, item, anchors);
         }
 
-        html.AppendLine("      </ul>");
-        html.AppendLine("    </section>");
+        html.AppendLine("        </ul>");
+        html.AppendLine("      </article>");
     }
 
-    private static void AppendObject(
+    private static void AppendRow(
         StringBuilder html,
         ProjectInventory inventory,
         ReviewObject item,
@@ -280,30 +279,34 @@ public static class ApparentlyUnusedReportRenderer
         var searchText = string.Join(' ', new[] { usage.Table, usage.HierarchyName, usage.ObjectName, ObjectTypeLabel(usage.ObjectType) }
             .Where(part => !string.IsNullOrWhiteSpace(part))).ToLowerInvariant();
 
-        html.Append("        <li class=\"review-object\" data-search=\"").Append(Encode(searchText))
+        html.Append("          <li class=\"review-row\" data-search=\"").Append(Encode(searchText))
             .Append("\" data-type=\"").Append(Encode(usage.ObjectType))
             .Append("\" data-confidence=\"").Append(confidence).AppendLine("\">");
-        html.Append("          <div class=\"review-object-head\"><span class=\"review-object-name\">");
+        html.Append("            <div class=\"review-row-head\"><span class=\"review-row-name\">");
         if (!string.IsNullOrWhiteSpace(usage.HierarchyName))
         {
-            html.Append("<span class=\"review-object-parent\">").Append(Encode(usage.HierarchyName)).Append(" › </span>");
+            html.Append("<span class=\"review-row-parent\">").Append(Encode(usage.HierarchyName)).Append(" › </span>");
         }
 
         html.Append(Encode(usage.ObjectName)).Append("</span>");
-        html.Append("<span class=\"review-object-type\">").Append(Encode(ObjectTypeLabel(usage.ObjectType))).Append("</span>");
-        html.Append(item.IsQualified
-                ? "<span class=\"badge badge-review\">" + QualifiedLabel + "</span>"
-                : "<span class=\"badge badge-neutral\">" + EstablishedLabel + "</span>")
-            .AppendLine("</div>");
+        html.Append("<span class=\"review-row-type\">").Append(Encode(ObjectTypeLabel(usage.ObjectType))).Append("</span>");
+        if (item.IsQualified)
+        {
+            html.Append("<span class=\"badge badge-review\">").Append(LimitedLabel).Append("</span>");
+        }
+
+        html.AppendLine("</div>");
 
         if (!string.IsNullOrWhiteSpace(item.Description))
         {
-            html.Append("          <p class=\"review-object-description\">").Append(Encode(item.Description!)).AppendLine("</p>");
+            html.Append("            <p class=\"review-row-note review-description\">").Append(Encode(item.Description!)).AppendLine("</p>");
         }
 
-        foreach (var label in PowerQueryEvidence(inventory, usage))
+        var evidence = PowerQueryEvidence(inventory, usage);
+        if (evidence.Length > 0)
         {
-            html.Append("          <p class=\"review-object-evidence\">").Append(Encode(label)).AppendLine("</p>");
+            html.Append("            <p class=\"review-row-note review-row-evidence\">Power Query use: ")
+                .Append(Encode(string.Join("; ", evidence))).AppendLine("</p>");
         }
 
         if (item.IsQualified)
@@ -313,7 +316,7 @@ public static class ApparentlyUnusedReportRenderer
                 .DistinctBy(reference => reference.LimitationId + reference.Anchor, StringComparer.Ordinal)
                 .OrderBy(reference => reference.LimitationId, StringComparer.Ordinal)
                 .ToArray();
-            html.Append("          <p class=\"review-object-limitations\">Limited by ");
+            html.Append("            <p class=\"review-row-note review-row-limitations\">Limited by ");
             for (var index = 0; index < references.Length; index++)
             {
                 if (index > 0)
@@ -332,10 +335,10 @@ public static class ApparentlyUnusedReportRenderer
                 }
             }
 
-            html.AppendLine(" (see why above).</p>");
+            html.AppendLine(" — see why above.</p>");
         }
 
-        html.AppendLine("        </li>");
+        html.AppendLine("          </li>");
     }
 
     private static void AppendDocumentEnd(StringBuilder html, ProjectInventory inventory, bool interactive)
@@ -343,13 +346,14 @@ public static class ApparentlyUnusedReportRenderer
         html.Append("    <p class=\"review-footer\">Generated locally by PBI Assure · inventory schema ")
             .Append(Encode(inventory.SchemaVersion)).AppendLine(" · the full report holds every classification and the analysis coverage.</p>");
         html.AppendLine("  </main>");
+        html.AppendLine("  <script>");
+        html.AppendLine(HtmlReportRenderer.AppearanceControlScript);
         if (interactive)
         {
-            html.AppendLine("  <script>");
             html.AppendLine(FilterScript);
-            html.AppendLine("  </script>");
         }
 
+        html.AppendLine("  </script>");
         html.AppendLine("</body>");
         html.AppendLine("</html>");
     }
@@ -357,11 +361,12 @@ public static class ApparentlyUnusedReportRenderer
     // ---- Evidence ----------------------------------------------------------------------------
 
     /// <summary>
-    /// Power Query column lineage the scan already recorded for this column. It is shown because a
-    /// column no report uses can still be needed while data is prepared; the absence of a line here
-    /// is not evidence of anything, because lineage is recorded only for supported static steps.
+    /// Power Query column lineage the scan already recorded for this column, said briefly: it can be
+    /// why a column no report uses still matters while data is prepared. The absence of a line here is
+    /// not evidence of anything, because lineage is recorded only for supported static steps, and its
+    /// presence does not change the object's classification.
     /// </summary>
-    private static IEnumerable<string> PowerQueryEvidence(ProjectInventory inventory, SemanticObjectUsage usage)
+    private static string[] PowerQueryEvidence(ProjectInventory inventory, SemanticObjectUsage usage)
     {
         if (usage.ObjectType != SemanticObjectTypes.Column)
         {
@@ -376,8 +381,25 @@ public static class ApparentlyUnusedReportRenderer
             .DistinctBy(columnUsage => string.Join('', columnUsage.ConsumerQuery, columnUsage.UsageKind), StringComparer.OrdinalIgnoreCase)
             .OrderBy(columnUsage => columnUsage.ConsumerQuery, StringComparer.OrdinalIgnoreCase)
             .ThenBy(columnUsage => columnUsage.UsageKind, StringComparer.Ordinal)
-            .Select(HtmlReportRenderer.PowerQueryColumnUsageLabel);
+            .Select(columnUsage => $"{PowerQueryUseLabel(columnUsage.UsageKind)} in {columnUsage.ConsumerQuery}")
+            .ToArray();
     }
+
+    private static string PowerQueryUseLabel(string usageKind) => usageKind switch
+    {
+        PowerQueryColumnUsageKinds.MergeKey => "Merge key",
+        PowerQueryColumnUsageKinds.ExpandedColumn => "Expanded",
+        PowerQueryColumnUsageKinds.SelectedColumn => "Selected",
+        PowerQueryColumnUsageKinds.RenamedColumn => "Renamed",
+        PowerQueryColumnUsageKinds.RemovedColumn => "Removed",
+        PowerQueryColumnUsageKinds.TransformedColumn => "Type changed",
+        PowerQueryColumnUsageKinds.AddedColumnExpression => "Used in an added column",
+        PowerQueryColumnUsageKinds.GroupingKey => "Grouping key",
+        PowerQueryColumnUsageKinds.AggregationExpression => "Aggregated",
+        PowerQueryColumnUsageKinds.CombinedColumn => "Combined",
+        PowerQueryColumnUsageKinds.UnpivotRetainedColumn => "Kept when unpivoting",
+        _ => "Referenced",
+    };
 
     private static string? FindDescription(ProjectInventory inventory, SemanticObjectUsage usage)
     {
@@ -415,6 +437,13 @@ public static class ApparentlyUnusedReportRenderer
         _ => 4,
     };
 
+    private static string JoinNames(string[] names) => names.Length switch
+    {
+        1 => names[0],
+        2 => $"{names[0]} and {names[1]}",
+        _ => string.Join(", ", names[..^1]) + " and " + names[^1],
+    };
+
     private static string Pluralise(int count, string noun) =>
         count == 1 ? $"1 {noun}" : $"{count.ToString(CultureInfo.InvariantCulture)} {noun}s";
 
@@ -424,7 +453,7 @@ public static class ApparentlyUnusedReportRenderer
 
     /// <summary>
     /// Plain filtering over the already-rendered list: nothing is hidden until someone types, and the
-    /// document is complete without it. Groups disappear when none of their objects match.
+    /// document is complete without it. A card disappears when none of its rows match.
     /// </summary>
     private const string FilterScript = """
     (() => {
@@ -432,28 +461,28 @@ public static class ApparentlyUnusedReportRenderer
       const type = document.getElementById('review-type');
       const confidence = document.getElementById('review-confidence');
       const showing = document.getElementById('review-showing');
-      const objects = Array.from(document.querySelectorAll('.review-object'));
-      const groups = Array.from(document.querySelectorAll('.review-group'));
-      const plural = count => count === 1 ? '1 object' : count + ' objects';
+      const rows = Array.from(document.querySelectorAll('.review-row'));
+      const cards = Array.from(document.querySelectorAll('.review-card'));
+      const plural = count => count === 1 ? '1 item' : count + ' items';
       const apply = () => {
         const query = (search?.value ?? '').trim().toLowerCase();
         const wantedType = type?.value ?? '';
         const wantedConfidence = confidence?.value ?? '';
         let visible = 0;
-        for (const object of objects) {
-          const match = (query === '' || object.dataset.search.includes(query)) &&
-            (wantedType === '' || object.dataset.type === wantedType) &&
-            (wantedConfidence === '' || object.dataset.confidence === wantedConfidence);
-          object.hidden = !match;
+        for (const row of rows) {
+          const match = (query === '' || row.dataset.search.includes(query)) &&
+            (wantedType === '' || row.dataset.type === wantedType) &&
+            (wantedConfidence === '' || row.dataset.confidence === wantedConfidence);
+          row.hidden = !match;
           if (match) visible++;
         }
-        for (const group of groups) {
-          group.hidden = !group.querySelector('.review-object:not([hidden])');
+        for (const card of cards) {
+          card.hidden = !card.querySelector('.review-row:not([hidden])');
         }
         if (showing) {
-          showing.textContent = visible === objects.length
-            ? 'Showing all ' + plural(objects.length) + '.'
-            : 'Showing ' + plural(visible) + ' of ' + objects.length + '.';
+          showing.textContent = visible === rows.length
+            ? 'Showing all ' + plural(rows.length) + '.'
+            : 'Showing ' + plural(visible) + ' of ' + rows.length + '.';
         }
       };
       for (const control of [search, type, confidence]) {

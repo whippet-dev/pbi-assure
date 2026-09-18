@@ -2218,7 +2218,7 @@ public static partial class HtmlReportRenderer
         html.AppendLine(isApparentlyUnused ? "                </aside>" : "                </details>");
     }
 
-    internal static string PowerQueryColumnUsageLabel(PowerQueryColumnUsage usage) => usage.UsageKind switch
+    private static string PowerQueryColumnUsageLabel(PowerQueryColumnUsage usage) => usage.UsageKind switch
     {
         PowerQueryColumnUsageKinds.MergeKey => $"Used as a merge key by Power Query {usage.ConsumerQuery}.",
         PowerQueryColumnUsageKinds.ExpandedColumn => $"Expanded into Power Query {usage.ConsumerQuery}.",
@@ -2832,6 +2832,7 @@ public static partial class HtmlReportRenderer
             .AppendLine(". Generated locally from Power BI project metadata.</p>");
         html.AppendLine("  </div></footer>");
         html.AppendLine("  <script>");
+        html.AppendLine(AppearanceControlScript);
         html.AppendLine(FilterScript);
         html.AppendLine("  </script>");
         html.AppendLine("</body>");
@@ -2872,7 +2873,7 @@ public static partial class HtmlReportRenderer
     /// navigation and roving focus, and a three-item appearance switch does not earn that
     /// machinery. Every option keeps a visible label for screen readers behind its glyph.
     /// </summary>
-    private static void AppendAppearanceControl(StringBuilder html, string indent)
+    internal static void AppendAppearanceControl(StringBuilder html, string indent)
     {
         html.Append(indent).AppendLine("<div class=\"appearance-control\" role=\"group\" aria-label=\"Appearance\">");
         foreach (var (value, label) in AppearanceOptions)
@@ -3754,37 +3755,45 @@ public static partial class HtmlReportRenderer
         });
       });
 
-      const appearanceButtons = [...document.querySelectorAll('[data-appearance]')];
-      if (appearanceButtons.length > 0) {
-        const showAppearance = choice => {
-          if (choice === 'light' || choice === 'dark') document.documentElement.dataset.theme = choice;
-          else delete document.documentElement.dataset.theme;
-          appearanceButtons.forEach(button =>
-            button.setAttribute('aria-pressed', String(button.dataset.appearance === choice)));
-        };
-
-        let stored = null;
-        try { stored = localStorage.getItem('pbiassure-appearance'); } catch { stored = null; }
-        showAppearance(stored === 'light' || stored === 'dark' ? stored : 'system');
-        appearanceButtons.forEach(button => button.addEventListener('click', () => {
-          const choice = button.dataset.appearance;
-          showAppearance(choice);
-          try {
-            if (choice === 'system') localStorage.removeItem('pbiassure-appearance');
-            else localStorage.setItem('pbiassure-appearance', choice);
-          } catch {
-            // A downloaded report opened from the file system has no usable storage; the choice
-            // still applies to this document, it simply does not survive a reload.
-          }
-        }));
-      }
-
       const initialFragment = decodeURIComponent(window.location.hash.slice(1));
       if (!initialFragment || !revealFragmentTarget(initialFragment)) activateSection('summary');
       window.addEventListener('hashchange', () => {
         const fragment = decodeURIComponent(window.location.hash.slice(1));
         if (fragment) revealFragmentTarget(fragment, { focus: true });
       });
+    })();
+    """;
+
+    /// <summary>
+    /// The System / Light / Dark control's behaviour, shared by every generated page that carries the
+    /// control. It reads and writes the same preference the browser application uses, so a choice
+    /// made on one surface is what every other one opens with.
+    /// </summary>
+    internal const string AppearanceControlScript = """
+    (() => {
+      const appearanceButtons = [...document.querySelectorAll('[data-appearance]')];
+      if (appearanceButtons.length === 0) return;
+      const showAppearance = choice => {
+        if (choice === 'light' || choice === 'dark') document.documentElement.dataset.theme = choice;
+        else delete document.documentElement.dataset.theme;
+        appearanceButtons.forEach(button =>
+          button.setAttribute('aria-pressed', String(button.dataset.appearance === choice)));
+      };
+
+      let stored = null;
+      try { stored = localStorage.getItem('pbiassure-appearance'); } catch { stored = null; }
+      showAppearance(stored === 'light' || stored === 'dark' ? stored : 'system');
+      appearanceButtons.forEach(button => button.addEventListener('click', () => {
+        const choice = button.dataset.appearance;
+        showAppearance(choice);
+        try {
+          if (choice === 'system') localStorage.removeItem('pbiassure-appearance');
+          else localStorage.setItem('pbiassure-appearance', choice);
+        } catch {
+          // A downloaded report opened from the file system has no usable storage; the choice
+          // still applies to this document, it simply does not survive a reload.
+        }
+      }));
     })();
     """;
 

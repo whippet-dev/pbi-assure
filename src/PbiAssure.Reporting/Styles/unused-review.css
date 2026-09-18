@@ -1,8 +1,9 @@
-/* The "Apparently unused" review list. Layered on core.css only: it borrows the tokens, type and
-   badges of the full report and none of its density. One column, generous spacing, every group
-   open, so it reads as a working document that can be searched with Ctrl+F and printed. */
+/* The "Apparently unused" review list. Layered on core.css only: it borrows the tokens, type,
+   badges and appearance control of the full report and none of its density. Table cards in a
+   responsive grid, every card open, compact rows, so it reads as a working list that can be
+   searched with Ctrl+F and printed. */
 
-.unused-review { --review-measure: 62rem; }
+.unused-review { --review-measure: 74rem; }
 
 .unused-review .content { width: min(var(--review-measure), calc(100% - 2.5rem)); margin-inline: auto; }
 
@@ -10,90 +11,85 @@
 
 /* ---- Header ---------------------------------------------------------------------------- */
 
-.review-header { padding: 1.5rem 0 1.25rem; border-bottom: 1px solid var(--pa-line); background: var(--pa-surface); }
-.review-header .brand { margin-bottom: 1.25rem; }
-.review-header .eyebrow { margin-bottom: 0.25rem; }
-.review-header h1 { margin: 0; font-size: var(--pa-t-3xl); letter-spacing: -0.025em; overflow-wrap: anywhere; }
-.review-title { margin: 0.125rem 0 0; color: var(--pa-text-2); font-family: var(--pa-font-display); font-size: var(--pa-t-xl); font-weight: 500; letter-spacing: -0.015em; }
+.review-header { padding: 1rem 0 1.25rem; border-bottom: 1px solid var(--pa-line); background: var(--pa-surface); }
+.review-bar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 0.5rem 1rem; margin-bottom: 1.25rem; }
+.review-header .eyebrow { margin-bottom: 0.25rem; overflow-wrap: anywhere; }
+.review-header h1 { margin: 0; font-size: var(--pa-t-3xl); letter-spacing: -0.025em; font-variant-numeric: tabular-nums; }
 
-.review-lede { max-width: 66ch; margin: 1rem 0 0; font-size: var(--pa-t-lg); line-height: 1.45; }
+.review-lede { max-width: 62ch; margin: 0.625rem 0 0; font-size: var(--pa-t-lg); line-height: 1.45; }
 
-.review-counts { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 14rem), 1fr)); gap: 0.75rem; margin: 1.25rem 0 0; }
-.review-count { display: grid; gap: 0.125rem; padding: 0.75rem 0.875rem; border: 1px solid var(--pa-line); border-left: 3px solid var(--pa-count-line, var(--pa-line-strong)); border-radius: var(--pa-r2); background: var(--pa-canvas); }
-.review-count dt { color: var(--pa-text-2); font-size: var(--pa-t-xs); font-weight: 600; }
-.review-count dd { margin: 0; }
-.review-count .review-count-value { font-family: var(--pa-font-display); font-size: var(--pa-t-2xl); font-weight: 600; letter-spacing: -0.02em; line-height: 1.15; font-variant-numeric: tabular-nums; }
-.review-count .review-count-note { color: var(--pa-text-3); font-size: var(--pa-t-xs); line-height: 1.4; }
-.review-count-total { --pa-count-line: var(--pa-unused); }
-.review-count-established { --pa-count-line: var(--pa-neutral); }
-.review-count-qualified { --pa-count-line: var(--pa-review); }
+.review-limited-summary { margin: 0.625rem 0 0; padding-left: 0.625rem; border-left: 3px solid var(--pa-review); color: var(--pa-text); font-size: var(--pa-t-md); font-weight: 600; }
+.review-limited-summary a { color: inherit; }
 
-.review-caution { max-width: 72ch; margin: 1rem 0 0; color: var(--pa-text-2); font-size: var(--pa-t-sm); line-height: 1.5; }
+.review-caution { max-width: 66ch; margin: 0.75rem 0 0; color: var(--pa-text-2); font-size: var(--pa-t-sm); line-height: 1.5; }
 
-.review-meta { display: flex; flex-wrap: wrap; gap: 0.375rem 1.25rem; margin: 1rem 0 0; color: var(--pa-text-3); font-size: var(--pa-t-xs); }
-.review-meta div { display: flex; min-width: 0; gap: 0.375rem; }
-.review-meta dt { font-weight: 600; }
-.review-meta dd { margin: 0; overflow-wrap: anywhere; }
+.review-meta { margin: 0.625rem 0 0; color: var(--pa-text-3); font-size: var(--pa-t-xs); }
 
 /* ---- Limitations ----------------------------------------------------------------------- */
 
-.review-limitations { margin: 1.5rem 0 0; padding: 0.875rem 1rem; border: 1px solid var(--pa-review-line); border-left: 3px solid var(--pa-review); border-radius: var(--pa-r2); background: var(--pa-review-soft); }
-.review-limitations h2 { margin: 0 0 0.375rem; font-size: var(--pa-t-md); }
+.review-limitations { margin: 1.25rem 0 0; padding: 0.75rem 1rem; border: 1px solid var(--pa-review-line); border-left: 3px solid var(--pa-review); border-radius: var(--pa-r2); background: var(--pa-review-soft); }
+.review-limitations h2 { margin: 0 0 0.25rem; font-size: var(--pa-t-md); }
 .review-limitations p { max-width: 72ch; margin: 0 0 0.5rem; color: var(--pa-text-2); font-size: var(--pa-t-sm); }
 .review-limitations ul { display: grid; gap: 0.5rem; margin: 0; padding: 0; list-style: none; }
 .review-limitations li { font-size: var(--pa-t-sm); line-height: 1.5; }
 .review-limitations code { margin-right: 0.375rem; color: var(--pa-review); font-size: var(--pa-t-xs); font-weight: 600; }
 
-/* ---- Tools ----------------------------------------------------------------------------- */
+/* ---- Tools: one quiet row above the cards ------------------------------------------------ */
 
-.review-tools { display: flex; flex-wrap: wrap; align-items: end; gap: 0.75rem 1rem; margin: 1.5rem 0 0.25rem; }
-.review-tools label { display: grid; gap: 0.25rem; color: var(--pa-text-2); font-size: var(--pa-t-xs); font-weight: 600; }
-.review-tools input, .review-tools select { min-height: 2.125rem; padding: 0.25rem 0.5rem; border: 1px solid var(--pa-line-strong); border-radius: var(--pa-r1); background: var(--pa-surface); color: var(--pa-text); font: inherit; font-size: var(--pa-t-sm); }
-.review-tools input { min-width: 16rem; }
+.review-tools { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem 0.875rem; margin: 1.125rem 0 0.875rem; color: var(--pa-text-3); font-size: var(--pa-t-xs); }
+.review-tools label { display: inline-flex; align-items: center; gap: 0.375rem; }
+.review-tools label span { font-weight: 600; }
+.review-tools input, .review-tools select { min-height: 1.875rem; padding: 0.125rem 0.5rem; border: 1px solid var(--pa-line); border-radius: var(--pa-r1); background: var(--pa-surface); color: var(--pa-text); font: inherit; font-size: var(--pa-t-sm); }
+.review-tools input { min-width: 14rem; }
 .review-tools input:focus-visible, .review-tools select:focus-visible { outline: 2px solid var(--pa-focus); outline-offset: 1px; }
-.review-showing { flex-basis: 100%; margin: 0; color: var(--pa-text-3); font-size: var(--pa-t-xs); font-variant-numeric: tabular-nums; }
+.review-showing { margin: 0 0 0 auto; font-variant-numeric: tabular-nums; }
 
-/* ---- Groups and objects ----------------------------------------------------------------- */
+/* ---- Table cards ------------------------------------------------------------------------ */
 
-.review-group { margin: 1.75rem 0 0; }
-.review-group-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0.25rem 0.75rem; padding-bottom: 0.5rem; border-bottom: 2px solid var(--pa-line-strong); }
-.review-group-head h2 { margin: 0; font-size: var(--pa-t-xl); overflow-wrap: anywhere; }
-.review-group-head .eyebrow { flex-basis: 100%; margin-bottom: 0; }
-.review-group-count { color: var(--pa-text-3); font-size: var(--pa-t-sm); font-variant-numeric: tabular-nums; }
-.review-group-note { max-width: 72ch; margin: 0.5rem 0 0; color: var(--pa-text-2); font-size: var(--pa-t-sm); line-height: 1.5; }
-.review-group-note strong { color: var(--pa-text); }
+/* Cards flow into columns rather than grid cells, so a short card sits directly under the one
+   above it instead of leaving a gap beside a tall neighbour. Column flow keeps DOM order (the
+   first half of the tables reads down the left column, the rest down the right), never splits a
+   card, reflows when filtering hides cards, and collapses to one column below two card widths. */
+.review-grid { columns: 2 26rem; column-gap: 1rem; }
 
-.review-objects { margin: 0; padding: 0; list-style: none; }
-.review-object { display: grid; gap: 0.3125rem; padding: 0.75rem 0.25rem; border-bottom: 1px solid var(--pa-line); break-inside: avoid; }
-.review-object:last-child { border-bottom: 0; }
-.review-object-head { display: flex; flex-wrap: wrap; align-items: center; gap: 0.375rem 0.625rem; }
-.review-object-name { font-size: var(--pa-t-md); font-weight: 600; overflow-wrap: anywhere; }
-.review-object-name .review-object-parent { color: var(--pa-text-3); font-weight: 500; }
-.review-object-type { color: var(--pa-text-2); font-size: var(--pa-t-xs); }
-.review-object-head .badge { font-weight: 500; }
-.review-object p { max-width: 72ch; margin: 0; color: var(--pa-text-2); font-size: var(--pa-t-sm); line-height: 1.5; }
-.review-object-description { white-space: pre-line; }
-.review-object-evidence::before { margin-right: 0.375rem; color: var(--pa-text-3); font-size: var(--pa-t-2xs); font-weight: 650; letter-spacing: 0.06em; text-transform: uppercase; content: "Power Query"; }
-.review-object-limitations { color: var(--pa-text-3); font-size: var(--pa-t-xs); }
-.review-object-limitations a { color: var(--pa-review); }
+.review-card { display: flow-root; box-sizing: border-box; width: 100%; margin: 0 0 1rem; padding: 0.875rem 1rem 0.5rem; border: 1px solid var(--pa-line-strong); border-radius: var(--pa-r3); background: var(--pa-surface); break-inside: avoid; page-break-inside: avoid; }
+.review-card > * + * { margin-top: 0.5rem; }
+.review-card-head { display: grid; gap: 0.125rem; }
+.review-card-head .eyebrow { margin: 0; }
+.review-card-head h2 { margin: 0; font-size: var(--pa-t-xl); overflow-wrap: anywhere; }
+.review-card-count { margin: 0; color: var(--pa-text-3); font-size: var(--pa-t-sm); font-variant-numeric: tabular-nums; }
+.review-card-note { margin: 0; color: var(--pa-text-2); font-size: var(--pa-t-sm); line-height: 1.5; }
+.review-card-note strong { color: var(--pa-text); }
+.review-card-preparation { padding: 0.5rem 0.625rem; border-radius: var(--pa-r2); background: var(--pa-surface-2); }
+.review-description { white-space: pre-line; }
+
+.review-rows { margin: 0.625rem 0 0; padding: 0; list-style: none; }
+.review-row { display: grid; gap: 0.125rem; padding: 0.4375rem 0; border-top: 1px solid var(--pa-line); }
+.review-row-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0.25rem 0.5rem; }
+.review-row-name { font-weight: 600; overflow-wrap: anywhere; }
+.review-row-parent { color: var(--pa-text-3); font-weight: 500; }
+.review-row-type { color: var(--pa-text-3); font-size: var(--pa-t-xs); }
+.review-row-head .badge { align-self: center; margin-left: auto; font-weight: 500; }
+.review-row-note { margin: 0; color: var(--pa-text-2); font-size: var(--pa-t-xs); line-height: 1.5; }
+.review-row-limitations a { color: var(--pa-review); }
 
 /* ---- Zero state and footer -------------------------------------------------------------- */
 
-.review-zero { margin: 2rem 0 0; padding: 1.25rem 1.25rem 1.375rem; border: 1px solid var(--pa-used-line); border-left: 3px solid var(--pa-used); border-radius: var(--pa-r2); background: var(--pa-used-soft); }
+.review-zero { margin: 1.5rem 0 0; padding: 1rem 1.25rem 1.125rem; border: 1px solid var(--pa-used-line); border-left: 3px solid var(--pa-used); border-radius: var(--pa-r2); background: var(--pa-used-soft); }
 .review-zero h2 { margin: 0 0 0.375rem; font-size: var(--pa-t-lg); }
 .review-zero p { max-width: 72ch; margin: 0; color: var(--pa-text-2); font-size: var(--pa-t-sm); line-height: 1.5; }
 .review-zero p + p { margin-top: 0.5rem; }
 
-.review-footer { margin: 2.5rem 0 2rem; color: var(--pa-text-3); font-size: var(--pa-t-xs); }
+.review-footer { margin: 2rem 0 1.5rem; color: var(--pa-text-3); font-size: var(--pa-t-xs); }
 
 /* ---- Print ----------------------------------------------------------------------------- */
 
 @media print {
   .unused-review .content { width: auto; margin: 0; }
   .review-header { padding-top: 0; border-bottom-color: #000; background: none; }
-  .review-tools { display: none; }
-  .review-group { break-inside: auto; }
-  .review-group-head { break-after: avoid; }
-  .review-object { padding: 0.375rem 0; }
-  .review-count { background: none; }
+  .review-tools, .appearance-control { display: none; }
+  .review-grid { columns: 2 22rem; column-gap: 0.75rem; }
+  .review-card { border-color: #000; background: none; }
+  .review-card-head { break-after: avoid; }
+  .review-card-preparation { background: none; }
 }

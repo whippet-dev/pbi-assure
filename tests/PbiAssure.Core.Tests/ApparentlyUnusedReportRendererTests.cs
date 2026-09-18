@@ -47,18 +47,26 @@ public sealed class ApparentlyUnusedReportRendererTests
     }
 
     [Fact]
-    public void HeaderCountsSeparateEstablishedFromIncompleteChecks()
+    public void HeaderCountsSeparateCompleteFromLimitedChecks()
     {
         var html = ApparentlyUnusedReportRenderer.Render(Scan());
 
-        Assert.Equal(["8", "7", "1"], Regex.Matches(html, "<dd class=\"review-count-value\">(\\d+)</dd>")
-            .Select(match => match.Groups[1].Value).ToArray());
-        Assert.Contains("<dt>Established</dt>", html, StringComparison.Ordinal);
-        Assert.Contains("<dt>Usage check incomplete</dt>", html, StringComparison.Ordinal);
+        Assert.Contains("<h1>8 items to review</h1>", html, StringComparison.Ordinal);
+        // The headline is the count; the only summary line is the limited part, linking to its explanation.
+        Assert.Contains("<p class=\"review-limited-summary\"><a href=\"#review-limitations\">1 item has limited usage checks</a>.</p>", html, StringComparison.Ordinal);
+        Assert.DoesNotContain("<dt>Checks complete", html, StringComparison.Ordinal);
+        Assert.DoesNotContain("Checks complete 7", html, StringComparison.Ordinal);
+        // The lightweight page keeps its metadata quiet: scan time only, no local project path.
+        Assert.Contains("<p class=\"review-meta\">Scanned ", html, StringComparison.Ordinal);
+        Assert.DoesNotContain("Project</dt>", html, StringComparison.Ordinal);
+        Assert.DoesNotContain("Source project", html, StringComparison.Ordinal);
         Assert.Contains(ApparentlyUnusedReportRenderer.Lede, html, StringComparison.Ordinal);
-        Assert.Contains("Neither count means an object is safe to delete.", html, StringComparison.Ordinal);
-        Assert.Equal(7, Regex.Count(html, "<span class=\"badge badge-neutral\">Established</span>"));
-        Assert.Single(Regex.Matches(html, "<span class=\"badge badge-review\">Usage check incomplete</span>"));
+        Assert.Contains(ApparentlyUnusedReportRenderer.Caution, html, StringComparison.Ordinal);
+        // A complete check is the ordinary case and carries no badge; only a limited one is marked.
+        Assert.DoesNotContain(">Established<", html, StringComparison.Ordinal);
+        Assert.DoesNotContain("Usage check incomplete", html, StringComparison.Ordinal);
+        Assert.DoesNotContain("class=\"badge badge-neutral\"", html, StringComparison.Ordinal);
+        Assert.Single(Regex.Matches(html, "<span class=\"badge badge-review\">Checks limited</span>"));
     }
 
     [Fact]
@@ -71,35 +79,71 @@ public sealed class ApparentlyUnusedReportRendererTests
         Assert.Contains("<li id=\"limitation-1\"><code>PBI-LIMIT-MODEL-FUNCTION</code>", html, StringComparison.Ordinal);
         Assert.Contains(HtmlEncode(limitation.Reason), html, StringComparison.Ordinal);
         Assert.Contains("Limited by <a href=\"#limitation-1\">PBI-LIMIT-MODEL-FUNCTION</a>", html, StringComparison.Ordinal);
+        Assert.Contains("Why some checks are limited", html, StringComparison.Ordinal);
 
         // The qualified object is the one in the limited model, and it is the only one marked.
-        var facts = Section(html, "Facts");
+        var facts = Card(html, "Facts");
         Assert.Contains("data-confidence=\"QualifiedByLimitation\"", facts, StringComparison.Ordinal);
-        Assert.DoesNotContain("data-confidence=\"QualifiedByLimitation\"", Section(html, "Sales"), StringComparison.Ordinal);
+        Assert.Contains("<span class=\"badge badge-review\">Checks limited</span>", facts, StringComparison.Ordinal);
+        Assert.DoesNotContain("data-confidence=\"QualifiedByLimitation\"", Card(html, "Sales"), StringComparison.Ordinal);
+        Assert.DoesNotContain("badge", Card(html, "Sales"), StringComparison.Ordinal);
     }
 
     [Fact]
-    public void ObjectsAreGroupedByTableWithDescriptionsAndPowerQueryEvidence()
+    public void ObjectsAreRowsInsideLabelledTableCards()
     {
         var html = ApparentlyUnusedReportRenderer.Render(Scan());
 
-        var sales = Section(html, "Sales");
-        Assert.Contains("<span class=\"review-object-type\">Measure</span>", sales, StringComparison.Ordinal);
-        Assert.Contains("<span class=\"review-object-type\">Column</span>", sales, StringComparison.Ordinal);
-        Assert.Contains("<p class=\"review-object-description\">Free text captured at order entry.</p>", sales, StringComparison.Ordinal);
+        var sales = Card(html, "Sales");
+        // Two semantic models are analysed, so each card names its model beside the table label.
+        Assert.Contains("<p class=\"eyebrow\">Table · Model</p>", sales, StringComparison.Ordinal);
+        Assert.Contains("<p class=\"eyebrow\">Table · Limited</p>", Card(html, "Facts"), StringComparison.Ordinal);
+        Assert.Contains("<h2>Sales</h2>", sales, StringComparison.Ordinal);
+        Assert.Contains("<p class=\"review-card-count\">4 items to review</p>", sales, StringComparison.Ordinal);
+        Assert.Contains("<span class=\"review-row-type\">Measure</span>", sales, StringComparison.Ordinal);
+        Assert.Contains("<span class=\"review-row-type\">Column</span>", sales, StringComparison.Ordinal);
+        Assert.Contains("<p class=\"review-row-note review-description\">Free text captured at order entry.</p>", sales, StringComparison.Ordinal);
+        Assert.Equal(4, Regex.Count(sales, "<li class=\"review-row\""));
 
-        var lookup = Section(html, "Lookup");
-        Assert.Contains("<strong>Whole table.</strong>", lookup, StringComparison.Ordinal);
-        Assert.Contains("<strong>Still needed by Power Query.</strong> The query that loads this table is used by Sales", lookup, StringComparison.Ordinal);
-        Assert.Contains("<p class=\"review-object-evidence\">Used as a merge key by Power Query Sales.</p>", lookup, StringComparison.Ordinal);
-        Assert.DoesNotContain("review-object-evidence", Section(html, "Sales"), StringComparison.Ordinal);
+        var lookup = Card(html, "Lookup");
+        Assert.Contains("No report or semantic-model usage was found for any item in this table.", lookup, StringComparison.Ordinal);
+        Assert.Contains("<strong>Used in Power Query.</strong> This table’s query helps prepare Sales.", lookup, StringComparison.Ordinal);
+        Assert.Contains("Power Query use: Merge key in Sales</p>", lookup, StringComparison.Ordinal);
+        Assert.DoesNotContain("review-row-evidence", sales, StringComparison.Ordinal);
+        Assert.DoesNotContain("Still needed", html, StringComparison.Ordinal);
+        Assert.DoesNotContain("Whole table", html, StringComparison.Ordinal);
 
-        // Every group is open: plain sections, no disclosure widgets, and the filter controls exist.
+        // Every card is open: a grid of articles, no disclosure widgets, and the filter controls exist.
+        Assert.Contains("<div class=\"review-grid\">", html, StringComparison.Ordinal);
+        Assert.Equal(4, Regex.Count(html, "<article class=\"review-card\""));
         Assert.DoesNotContain("<details", html, StringComparison.Ordinal);
         Assert.Contains("id=\"review-search\"", html, StringComparison.Ordinal);
         Assert.Contains("id=\"review-type\"", html, StringComparison.Ordinal);
-        Assert.Contains("id=\"review-confidence\"", html, StringComparison.Ordinal);
-        Assert.Contains("Showing all 8 objects.", html, StringComparison.Ordinal);
+        Assert.Contains("<option value=\"QualifiedByLimitation\">Checks limited</option>", html, StringComparison.Ordinal);
+        Assert.Contains("Showing all 8 items.", html, StringComparison.Ordinal);
+        // Cards pack into balanced columns without splitting; the layout needs no script.
+        Assert.Contains(".review-grid { columns: 2 26rem;", html, StringComparison.Ordinal);
+        Assert.Contains("break-inside: avoid", html, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void TheSharedAppearanceControlIsPresentAndWiredToTheSharedPreference()
+    {
+        foreach (var html in new[] { ApparentlyUnusedReportRenderer.Render(Scan()), ApparentlyUnusedReportRenderer.Render(Scan(includeUnused: false)) })
+        {
+            Assert.Contains("<div class=\"appearance-control\" role=\"group\" aria-label=\"Appearance\">", html, StringComparison.Ordinal);
+            Assert.Contains("data-appearance=\"system\" aria-pressed=\"true\"", html, StringComparison.Ordinal);
+            Assert.Contains("data-appearance=\"light\" aria-pressed=\"false\"", html, StringComparison.Ordinal);
+            Assert.Contains("data-appearance=\"dark\" aria-pressed=\"false\"", html, StringComparison.Ordinal);
+            Assert.Contains("localStorage.getItem('pbiassure-appearance')", html, StringComparison.Ordinal);
+            Assert.Contains("localStorage.setItem('pbiassure-appearance', choice)", html, StringComparison.Ordinal);
+            Assert.Contains(".appearance-option[aria-pressed=\"true\"]", html, StringComparison.Ordinal);
+        }
+
+        // The full report carries the same control and the same script, not a second theme system.
+        var full = HtmlReportRenderer.Render(Scan());
+        Assert.Contains(HtmlReportRenderer.AppearanceControlScript, full, StringComparison.Ordinal);
+        Assert.Contains(HtmlReportRenderer.AppearanceControlScript, ApparentlyUnusedReportRenderer.Render(Scan()), StringComparison.Ordinal);
     }
 
     [Fact]
@@ -116,6 +160,21 @@ public sealed class ApparentlyUnusedReportRendererTests
     }
 
     [Fact]
+    public void ACompleteOnlyListShowsTheHeadlineWithoutARedundantCount()
+    {
+        var inventory = Scan(includeLimitedModel: false);
+        var html = ApparentlyUnusedReportRenderer.Render(inventory);
+
+        Assert.Equal(7, ApparentlyUnusedReportRenderer.Select(inventory).Length);
+        Assert.Contains("<h1>7 items to review</h1>", html, StringComparison.Ordinal);
+        Assert.DoesNotContain("class=\"review-limited-summary\"", html, StringComparison.Ordinal);
+        Assert.DoesNotContain("Checks complete", html, StringComparison.Ordinal);
+        Assert.DoesNotContain("Checks limited", html, StringComparison.Ordinal);
+        Assert.DoesNotContain("<section class=\"review-limitations\"", html, StringComparison.Ordinal);
+        Assert.DoesNotContain("id=\"review-confidence\"", html, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void ZeroStateRendersWhenNothingQualifies()
     {
         var inventory = Scan(includeUnused: false);
@@ -125,11 +184,13 @@ public sealed class ApparentlyUnusedReportRendererTests
         // The generated date table still has apparently unused objects; they are not the developer's.
         Assert.Contains(inventory.SemanticObjectUsages, usage => usage.UsageState == SemanticUsageStates.ApparentlyUnused);
         Assert.Contains(ApparentlyUnusedReportRenderer.ZeroStateMessage, html, StringComparison.Ordinal);
-        Assert.Contains("This is not a statement that the model contains no unused objects", html, StringComparison.Ordinal);
-        Assert.DoesNotContain("review-object\"", html, StringComparison.Ordinal);
+        Assert.Contains("This is not a statement that the model contains no unused items", html, StringComparison.Ordinal);
+        Assert.DoesNotContain("review-row\"", html, StringComparison.Ordinal);
+        Assert.DoesNotContain("review-card\"", html, StringComparison.Ordinal);
         Assert.DoesNotContain("id=\"review-search\"", html, StringComparison.Ordinal);
-        Assert.Equal(["0", "0", "0"], Regex.Matches(html, "<dd class=\"review-count-value\">(\\d+)</dd>")
-            .Select(match => match.Groups[1].Value).ToArray());
+        Assert.Contains("<h1>0 items to review</h1>", html, StringComparison.Ordinal);
+        Assert.DoesNotContain("class=\"review-limited-summary\"", html, StringComparison.Ordinal);
+        Assert.DoesNotContain("Checks complete", html, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -141,7 +202,7 @@ public sealed class ApparentlyUnusedReportRendererTests
         Assert.StartsWith("<!doctype html>", html, StringComparison.Ordinal);
         Assert.Contains("<title>Apparently unused — Model</title>", html, StringComparison.Ordinal);
         Assert.Contains("--pa-unused:", html, StringComparison.Ordinal);
-        Assert.Contains(".review-group", html, StringComparison.Ordinal);
+        Assert.Contains(".review-card", html, StringComparison.Ordinal);
         Assert.DoesNotContain("Analysis coverage</h2>", html, StringComparison.Ordinal);
         Assert.DoesNotContain("Accessibility review", html, StringComparison.Ordinal);
         Assert.DoesNotContain("Model relationships", html, StringComparison.Ordinal);
@@ -150,11 +211,11 @@ public sealed class ApparentlyUnusedReportRendererTests
 
     // ---- Helpers ----------------------------------------------------------------------------
 
-    private static string Section(string html, string table)
+    private static string Card(string html, string table)
     {
-        var start = html.IndexOf($"<section class=\"review-group\" data-table=\"{HtmlEncode(table)}\">", StringComparison.Ordinal);
-        Assert.True(start >= 0, $"No group for {table}");
-        var end = html.IndexOf("</section>", start, StringComparison.Ordinal);
+        var start = html.IndexOf($"<article class=\"review-card\" data-table=\"{HtmlEncode(table)}\">", StringComparison.Ordinal);
+        Assert.True(start >= 0, $"No card for {table}");
+        var end = html.IndexOf("</article>", start, StringComparison.Ordinal);
         return html[start..end];
     }
 
@@ -163,7 +224,7 @@ public sealed class ApparentlyUnusedReportRendererTests
     private static SemanticObjectUsage Usage(ProjectInventory inventory, string table, string objectName) =>
         Assert.Single(inventory.SemanticObjectUsages, usage => usage.Table == table && usage.ObjectName == objectName);
 
-    private static ProjectInventory Scan(bool includeUnused = true)
+    private static ProjectInventory Scan(bool includeUnused = true, bool includeLimitedModel = true)
     {
         var files = new Dictionary<string, string>
         {
@@ -209,18 +270,24 @@ public sealed class ApparentlyUnusedReportRendererTests
                 $"table '{OddTable}'\n" +
                 "\tcolumn 'X <script>'\n\t\tdataType: string\n\t\tsourceColumn: X\n" +
                 $"\tpartition '{OddTable}' = m\n\t\tmode: import\n\t\tsource = #table({{\"X\"}}, {{}})\n";
+        }
+
+        if (!includeUnused)
+        {
+            files["Model.SemanticModel/definition/tables/Sales.tmdl"] =
+                "table Sales\n\tcolumn Amount\n\t\tdataType: decimal\n\t\tsourceColumn: Amount\n" +
+                "\tpartition Sales = m\n\t\tmode: import\n\t\tsource = #table({\"Amount\"}, {})\n";
+        }
+
+        // A second model whose functions.tmdl qualifies every absence state in it.
+        if (includeUnused && includeLimitedModel)
+        {
             files["Limited.SemanticModel/definition.pbism"] = "{}";
             files["Limited.SemanticModel/definition/tables/Facts.tmdl"] =
                 "table Facts\n\tcolumn Value\n\t\tdataType: int64\n\t\tsourceColumn: Value\n" +
                 "\tpartition Facts = m\n\t\tmode: import\n\t\tsource = #table({\"Value\"}, {})\n";
             files["Limited.SemanticModel/definition/functions.tmdl"] =
                 "function Double = (x) => x * 2\n";
-        }
-        else
-        {
-            files["Model.SemanticModel/definition/tables/Sales.tmdl"] =
-                "table Sales\n\tcolumn Amount\n\t\tdataType: decimal\n\t\tsourceColumn: Amount\n" +
-                "\tpartition Sales = m\n\t\tmode: import\n\t\tsource = #table({\"Amount\"}, {})\n";
         }
 
         return ProjectScanner.Scan(new InMemoryProjectFileSource("Apparently unused", files.Select(file =>
