@@ -8,6 +8,7 @@ These projects use synthetic data or sanitised metadata. Their READMEs distingui
 | `desktop-bookmark-evidence-live-carrier`, `desktop-bookmark-evidence-stale` | Live references versus inert saved bookmark state; keep both controls. |
 | `desktop-descriptions-sanitized` | Description text and significant whitespace. |
 | `desktop-dynamic-format-string-evidence` | Measure format strings as dependency-bearing expressions. |
+| `desktop-entity-partition-evidence` | Composite-model `entity` partitions served by a shared DirectQuery-to-AS expression. |
 | `desktop-formatting-semantic-reference-sanitized`, `mobile-semantic-reference-sanitized` | Formatting and mobile references outside ordinary visual projections. |
 | `desktop-hidden-visual-calculation-evidence` | Hidden supporting projections remain used without becoming user-facing evidence. |
 | `desktop-incremental-refresh-evidence`, `desktop-incremental-refresh-evidence-baseline` | Persisted policy versus similar M filters without policy metadata. |

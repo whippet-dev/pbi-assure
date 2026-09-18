@@ -111,22 +111,53 @@ internal static class AnalysisLimitationDetector
     {
         return incompleteQueryReferences
             .DistinctBy(reference => (reference.SemanticModel, reference.Table, reference.QueryName))
-            .Select(reference => new AnalysisLimitation(
-                LimitationId: "PBI-LIMIT-MODEL-QUERY-REFERENCES",
-                Cause: AnalysisLimitationCauses.ParseFailed,
-                SupportState: ConstructSupportStates.PartiallyAnalyzed,
-                ConstructType: "powerQueryExpression",
-                Scope: AnalysisLimitationScopes.SemanticModel,
-                SemanticModel: reference.SemanticModel,
-                Table: reference.Table,
-                ObjectName: reference.QueryName,
-                ArtifactPath: reference.ArtifactPath,
-                EvidencePath: "M expression",
-                DependencyImpact: ConstructDependencyImpacts.MayCreateDependencies,
-                Concerns: [AnalysisConcerns.Dependency],
-                Reason: Describe(reference) + " uses Power Query syntax this version could not read to " +
-                        "the end, so no reference it makes to another query was kept. Queries it uses " +
-                        "may therefore appear to have no known use."));
+            .Select(reference => reference.IsUnresolvedPartitionSource
+                ? DescribeUnresolvedPartitionSource(reference)
+                : new AnalysisLimitation(
+                    LimitationId: "PBI-LIMIT-MODEL-QUERY-REFERENCES",
+                    Cause: AnalysisLimitationCauses.ParseFailed,
+                    SupportState: ConstructSupportStates.PartiallyAnalyzed,
+                    ConstructType: "powerQueryExpression",
+                    Scope: AnalysisLimitationScopes.SemanticModel,
+                    SemanticModel: reference.SemanticModel,
+                    Table: reference.Table,
+                    ObjectName: reference.QueryName,
+                    ArtifactPath: reference.ArtifactPath,
+                    EvidencePath: "M expression",
+                    DependencyImpact: ConstructDependencyImpacts.MayCreateDependencies,
+                    Concerns: [AnalysisConcerns.Dependency],
+                    Reason: Describe(reference) + " uses Power Query syntax this version could not read to " +
+                            "the end, so no reference it makes to another query was kept. Queries it uses " +
+                            "may therefore appear to have no known use."));
+    }
+
+    /// <summary>
+    /// An entity partition is served by the shared expression its <c>expressionSource</c> names. When
+    /// that name resolves to nothing, the table's source cannot be attributed and the expression it
+    /// should point at — if it exists under some other name — has lost the reference that would show
+    /// its use. That is the same doubt an unread M expression leaves, so it is stated the same way.
+    /// </summary>
+    private static AnalysisLimitation DescribeUnresolvedPartitionSource(IncompleteQueryReferences reference)
+    {
+        var named = reference.UnresolvedExpressionSource is { } expressionSource
+            ? $"names shared expression '{expressionSource}', which is not defined in this project"
+            : "names no shared expression";
+        return new AnalysisLimitation(
+            LimitationId: "PBI-LIMIT-MODEL-PARTITION-SOURCE",
+            Cause: AnalysisLimitationCauses.ReferenceUnresolved,
+            SupportState: ConstructSupportStates.PartiallyAnalyzed,
+            ConstructType: "entityPartition",
+            Scope: AnalysisLimitationScopes.SemanticModel,
+            SemanticModel: reference.SemanticModel,
+            Table: reference.Table,
+            ObjectName: reference.QueryName,
+            ArtifactPath: reference.ArtifactPath,
+            EvidencePath: "partition source",
+            DependencyImpact: ConstructDependencyImpacts.MayCreateDependencies,
+            Concerns: [AnalysisConcerns.Dependency],
+            Reason: $"Table '{reference.Table}' is served through a DirectQuery entity partition that {named}, " +
+                    "so its data source could not be attributed and the expression that serves it may " +
+                    "appear to have no known use.");
     }
 
     private static string Describe(IncompleteQueryReferences reference) => reference.QueryName is null

@@ -1,0 +1,11 @@
+expression 'DirectQuery to AS - Tab Order Test Sample' =
+		let
+		    Source = AnalysisServices.Database("powerbi://api.powerbi.com/v1.0/myorg/pbi-assure", "Tab Order Test Sample"),
+		    Cubes = Table.Combine(Source[Data]),
+		    Cube = Cubes{[Id="Model", Kind="Cube"]}[Data]
+		in
+		    Cube
+	lineageTag: 15a84bd7-5897-46f9-a58b-3e3a6f80aa37
+
+	annotation PBI_IncludeFutureArtifacts = True
+

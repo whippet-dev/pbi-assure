@@ -1,0 +1,4 @@
+relationship ff39ecc8-91b3-466c-8642-93d474fb61b9
+	fromColumn: testTable.Date
+	toColumn: LocalDateTable_0f7e2929-1040-44dc-904f-1255dbea66ce.Date
+

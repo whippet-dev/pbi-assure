@@ -147,6 +147,7 @@ internal static class TmdlSemanticModelParser
             }
             else if (TryParseDeclaration(lines[index].Trimmed, "partition", out var partitionName, out var sourceType))
             {
+                var isEntity = string.Equals(sourceType, "entity", StringComparison.OrdinalIgnoreCase);
                 partitions.Add(new SemanticPartitionInventory(
                     Name: partitionName,
                     SourceType: sourceType ?? string.Empty,
@@ -154,7 +155,13 @@ internal static class TmdlSemanticModelParser
                     Expression: string.Equals(sourceType, "calculated", StringComparison.OrdinalIgnoreCase) ||
                                 string.Equals(sourceType, "m", StringComparison.OrdinalIgnoreCase)
                         ? ReadAssignmentExpression(lines, index, endIndex, "source")
-                        : null));
+                        : null)
+                {
+                    EntityName = isEntity ? FindEntitySourceProperty(lines, index, endIndex, "entityName") : null,
+                    ExpressionSource = isEntity
+                        ? NormalizeIdentifierReference(FindEntitySourceProperty(lines, index, endIndex, "expressionSource"))
+                        : null,
+                });
             }
             else if (string.Equals(lines[index].Trimmed, "calculationGroup", StringComparison.OrdinalIgnoreCase))
             {
@@ -289,6 +296,34 @@ internal static class TmdlSemanticModelParser
             return new SemanticAggregationMappingInventory(
                 BaseColumnReference: FindProperty(lines, index, alternateOfEnd, "baseColumn"),
                 Summarization: FindProperty(lines, index, alternateOfEnd, "summarization"));
+        }
+
+        return null;
+    }
+
+    /// <summary>
+    /// Reads one property of an entity partition's <c>source</c> block. Unlike an M or calculated
+    /// partition, whose <c>source =</c> is an expression, an entity partition's <c>source</c> is a bare
+    /// child object holding <c>entityName</c> and <c>expressionSource</c> (Desktop-authored evidence:
+    /// tests/fixtures/desktop-entity-partition-evidence). The block sits one level below the
+    /// partition's own properties.
+    /// </summary>
+    private static string? FindEntitySourceProperty(
+        IReadOnlyList<TmdlLine> lines,
+        int partitionDeclarationIndex,
+        int partitionEndIndex,
+        string propertyName)
+    {
+        var propertyIndent = lines[partitionDeclarationIndex].Indent + 4;
+        for (var index = partitionDeclarationIndex + 1; index < partitionEndIndex; index++)
+        {
+            if (lines[index].Indent != propertyIndent ||
+                !string.Equals(lines[index].Trimmed, "source", StringComparison.OrdinalIgnoreCase))
+            {
+                continue;
+            }
+
+            return FindProperty(lines, index, FindBlockEnd(lines, index, partitionEndIndex), propertyName);
         }
 
         return null;

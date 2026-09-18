@@ -82,9 +82,54 @@ internal static class PowerQueryLineageAnalyzer
             }
         }
 
+        // A composite model's DirectQuery tables are entity partitions: no M of their own, only the
+        // name of the shared expression that connects to the remote model. That expression is what
+        // serves the table, so the table depends on it — the edge that stops the expression looking
+        // orphaned — and the connector the expression declares is the table's data source. A partition
+        // that names no expression, or one that is not defined here, leaves that part of the graph in
+        // doubt and is recorded as such rather than skipped.
+        var entityPartitions = model.Tables
+            .SelectMany(table => table.Partitions
+                .Where(partition => string.Equals(partition.SourceType, "entity", StringComparison.OrdinalIgnoreCase))
+                .Select(partition => (Table: table, Partition: partition)))
+            .ToArray();
+        var unresolvedPartitionSources = new List<IncompleteQueryReferences>();
+        foreach (var (table, partition) in entityPartitions)
+        {
+            var targets = partition.ExpressionSource is { } expressionSource &&
+                          sourcesByName.TryGetValue(expressionSource, out var candidates)
+                ? candidates.Where(candidate => candidate.SourceKind == PowerQuerySourceKinds.NamedExpression).ToArray()
+                : [];
+            if (targets.Length == 0)
+            {
+                unresolvedPartitionSources.Add(new IncompleteQueryReferences(
+                    model.Name, table.Name, partition.Name, table.RelativePath)
+                {
+                    IsUnresolvedPartitionSource = true,
+                    UnresolvedExpressionSource = partition.ExpressionSource,
+                });
+                continue;
+            }
+
+            foreach (var target in targets)
+            {
+                allDependencies.Add(new PowerQueryDependencyEdge(
+                    model.Name, table.Name, PowerQuerySourceKinds.TablePartition, table.Name, partition.Name,
+                    target.QueryName, target.SourceKind, table.RelativePath));
+                foreach (var connector in MConnectorExtractor.Extract(target.Expression))
+                {
+                    allDataSources.Add(new DataSourceInventory(
+                        model.Name, table.Name, PowerQuerySourceKinds.TablePartition, table.Name, partition.Name,
+                        connector.Family, connector.Function, connector.LocationKind, table.RelativePath));
+                }
+            }
+        }
+
         var modelDependencies = allDependencies.Where(edge => edge.SemanticModel == model.Name).ToArray();
         var reachable = Traverse(
-            sources.Where(source => source.IsLoaded).Select(source => source.QueryName), modelDependencies);
+            sources.Where(source => source.IsLoaded).Select(source => source.QueryName)
+                .Concat(entityPartitions.Select(entity => entity.Table.Name)),
+            modelDependencies);
         var policyReferenceResults = model.Tables
             .Where(table => !string.IsNullOrWhiteSpace(table.RefreshPolicy?.SourceExpression))
             .Select(table => (Table: table,
@@ -92,7 +137,9 @@ internal static class PowerQueryLineageAnalyzer
             .ToArray();
         var modelHasIncompleteReferences = referenceResults.Values
             .Concat(policyReferenceResults.Select(policy => policy.Result))
-            .Any(result => result.Incomplete || result.Dynamic);
+            .Any(result => result.Incomplete || result.Dynamic) ||
+            unresolvedPartitionSources.Count > 0;
+        allIncompleteReferences.AddRange(unresolvedPartitionSources);
 
         // Incomplete discovery discards that expression's references entirely, so the edges it would
         // have contributed are missing from the graph. Dynamic discovery is deliberately not recorded
@@ -220,9 +267,19 @@ internal static class PowerQueryLineageAnalyzer
 /// One Power Query expression whose reference discovery did not complete, so no reference it contains
 /// was retained. <see cref="QueryName"/> is null for a refresh policy's source expression, which is M
 /// that is analysed for references but is not itself a query.
+///
+/// Also carries an entity partition whose <c>expressionSource</c> could not be resolved to a shared
+/// expression; there <see cref="QueryName"/> is the partition name and
+/// <see cref="IsUnresolvedPartitionSource"/> is set.
 /// </summary>
 internal sealed record IncompleteQueryReferences(
     string SemanticModel,
     string? Table,
     string? QueryName,
-    string ArtifactPath);
+    string ArtifactPath)
+{
+    public bool IsUnresolvedPartitionSource { get; init; }
+
+    /// <summary>The expressionSource the partition names, or null when it names none.</summary>
+    public string? UnresolvedExpressionSource { get; init; }
+}

@@ -1,0 +1,11 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/gitIntegration/platformProperties/2.0.0/schema.json",
+  "metadata": {
+    "type": "SemanticModel",
+    "displayName": "CompositeEvidence"
+  },
+  "config": {
+    "version": "2.0",
+    "logicalId": "7b2a7d67-e4e2-41ea-b4b6-46c738e452d8"
+  }
+}

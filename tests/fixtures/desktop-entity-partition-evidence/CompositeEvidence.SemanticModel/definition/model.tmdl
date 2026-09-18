@@ -1,0 +1,21 @@
+model Model
+	culture: en-US
+	defaultPowerBIDataSourceVersion: powerBI_V3
+	sourceQueryCulture: en-GB
+	valueFilterBehavior: independent
+	dataAccessOptions
+		legacyRedirects
+		returnErrorValuesAsNull
+
+annotation __PBI_TimeIntelligenceEnabled = 1
+
+annotation PBI_QueryOrder = ["DirectQuery to AS - Tab Order Test Sample","localData"]
+
+annotation PBI_ProTooling = ["DevMode"]
+
+ref table testTable
+ref table LocalDateTable_0f7e2929-1040-44dc-904f-1255dbea66ce
+ref table localData
+
+ref cultureInfo en-US
+
