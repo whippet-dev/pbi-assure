@@ -25,13 +25,23 @@ public static class ApparentlyUnusedReportRenderer
         "PBI Assure found no report or semantic-model usage for these items. Review them before removing anything.";
 
     internal const string Caution =
-        "PBI Assure checks the project you selected. An item could still be used by something outside this project, so this is a review list rather than a deletion recommendation.";
+        "PBI Assure checks the project you selected. An item could still be used by something outside this project, so this is a review list rather than a deletion recommendation. Power Query preparation evidence may still exist and is shown where it was found; it is not report or semantic-model usage.";
+
+    internal const string ZeroStateHeading = "No apparently unused items found";
 
     internal const string ZeroStateMessage =
         "No developer-authored model items were classified as apparently unused in this analysis.";
 
     internal const string CompleteLabel = "No identified limitations";
     internal const string LimitedLabel = "Checks limited";
+
+    internal const string LimitedExplanation =
+        "Checks limited means missing or partly understood metadata could affect this result. The usage classification has not changed.";
+
+    internal const string PreparationLabel = "Power Query preparation";
+    internal const string EvidenceLabel = "Preparation evidence:";
+    internal const string NoMatchMessage = "No items match these filters.";
+    internal const string ClearFiltersLabel = "Clear filters";
 
     public static string Render(ProjectInventory inventory)
     {
@@ -127,9 +137,9 @@ public static class ApparentlyUnusedReportRenderer
         {
             // The headline already counts the list; the only summary worth a line is the part of it
             // whose checks were limited, and only when that part exists.
-            html.Append("      <p class=\"review-limited-summary\"><a href=\"#review-limitations\">")
-                .Append(limited == 1 ? "1 item has" : limited.ToString(CultureInfo.InvariantCulture) + " items have")
-                .AppendLine(" limited usage checks</a>.</p>");
+            html.Append("      <p class=\"review-limited-summary\"><strong>").Append(LimitedLabel).Append("</strong> for ")
+                .Append(limited.ToString(CultureInfo.InvariantCulture)).Append(" of ").Append(Pluralise(objects.Length, "item"))
+                .AppendLine(". <a href=\"#review-limitations\">Why checks are limited</a></p>");
         }
 
         html.Append("      <p class=\"review-caution\">").Append(Caution).AppendLine("</p>");
@@ -144,7 +154,7 @@ public static class ApparentlyUnusedReportRenderer
     private static void AppendZeroState(StringBuilder html)
     {
         html.AppendLine("    <section class=\"review-zero\" aria-labelledby=\"review-zero-title\">");
-        html.AppendLine("      <h2 id=\"review-zero-title\">Nothing to review</h2>");
+        html.Append("      <h2 id=\"review-zero-title\">").Append(ZeroStateHeading).AppendLine("</h2>");
         html.Append("      <p>").Append(ZeroStateMessage).AppendLine("</p>");
         html.AppendLine("      <p>This is not a statement that the model contains no unused items: items used only by other " +
                         "unused items, Power BI-generated date tables and anything outside the analysed project files are " +
@@ -164,13 +174,26 @@ public static class ApparentlyUnusedReportRenderer
 
         html.AppendLine("    <section class=\"review-limitations\" id=\"review-limitations\" aria-labelledby=\"review-limitations-title\">");
         html.AppendLine("      <h2 id=\"review-limitations-title\">Why some checks are limited</h2>");
-        html.AppendLine("      <p>Items marked “" + LimitedLabel + "” keep their classification, but PBI Assure could not fully " +
-                        "analyse the metadata below, and it could bear on them.</p>");
+        html.Append("      <p>").Append(LimitedExplanation).AppendLine(" PBI Assure could not fully analyse the metadata " +
+                    "below, and it could bear on the items marked “" + LimitedLabel + "”.</p>");
         html.AppendLine("      <ul>");
         foreach (var limitation in limitations)
         {
-            html.Append("        <li id=\"").Append(anchors[LimitationKey(limitation)]).Append("\"><code>")
-                .Append(Encode(limitation.LimitationId)).Append("</code>").Append(Encode(limitation.Reason)).AppendLine("</li>");
+            html.Append("        <li id=\"").Append(anchors[LimitationKey(limitation)]).AppendLine("\">");
+            html.Append("          <p>").Append(Encode(limitation.Reason)).AppendLine("</p>");
+            html.Append("          <p class=\"review-limitation-id\">Limitation <code>").Append(Encode(limitation.LimitationId)).Append("</code>");
+            if (!string.IsNullOrWhiteSpace(limitation.SemanticModel))
+            {
+                html.Append(" · model ").Append(Encode(limitation.SemanticModel!));
+            }
+
+            if (!string.IsNullOrWhiteSpace(limitation.ArtifactPath))
+            {
+                html.Append(" · <code>").Append(Encode(limitation.ArtifactPath)).Append("</code>");
+            }
+
+            html.AppendLine("</p>");
+            html.AppendLine("        </li>");
         }
 
         html.AppendLine("      </ul>");
@@ -182,28 +205,32 @@ public static class ApparentlyUnusedReportRenderer
         var types = objects.Select(item => item.Usage.ObjectType).Distinct(StringComparer.Ordinal)
             .OrderBy(ObjectTypeOrder).ToArray();
         html.AppendLine("    <div class=\"review-tools\" role=\"search\" aria-label=\"Filter the list\">");
-        html.AppendLine("      <label><span>Find</span><input type=\"search\" id=\"review-search\" placeholder=\"Table or item name\" autocomplete=\"off\"></label>");
+        html.AppendLine("      <div class=\"review-tool review-tool-search\"><label for=\"review-search\">Find</label><input type=\"search\" id=\"review-search\" placeholder=\"Table or item name\" autocomplete=\"off\"></div>");
         if (types.Length > 1)
         {
-            html.AppendLine("      <label><span>Type</span><select id=\"review-type\"><option value=\"\">All types</option>");
+            html.AppendLine("      <div class=\"review-tool\"><label for=\"review-type\">Type</label><select id=\"review-type\"><option value=\"\">All types</option>");
             foreach (var type in types)
             {
                 html.Append("        <option value=\"").Append(Encode(type)).Append("\">").Append(Encode(ObjectTypeLabel(type))).AppendLine("</option>");
             }
 
-            html.AppendLine("      </select></label>");
+            html.AppendLine("      </select></div>");
         }
 
         if (objects.Any(item => item.IsQualified) && objects.Any(item => !item.IsQualified))
         {
-            html.AppendLine("      <label><span>Checks</span><select id=\"review-confidence\"><option value=\"\">All items</option>" +
+            html.AppendLine("      <div class=\"review-tool\"><label for=\"review-confidence\">Checks</label><select id=\"review-confidence\"><option value=\"\">All items</option>" +
                             "<option value=\"" + ClassificationConfidences.Established + "\">" + CompleteLabel + "</option>" +
-                            "<option value=\"" + ClassificationConfidences.QualifiedByLimitation + "\">" + LimitedLabel + "</option></select></label>");
+                            "<option value=\"" + ClassificationConfidences.QualifiedByLimitation + "\">" + LimitedLabel + "</option></select></div>");
         }
 
+        html.Append("      <button type=\"button\" class=\"secondary-button review-clear\" id=\"review-clear\" hidden>").Append(ClearFiltersLabel).AppendLine("</button>");
         html.Append("      <p class=\"review-showing\" id=\"review-showing\" aria-live=\"polite\">Showing all ")
             .Append(Pluralise(objects.Length, "item")).AppendLine(".</p>");
         html.AppendLine("    </div>");
+        // Distinct from the true zero state above: the list has items, the filters just exclude them all.
+        html.Append("    <div class=\"review-empty\" id=\"review-empty\" hidden><p>").Append(NoMatchMessage)
+            .Append("</p><button type=\"button\" class=\"secondary-button review-clear\">").Append(ClearFiltersLabel).AppendLine("</button></div>");
     }
 
     private static void AppendCard(
@@ -240,31 +267,35 @@ public static class ApparentlyUnusedReportRenderer
 
         html.AppendLine("</p>");
         html.Append("          <h2>").Append(Encode(tableName)).AppendLine("</h2>");
-        html.Append("          <p class=\"review-card-count\">").Append(Pluralise(objects.Length, "item")).AppendLine(" to review</p>");
+        // The count is rewritten by the filter script as "shown of total" while a filter applies.
+        html.Append("          <p class=\"review-card-count\" data-total=\"").Append(objects.Length.ToString(CultureInfo.InvariantCulture))
+            .Append("\">").Append(Pluralise(objects.Length, "item")).AppendLine(" to review</p>");
         html.AppendLine("        </header>");
+        html.AppendLine("        <div class=\"review-card-body\">");
         if (!string.IsNullOrWhiteSpace(table?.Description))
         {
-            html.Append("        <p class=\"review-card-note review-description\">").Append(Encode(table!.Description!)).AppendLine("</p>");
+            html.Append("          <p class=\"review-card-note review-description\">").Append(Encode(table!.Description!)).AppendLine("</p>");
         }
 
         if (wholeTableUnused)
         {
-            html.AppendLine("        <p class=\"review-card-note\">No report or semantic-model usage was found for any item in this table.</p>");
+            html.AppendLine("          <p class=\"review-card-note\">No report or semantic-model usage was found for any item in this table.</p>");
         }
 
         if (downstreamQueries.Length > 0)
         {
-            html.Append("        <p class=\"review-card-note review-card-preparation\"><strong>Used in Power Query.</strong> This table\u2019s query helps prepare ")
-                .Append(Encode(JoinNames(downstreamQueries))).AppendLine(".</p>");
+            html.Append("          <div class=\"review-card-note review-preparation\"><p class=\"review-preparation-label\">").Append(PreparationLabel)
+                .Append("</p><p>This table\u2019s query helps prepare ").Append(Encode(JoinNames(downstreamQueries))).AppendLine(".</p></div>");
         }
 
-        html.AppendLine("        <ul class=\"review-rows\">");
+        html.AppendLine("          <ul class=\"review-rows\">");
         foreach (var item in objects)
         {
             AppendRow(html, inventory, item, anchors);
         }
 
-        html.AppendLine("        </ul>");
+        html.AppendLine("          </ul>");
+        html.AppendLine("        </div>");
         html.AppendLine("      </article>");
     }
 
@@ -305,37 +336,28 @@ public static class ApparentlyUnusedReportRenderer
         var evidence = PowerQueryEvidence(inventory, usage);
         if (evidence.Length > 0)
         {
-            html.Append("            <p class=\"review-row-note review-row-evidence\">Power Query use: ")
-                .Append(Encode(string.Join("; ", evidence))).AppendLine("</p>");
+            html.Append("            <p class=\"review-row-note review-row-evidence\"><span class=\"review-note-label\">").Append(EvidenceLabel)
+                .Append("</span> ").Append(Encode(string.Join("; ", evidence))).AppendLine("</p>");
         }
 
         if (item.IsQualified)
         {
+            // The affordance is the plain question; the identifiers stay beside it as evidence a
+            // reader can quote, in the same order as the explanation they link to.
             var references = SemanticUsageConfidenceQualifier.Qualifying(usage, inventory.AnalysisLimitations)
                 .Select(limitation => (limitation.LimitationId, Anchor: anchors.GetValueOrDefault(LimitationKey(limitation))))
                 .DistinctBy(reference => reference.LimitationId + reference.Anchor, StringComparer.Ordinal)
                 .OrderBy(reference => reference.LimitationId, StringComparer.Ordinal)
                 .ToArray();
-            html.Append("            <p class=\"review-row-note review-row-limitations\">Limited by ");
-            for (var index = 0; index < references.Length; index++)
+            var target = references.Select(reference => reference.Anchor).FirstOrDefault(anchor => anchor is not null) ?? "review-limitations";
+            html.Append("            <p class=\"review-row-note review-row-limitations\"><a href=\"#").Append(target)
+                .Append("\">Why checks are limited</a><span class=\"review-row-limitation-ids\">");
+            foreach (var (limitationId, _) in references)
             {
-                if (index > 0)
-                {
-                    html.Append(", ");
-                }
-
-                var (limitationId, anchor) = references[index];
-                if (anchor is null)
-                {
-                    html.Append(Encode(limitationId));
-                }
-                else
-                {
-                    html.Append("<a href=\"#").Append(anchor).Append("\">").Append(Encode(limitationId)).Append("</a>");
-                }
+                html.Append(" · <code>").Append(Encode(limitationId)).Append("</code>");
             }
 
-            html.AppendLine(" — see why above.</p>");
+            html.AppendLine("</span></p>");
         }
 
         html.AppendLine("          </li>");
@@ -453,7 +475,10 @@ public static class ApparentlyUnusedReportRenderer
 
     /// <summary>
     /// Plain filtering over the already-rendered list: nothing is hidden until someone types, and the
-    /// document is complete without it. A card disappears when none of its rows match.
+    /// document is complete without it. A card disappears when none of its rows match; while a filter
+    /// applies, every visible card counts what it shows against what it holds, the result line says
+    /// how many of the whole list are shown, and a filter that matches nothing says so and offers
+    /// the way back.
     /// </summary>
     private const string FilterScript = """
     (() => {
@@ -461,6 +486,8 @@ public static class ApparentlyUnusedReportRenderer
       const type = document.getElementById('review-type');
       const confidence = document.getElementById('review-confidence');
       const showing = document.getElementById('review-showing');
+      const empty = document.getElementById('review-empty');
+      const clearButtons = Array.from(document.querySelectorAll('.review-clear'));
       const rows = Array.from(document.querySelectorAll('.review-row'));
       const cards = Array.from(document.querySelectorAll('.review-card'));
       const plural = count => count === 1 ? '1 item' : count + ' items';
@@ -468,6 +495,7 @@ public static class ApparentlyUnusedReportRenderer
         const query = (search?.value ?? '').trim().toLowerCase();
         const wantedType = type?.value ?? '';
         const wantedConfidence = confidence?.value ?? '';
+        const filtering = query !== '' || wantedType !== '' || wantedConfidence !== '';
         let visible = 0;
         for (const row of rows) {
           const match = (query === '' || row.dataset.search.includes(query)) &&
@@ -477,17 +505,33 @@ public static class ApparentlyUnusedReportRenderer
           if (match) visible++;
         }
         for (const card of cards) {
-          card.hidden = !card.querySelector('.review-row:not([hidden])');
+          const shown = card.querySelectorAll('.review-row:not([hidden])').length;
+          card.hidden = shown === 0;
+          const count = card.querySelector('.review-card-count');
+          if (count) {
+            const total = Number(count.dataset.total);
+            count.textContent = shown === total ? plural(total) + ' to review' : shown + ' of ' + plural(total);
+          }
         }
         if (showing) {
-          showing.textContent = visible === rows.length
-            ? 'Showing all ' + plural(rows.length) + '.'
-            : 'Showing ' + plural(visible) + ' of ' + rows.length + '.';
+          showing.textContent = filtering
+            ? 'Showing ' + visible + ' of ' + plural(rows.length) + '.'
+            : 'Showing all ' + plural(rows.length) + '.';
         }
+        if (empty) empty.hidden = !(filtering && visible === 0);
+        for (const button of clearButtons) button.hidden = !filtering;
+      };
+      const clear = () => {
+        if (search) search.value = '';
+        if (type) type.value = '';
+        if (confidence) confidence.value = '';
+        apply();
+        search?.focus();
       };
       for (const control of [search, type, confidence]) {
         control?.addEventListener('input', apply);
       }
+      for (const button of clearButtons) button.addEventListener('click', clear);
     })();
     """;
 }

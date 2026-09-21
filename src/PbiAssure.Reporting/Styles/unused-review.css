@@ -1,7 +1,9 @@
 /* The "Apparently unused" review list. Layered on core.css only: it borrows the tokens, type,
-   badges and appearance control of the full report and none of its density. Table cards in a
-   responsive grid, every card open, compact rows, so it reads as a working list that can be
-   searched with Ctrl+F and printed. */
+   badges, controls and appearance control of the full report and none of its density. Three
+   surfaces carry the hierarchy — the canvas, cards lifted a hairline above it, and a quieter
+   header band inside each card — so a table reads as one review group and its rows as the list
+   inside it. Colour is reserved for the accent (controls, links, focus, the one kicker) and for
+   the review state; nothing else is tinted. */
 
 .unused-review { --review-measure: 74rem; }
 
@@ -18,31 +20,40 @@
 
 .review-lede { max-width: 62ch; margin: 0.625rem 0 0; font-size: var(--pa-t-lg); line-height: 1.45; }
 
-.review-limited-summary { margin: 0.625rem 0 0; padding-left: 0.625rem; border-left: 3px solid var(--pa-review); color: var(--pa-text); font-size: var(--pa-t-md); font-weight: 600; }
-.review-limited-summary a { color: inherit; }
+.review-limited-summary { margin: 0.75rem 0 0; padding-left: 0.625rem; border-left: 3px solid var(--pa-review); color: var(--pa-text-2); font-size: var(--pa-t-sm); }
+.review-limited-summary strong { color: var(--pa-text); }
 
 .review-caution { max-width: 66ch; margin: 0.75rem 0 0; color: var(--pa-text-2); font-size: var(--pa-t-sm); line-height: 1.5; }
 
 .review-meta { margin: 0.625rem 0 0; color: var(--pa-text-3); font-size: var(--pa-t-xs); }
 
-/* ---- Limitations ----------------------------------------------------------------------- */
+/* ---- Limitations: plain language first, identifiers as evidence ------------------------ */
 
-.review-limitations { margin: 1.25rem 0 0; padding: 0.75rem 1rem; border: 1px solid var(--pa-review-line); border-left: 3px solid var(--pa-review); border-radius: var(--pa-r2); background: var(--pa-review-soft); }
+.review-limitations { margin: 1.25rem 0 0; padding: 0.875rem 1rem; border: 1px solid var(--pa-review-line); border-left: 3px solid var(--pa-review); border-radius: var(--pa-r2); background: var(--pa-surface); }
 .review-limitations h2 { margin: 0 0 0.25rem; font-size: var(--pa-t-md); }
-.review-limitations p { max-width: 72ch; margin: 0 0 0.5rem; color: var(--pa-text-2); font-size: var(--pa-t-sm); }
-.review-limitations ul { display: grid; gap: 0.5rem; margin: 0; padding: 0; list-style: none; }
-.review-limitations li { font-size: var(--pa-t-sm); line-height: 1.5; }
-.review-limitations code { margin-right: 0.375rem; color: var(--pa-review); font-size: var(--pa-t-xs); font-weight: 600; }
+.review-limitations > p { max-width: 72ch; margin: 0 0 0.5rem; color: var(--pa-text-2); font-size: var(--pa-t-sm); line-height: 1.5; }
+/* Grid tracks are allowed to shrink below their content (minmax(0, 1fr)) so a long artefact path
+   or identifier wraps inside the rail instead of pushing the page wider on a phone. */
+.review-limitations ul { display: grid; grid-template-columns: minmax(0, 1fr); gap: 0.625rem; margin: 0; padding: 0; list-style: none; }
+.review-limitations li { display: grid; grid-template-columns: minmax(0, 1fr); gap: 0.125rem; padding-top: 0.5rem; border-top: 1px solid var(--pa-line); font-size: var(--pa-t-sm); line-height: 1.5; overflow-wrap: anywhere; }
+.review-limitations li p { margin: 0; }
+.review-limitation-id { color: var(--pa-text-3); font-size: var(--pa-t-xs); }
+.review-limitation-id code { color: var(--pa-text-2); font-size: var(--pa-t-2xs); }
 
-/* ---- Tools: one quiet row above the cards ------------------------------------------------ */
+/* ---- Tools: a toolbar on its own surface, above the cards ------------------------------ */
 
-.review-tools { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem 0.875rem; margin: 1.125rem 0 0.875rem; color: var(--pa-text-3); font-size: var(--pa-t-xs); }
-.review-tools label { display: inline-flex; align-items: center; gap: 0.375rem; }
-.review-tools label span { font-weight: 600; }
-.review-tools input, .review-tools select { min-height: 1.875rem; padding: 0.125rem 0.5rem; border: 1px solid var(--pa-line); border-radius: var(--pa-r1); background: var(--pa-surface); color: var(--pa-text); font: inherit; font-size: var(--pa-t-sm); }
-.review-tools input { min-width: 14rem; }
-.review-tools input:focus-visible, .review-tools select:focus-visible { outline: 2px solid var(--pa-focus); outline-offset: 1px; }
-.review-showing { margin: 0 0 0 auto; font-variant-numeric: tabular-nums; }
+.review-tools { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 0.625rem 0.875rem; margin: 1.125rem 0 1rem; padding: 0.75rem 0.875rem; border: 1px solid var(--pa-line); border-radius: var(--pa-r3); background: var(--pa-surface); }
+.review-tool { display: grid; grid-template-columns: minmax(0, 1fr); gap: 0.25rem; }
+.review-tool-search { flex: 1 1 16rem; }
+.review-tool label { color: var(--pa-text-3); font-size: var(--pa-t-2xs); font-weight: 650; letter-spacing: 0.04em; text-transform: uppercase; }
+.review-tools input, .review-tools select { width: 100%; min-height: 2.125rem; }
+.review-tools select { width: auto; min-width: 9rem; }
+.review-clear { align-self: flex-end; }
+.review-showing { flex: 1 0 auto; align-self: center; margin: 0; color: var(--pa-text-2); font-size: var(--pa-t-xs); font-variant-numeric: tabular-nums; text-align: right; }
+
+/* Filters that match nothing: say so where the cards were, and offer the way back. */
+.review-empty { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem 1rem; margin: 0 0 1rem; padding: 0.875rem 1rem; border: 1px dashed var(--pa-line-strong); border-radius: var(--pa-r3); color: var(--pa-text-2); font-size: var(--pa-t-sm); }
+.review-empty p { margin: 0; }
 
 /* ---- Table cards ------------------------------------------------------------------------ */
 
@@ -52,44 +63,75 @@
    card, reflows when filtering hides cards, and collapses to one column below two card widths. */
 .review-grid { columns: 2 26rem; column-gap: 1rem; }
 
-.review-card { display: flow-root; box-sizing: border-box; width: 100%; margin: 0 0 1rem; padding: 0.875rem 1rem 0.5rem; border: 1px solid var(--pa-line-strong); border-radius: var(--pa-r3); background: var(--pa-surface); break-inside: avoid; page-break-inside: avoid; }
-.review-card > * + * { margin-top: 0.5rem; }
-.review-card-head { display: grid; gap: 0.125rem; }
-.review-card-head .eyebrow { margin: 0; }
+.review-card { display: flow-root; box-sizing: border-box; width: 100%; margin: 0 0 1rem; padding: 0; border: 1px solid var(--pa-line-strong); border-radius: var(--pa-r3); background: var(--pa-surface); box-shadow: var(--pa-shadow-1); overflow: hidden; break-inside: avoid; page-break-inside: avoid; }
+
+/* The header is its own band: the table name dominates, the kicker and count sit quietly
+   around it, and a hairline separates the group from the rows it holds. */
+.review-card-head { display: grid; grid-template-columns: minmax(0, 1fr); gap: 0.125rem; padding: 0.75rem 1rem 0.625rem; border-bottom: 1px solid var(--pa-line); background: var(--pa-surface-2); }
+.review-card-head .eyebrow { margin: 0; color: var(--pa-accent); }
 .review-card-head h2 { margin: 0; font-size: var(--pa-t-xl); overflow-wrap: anywhere; }
 .review-card-count { margin: 0; color: var(--pa-text-3); font-size: var(--pa-t-sm); font-variant-numeric: tabular-nums; }
+
+.review-card-body { display: grid; grid-template-columns: minmax(0, 1fr); gap: 0.5rem; padding: 0.625rem 1rem 0.625rem; }
 .review-card-note { margin: 0; color: var(--pa-text-2); font-size: var(--pa-t-sm); line-height: 1.5; }
-.review-card-note strong { color: var(--pa-text); }
-.review-card-preparation { padding: 0.5rem 0.625rem; border-radius: var(--pa-r2); background: var(--pa-surface-2); }
 .review-description { white-space: pre-line; }
 
-.review-rows { margin: 0.625rem 0 0; padding: 0; list-style: none; }
-.review-row { display: grid; gap: 0.125rem; padding: 0.4375rem 0; border-top: 1px solid var(--pa-line); }
-.review-row-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0.25rem 0.5rem; }
-.review-row-name { font-weight: 600; overflow-wrap: anywhere; }
+/* Power Query preparation is data-preparation evidence, not usage: an inset note on the
+   quieter surface with the accent rail, a short strong label and a muted explanation. */
+.review-preparation { display: grid; grid-template-columns: minmax(0, 1fr); gap: 0.125rem; padding: 0.5rem 0.75rem; border-left: 3px solid var(--pa-accent-line); border-radius: 0 var(--pa-r2) var(--pa-r2) 0; background: var(--pa-surface-2); }
+.review-preparation-label { margin: 0; color: var(--pa-text); font-size: var(--pa-t-sm); font-weight: 600; }
+.review-preparation p { margin: 0; color: var(--pa-text-2); font-size: var(--pa-t-xs); line-height: 1.5; }
+
+.review-rows { margin: 0; padding: 0; list-style: none; }
+.review-row { display: grid; grid-template-columns: minmax(0, 1fr); gap: 0.1875rem; padding: 0.5625rem 0; border-top: 1px solid var(--pa-line); }
+.review-row:first-child { border-top: 0; }
+.review-card-body > .review-rows:first-child .review-row:first-child { padding-top: 0.125rem; }
+.review-row-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0.25rem 0.625rem; }
+.review-row-name { font-size: var(--pa-t-md); font-weight: 600; overflow-wrap: anywhere; }
 .review-row-parent { color: var(--pa-text-3); font-weight: 500; }
 .review-row-type { color: var(--pa-text-3); font-size: var(--pa-t-xs); }
 .review-row-head .badge { align-self: center; margin-left: auto; font-weight: 500; }
-.review-row-note { margin: 0; color: var(--pa-text-2); font-size: var(--pa-t-xs); line-height: 1.5; }
-.review-row-limitations a { color: var(--pa-review); }
+.review-row-note { margin: 0; color: var(--pa-text-2); font-size: var(--pa-t-xs); line-height: 1.5; overflow-wrap: anywhere; }
+.review-note-label { color: var(--pa-text-3); }
+.review-row-limitations a { font-weight: 600; }
+.review-row-limitation-ids { color: var(--pa-text-3); }
+.review-row-limitation-ids code { font-size: var(--pa-t-2xs); }
 
 /* ---- Zero state and footer -------------------------------------------------------------- */
 
-.review-zero { margin: 1.5rem 0 0; padding: 1rem 1.25rem 1.125rem; border: 1px solid var(--pa-used-line); border-left: 3px solid var(--pa-used); border-radius: var(--pa-r2); background: var(--pa-used-soft); }
+/* Nothing found is a scope statement, not an all-clear: a neutral note, no success colour. */
+.review-zero { margin: 1.5rem 0 0; padding: 1rem 1.25rem 1.125rem; border: 1px solid var(--pa-line-strong); border-radius: var(--pa-r3); background: var(--pa-surface); box-shadow: var(--pa-shadow-1); }
 .review-zero h2 { margin: 0 0 0.375rem; font-size: var(--pa-t-lg); }
 .review-zero p { max-width: 72ch; margin: 0; color: var(--pa-text-2); font-size: var(--pa-t-sm); line-height: 1.5; }
 .review-zero p + p { margin-top: 0.5rem; }
 
 .review-footer { margin: 2rem 0 1.5rem; color: var(--pa-text-3); font-size: var(--pa-t-xs); }
 
+/* ---- Narrow widths ---------------------------------------------------------------------- */
+
+@media (max-width: 40rem) {
+  .unused-review .content { width: calc(100% - 2rem); }
+  .review-header h1 { font-size: var(--pa-t-2xl); }
+  .review-tools { padding: 0.625rem 0.75rem; }
+  .review-tool { flex: 1 1 8rem; }
+  .review-tool-search { flex-basis: 100%; }
+  .review-tools select { width: 100%; min-width: 0; }
+  .review-clear { flex: 1 1 100%; }
+  .review-showing { flex-basis: 100%; text-align: left; }
+  .review-card-head, .review-card-body { padding-inline: 0.75rem; }
+}
+
 /* ---- Print ----------------------------------------------------------------------------- */
 
 @media print {
   .unused-review .content { width: auto; margin: 0; }
   .review-header { padding-top: 0; border-bottom-color: #000; background: none; }
-  .review-tools, .appearance-control { display: none; }
+  .appearance-control, .review-tool, .review-clear { display: none; }
+  /* The result count stays, so a filtered print says it is filtered. */
+  .review-tools { margin: 0.5rem 0; padding: 0; border: 0; background: none; }
+  .review-showing { text-align: left; }
   .review-grid { columns: 2 22rem; column-gap: 0.75rem; }
-  .review-card { border-color: #000; background: none; }
-  .review-card-head { break-after: avoid; }
-  .review-card-preparation { background: none; }
+  .review-card { border-color: #000; background: none; box-shadow: none; }
+  .review-card-head { break-after: avoid; background: none; border-bottom-color: #000; }
+  .review-preparation { background: none; border-left-color: #000; }
 }

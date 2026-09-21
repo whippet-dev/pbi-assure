@@ -53,7 +53,8 @@ public sealed class ApparentlyUnusedReportRendererTests
 
         Assert.Contains("<h1>8 items to review</h1>", html, StringComparison.Ordinal);
         // The headline is the count; the only summary line is the limited part, linking to its explanation.
-        Assert.Contains("<p class=\"review-limited-summary\"><a href=\"#review-limitations\">1 item has limited usage checks</a>.</p>", html, StringComparison.Ordinal);
+        Assert.Contains("<p class=\"review-limited-summary\"><strong>Checks limited</strong> for 1 of 8 items. <a href=\"#review-limitations\">Why checks are limited</a></p>", html, StringComparison.Ordinal);
+        Assert.DoesNotContain("limited usage checks", html, StringComparison.Ordinal);
         Assert.DoesNotContain("<dt>Checks complete", html, StringComparison.Ordinal);
         Assert.DoesNotContain("Checks complete 7", html, StringComparison.Ordinal);
         // The lightweight page keeps its metadata quiet: scan time only, no local project path.
@@ -76,15 +77,21 @@ public sealed class ApparentlyUnusedReportRendererTests
         var html = ApparentlyUnusedReportRenderer.Render(inventory);
 
         var limitation = Assert.Single(inventory.AnalysisLimitations, item => item.LimitationId == "PBI-LIMIT-MODEL-FUNCTION");
-        Assert.Contains("<li id=\"limitation-1\"><code>PBI-LIMIT-MODEL-FUNCTION</code>", html, StringComparison.Ordinal);
-        Assert.Contains(HtmlEncode(limitation.Reason), html, StringComparison.Ordinal);
-        Assert.Contains("Limited by <a href=\"#limitation-1\">PBI-LIMIT-MODEL-FUNCTION</a>", html, StringComparison.Ordinal);
+        // Plain language leads the explanation; the identifier and artefact follow as evidence.
         Assert.Contains("Why some checks are limited", html, StringComparison.Ordinal);
+        Assert.Contains(ApparentlyUnusedReportRenderer.LimitedExplanation, html, StringComparison.Ordinal);
+        var entry = html[html.IndexOf("<li id=\"limitation-1\">", StringComparison.Ordinal)..];
+        entry = entry[..entry.IndexOf("</li>", StringComparison.Ordinal)];
+        Assert.True(entry.IndexOf(HtmlEncode(limitation.Reason), StringComparison.Ordinal) < entry.IndexOf("<code>PBI-LIMIT-MODEL-FUNCTION</code>", StringComparison.Ordinal));
+        Assert.Contains("<p class=\"review-limitation-id\">Limitation <code>PBI-LIMIT-MODEL-FUNCTION</code> · model Limited · <code>Limited.SemanticModel/definition/functions.tmdl</code></p>", entry, StringComparison.Ordinal);
 
-        // The qualified object is the one in the limited model, and it is the only one marked.
+        // The qualified object is the one in the limited model, and it is the only one marked. Its row
+        // offers the question, with the identifiers kept beside it as quotable evidence.
         var facts = Card(html, "Facts");
         Assert.Contains("data-confidence=\"QualifiedByLimitation\"", facts, StringComparison.Ordinal);
         Assert.Contains("<span class=\"badge badge-review\">Checks limited</span>", facts, StringComparison.Ordinal);
+        Assert.Contains("<p class=\"review-row-note review-row-limitations\"><a href=\"#limitation-1\">Why checks are limited</a><span class=\"review-row-limitation-ids\"> · <code>PBI-LIMIT-MODEL-FUNCTION</code> · <code>PBI-LIMIT-MODEL-UNRESOLVED-REFERENCE</code></span></p>", facts, StringComparison.Ordinal);
+        Assert.DoesNotContain("Limited by", html, StringComparison.Ordinal);
         Assert.DoesNotContain("data-confidence=\"QualifiedByLimitation\"", Card(html, "Sales"), StringComparison.Ordinal);
         Assert.DoesNotContain("badge", Card(html, "Sales"), StringComparison.Ordinal);
     }
@@ -99,7 +106,9 @@ public sealed class ApparentlyUnusedReportRendererTests
         Assert.Contains("<p class=\"eyebrow\">Table · Model</p>", sales, StringComparison.Ordinal);
         Assert.Contains("<p class=\"eyebrow\">Table · Limited</p>", Card(html, "Facts"), StringComparison.Ordinal);
         Assert.Contains("<h2>Sales</h2>", sales, StringComparison.Ordinal);
-        Assert.Contains("<p class=\"review-card-count\">4 items to review</p>", sales, StringComparison.Ordinal);
+        Assert.Contains("<p class=\"review-card-count\" data-total=\"4\">4 items to review</p>", sales, StringComparison.Ordinal);
+        // The header is its own band above the body, in that order.
+        Assert.True(sales.IndexOf("<header class=\"review-card-head\">", StringComparison.Ordinal) < sales.IndexOf("<div class=\"review-card-body\">", StringComparison.Ordinal));
         Assert.Contains("<span class=\"review-row-type\">Measure</span>", sales, StringComparison.Ordinal);
         Assert.Contains("<span class=\"review-row-type\">Column</span>", sales, StringComparison.Ordinal);
         Assert.Contains("<p class=\"review-row-note review-description\">Free text captured at order entry.</p>", sales, StringComparison.Ordinal);
@@ -107,8 +116,10 @@ public sealed class ApparentlyUnusedReportRendererTests
 
         var lookup = Card(html, "Lookup");
         Assert.Contains("No report or semantic-model usage was found for any item in this table.", lookup, StringComparison.Ordinal);
-        Assert.Contains("<strong>Used in Power Query.</strong> This table’s query helps prepare Sales.", lookup, StringComparison.Ordinal);
-        Assert.Contains("Power Query use: Merge key in Sales</p>", lookup, StringComparison.Ordinal);
+        Assert.Contains("<div class=\"review-card-note review-preparation\"><p class=\"review-preparation-label\">Power Query preparation</p><p>This table’s query helps prepare Sales.</p></div>", lookup, StringComparison.Ordinal);
+        Assert.Contains("<p class=\"review-row-note review-row-evidence\"><span class=\"review-note-label\">Preparation evidence:</span> Merge key in Sales</p>", lookup, StringComparison.Ordinal);
+        Assert.DoesNotContain("Used in Power Query", html, StringComparison.Ordinal);
+        Assert.DoesNotContain("Power Query use:", html, StringComparison.Ordinal);
         Assert.DoesNotContain("review-row-evidence", sales, StringComparison.Ordinal);
         Assert.DoesNotContain("Still needed", html, StringComparison.Ordinal);
         Assert.DoesNotContain("Whole table", html, StringComparison.Ordinal);
@@ -120,6 +131,7 @@ public sealed class ApparentlyUnusedReportRendererTests
         Assert.Contains("id=\"review-search\"", html, StringComparison.Ordinal);
         Assert.Contains("id=\"review-type\"", html, StringComparison.Ordinal);
         Assert.Contains("<option value=\"QualifiedByLimitation\">Checks limited</option>", html, StringComparison.Ordinal);
+        Assert.Contains("<option value=\"Established\">No identified limitations</option>", html, StringComparison.Ordinal);
         Assert.Contains("Showing all 8 items.", html, StringComparison.Ordinal);
         // Cards pack into balanced columns without splitting; the layout needs no script.
         Assert.Contains(".review-grid { columns: 2 26rem;", html, StringComparison.Ordinal);
@@ -183,6 +195,10 @@ public sealed class ApparentlyUnusedReportRendererTests
         Assert.Empty(ApparentlyUnusedReportRenderer.Select(inventory));
         // The generated date table still has apparently unused objects; they are not the developer's.
         Assert.Contains(inventory.SemanticObjectUsages, usage => usage.UsageState == SemanticUsageStates.ApparentlyUnused);
+        Assert.Contains("<h2 id=\"review-zero-title\">No apparently unused items found</h2>", html, StringComparison.Ordinal);
+        Assert.DoesNotContain("Nothing to review", html, StringComparison.Ordinal);
+        // The filtered no-match state is a different thing and is not on this page (its CSS is).
+        Assert.DoesNotContain("id=\"review-empty\"", html, StringComparison.Ordinal);
         Assert.Contains(ApparentlyUnusedReportRenderer.ZeroStateMessage, html, StringComparison.Ordinal);
         Assert.Contains("This is not a statement that the model contains no unused items", html, StringComparison.Ordinal);
         Assert.DoesNotContain("review-row\"", html, StringComparison.Ordinal);
@@ -207,6 +223,103 @@ public sealed class ApparentlyUnusedReportRendererTests
         Assert.DoesNotContain("Accessibility review", html, StringComparison.Ordinal);
         Assert.DoesNotContain("Model relationships", html, StringComparison.Ordinal);
         Assert.True(html.Length < HtmlReportRenderer.Render(inventory).Length / 2);
+    }
+
+    /// <summary>
+    /// The toolbar carries labelled controls, a Clear filters action that is hidden until a filter
+    /// applies, and a no-match state distinct from the true zero state. The filter script owns the
+    /// counts: each card's "shown of total" while filtering, the result line, and the empty state.
+    /// </summary>
+    [Fact]
+    public void TheToolbarCarriesClearFiltersAndANoMatchState()
+    {
+        var html = ApparentlyUnusedReportRenderer.Render(Scan());
+        var tools = html[html.IndexOf("<div class=\"review-tools\"", StringComparison.Ordinal)..html.IndexOf("<div class=\"review-grid\">", StringComparison.Ordinal)];
+
+        Assert.Contains("<div class=\"review-tool review-tool-search\"><label for=\"review-search\">Find</label><input type=\"search\" id=\"review-search\"", tools, StringComparison.Ordinal);
+        Assert.Contains("<label for=\"review-type\">Type</label>", tools, StringComparison.Ordinal);
+        Assert.Contains("<label for=\"review-confidence\">Checks</label>", tools, StringComparison.Ordinal);
+        Assert.Contains("<button type=\"button\" class=\"secondary-button review-clear\" id=\"review-clear\" hidden>Clear filters</button>", tools, StringComparison.Ordinal);
+        Assert.Contains("<div class=\"review-empty\" id=\"review-empty\" hidden><p>No items match these filters.</p><button type=\"button\" class=\"secondary-button review-clear\">Clear filters</button></div>", tools, StringComparison.Ordinal);
+
+        var script = html[html.IndexOf("const clearButtons", StringComparison.Ordinal)..];
+        Assert.Contains("count.textContent = shown === total ? plural(total) + ' to review' : shown + ' of ' + plural(total);", script, StringComparison.Ordinal);
+        Assert.Contains("? 'Showing ' + visible + ' of ' + plural(rows.length) + '.'", script, StringComparison.Ordinal);
+        Assert.Contains(": 'Showing all ' + plural(rows.length) + '.'", script, StringComparison.Ordinal);
+        Assert.Contains("empty.hidden = !(filtering && visible === 0)", script, StringComparison.Ordinal);
+        Assert.Contains("button.hidden = !filtering", script, StringComparison.Ordinal);
+        Assert.Contains("search?.focus()", script, StringComparison.Ordinal);
+        // A card with nothing shown is hidden, as before; the count is rewritten from its total.
+        Assert.Contains("card.hidden = shown === 0;", script, StringComparison.Ordinal);
+        Assert.Contains("Number(count.dataset.total)", script, StringComparison.Ordinal);
+    }
+
+    /// <summary>The vocabulary is Slice 1's: Checks limited, No identified limitations, nothing complete.</summary>
+    [Fact]
+    public void TheVocabularyIsChecksLimitedThroughout()
+    {
+        var html = ApparentlyUnusedReportRenderer.Render(Scan());
+
+        Assert.Contains("Checks limited means missing or partly understood metadata could affect this result. The usage classification has not changed.", html, StringComparison.Ordinal);
+        Assert.Contains(">Why checks are limited</a>", html, StringComparison.Ordinal);
+        foreach (var retired in new[] { "Checks complete", "Usage check incomplete", "Nothing to review", "limited usage checks", "see why above" })
+        {
+            Assert.DoesNotContain(retired, html, StringComparison.Ordinal);
+        }
+    }
+
+    /// <summary>
+    /// The page's top summary keeps its restraint: project, count, lede, the preparation concept in
+    /// the caution, and a limited-checks line only when something is limited — never an all-clear.
+    /// </summary>
+    [Fact]
+    public void TheTopSummaryStaysRestrained()
+    {
+        var limited = ApparentlyUnusedReportRenderer.Render(Scan());
+        var complete = ApparentlyUnusedReportRenderer.Render(Scan(includeLimitedModel: false));
+
+        foreach (var html in new[] { limited, complete })
+        {
+            Assert.Contains("<p class=\"eyebrow\">Model</p>", html, StringComparison.Ordinal);
+            Assert.Contains("PBI Assure found no report or semantic-model usage for these items. Review them before removing anything.", html, StringComparison.Ordinal);
+            Assert.Contains("Power Query preparation evidence may still exist", html, StringComparison.Ordinal);
+            Assert.DoesNotContain("class=\"metric", html, StringComparison.Ordinal);
+            Assert.DoesNotContain("all checks complete", html, StringComparison.OrdinalIgnoreCase);
+        }
+
+        Assert.Contains("class=\"review-limited-summary\"", limited, StringComparison.Ordinal);
+        Assert.DoesNotContain("class=\"review-limited-summary\"", complete, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// The stylesheet the page inlines is the one the repository owns, and its treatments are the
+    /// restrained ones: three surfaces, hairlines, the accent kept for controls, the review colour for
+    /// limited checks, no gradient, no warning colour on preparation, no success colour on zero.
+    /// </summary>
+    [Fact]
+    public void TheStylesheetKeepsTheRestrainedTreatments()
+    {
+        var css = DesignSystem.UnusedReview;
+
+        Assert.Contains(".review-card-head { display: grid; grid-template-columns: minmax(0, 1fr); gap: 0.125rem; padding: 0.75rem 1rem 0.625rem; border-bottom: 1px solid var(--pa-line); background: var(--pa-surface-2); }", css, StringComparison.Ordinal);
+        Assert.Contains(".review-card-head .eyebrow { margin: 0; color: var(--pa-accent); }", css, StringComparison.Ordinal);
+        Assert.Contains(".review-preparation { display: grid; grid-template-columns: minmax(0, 1fr); gap: 0.125rem; padding: 0.5rem 0.75rem; border-left: 3px solid var(--pa-accent-line);", css, StringComparison.Ordinal);
+        // Every grid that holds prose can shrink below its content, so long names and paths wrap on a phone.
+        Assert.Contains(".review-limitations li { display: grid; grid-template-columns: minmax(0, 1fr);", css, StringComparison.Ordinal);
+        Assert.Contains(".review-row { display: grid; grid-template-columns: minmax(0, 1fr);", css, StringComparison.Ordinal);
+        Assert.Contains(".review-grid { columns: 2 26rem; column-gap: 1rem; }", css, StringComparison.Ordinal);
+        Assert.Contains(".review-tool-search { flex: 1 1 16rem; }", css, StringComparison.Ordinal);
+        Assert.Contains("@media (max-width: 40rem)", css, StringComparison.Ordinal);
+        Assert.Contains(".review-tool-search { flex-basis: 100%; }", css, StringComparison.Ordinal);
+        Assert.DoesNotContain("gradient", css, StringComparison.Ordinal);
+        Assert.DoesNotContain("--pa-shadow-2", css, StringComparison.Ordinal);
+        Assert.DoesNotContain("--pa-warning", css, StringComparison.Ordinal);
+        Assert.DoesNotContain("--pa-used", css, StringComparison.Ordinal);
+        // Print keeps the result line so a filtered print says so, and drops only the controls.
+        var print = css[css.IndexOf("@media print", StringComparison.Ordinal)..];
+        Assert.Contains(".appearance-control, .review-tool, .review-clear { display: none; }", print, StringComparison.Ordinal);
+        Assert.DoesNotContain(".review-showing { display: none", print, StringComparison.Ordinal);
+        Assert.DoesNotContain(".review-tools, .appearance-control { display: none; }", print, StringComparison.Ordinal);
     }
 
     // ---- Helpers ----------------------------------------------------------------------------
