@@ -124,7 +124,7 @@ public sealed class PrivacyWorkflowTests(PrivacyE2EFixture fixture)
         monitor.Begin("Exports");
         var outputRoot = PrepareOutputDirectory("online");
         var htmlDownload = await page.RunAndWaitForDownloadAsync(() =>
-            page.GetByRole(AriaRole.Button, new() { Name = "Download HTML report", Exact = true }).ClickAsync());
+            page.GetByRole(AriaRole.Button, new() { Name = "Download interactive report", Exact = true }).ClickAsync());
         var htmlPath = Path.Combine(outputRoot, htmlDownload.SuggestedFilename);
         await htmlDownload.SaveAsAsync(htmlPath);
         await page.Locator("details.legacy-output > summary").ClickAsync();
@@ -185,7 +185,7 @@ public sealed class PrivacyWorkflowTests(PrivacyE2EFixture fixture)
         monitor.Begin("Exports");
         var outputRoot = PrepareOutputDirectory("offline");
         var htmlDownload = await page.RunAndWaitForDownloadAsync(() =>
-            page.GetByRole(AriaRole.Button, new() { Name = "Download HTML report", Exact = true }).ClickAsync());
+            page.GetByRole(AriaRole.Button, new() { Name = "Download interactive report", Exact = true }).ClickAsync());
         var htmlPath = Path.Combine(outputRoot, htmlDownload.SuggestedFilename);
         await htmlDownload.SaveAsAsync(htmlPath);
         await page.Locator("details.legacy-output > summary").ClickAsync();

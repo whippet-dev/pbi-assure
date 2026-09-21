@@ -4,7 +4,11 @@ namespace PbiAssure.Web;
 
 public static class BrowserDownloadFileNames
 {
+    /// <summary>The interactive report. The name predates the review and is kept for compatibility.</summary>
     public static string Html(string projectDisplayName) => $"{BaseName(projectDisplayName)}.pbiassure.html";
+
+    /// <summary>The apparently unused review, distinct from the interactive report saved beside it.</summary>
+    public static string ApparentlyUnusedHtml(string projectDisplayName) => $"{BaseName(projectDisplayName)}.apparently-unused.html";
 
     public static string SemanticUsageCsv(string projectDisplayName) => $"{BaseName(projectDisplayName)}.semantic-usage.csv";
 

@@ -5,16 +5,32 @@ namespace PbiAssure.Core.Tests;
 /// <summary>
 /// Opening a tab is not delivering to it. Before the handshake, the browser application announced that
 /// the report had opened as soon as window.open returned a window — even if the viewer never loaded,
-/// never received the payload, or refused it. Success now means the viewer said so.
+/// never received the payload, or refused it. Success now means the viewer said so, and every message
+/// names the report it is about, so the apparently unused review is never described as the
+/// interactive report or vice versa.
 /// </summary>
 public sealed class WebReportViewerHandshakeTests
 {
-    [Fact]
-    public void AnAcknowledgedDeliveryIsTheOnlySuccess()
+    public static TheoryData<WebReportKind> Reports => new(WebReportKind.InteractiveReport, WebReportKind.ApparentlyUnusedReview);
+
+    [Theory]
+    [MemberData(nameof(Reports))]
+    public void AnAcknowledgedDeliveryIsTheOnlySuccess(WebReportKind report)
     {
         Assert.True(WebReportViewerStatus.IsOpened(WebReportViewerStatus.Opened));
-        Assert.Equal("HTML report opened in a new tab.",
-            WebReportViewerStatus.Describe(WebReportViewerStatus.Opened));
+        Assert.Equal($"{report.SentenceName} opened in a new tab.",
+            WebReportViewerStatus.Describe(WebReportViewerStatus.Opened, report));
+    }
+
+    [Fact]
+    public void TheTwoReportsAreNamedAsTheProductNamesThem()
+    {
+        Assert.Equal("Interactive report opened in a new tab.",
+            WebReportViewerStatus.Describe(WebReportViewerStatus.Opened, WebReportKind.InteractiveReport));
+        Assert.Equal("Apparently unused review opened in a new tab.",
+            WebReportViewerStatus.Describe(WebReportViewerStatus.Opened, WebReportKind.ApparentlyUnusedReview));
+        Assert.Equal("Opening interactive report…", WebReportViewerStatus.Opening(WebReportKind.InteractiveReport));
+        Assert.Equal("Opening apparently unused review…", WebReportViewerStatus.Opening(WebReportKind.ApparentlyUnusedReview));
     }
 
     [Theory]
@@ -26,23 +42,45 @@ public sealed class WebReportViewerHandshakeTests
     {
         Assert.False(WebReportViewerStatus.IsOpened(status));
 
-        var message = WebReportViewerStatus.Describe(status);
-        Assert.NotEqual(WebReportViewerStatus.Describe(WebReportViewerStatus.Opened), message);
-        Assert.DoesNotContain("opened in a new tab", message, StringComparison.OrdinalIgnoreCase);
-        // Every failure leaves somewhere else to go.
-        Assert.Contains("download the HTML report", message, StringComparison.OrdinalIgnoreCase);
+        foreach (var report in new[] { WebReportKind.InteractiveReport, WebReportKind.ApparentlyUnusedReview })
+        {
+            var message = WebReportViewerStatus.Describe(status, report);
+            Assert.NotEqual(WebReportViewerStatus.Describe(WebReportViewerStatus.Opened, report), message);
+            Assert.DoesNotContain("opened in a new tab", message, StringComparison.OrdinalIgnoreCase);
+            // Every failure leaves somewhere else to go, and it is the same report's download.
+            Assert.Contains($"{report.DownloadName} to save the {report.Name} instead", message, StringComparison.Ordinal);
+        }
+    }
+
+    /// <summary>Recovery advice for one report never points at the other one.</summary>
+    [Theory]
+    [InlineData(WebReportViewerStatus.Blocked)]
+    [InlineData(WebReportViewerStatus.TimedOut)]
+    [InlineData(WebReportViewerStatus.Rejected)]
+    [InlineData(WebReportViewerStatus.Failed)]
+    public void RecoveryIsReportSpecific(string status)
+    {
+        var review = WebReportViewerStatus.Describe(status, WebReportKind.ApparentlyUnusedReview);
+        Assert.Contains("apparently unused review", review, StringComparison.Ordinal);
+        Assert.DoesNotContain("interactive report", review, StringComparison.Ordinal);
+        Assert.DoesNotContain("HTML report", review, StringComparison.Ordinal);
+
+        var interactive = WebReportViewerStatus.Describe(status, WebReportKind.InteractiveReport);
+        Assert.Contains("interactive report", interactive, StringComparison.Ordinal);
+        Assert.DoesNotContain("apparently unused", interactive, StringComparison.Ordinal);
     }
 
     [Fact]
     public void ATimeoutIsDistinguishedFromABlockedTab()
     {
         // They need different advice: one is a pop-up setting, the other is a tab that is already open.
+        var report = WebReportKind.InteractiveReport;
         Assert.NotEqual(
-            WebReportViewerStatus.Describe(WebReportViewerStatus.Blocked),
-            WebReportViewerStatus.Describe(WebReportViewerStatus.TimedOut));
-        Assert.Contains("pop-ups", WebReportViewerStatus.Describe(WebReportViewerStatus.Blocked),
+            WebReportViewerStatus.Describe(WebReportViewerStatus.Blocked, report),
+            WebReportViewerStatus.Describe(WebReportViewerStatus.TimedOut, report));
+        Assert.Contains("pop-ups", WebReportViewerStatus.Describe(WebReportViewerStatus.Blocked, report),
             StringComparison.OrdinalIgnoreCase);
-        Assert.Contains("did not confirm", WebReportViewerStatus.Describe(WebReportViewerStatus.TimedOut),
+        Assert.Contains("did not confirm", WebReportViewerStatus.Describe(WebReportViewerStatus.TimedOut, report),
             StringComparison.OrdinalIgnoreCase);
     }
 
@@ -55,20 +93,47 @@ public sealed class WebReportViewerHandshakeTests
     {
         // Case-sensitive on purpose: only the exact contract value counts as acknowledged.
         Assert.False(WebReportViewerStatus.IsOpened(status));
-        Assert.Equal(WebReportViewerStatus.Describe(WebReportViewerStatus.Failed),
-            WebReportViewerStatus.Describe(status));
+        Assert.Equal(WebReportViewerStatus.Describe(WebReportViewerStatus.Failed, WebReportKind.InteractiveReport),
+            WebReportViewerStatus.Describe(status, WebReportKind.InteractiveReport));
+    }
+
+    /// <summary>
+    /// A download that has been handed to the browser is all that is known. The browser may still
+    /// prompt, block or cancel it, so the wording never claims the file was kept.
+    /// </summary>
+    [Theory]
+    [MemberData(nameof(Reports))]
+    public void ADownloadIsReportedAsStartedNotAsRetained(WebReportKind report)
+    {
+        var started = WebReportViewerStatus.DownloadStarted(report);
+        Assert.Equal($"Download started: {report.Name}.", started);
+        foreach (var overclaim in new[] { "saved", "downloaded locally", "retained", "kept" })
+        {
+            Assert.DoesNotContain(overclaim, started, StringComparison.OrdinalIgnoreCase);
+        }
+
+        Assert.Contains(report.Name, WebReportViewerStatus.DownloadFailed(report), StringComparison.Ordinal);
+        Assert.Contains(report.Name, WebReportViewerStatus.OpenFailed(report), StringComparison.Ordinal);
     }
 
     [Fact]
-    public void HomeAsksForTheStatusAndShowsWhatItDescribes()
+    public void HomeAsksForTheStatusAndShowsWhatItDescribesBesideEachReport()
     {
         var markup = File.ReadAllText(Path.Combine(
             FindRepositoryRoot(), "src", "PbiAssure.Web", "Pages", "Home.razor"));
 
         Assert.Contains("InvokeAsync<string>(\"pbiAssureDownload.open\"", markup, StringComparison.Ordinal);
-        Assert.Contains("WebReportViewerStatus.Describe(status)", markup, StringComparison.Ordinal);
-        // The old unconditional success string is gone from the page.
-        Assert.DoesNotContain("? \"HTML report opened in a new tab.\"", markup, StringComparison.Ordinal);
+        Assert.Contains("WebReportViewerStatus.Describe(status, WebReportKind.InteractiveReport)", markup, StringComparison.Ordinal);
+        Assert.Contains("WebReportViewerStatus.Describe(status, WebReportKind.ApparentlyUnusedReview)", markup, StringComparison.Ordinal);
+        Assert.Contains("WebReportViewerStatus.Opening(WebReportKind.InteractiveReport)", markup, StringComparison.Ordinal);
+        Assert.Contains("WebReportViewerStatus.Opening(WebReportKind.ApparentlyUnusedReview)", markup, StringComparison.Ordinal);
+        // The old unconditional success strings are gone from the page.
+        Assert.DoesNotContain("HTML report opened in a new tab.", markup, StringComparison.Ordinal);
+        Assert.DoesNotContain("downloaded locally", markup, StringComparison.Ordinal);
+        // Feedback lives inside the card of the action that caused it, not below the whole summary.
+        Assert.DoesNotContain("<p class=\"message\" role=\"status\">@outputMessage</p>", markup, StringComparison.Ordinal);
+        Assert.Contains("<p class=\"report-card-status\" role=\"status\">@interactiveReportMessage</p>", markup, StringComparison.Ordinal);
+        Assert.Contains("<p class=\"report-card-status\" role=\"status\">@unusedReviewMessage</p>", markup, StringComparison.Ordinal);
     }
 
     [Fact]

@@ -10,7 +10,7 @@ PBI Assure gives you a read-only snapshot of the tables, fields, calculations, q
 
 1. Save a Power BI Project (**PBIP**) using the structured **PBIR** report and **TMDL** model formats. See [preparation guidance](docs/preparing-power-bi-project.md) if you currently have a PBIX.
 2. Open the tool and choose the folder containing the `.pbip` file and its report and model folders.
-3. Select **Run analysis**, then start with the interactive HTML report.
+3. Select **Run analysis**, then choose the route that fits your task: open the **interactive report** to explore the project, open the **Apparently unused review** to work through cleanup candidates, or export metadata.
 4. Export a catalogue or usage mapping when you want to work with the metadata in a spreadsheet.
 
 After saving changes in Power BI Desktop, use **Analyse again** to read the current folder, including added, changed and deleted files. If you used the alternate folder picker, choose the folder again: that picker supplies a snapshot that cannot be refreshed in place.
@@ -35,7 +35,8 @@ See [what PBI Assure analyses](https://pbiassure.pages.dev/coverage) and the [ru
 
 | Output | Use it for |
 | --- | --- |
-| **Interactive HTML report** | Explore model usage, dependencies, Power Query, relationships, report structure, findings and Analysis Coverage. Search and filter the evidence; open it in the browser or download a self-contained report. |
+| **Interactive report** | Explore model usage, dependencies, Power Query, relationships, report structure, findings and Analysis Coverage. Search and filter the evidence; open it in a new tab or download a self-contained HTML file. |
+| **Apparently unused review** | A focused working list of the model items you authored for which no report or semantic-model usage was found in this project. Power Query preparation evidence may still exist; it is a review candidate, not a deletion recommendation. A focused view of the same analysis, not a separate one; open it in a new tab or download a self-contained HTML file. |
 | **Data Catalogue CSV** | One row per eligible developer-authored column or measure, including objects with no detected usage. Choose metadata such as usage, confidence, counts, user-facing evidence and descriptions. |
 | **Usage Mapping CSV** | One row per logical direct report usage: where and how an object is referenced, with optional technical provenance. This is not a transitive dependency export. |
 | **Semantic Usage CSV** | The existing fixed technical export, including semantic usage, Power Query column evidence, review flags, `ClassificationConfidence` and `QualifyingLimitations`. |
@@ -46,7 +47,7 @@ Data Catalogue and Usage Mapping offer selectable columns in the browser and Win
 
 Usage has five states: **Directly used**, **Indirectly used**, **Structurally required**, **Only used by unused items**, and **Apparently unused**.
 
-Confidence is separate. **Established** means this scan identified no limitation that qualifies that object's state within the analysed scope. **QualifiedByLimitation**, presented as an incomplete usage check, means missing or partly understood evidence could affect the conclusion. The usage state itself does not change. **Analysis Coverage** explains the causes for the affected model.
+Confidence is separate. **Established** means this scan identified no limitation that qualifies that object's state within the analysed scope. **QualifiedByLimitation**, shown as **Checks limited**, means missing or partly understood metadata could affect that result. Only the results a limitation could actually affect are qualified; the usage state itself does not change. **Analysis Coverage** explains the causes for the affected model.
 
 **Apparently unused is a review candidate, never permission to delete.** Other reports, external consumers and runtime behaviour may use an object that this project does not mention. A CSV review flag does not override its confidence. See [usage classification](docs/usage-classification.md).
 

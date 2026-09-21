@@ -11,7 +11,7 @@
 
     <div class="export-config">
         <fieldset class="export-preset-options">
-            <legend>Preset</legend>
+            <legend>Export type</legend>
             <div class="export-preset-choices">
                 @foreach (var preset in Presets)
                 {
@@ -98,7 +98,7 @@
             var csv = ExportCsvRenderer.Render(Inventory, new ExportRequest(selectedPreset, selectedColumns.ToArray()));
             await JS.InvokeVoidAsync("pbiAssureDownload.save", BrowserDownloadFileNames.ExportCsv(ProjectDisplayName, selectedPreset),
                 "text/csv;charset=utf-8", "\uFEFF" + csv);
-            message = $"{PresetLabel(selectedPreset)} CSV generated and downloaded locally.";
+            message = $"Download started: {PresetLabel(selectedPreset)} CSV.";
         }
         catch (ArgumentException)
         {

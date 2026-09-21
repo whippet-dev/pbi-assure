@@ -277,37 +277,36 @@ button:disabled:hover { background: var(--pa-accent); border-color: var(--pa-acc
 .output-actions > h2 { margin: 0; }
 .output-lede { margin: -0.25rem 0 0.25rem; max-width: 82ch; color: var(--pa-text-2); font-size: var(--pa-t-sm); }
 
-/* The recommended next step reads as one banner row; the two supporting outputs sit beside each
-   other underneath. Reading order still runs report, export, download, legacy. */
-.output-primary {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 0.5rem 1rem;
-  padding: 0.625rem 0.875rem;
+/* One analysis, two report experiences. Each is a card with its own heading, a one-line
+   explanation, a filled primary action and an outlined download beside it, and a status line that
+   speaks for that card alone. The cards sit side by side where there is room and stack below it. */
+.report-cards { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.625rem; }
+
+.report-card {
+  display: grid;
+  align-content: start;
+  gap: 0.5rem;
+  padding: 0.75rem 0.875rem;
   border: 1px solid var(--pa-accent-line);
   border-radius: var(--pa-r2);
   background: var(--pa-accent-soft);
 }
 
-.output-primary button { min-height: 2.375rem; padding: 0.375rem 0.875rem; font-size: var(--pa-t-md); }
-.output-primary p { margin: 0; max-width: 62ch; color: var(--pa-text-2); font-size: var(--pa-t-sm); }
+.report-card h3 { margin: 0; font-size: var(--pa-t-md); }
+.report-card p { margin: 0; max-width: 62ch; color: var(--pa-text-2); font-size: var(--pa-t-sm); line-height: 1.45; }
+.report-card-actions { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+.report-card-actions button { min-height: 2.375rem; padding: 0.375rem 0.875rem; font-size: var(--pa-t-md); }
 
-/* Two routes into the analysis share the banner: the full report and the apparently-unused
-   review list. Each keeps its button beside its one-line explanation. */
-.output-primary .output-route { display: flex; flex: 1 1 24rem; flex-wrap: wrap; align-items: center; gap: 0.5rem 0.875rem; }
-.output-primary .output-route + .output-route { padding-left: 1rem; border-left: 1px solid var(--pa-accent-line); }
-@media (max-width: 48rem) {
-  .output-primary .output-route + .output-route { padding-left: 0; padding-top: 0.625rem; border-left: 0; border-top: 1px solid var(--pa-accent-line); }
-}
+/* Feedback stays beside the action that caused it. The line is always present so a live region
+   exists before anything is announced into it, and takes no room while it has nothing to say. */
+.report-card-status { margin: 0; max-width: none; padding: 0.375rem 0.625rem; border: 1px solid var(--pa-line); border-left: 3px solid var(--pa-info); border-radius: var(--pa-r2); background: var(--pa-surface); color: var(--pa-text); font-size: var(--pa-t-sm); }
+.report-card-status:empty { padding: 0; border: 0; }
 
-.output-secondary { display: grid; grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr); gap: 0.625rem; }
+.output-note { margin: 0; color: var(--pa-text-3); font-size: var(--pa-t-xs); }
 
-/* While the export workspace is open its card carries the accent, so the panel below it reads as
-   belonging to that action rather than floating after both. */
-.output-secondary .output-action:has(button[aria-expanded="true"]) { border-color: var(--pa-accent-line); }
-
-.output-secondary .output-action {
+/* Export work is a different kind of output from the two reports: a plain surface, a hairline
+   rail and an outlined action, so it never reads as a third report. */
+.export-area {
   display: grid;
   justify-items: start;
   gap: 0.375rem;
@@ -317,9 +316,14 @@ button:disabled:hover { background: var(--pa-accent); border-color: var(--pa-acc
   background: var(--pa-surface);
 }
 
+.export-area:has(> button[aria-expanded="true"]) { border-color: var(--pa-accent-line); }
+.export-area h3 { margin: 0; font-size: var(--pa-t-md); }
+.export-area > p { margin: 0; max-width: 62ch; color: var(--pa-text-2); font-size: var(--pa-t-sm); line-height: 1.45; }
+.export-area .export-panel { justify-self: stretch; margin-top: 0.25rem; }
+
 .output-action { display: grid; justify-items: start; gap: 0.375rem; }
 .output-action p { margin: 0; max-width: 62ch; color: var(--pa-text-2); font-size: var(--pa-t-sm); line-height: 1.45; }
-.output-actions .legacy-output { margin: 0; }
+.export-area .legacy-output { margin: 0.25rem 0 0; justify-self: stretch; }
 .legacy-output .output-action { margin-top: 0.5rem; }
 .downloads { display: flex; flex-wrap: wrap; gap: 0.625rem; margin-top: 1.25rem; }
 
@@ -497,7 +501,7 @@ button:disabled:hover { background: var(--pa-accent); border-color: var(--pa-acc
   /* Two-column workspaces need real room; below a tablet width they read better stacked. */
   .guidance-steps { grid-template-columns: minmax(0, 1fr); }
   .export-config { grid-template-columns: minmax(0, 1fr); }
-  .output-secondary { grid-template-columns: minmax(0, 1fr); }
+  .report-cards { grid-template-columns: minmax(0, 1fr); }
   .project-metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .project-metrics .metric:last-child { grid-column: 1 / -1; }
   .information-definitions div { grid-template-columns: minmax(0, 1fr); gap: 0.125rem; }
@@ -520,6 +524,10 @@ button:disabled:hover { background: var(--pa-accent); border-color: var(--pa-acc
   .guidance-panel, .picker, .export-panel, .information-panel { padding: 1rem; }
   .project-bar { align-items: stretch; flex-direction: column; }
   .project-bar-actions button { flex: 1; }
+  /* Report actions fill the card so the two buttons stack as full-width rows rather than wrapping
+     into a ragged pair. */
+  .report-card-actions { flex-direction: column; align-items: stretch; }
+  .report-card-actions button { justify-self: stretch; }
   .project-metrics, .power-query-metrics { grid-template-columns: minmax(0, 1fr); }
   .project-metrics .metric:last-child { grid-column: auto; }
   .metrics { grid-template-columns: repeat(auto-fit, minmax(7rem, 1fr)); }
@@ -534,6 +542,9 @@ button:disabled:hover { background: var(--pa-accent); border-color: var(--pa-acc
 
 .coverage-page { line-height: 1.6; }
 .coverage-page > header { display: grid; gap: 0.5rem; }
+/* What this page is, against the Analysis coverage section a generated report carries: the two
+   are easy to conflate, so the distinction is stated once, up front, as a quiet note. */
+.coverage-distinction { margin: 0; max-width: 82ch; padding: 0.5rem 0.75rem; border: 1px solid var(--pa-line); border-left: 3px solid var(--pa-info); border-radius: var(--pa-r2); background: var(--pa-surface); color: var(--pa-text-2); font-size: var(--pa-t-sm); }
 
 /* Three facts about what a scan reads. Divided by hairlines like the counts rail, not boxed. */
 .coverage-scope {

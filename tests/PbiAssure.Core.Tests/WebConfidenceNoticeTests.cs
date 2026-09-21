@@ -21,7 +21,7 @@ public sealed class WebConfidenceNoticeTests
 
         Assert.True(summary.HasQualifiedAbsence);
         Assert.Equal(1, summary.QualifiedAbsenceCount);
-        Assert.Equal("1 model object has a classification based on incomplete local evidence.", summary.Detail);
+        Assert.Equal("1 model object classed as Apparently unused or Only used by unused items has limited checks.", summary.Detail);
     }
 
     [Fact]
@@ -33,7 +33,7 @@ public sealed class WebConfidenceNoticeTests
             Usage("Sales", "Cost", SemanticUsageStates.ApparentlyUnused, ClassificationConfidences.QualifiedByLimitation));
 
         Assert.Equal(3, summary.QualifiedAbsenceCount);
-        Assert.Equal("3 model objects have classifications based on incomplete local evidence.", summary.Detail);
+        Assert.Equal("3 model objects classed as Apparently unused or Only used by unused items have limited checks.", summary.Detail);
     }
 
     [Fact]
@@ -84,12 +84,38 @@ public sealed class WebConfidenceNoticeTests
     {
         Assert.Contains("Analysis coverage", WebConfidenceSummary.Guidance, StringComparison.Ordinal);
         Assert.Contains("interactive report", WebConfidenceSummary.Guidance, StringComparison.Ordinal);
-        Assert.Equal("Some absence-based results are qualified", WebConfidenceSummary.Headline);
+        Assert.Equal("Checks limited for some results", WebConfidenceSummary.Headline);
+        Assert.Equal(
+            "Checks limited means missing or partly understood metadata could affect this result. The usage classification has not changed.",
+            WebConfidenceSummary.Explanation);
 
         var markup = HomeMarkup();
         // The route reuses the report action already on this page rather than a new app route.
         Assert.Contains("Open interactive report", markup, StringComparison.Ordinal);
         Assert.DoesNotContain("href=\"coverage\"", ResultsSection(markup), StringComparison.Ordinal);
+        Assert.Contains("@WebConfidenceSummary.Explanation", ResultsSection(markup), StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// The notice counts both absence states, which is a wider population than the apparently unused
+    /// review lists, so its wording names both rather than reading as the review's own count.
+    /// </summary>
+    [Fact]
+    public void TheNoticeNamesBothAbsenceStatesAndNeverTheReviewCount()
+    {
+        var summary = Summarize(
+            Usage("Sales", "Amount", SemanticUsageStates.ApparentlyUnused, ClassificationConfidences.QualifiedByLimitation),
+            Usage("Sales", "Region", SemanticUsageStates.UsedOnlyByUnusedBranch, ClassificationConfidences.QualifiedByLimitation));
+
+        Assert.Contains("Apparently unused or Only used by unused items", summary.Detail, StringComparison.Ordinal);
+        foreach (var text in new[] { WebConfidenceSummary.Headline, summary.Detail, WebConfidenceSummary.Explanation, WebConfidenceSummary.Guidance })
+        {
+            Assert.DoesNotContain("apparently unused review", text, StringComparison.OrdinalIgnoreCase);
+            Assert.DoesNotContain("items to review", text, StringComparison.OrdinalIgnoreCase);
+            Assert.DoesNotContain("Usage check incomplete", text, StringComparison.Ordinal);
+            Assert.DoesNotContain("Checks complete", text, StringComparison.Ordinal);
+            Assert.DoesNotContain("QualifiedByLimitation", text, StringComparison.Ordinal);
+        }
     }
 
     [Fact]

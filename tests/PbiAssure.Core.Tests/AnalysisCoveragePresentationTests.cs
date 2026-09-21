@@ -39,7 +39,8 @@ public sealed class AnalysisCoveragePresentationTests
             limitations: [QualifyingLimitation()]);
 
         Assert.Contains("class=\"confidence-flag\"", html, StringComparison.Ordinal);
-        Assert.Contains(">Usage check incomplete<", html, StringComparison.Ordinal);
+        Assert.Contains(">Checks limited<", html, StringComparison.Ordinal);
+        Assert.DoesNotContain("Usage check incomplete", html, StringComparison.Ordinal);
         // Discoverable rather than tooltip-only: the marker navigates to the explanation.
         Assert.Contains("href=\"#analysis-coverage-model-1\"", html, StringComparison.Ordinal);
     }
@@ -369,10 +370,10 @@ public sealed class AnalysisCoveragePresentationTests
             Usage("Sales", "Amount", SemanticUsageStates.ApparentlyUnused, ClassificationConfidences.QualifiedByLimitation),
             limitations: [QualifyingLimitation()]);
 
-        Assert.Contains(">Usage check incomplete<", html, StringComparison.Ordinal);
+        Assert.Contains(">Checks limited<", html, StringComparison.Ordinal);
         // The same phrase appears in the model headline and in the usage guide, so a reader who follows
         // the marker finds the words they clicked.
-        Assert.True(Occurrences(html, "Usage check incomplete") >= 3);
+        Assert.True(Occurrences(html, "Checks limited") >= 3);
         Assert.Contains("could not fully check", html, StringComparison.Ordinal);
         // Wording that would blame the object or overstate what is known.
         foreach (var forbidden in new[] { "Possibly used", "Maybe used", "Low confidence", "Needs review", "Uncertain" })

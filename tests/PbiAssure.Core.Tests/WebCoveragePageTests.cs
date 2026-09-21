@@ -155,6 +155,13 @@ public sealed class WebCoveragePageTests
         Assert.Equal(["Established", "QualifiedByLimitation"], confidences.Order(StringComparer.Ordinal));
         Assert.Contains("qualified by limitation", coverage, StringComparison.Ordinal);
         Assert.Contains("established", coverage, StringComparison.Ordinal);
+        // The visible marker name, and the precision the qualifier now has.
+        Assert.Contains("<strong>Checks limited</strong>", coverage, StringComparison.Ordinal);
+        Assert.DoesNotContain("incomplete usage check", coverage, StringComparison.Ordinal);
+        Assert.Contains("only those objects are qualified", coverage, StringComparison.Ordinal);
+        Assert.Contains("does not qualify semantic usage, because no usage state is derived from Power Query references", coverage, StringComparison.Ordinal);
+        // Coverage the page, against Analysis coverage the section of a generated report.
+        Assert.Contains("This page describes the checks PBI Assure supports. Your report’s <strong>Analysis coverage</strong> explains any limitations found in your project.", coverage, StringComparison.Ordinal);
 
         // Counts we deliberately kept out of public copy, and a claim the architecture cannot support.
         Assert.DoesNotContain("of the 32", coverage, StringComparison.Ordinal);

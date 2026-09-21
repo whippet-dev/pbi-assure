@@ -4,7 +4,7 @@
 
 [Open the tool](https://pbiassure.pages.dev/) in current desktop Edge or Chrome. Choose the folder that directly contains one `.pbip` file, with its report and semantic-model folders. If starting with a PBIX, follow [preparation guidance](preparing-power-bi-project.md). A local TMSL `model.bim` model is rejected before output; a remote `byConnection` model is identified as remote, not analysed as a local model.
 
-Select **Run analysis**, then open the interactive HTML report. Search and filter model objects, query dependencies, relationships, report pages and findings. Technical evidence remains available when you need to trace a conclusion. Hidden or supporting report references can be used without being user-facing.
+Select **Run analysis**, then choose the route that fits your task. **Open interactive report** explores model objects, query dependencies, relationships, report pages and findings, with technical evidence available when you need to trace a conclusion. **Review apparently unused** opens a focused working list of the model items you authored for which no report or semantic-model usage was found in this project. Both open in a new tab; **Download report** and **Download review** save each as a self-contained HTML file. Hidden or supporting report references can be used without being user-facing.
 
 Save changes in Power BI Desktop before selecting **Analyse again**. With the primary folder picker, PBI Assure enumerates the folder again and reads current files, including additions and deletions. The alternate picker supplies a snapshot and requires folder reselection for another analysis. A failed refresh does not replace the previous completed result with partial results.
 
@@ -14,7 +14,8 @@ Browser limits are 10,000 visited entries, 5,000 accepted metadata files, 25 MiB
 
 ## Choosing an output
 
-- **Interactive HTML:** the detailed investigation report, including dependency evidence and Analysis Coverage. Open it in the browser or download a self-contained copy with search and filters.
+- **Interactive report:** the detailed investigation report, including dependency evidence and Analysis Coverage. Open it in a new tab or download a self-contained HTML copy with search and filters.
+- **Apparently unused review:** a focused list of developer-authored model items with no report or semantic-model usage found in this project. Power Query preparation evidence may still exist, and the list is not a deletion recommendation. It is a view of the same analysis, not a separate one; open it in a new tab or download it as `<Project>.apparently-unused.html`.
 - **Data Catalogue CSV:** one row per eligible developer-authored column or measure, including zero-usage objects. Select columns for usage, confidence, user-facing evidence, counts, contexts and optional Description.
 - **Usage Mapping CSV:** one row per logical direct report usage, grouped by location and context/role. Several technical evidence paths can support one row. Optional fields retain those paths; this is not a map of every transitive dependency.
 - **Semantic Usage CSV:** the fixed technical export with semantic usage, report locations, Power Query column evidence and review flags. `ClassificationConfidence` is `Established` or `QualifiedByLimitation`; `QualifyingLimitations` lists the relevant limitation identifiers. `ReviewCandidate=Yes` is not permission to delete, regardless of confidence.

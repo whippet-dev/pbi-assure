@@ -40,7 +40,7 @@
         <section aria-labelledby="about-understand">
             <h3 id="about-understand">What can it help me understand?</h3>
             <ul>
-                <li>Find model objects with no detected usage. <strong>Apparently unused</strong> means no use was found in the scanned project, not permission to delete.</li>
+                <li>Find model objects with no detected usage. <strong>Apparently unused</strong> means no report or semantic-model usage was found in the scanned project — not permission to delete, and Power Query preparation evidence may still exist.</li>
                 <li>Explore <strong>semantic usage</strong>: objects used directly by the report, needed indirectly by another object, or required by model structure.</li>
                 <li>Trace where fields and measures are used across report pages and visuals, and follow their semantic dependencies.</li>
                 <li>Understand Power Query dependencies, review model relationships, and inspect report, page and visual metadata.</li>
@@ -54,21 +54,23 @@
         <h2>@Outputs.Label</h2>
         <section aria-labelledby="about-outputs">
             <h3 id="about-outputs">What do I get after a scan?</h3>
+            <p>One analysis, offered three ways. Choose by the task in front of you: full exploration, a cleanup review, or export work. The two reports and the exports all read the same analysis; none runs a separate one.</p>
             <div class="information-outputs">
                 <div class="information-output information-output-primary">
-                    <p class="information-output-kicker">Start here</p>
-                    <h4>Interactive HTML report</h4>
-                    <p>Explore semantic usage, dependency evidence, Power Query, relationships and the report/page/visual inventory, with findings and specialist reviews alongside them. Open it in the browser or download it for later review.</p>
+                    <p class="information-output-kicker">Full exploration</p>
+                    <h4>Interactive report</h4>
+                    <p>Explore semantic usage, dependency evidence, Power Query, relationships and the report/page/visual inventory, with findings, specialist reviews and Analysis coverage alongside them. Open it in a new tab or download it as a self-contained HTML file.</p>
+                </div>
+                <div class="information-output information-output-primary">
+                    <p class="information-output-kicker">Cleanup review</p>
+                    <h4>Apparently unused review</h4>
+                    <p>A focused working list of the model items you authored for which no report or semantic-model usage was found in this project. Power Query preparation evidence may still exist, and the list is a review candidate, not a deletion recommendation. It is a focused view of the same analysis as the interactive report, not a separate analysis engine. Open it in a new tab or download it as a self-contained HTML file.</p>
                 </div>
                 <div class="information-output">
-                    <p class="information-output-kicker">One row per model object</p>
-                    <h4>Data Catalogue CSV</h4>
-                    <p>Reusable metadata for documentation, catalogues and governance: one row per eligible developer-authored column or measure, including objects with zero detected usage. Choose semantic usage, confidence, user-facing evidence, usage counts and contexts, and optional metadata such as Description.</p>
-                </div>
-                <div class="information-output">
-                    <p class="information-output-kicker">One row per report usage</p>
-                    <h4>Usage Mapping CSV</h4>
-                    <p>Answer “where and how is this field used?” with one row per logical direct report usage: a report location and context/role, rather than a separate row for every piece of supporting evidence. Includes report, page and visual provenance where applicable, user-facing evidence and optional technical provenance.</p>
+                    <p class="information-output-kicker">Export work</p>
+                    <h4>CSV exports</h4>
+                    <p><strong>Data Catalogue CSV</strong> — one row per model object. Reusable metadata for documentation, catalogues and governance: one row per eligible developer-authored column or measure, including objects with zero detected usage. Choose semantic usage, confidence, user-facing evidence, usage counts and contexts, and optional metadata such as Description.</p>
+                    <p><strong>Usage Mapping CSV</strong> — one row per report usage. Answer “where and how is this field used?” with one row per logical direct report usage: a report location and context/role, rather than a separate row for every piece of supporting evidence. Includes report, page and visual provenance where applicable, user-facing evidence and optional technical provenance.</p>
                 </div>
             </div>
             <p class="information-definition"><strong>UserFacing</strong> describes whether qualifying direct report-presentation or intentional-interaction evidence was found. It is separate from semantic usage: directly used does not automatically mean Yes. No means no qualifying evidence was found, not proof that users can never encounter the object; Unclear means the retained direct context cannot be classified confidently.</p>
@@ -79,8 +81,7 @@
             <ol>
                 <li>Prepare and select a supported structured Power BI project. Analyse includes preparation guidance.</li>
                 <li>Run the analysis.</li>
-                <li>Start with the interactive HTML report.</li>
-                <li>Export catalogue or usage metadata when useful.</li>
+                <li>Choose the route that fits your task: open the interactive report to explore the project, open the Apparently unused review to work through cleanup candidates, or export CSV metadata for further work. None of these has to come first.</li>
                 <li>Review the evidence in context before making changes.</li>
                 <li>Check generated files for sensitive metadata before sharing.</li>
             </ol>

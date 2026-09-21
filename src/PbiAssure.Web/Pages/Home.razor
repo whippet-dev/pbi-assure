@@ -24,7 +24,7 @@
                 <li>See which pages and visuals use a particular column or measure</li>
                 <li>Understand what depends on what across measures, tables and Power Query</li>
                 <li>See how tables relate to one another, and where security roles apply</li>
-                <li>Check for common accessibility, formatting and theme issues</li>
+                <li>Check selected accessibility settings and theme differences</li>
                 <li>Export a data catalogue and a usage list to work through in Excel</li>
             </ul>
             <p class="coverage-pointer">Want the technical detail? <a href="coverage">See exactly what PBI Assure analyses</a>.</p>
@@ -98,40 +98,47 @@
         var assurance = WebAssuranceSummary.FromFindings(inventory.Findings);
         var confidence = WebConfidenceSummary.FromInventory(inventory);
         <section class="output-actions" aria-labelledby="output-actions-heading">
-            <h2 id="output-actions-heading">Next steps</h2>
-            <p class="output-lede">Analysis complete. Start with the interactive report or the apparently-unused review list, export reusable metadata, or review the summary below.</p>
-            <div class="output-primary">
-                <div class="output-route">
-                    <button @onclick="OpenHtmlAsync" disabled="@isBusy" aria-describedby="open-report-help">Open interactive report</button>
-                    <p id="open-report-help">Start here to explore model usage, dependencies, report structure and findings.</p>
-                </div>
-                <div class="output-route">
-                    <button @onclick="OpenUnusedReviewAsync" disabled="@isBusy" aria-describedby="review-unused-help">Review apparently unused (@inventory.DeveloperApparentlyUnusedSemanticObjectCount)</button>
-                    <p id="review-unused-help">A short working list of the model objects PBI Assure found no usage evidence for.</p>
-                </div>
+            <h2 id="output-actions-heading">Analysis complete</h2>
+            <p class="output-lede">Explore your project, review apparently unused items, or export metadata for further work.</p>
+            <div class="report-cards">
+                <section class="report-card" aria-labelledby="interactive-report-heading">
+                    <h3 id="interactive-report-heading">Interactive report</h3>
+                    <p id="interactive-report-help">Explore model usage, dependencies, report structure and findings.</p>
+                    <div class="report-card-actions">
+                        <button @onclick="OpenHtmlAsync" disabled="@isBusy" aria-describedby="interactive-report-help">Open interactive report</button>
+                        <button class="secondary-button" @onclick="DownloadHtmlAsync" disabled="@isBusy">Download <span class="visually-hidden">interactive </span>report</button>
+                    </div>
+                    <p class="report-card-status" role="status">@interactiveReportMessage</p>
+                </section>
+                <section class="report-card" aria-labelledby="unused-review-heading">
+                    <h3 id="unused-review-heading">Apparently unused review</h3>
+                    <p id="unused-review-help">Review model items with no report or semantic-model usage found in this project.</p>
+                    <div class="report-card-actions">
+                        <button @onclick="OpenUnusedReviewAsync" disabled="@isBusy" aria-describedby="unused-review-help">Review apparently unused (@inventory.DeveloperApparentlyUnusedSemanticObjectCount)</button>
+                        <button class="secondary-button" @onclick="DownloadUnusedReviewAsync" disabled="@isBusy">Download <span class="visually-hidden">apparently unused </span>review</button>
+                    </div>
+                    <p class="report-card-status" role="status">@unusedReviewMessage</p>
+                </section>
             </div>
-            <div class="output-secondary">
-                <div class="output-action">
-                    <button class="secondary-button" @onclick="() => exportPanelOpen = !exportPanelOpen" disabled="@isBusy" aria-expanded="@exportPanelOpen">Export data</button>
-                    <p>Data Catalogue or Usage Mapping CSV.</p>
-                </div>
-                <div class="output-action">
-                    <button @onclick="DownloadHtmlAsync" class="secondary-button" disabled="@isBusy">Download HTML report</button>
-                    <p>Save a copy to review elsewhere.</p>
-                </div>
-            </div>
-            @if (exportPanelOpen && selection is not null)
-            {
-                <ExportCsvPanel @key="exportPanelKey" Inventory="@inventory" ProjectDisplayName="@selection.DisplayName"
-                                OnClose="() => exportPanelOpen = false" />
-            }
-            <details class="summary-help legacy-output">
-                <summary>Advanced: legacy export</summary>
-                <div class="output-action">
-                    <p>The existing fixed semantic-usage CSV remains available for technical and compatibility workflows.</p>
-                    <button @onclick="DownloadCsvAsync" class="secondary-button" disabled="@isBusy">Download semantic usage CSV</button>
-                </div>
-            </details>
+            <p class="output-note">Reports open in a new tab. Downloads are self-contained HTML files.</p>
+            <section class="export-area" aria-labelledby="export-data-heading">
+                <h3 id="export-data-heading">Export data</h3>
+                <p id="export-data-help">Export a Data Catalogue or Usage Mapping CSV for further work.</p>
+                <button class="secondary-button" @ref="exportToggle" @onclick="ToggleExportPanel" disabled="@isBusy" aria-expanded="@(exportPanelOpen ? "true" : "false")" aria-describedby="export-data-help">Export data</button>
+                @if (exportPanelOpen && selection is not null)
+                {
+                    <ExportCsvPanel @key="exportPanelKey" Inventory="@inventory" ProjectDisplayName="@selection.DisplayName"
+                                    OnClose="CloseExportPanelAsync" />
+                }
+                <details class="summary-help legacy-output">
+                    <summary>Advanced: legacy export</summary>
+                    <div class="output-action">
+                        <p>The existing fixed semantic-usage CSV remains available for technical and compatibility workflows.</p>
+                        <button @onclick="DownloadCsvAsync" class="secondary-button" disabled="@isBusy">Download semantic usage CSV</button>
+                        <p class="report-card-status" role="status">@legacyCsvMessage</p>
+                    </div>
+                </details>
+            </section>
             <p class="sensitivity"><strong>Before sharing generated outputs:</strong> HTML and CSV files may contain sensitive project metadata, including paths, expressions, source details and model/report metadata. Review before sharing; outputs are not automatically redacted.</p>
         </section>
 
@@ -147,7 +154,7 @@
                             <div class="metric-indirect"><dt>Indirectly used</dt><dd>Not used directly in the report, but needed by something that is.</dd></div>
                             <div class="metric-structural"><dt>Structurally required</dt><dd>Needed for the model to work, for example in a relationship, hierarchy or sort-by setting.</dd></div>
                             <div class="metric-branch"><dt>Only used by unused items</dt><dd>Only used by other model items that themselves have no detected report usage.</dd></div>
-                            <div class="metric-unused"><dt>Apparently unused</dt><dd>PBI Assure could not find anything in this project that uses it. Check before removing it because external reports and dynamic behaviour may not be visible here.</dd></div>
+                            <div class="metric-unused"><dt>Apparently unused</dt><dd>No report or semantic-model usage was found in this project. Power Query preparation evidence may still exist. Check before removing it because external reports and dynamic behaviour may not be visible here.</dd></div>
                         </dl>
                     </section>
                     <section>
@@ -176,7 +183,7 @@
                             <div class="metric-review"><dt>Review required</dt><dd>Situations that need human judgement or contextual review; they are not necessarily defects.</dd></div>
                             <div><dt>Total findings</dt><dd>All non-accessibility issues and review items found by the automated checks.</dd></div>
                         </dl>
-                        <p class="summary-guide-note">Accessibility observations are not part of these counts. They stay in the HTML report’s Accessibility review.</p>
+                        <p class="summary-guide-note">Accessibility observations are not part of these counts. They stay in the interactive report’s Accessibility review.</p>
                     </section>
                 </div>
             </details>
@@ -195,12 +202,12 @@
             {
                 <p class="confidence-notice">
                     <strong>@WebConfidenceSummary.Headline</strong>
-                    @confidence.Detail @WebConfidenceSummary.Guidance
+                    @confidence.Detail @WebConfidenceSummary.Explanation @WebConfidenceSummary.Guidance
                 </p>
             }
             <details class="summary-help">
                 <summary>What does “Apparently unused” mean?</summary>
-                <p>PBI Assure could not find anything in this project that uses it. This does not prove it is safe to delete; external reports and dynamic behaviour may not be visible here.</p>
+                <p>No report or semantic-model usage was found in this project. Power Query preparation evidence may still exist. This does not prove it is safe to delete; external reports and dynamic behaviour may not be visible here.</p>
             </details>
             <div class="summary-group">
                 <h3>Project</h3>
@@ -232,13 +239,9 @@
                 <Metric Label="Review required" Value="@assurance.ReviewRequired" State="review" />
                 <Metric Label="Total findings" Value="@assurance.TotalFindings" />
             </div>
-            <p class="metrics-note">Accessibility observations are excluded from these Assurance counts and remain available separately in the HTML report’s Accessibility review.</p>
+            <p class="metrics-note">Accessibility observations are excluded from these Assurance counts and remain available separately in the interactive report’s Accessibility review.</p>
         </section>
 
-        @if (!string.IsNullOrWhiteSpace(outputMessage))
-        {
-            <p class="message" role="status">@outputMessage</p>
-        }
         <p class="diagnostic">@TimingSummary</p>
     }
 </section>
@@ -249,7 +252,10 @@
     private bool isChoosingProject;
     private ProjectInventory? inventory;
     private string? message;
-    private string? outputMessage;
+    private string? interactiveReportMessage;
+    private string? unusedReviewMessage;
+    private string? legacyCsvMessage;
+    private ElementReference exportToggle;
     private bool isBusy;
     private TimeSpan selectionElapsed;
     private TimeSpan fileReadElapsed;
@@ -310,7 +316,7 @@
         isBusy = true;
         isChoosingProject = true;
         message = null;
-        outputMessage = null;
+        ClearActionFeedback();
         try
         {
             var stopwatch = Stopwatch.StartNew();
@@ -371,7 +377,7 @@
 
         isBusy = true;
         message = null;
-        outputMessage = null;
+        ClearActionFeedback();
         try
         {
             var readStopwatch = Stopwatch.StartNew();
@@ -444,6 +450,24 @@
             await js.InvokeAsync<byte[]>("pbiAssureProjectPicker.read", relativePath);
     }
 
+    // Feedback sits beside the action that produced it, one line per action group, so the announcement
+    // a screen reader hears and the message a sighted reader sees both name the report involved.
+    private void ClearActionFeedback()
+    {
+        interactiveReportMessage = null;
+        unusedReviewMessage = null;
+        legacyCsvMessage = null;
+    }
+
+    private void ToggleExportPanel() => exportPanelOpen = !exportPanelOpen;
+
+    /// <summary>Closing the export workspace returns focus to the control that opened it.</summary>
+    private async Task CloseExportPanelAsync()
+    {
+        exportPanelOpen = false;
+        await exportToggle.FocusAsync();
+    }
+
     private async Task DownloadHtmlAsync()
     {
         if (inventory is null || selection is null)
@@ -451,7 +475,7 @@
             return;
         }
 
-        outputMessage = null;
+        interactiveReportMessage = null;
         try
         {
             var stopwatch = Stopwatch.StartNew();
@@ -459,11 +483,11 @@
             htmlRenderElapsed = stopwatch.Elapsed;
             htmlLength = System.Text.Encoding.UTF8.GetByteCount(html);
             await JS.InvokeVoidAsync("pbiAssureDownload.save", BrowserDownloadFileNames.Html(selection.DisplayName), "text/html;charset=utf-8", html);
-            outputMessage = "HTML report generated and downloaded locally.";
+            interactiveReportMessage = WebReportViewerStatus.DownloadStarted(WebReportKind.InteractiveReport);
         }
         catch (Exception)
         {
-            outputMessage = "Analysis completed, but the HTML report could not be generated or downloaded.";
+            interactiveReportMessage = WebReportViewerStatus.DownloadFailed(WebReportKind.InteractiveReport);
         }
     }
 
@@ -474,7 +498,7 @@
             return;
         }
 
-        outputMessage = null;
+        interactiveReportMessage = WebReportViewerStatus.Opening(WebReportKind.InteractiveReport);
         try
         {
             var stopwatch = Stopwatch.StartNew();
@@ -484,17 +508,17 @@
             // Resolves only once the viewer acknowledges the report, so success is never claimed for
             // a tab that opened but never received anything.
             var status = await JS.InvokeAsync<string>("pbiAssureDownload.open", "text/html;charset=utf-8", html);
-            outputMessage = WebReportViewerStatus.Describe(status);
+            interactiveReportMessage = WebReportViewerStatus.Describe(status, WebReportKind.InteractiveReport);
         }
         catch (Exception)
         {
-            outputMessage = "Analysis completed, but the HTML report could not be generated or opened.";
+            interactiveReportMessage = WebReportViewerStatus.OpenFailed(WebReportKind.InteractiveReport);
         }
     }
 
     /// <summary>
-    /// The lighter review list travels exactly as the full report does: rendered locally, handed to
-    /// the same-origin viewer, and reported as opened only once that viewer has acknowledged it.
+    /// The review travels exactly as the interactive report does: rendered locally, handed to the
+    /// same-origin viewer, and reported as opened only once that viewer has acknowledged it.
     /// </summary>
     private async Task OpenUnusedReviewAsync()
     {
@@ -503,16 +527,37 @@
             return;
         }
 
-        outputMessage = null;
+        unusedReviewMessage = WebReportViewerStatus.Opening(WebReportKind.ApparentlyUnusedReview);
         try
         {
             var html = ApparentlyUnusedReportRenderer.Render(inventory);
             var status = await JS.InvokeAsync<string>("pbiAssureDownload.open", "text/html;charset=utf-8", html);
-            outputMessage = WebReportViewerStatus.Describe(status);
+            unusedReviewMessage = WebReportViewerStatus.Describe(status, WebReportKind.ApparentlyUnusedReview);
         }
         catch (Exception)
         {
-            outputMessage = "Analysis completed, but the apparently-unused review list could not be generated or opened.";
+            unusedReviewMessage = WebReportViewerStatus.OpenFailed(WebReportKind.ApparentlyUnusedReview);
+        }
+    }
+
+    /// <summary>The review is saved through the same browser save path as the interactive report.</summary>
+    private async Task DownloadUnusedReviewAsync()
+    {
+        if (inventory is null || selection is null)
+        {
+            return;
+        }
+
+        unusedReviewMessage = null;
+        try
+        {
+            var html = ApparentlyUnusedReportRenderer.Render(inventory);
+            await JS.InvokeVoidAsync("pbiAssureDownload.save", BrowserDownloadFileNames.ApparentlyUnusedHtml(selection.DisplayName), "text/html;charset=utf-8", html);
+            unusedReviewMessage = WebReportViewerStatus.DownloadStarted(WebReportKind.ApparentlyUnusedReview);
+        }
+        catch (Exception)
+        {
+            unusedReviewMessage = WebReportViewerStatus.DownloadFailed(WebReportKind.ApparentlyUnusedReview);
         }
     }
 
@@ -523,7 +568,7 @@
             return;
         }
 
-        outputMessage = null;
+        legacyCsvMessage = null;
         try
         {
             var stopwatch = Stopwatch.StartNew();
@@ -532,11 +577,11 @@
             var csvWithBom = "\uFEFF" + csv;
             csvLength = System.Text.Encoding.UTF8.GetByteCount(csvWithBom);
             await JS.InvokeVoidAsync("pbiAssureDownload.save", BrowserDownloadFileNames.SemanticUsageCsv(selection.DisplayName), "text/csv;charset=utf-8", csvWithBom);
-            outputMessage = "Semantic usage CSV generated and downloaded locally.";
+            legacyCsvMessage = "Download started: semantic usage CSV.";
         }
         catch (Exception)
         {
-            outputMessage = "Analysis completed, but the CSV could not be generated or downloaded.";
+            legacyCsvMessage = "The semantic usage CSV could not be generated or downloaded.";
         }
     }
 

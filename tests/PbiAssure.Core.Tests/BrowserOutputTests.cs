@@ -16,6 +16,8 @@ public sealed class BrowserOutputTests
         Assert.Equal("Sales Returns.data-catalogue.csv", BrowserDownloadFileNames.ExportCsv("Sales: Returns", ExportPreset.DataCatalogue));
         Assert.Equal("Sales Returns.usage-mapping.csv", BrowserDownloadFileNames.ExportCsv("Sales: Returns", ExportPreset.UsageMapping));
         Assert.Equal("pbi-assure.pbiassure.html", BrowserDownloadFileNames.Html("<>"));
+        Assert.Equal("Sales Returns.apparently-unused.html", BrowserDownloadFileNames.ApparentlyUnusedHtml("Sales: Returns"));
+        Assert.Equal("pbi-assure.apparently-unused.html", BrowserDownloadFileNames.ApparentlyUnusedHtml("<>"));
     }
 
     [Fact]

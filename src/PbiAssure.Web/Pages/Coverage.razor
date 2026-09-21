@@ -9,6 +9,7 @@
         <p class="eyebrow">Model intelligence</p>
         <h1 id="coverage-title" tabindex="-1">What PBI Assure analyses</h1>
         <p>Coverage describes what is read from the files in a local Power BI project, and where the evidence in those files runs out. Everything below is what this version does today.</p>
+        <p class="coverage-distinction">This page describes the checks PBI Assure supports. Your report’s <strong>Analysis coverage</strong> explains any limitations found in your project.</p>
         <ul class="coverage-scope" aria-label="Project files PBI Assure reads">
             <li><span>PBIP</span> the project launcher and its item folders</li>
             <li><span>PBIR</span> the report definition: pages, visuals, filters, bookmarks</li>
@@ -67,13 +68,13 @@
                     <div class="metric-indirect"><dt>Indirectly used</dt><dd>The report does not use it, but something the report does use depends on it.</dd></div>
                     <div class="metric-structural"><dt>Structurally required</dt><dd>The model needs it: a relationship endpoint, hierarchy level, sort-by column or security filter.</dd></div>
                     <div class="metric-branch"><dt>Only used by unused items</dt><dd>Used only by other objects that themselves have no detected report usage.</dd></div>
-                    <div class="metric-unused"><dt>Apparently unused</dt><dd>Nothing in the analysed project was found to use it.</dd></div>
+                    <div class="metric-unused"><dt>Apparently unused</dt><dd>No report or semantic-model usage was found in the analysed project.</dd></div>
                 </dl>
                 <p>Dependencies are followed through both DAX expressions and structural model metadata — calculation-group items, field parameters, hierarchy levels, sort-by settings, relationship endpoints, aggregation mappings, refresh policies, security permissions, perspective membership, report-level measures and DAX function calls.</p>
-                <p>Each state carries the evidence behind it: which report, page and visual, and in what role. A reference that cannot be resolved to a model object is recorded as unresolved rather than dropped, and metadata that could bear on a dependency but was not analysed <strong>qualifies</strong> the conclusion instead of being ignored.</p>
+                <p>Each state carries the evidence behind it: which report, page and visual, and in what role. A reference that cannot be resolved to a model object is recorded as unresolved rather than dropped, and metadata that could bear on a dependency but was not analysed <strong>qualifies</strong> the conclusions it could actually affect instead of being ignored. Those results are marked <strong>Checks limited</strong>.</p>
                 <div class="coverage-boundary">
                     <h3>Boundaries</h3>
-                    <p><strong>Apparently unused means no evidence of use was found within the analysed local project. It is not permission to delete the object.</strong> Another report, a downstream model or behaviour that only exists at runtime can all use something this project never mentions.</p>
+                    <p><strong>Apparently unused means no report or semantic-model usage was found within the analysed local project. It is not permission to delete the object.</strong> Power Query preparation evidence may still exist, and another report, a downstream model or behaviour that only exists at runtime can all use something this project never mentions.</p>
                 </div>
             </div>
         </details>
@@ -217,7 +218,7 @@
                 <h3>What is analysed</h3>
                 <p>Pages, visuals and nested visual groups, each with the persisted identity that lets a finding point at a specific object rather than at a description of one. Hidden state is retained for both pages and visuals, and a hidden ancestor is taken into account rather than only the object itself. Mobile layout and the configured landing page are read where present.</p>
                 <p>PBI Assure also records how well it recognised the report format itself: whether each definition file matched a schema version it verifies exactly, a recognised family at a version it has not verified, or a family it does not know.</p>
-                <p>That last case matters. An unrecognised report artefact that could carry a dependency does not simply get skipped — it <strong>qualifies absence-based conclusions</strong> for that report, so "apparently unused" is marked as an incomplete usage check rather than treated as established.</p>
+                <p>That last case matters. An unrecognised report artefact that could carry a dependency does not simply get skipped — it <strong>qualifies absence-based conclusions</strong> for that report, so "apparently unused" there is marked <strong>Checks limited</strong> rather than treated as established.</p>
                 <div class="coverage-boundary">
                     <h3>Boundaries</h3>
                     <p>The report is read as persisted metadata. PBI Assure does not render visuals, run report queries, or reproduce what a reader would see on screen.</p>
@@ -331,7 +332,7 @@
                 <h3>What is analysed</h3>
                 <p>Definition artefacts that PBI Assure recognises are classified by how they are handled — parsed into the analysis, recognised content this version does not yet parse, packaging content that is correctly not parsed, or unrecognised. Unrecognised dependency-capable artefacts can qualify absence-based conclusions rather than being silently treated as understood.</p>
                 <p>Where a construct is only partly understood, the analysis says which part. Security roles are the clearest example: row-level filters and explicitly named object-level permissions are analysed, and the rest of a role's content is not claimed.</p>
-                <p>This matters most for conclusions based on <em>absence</em>. If a project contains metadata that was not analysed and that could create a dependency, then <strong>Apparently unused</strong> in that model is reported as <strong>qualified by limitation</strong> rather than <strong>established</strong>. Established means this scan identified no qualifying limitation within its supported scope; it is not proof of complete knowledge. The usage state does not change; the confidence in it does. A qualified absence is a prompt to look at the thing that was not read.</p>
+                <p>This matters most for conclusions based on <em>absence</em>. If a project contains metadata that was not analysed and that could create a dependency, the <strong>Apparently unused</strong> and <strong>Only used by unused items</strong> results that limitation could actually affect are reported as <strong>qualified by limitation</strong> — shown as <strong>Checks limited</strong> — rather than <strong>established</strong>. Where the unread metadata can be tied to particular objects, only those objects are qualified; where it could reach anything in the model, every absence result in that model is. Doubt that concerns only the Power Query graph is recorded in Analysis coverage but does not qualify semantic usage, because no usage state is derived from Power Query references. Established means this scan identified no qualifying limitation within its supported scope; it is not proof of complete knowledge. The usage state does not change; the confidence in it does. Checks limited means missing or partly understood metadata could affect that result, and is a prompt to look at the thing that was not read.</p>
                 <div class="coverage-boundary">
                     <h3>Boundaries</h3>
                     <p>Coverage reporting describes this version of PBI Assure against your project. It is not a claim that unread metadata does or does not create a dependency — only that it could, and was not analysed.</p>

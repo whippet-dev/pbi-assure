@@ -30,7 +30,7 @@ public static class ApparentlyUnusedReportRenderer
     internal const string ZeroStateMessage =
         "No developer-authored model items were classified as apparently unused in this analysis.";
 
-    internal const string CompleteLabel = "Checks complete";
+    internal const string CompleteLabel = "No identified limitations";
     internal const string LimitedLabel = "Checks limited";
 
     public static string Render(ProjectInventory inventory)

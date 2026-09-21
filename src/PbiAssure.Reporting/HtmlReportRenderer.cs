@@ -440,7 +440,7 @@ public static partial class HtmlReportRenderer
     /// sentence and the usage guide all render this same phrase, so they cannot drift apart and leave a
     /// reader following a word that appears nowhere in its own explanation.
     /// </summary>
-    private const string CoverageMarkerLabel = "Usage check incomplete";
+    private const string CoverageMarkerLabel = "Checks limited";
 
     private const string CoverageMarkerDescription =
         " — PBI Assure could not check every source of usage in this model.";
