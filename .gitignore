@@ -14,6 +14,9 @@ notes-local/
 **/.pbi/cache.abf
 **/.pbi/localSettings.json
 
+# Power BI Desktop binaries: fixtures are PBIP folders, never PBIX files
+*.pbix
+
 # Generated assurance reports
 *.pbiassure.json
 *.pbiassure.html
