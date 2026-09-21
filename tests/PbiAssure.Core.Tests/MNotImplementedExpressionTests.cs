@@ -80,12 +80,13 @@ public sealed class MNotImplementedExpressionTests
     }
 
     [Fact]
-    public void AGenuinelyUnreadableExpressionStillQualifiesTheModel()
+    public void AGenuinelyUnreadableExpressionStillRaisesTheLimitation()
     {
         var inventory = Scan("let Coerce = (f as function (x as any) as any) => f in Coerce");
 
         Assert.Single(inventory.AnalysisLimitations, limitation => limitation.LimitationId == "PBI-LIMIT-MODEL-QUERY-REFERENCES");
-        Assert.Equal(ClassificationConfidences.QualifiedByLimitation,
+        // Query doubt is recorded for the query graph; it does not reach an unrelated measure.
+        Assert.Equal(ClassificationConfidences.Established,
             Assert.Single(inventory.SemanticObjectUsages, usage => usage.ObjectName == "UnusedMeasure").ClassificationConfidence);
     }
 

@@ -183,6 +183,10 @@ internal static class AnalysisCoveragePresentation
         {
             ConstructDependencyImpacts.MayCreateDependencies =>
                 ("Could hide extra usage", true),
+            // Doubt confined to the Power Query graph: query reachability, orphan status and source
+            // attribution can be affected; no model object's used or unused result can be.
+            ConstructDependencyImpacts.MayCreateQueryDependencies =>
+                ("Could hide extra Power Query use", false),
             ConstructDependencyImpacts.DependencyEffectUnknown =>
                 ("Not known whether it hides extra usage", true),
             ConstructDependencyImpacts.MayInvalidateExistingEvidence =>

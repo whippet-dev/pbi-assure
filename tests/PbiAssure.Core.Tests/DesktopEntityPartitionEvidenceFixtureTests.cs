@@ -127,7 +127,7 @@ public sealed class DesktopEntityPartitionEvidenceFixtureTests
 
         var limitation = Assert.Single(inventory.AnalysisLimitations, item => item.LimitationId == "PBI-LIMIT-MODEL-PARTITION-SOURCE");
         Assert.Equal(AnalysisLimitationCauses.ReferenceUnresolved, limitation.Cause);
-        Assert.Equal(ConstructDependencyImpacts.MayCreateDependencies, limitation.DependencyImpact);
+        Assert.Equal(ConstructDependencyImpacts.MayCreateQueryDependencies, limitation.DependencyImpact);
         Assert.Equal("Remote", limitation.Table);
         Assert.Equal("Remote", limitation.ObjectName);
         Assert.Contains(expectedReason, limitation.Reason, StringComparison.Ordinal);
@@ -139,7 +139,8 @@ public sealed class DesktopEntityPartitionEvidenceFixtureTests
         Assert.Equal(PowerQueryUsageStates.ApparentlyUnused, expression.UsageState);
         Assert.Null(expression.QueryRole);
         Assert.DoesNotContain(inventory.Findings, finding => finding.RuleId == "PBI-QUERY-002");
-        Assert.Equal(ClassificationConfidences.QualifiedByLimitation, Usage(inventory, "Remote", "Key").ClassificationConfidence);
+        // The doubt is about which query serves the table, not about what references Remote[Key].
+        Assert.Equal(ClassificationConfidences.Established, Usage(inventory, "Remote", "Key").ClassificationConfidence);
     }
 
     [Fact]

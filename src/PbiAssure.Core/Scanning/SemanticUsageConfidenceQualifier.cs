@@ -86,6 +86,9 @@ internal static class SemanticUsageConfidenceQualifier
         ConstructDependencyImpacts.MayCreateDependencies => AbsenceStates,
         ConstructDependencyImpacts.DependencyEffectUnknown => AbsenceStates,
         ConstructDependencyImpacts.MayInvalidateExistingEvidence => AbsenceStates.Concat(PositiveStates),
+        // Query-to-query references feed the Power Query graph only. The semantic dependency analyzer
+        // never reads them, so no reference they could conceal can reach a semantic usage state.
+        ConstructDependencyImpacts.MayCreateQueryDependencies => [],
         _ => [],
     };
 }

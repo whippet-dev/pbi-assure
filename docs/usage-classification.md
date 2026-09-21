@@ -77,7 +77,11 @@ known either.
 
 Because an unanalysed construct can only *add* references, it cannot retract evidence already collected.
 Qualification therefore applies to the two states that assert an absence of usage, `ApparentlyUnused`
-and `UsedOnlyByUnusedBranch`. The states resting on positive evidence keep their confidence. That is a
+and `UsedOnlyByUnusedBranch`. It also follows the domain of the doubt: a limitation that concerns only
+the Power Query graph — an M expression that could not be read to the end, or an entity partition whose
+shared expression cannot be found — is recorded in Analysis coverage and keeps the query-level safety
+behaviour (withheld orphan roles, unattributed sources), but it does not qualify semantic objects,
+because no semantic usage state is derived from Power Query references. The states resting on positive evidence keep their confidence. That is a
 conservative product rule about the constructs known today, not a permanent guarantee: a future
 construct that changes how existing evidence should be *read*, rather than only adding to it, would
 qualify positive states too.

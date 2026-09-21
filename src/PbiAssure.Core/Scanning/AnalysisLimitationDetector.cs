@@ -94,10 +94,12 @@ internal static class AnalysisLimitationDetector
     }
 
     /// <summary>
-    /// An M expression whose reference discovery did not complete is doubt about the dependency graph,
-    /// so it reaches confidence the same way every other doubt does. Without this, the model-wide orphan
-    /// safety net silently withheld the orphan role while Analysis Coverage still reported the model as
-    /// fully checked for Power Query.
+    /// An M expression whose reference discovery did not complete is doubt about the Power Query graph:
+    /// which queries reach which, and which are orphaned. Without this, the model-wide orphan safety net
+    /// silently withheld the orphan role while Analysis Coverage still reported the model as fully
+    /// checked for Power Query. It is doubt about that graph only — the semantic dependency analyzer
+    /// reads DAX and model metadata, never M — so it is declared with the query-domain impact and does
+    /// not qualify semantic-object classifications.
     ///
     /// Only <c>Incomplete</c> reaches here. <c>Dynamic</c> discovery is a separate, already-stated
     /// condition: the query keeps its references, carries <c>HasDynamicReferences</c> and raises
@@ -124,7 +126,7 @@ internal static class AnalysisLimitationDetector
                     ObjectName: reference.QueryName,
                     ArtifactPath: reference.ArtifactPath,
                     EvidencePath: "M expression",
-                    DependencyImpact: ConstructDependencyImpacts.MayCreateDependencies,
+                    DependencyImpact: ConstructDependencyImpacts.MayCreateQueryDependencies,
                     Concerns: [AnalysisConcerns.Dependency],
                     Reason: Describe(reference) + " uses Power Query syntax this version could not read to " +
                             "the end, so no reference it makes to another query was kept. Queries it uses " +
@@ -153,7 +155,7 @@ internal static class AnalysisLimitationDetector
             ObjectName: reference.QueryName,
             ArtifactPath: reference.ArtifactPath,
             EvidencePath: "partition source",
-            DependencyImpact: ConstructDependencyImpacts.MayCreateDependencies,
+            DependencyImpact: ConstructDependencyImpacts.MayCreateQueryDependencies,
             Concerns: [AnalysisConcerns.Dependency],
             Reason: $"Table '{reference.Table}' is served through a DirectQuery entity partition that {named}, " +
                     "so its data source could not be attributed and the expression that serves it may " +

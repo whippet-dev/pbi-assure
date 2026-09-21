@@ -28,6 +28,44 @@ public sealed class SemanticUsageConfidenceTests
         Assert.Equal(ClassificationConfidences.QualifiedByLimitation, usage.ClassificationConfidence);
     }
 
+    /// <summary>
+    /// Query-to-query doubt lives in the Power Query graph, from which no semantic usage state is
+    /// derived, so it qualifies nothing — while the semantic impacts beside it still qualify absences.
+    /// </summary>
+    [Theory]
+    [InlineData(SemanticUsageStates.ApparentlyUnused)]
+    [InlineData(SemanticUsageStates.UsedOnlyByUnusedBranch)]
+    [InlineData(SemanticUsageStates.DirectlyUsed)]
+    public void NoStateIsQualifiedByAConstructThatMayCreateOnlyQueryDependencies(string state)
+    {
+        var usage = Assert.Single(Apply(
+            [Usage("Sales", state)],
+            [Limitation("Sales", ConstructDependencyImpacts.MayCreateQueryDependencies)]));
+
+        Assert.Equal(state, usage.UsageState);
+        Assert.Equal(ClassificationConfidences.Established, usage.ClassificationConfidence);
+        Assert.Empty(SemanticUsageConfidenceQualifier.Qualifying(usage,
+            [Limitation("Sales", ConstructDependencyImpacts.MayCreateQueryDependencies)]));
+    }
+
+    [Fact]
+    public void ASemanticLimitationBesideQueryDoubtStillQualifiesTheAbsence()
+    {
+        var usage = Assert.Single(Apply(
+            [Usage("Sales", SemanticUsageStates.ApparentlyUnused)],
+            [
+                Limitation("Sales", ConstructDependencyImpacts.MayCreateQueryDependencies),
+                Limitation("Sales", ConstructDependencyImpacts.MayCreateDependencies),
+            ]));
+
+        Assert.Equal(ClassificationConfidences.QualifiedByLimitation, usage.ClassificationConfidence);
+        Assert.Single(SemanticUsageConfidenceQualifier.Qualifying(usage,
+        [
+            Limitation("Sales", ConstructDependencyImpacts.MayCreateQueryDependencies),
+            Limitation("Sales", ConstructDependencyImpacts.MayCreateDependencies),
+        ]));
+    }
+
     [Theory]
     [InlineData(SemanticUsageStates.ApparentlyUnused)]
     [InlineData(SemanticUsageStates.UsedOnlyByUnusedBranch)]

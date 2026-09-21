@@ -76,6 +76,15 @@ public static class ConstructDependencyImpacts
     /// <summary>The construct can contain references to model objects.</summary>
     public const string MayCreateDependencies = "MayCreateDependencies";
 
+    /// <summary>
+    /// The construct can contain references to other Power Query queries, and to nothing else.
+    /// Power Query lineage is a separate graph from semantic usage: it decides which queries reach
+    /// which, which are orphaned and where a table's data comes from, but no semantic usage state is
+    /// derived from it. Doubt of this kind therefore stays in Analysis coverage and in the query
+    /// results without qualifying any semantic object's classification.
+    /// </summary>
+    public const string MayCreateQueryDependencies = "MayCreateQueryDependencies";
+
     /// <summary>Whether the construct references model objects has not been determined.</summary>
     public const string DependencyEffectUnknown = "DependencyEffectUnknown";
 
