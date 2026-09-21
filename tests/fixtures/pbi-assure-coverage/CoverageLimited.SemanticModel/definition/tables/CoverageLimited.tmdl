@@ -7,9 +7,9 @@ table CoverageLimited
 		dataType: int64
 		sourceColumn: UdfUnusedSource
 
-	column QualifiedUnusedControl
+	column UnreachedUnusedControl
 		dataType: string
-		sourceColumn: QualifiedUnusedControl
+		sourceColumn: UnreachedUnusedControl
 
 	measure UsedUdfConsumer = UsedCoverageFunction()
 

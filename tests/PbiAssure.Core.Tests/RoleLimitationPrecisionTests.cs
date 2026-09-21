@@ -61,9 +61,9 @@ public sealed class RoleLimitationPrecisionTests
     // ---- 4. What still qualifies in the fixture ---------------------------------------------
 
     /// <summary>
-    /// Absence states in the fixture are still qualified, but roles are not among the causes. Which
-    /// constructs remain qualifying changes as parsing advances — perspectives left the list once their
-    /// members were analysed — so this asserts only that roles are absent from it.
+    /// Roles are not among the fixture's qualifying causes. Which constructs remain qualifying changes
+    /// as parsing advances — perspectives left the list once their members were analysed, and the
+    /// function file now bounds its reach to nothing here — so this asserts only that roles are absent.
     /// </summary>
     [Fact]
     public void RolesAreNotAmongTheRemainingQualifyingCauses()
@@ -79,9 +79,6 @@ public sealed class RoleLimitationPrecisionTests
 
         Assert.NotEmpty(qualifying);
         Assert.DoesNotContain("role", qualifying);
-        Assert.Contains(
-            inventory.SemanticObjectUsages,
-            usage => usage.ClassificationConfidence == ClassificationConfidences.QualifiedByLimitation);
     }
 
     [Fact]

@@ -12,9 +12,11 @@ namespace PbiAssure.Core.Scanning;
 /// reserved <see cref="ConstructDependencyImpacts.MayInvalidateExistingEvidence"/> exists for a future
 /// construct that changes how existing evidence should be read.
 ///
-/// Qualification is decided by <see cref="AnalysisLimitation.DependencyImpact"/> alone. Construct types
-/// and limitation identifiers are deliberately not consulted, so the registry stays the single place
-/// where a construct's effect is declared.
+/// Qualification is decided by <see cref="AnalysisLimitation.DependencyImpact"/>, and by
+/// <see cref="AnalysisLimitation.Reach"/> where the scanner has bounded which objects the unread
+/// metadata can bear on. Construct types and limitation identifiers are deliberately not consulted, so
+/// the registry stays the single place where a construct's effect is declared and the reach stays the
+/// single place where its extent is.
 /// </summary>
 internal static class SemanticUsageConfidenceQualifier
 {
@@ -37,19 +39,14 @@ internal static class SemanticUsageConfidenceQualifier
         IReadOnlyList<SemanticObjectUsage> usages,
         IReadOnlyList<AnalysisLimitation> limitations)
     {
-        var qualifiedStatesByModel = limitations
+        var limitationsByModel = limitations
             .Where(limitation => limitation.SemanticModel is not null)
             .GroupBy(limitation => limitation.SemanticModel!, StringComparer.OrdinalIgnoreCase)
-            .ToDictionary(
-                group => group.Key,
-                group => group
-                    .SelectMany(limitation => QualifiedStates(limitation.DependencyImpact))
-                    .ToHashSet(StringComparer.OrdinalIgnoreCase),
-                StringComparer.OrdinalIgnoreCase);
+            .ToDictionary(group => group.Key, group => group.ToArray(), StringComparer.OrdinalIgnoreCase);
 
         return usages
-            .Select(usage => qualifiedStatesByModel.TryGetValue(usage.SemanticModel, out var states) &&
-                             states.Contains(usage.UsageState)
+            .Select(usage => limitationsByModel.TryGetValue(usage.SemanticModel, out var candidates) &&
+                             candidates.Any(limitation => Qualifies(limitation, usage))
                 ? usage with { ClassificationConfidence = ClassificationConfidences.QualifiedByLimitation }
                 : usage with { ClassificationConfidence = ClassificationConfidences.Established })
             .ToArray();
@@ -72,9 +69,17 @@ internal static class SemanticUsageConfidenceQualifier
 
         return limitations.Where(limitation =>
             string.Equals(limitation.SemanticModel, usage.SemanticModel, StringComparison.OrdinalIgnoreCase) &&
-            QualifiedStates(limitation.DependencyImpact)
-                .Contains(usage.UsageState, StringComparer.OrdinalIgnoreCase));
+            Qualifies(limitation, usage));
     }
+
+    /// <summary>
+    /// The state must be one the impact can bear on, and — where the reach was bounded — the object must
+    /// be one the unread metadata can actually reach.
+    /// </summary>
+    private static bool Qualifies(AnalysisLimitation limitation, SemanticObjectUsage usage) =>
+        QualifiedStates(limitation.DependencyImpact).Contains(usage.UsageState, StringComparer.OrdinalIgnoreCase) &&
+        (limitation.Reach is null ||
+         limitation.Reach.Contains(FieldIdentity.Create(usage.Table, usage.ObjectName, usage.ObjectType, usage.HierarchyName)));
 
     /// <summary>
     /// The usage states a single unanalysed construct could bear on. Unknown impact values qualify

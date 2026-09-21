@@ -151,9 +151,11 @@ Desktop is not known to be destructive. Even so, prefer working on a copy.
 ## What this fixture does NOT prove
 
 - **Where a UDF is called from outside the model definition.** Microsoft documents that visual
-  calculations and report-level measures can call one. Neither is read by PBI Assure, and neither
-  appears here, which is why `definition/functions.tmdl` remains a **partially analysed** construct that
-  still records a limitation. A function that looks unreferenced may be called from metadata nobody read
+  calculations and report-level measures can call one. Report-level measure expressions are read; visual
+  calculations are not, and neither appears here, which is why `definition/functions.tmdl` remains a
+  **partially analysed** construct that still records a limitation. A function that looks unreferenced
+  may be called from metadata nobody read, and such a call can make live exactly what the function's
+  body references — here `Sales[Amount]` and `[Total Amount]`, never `Sales[Region]`
 - **Whether a UDF name can be namespaced with dots.** Every name here is a single identifier. A dotted
   name would not tokenise as one identifier in the current reference extractor
 - **What other parameter type hints look like.** Only `NUMERIC` appears, on one parameter

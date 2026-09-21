@@ -431,12 +431,13 @@ public sealed class AnalysisCoveragePresentationTests
     }
 
     /// <summary>
-    /// The usage guide explains five states. Adding a confidence marker must not read as a sixth.
+    /// The usage guide explains five states. Adding a confidence marker must not read as a sixth. The
+    /// UDF fixture is used because its functions reach model objects, so the marker is rendered there.
     /// </summary>
     [Fact]
     public void TheUsageGuideStillDescribesFiveStatesAndSeparatesConfidence()
     {
-        var html = RenderFixture("desktop-semantic-constructs");
+        var html = RenderFixture("desktop-udf-references");
 
         Assert.Contains("5 statuses explained", html, StringComparison.Ordinal);
         Assert.Contains("That is not another status.", html, StringComparison.Ordinal);
@@ -454,12 +455,13 @@ public sealed class AnalysisCoveragePresentationTests
     // ---- Real Desktop fixtures ---------------------------------------------------------------------
 
     /// <summary>
-    /// The fixture that makes the noise problem real: one limitation qualifies most of the model. Counts
-    /// are measured from the inventory rather than hardcoded, so this cannot silently drift into
-    /// asserting a stale number, while still failing if the rendered figures disagree with the domain.
+    /// The fixture that once made the noise problem real: its only qualifying limitation is the function
+    /// file, and its only function (AddTax) references nothing, so an unseen call to it can reach no
+    /// model object. The cause is still disclosed as a source of usage the scan could not fully check,
+    /// but it now qualifies nothing. Counts are measured from the inventory rather than hardcoded.
     /// </summary>
     [Fact]
-    public void TheDesktopConstructsFixtureRendersOneQualifyingCauseForManyObjects()
+    public void TheDesktopConstructsFixtureRendersOneQualifyingCauseThatReachesNoObject()
     {
         var inventory = ScanFixture("desktop-semantic-constructs");
         var html = HtmlReportRenderer.Render(inventory);
@@ -468,7 +470,7 @@ public sealed class AnalysisCoveragePresentationTests
         var qualifiedCount = inventory.SemanticObjectUsages.Count(usage =>
             usage.ClassificationConfidence == ClassificationConfidences.QualifiedByLimitation);
         Assert.Equal(27, objectCount);
-        Assert.Equal(21, qualifiedCount);
+        Assert.Equal(0, qualifiedCount);
 
         var qualifying = inventory.AnalysisLimitations
             .Where(limitation => limitation.DependencyImpact != ConstructDependencyImpacts.NoKnownDependencyEffect)
@@ -477,16 +479,20 @@ public sealed class AnalysisCoveragePresentationTests
         Assert.Equal("function", soleCause.ConstructType);
 
         Assert.Contains("could not fully check 1 source of usage", html, StringComparison.Ordinal);
-        Assert.Contains($"used or unused result for {qualifiedCount} of {objectCount} model objects", html, StringComparison.Ordinal);
+        Assert.Contains("No used or unused result in this model is affected.", html, StringComparison.Ordinal);
         Assert.Contains("DAX user-defined functions", html, StringComparison.Ordinal);
         Assert.Contains("Partially checked", html, StringComparison.Ordinal);
-        Assert.Equal(qualifiedCount, Occurrences(html, "class=\"confidence-flag\""));
+        Assert.Equal(0, Occurrences(html, "class=\"confidence-flag\""));
         // The explanation appears once, not once per affected object.
         Assert.Equal(1, Occurrences(html, soleCause.Reason));
         // The six harmless limitations are disclosed without competing for attention.
         Assert.Contains("<details class=\"coverage-other\"><summary>", html, StringComparison.Ordinal);
     }
 
+    /// <summary>
+    /// The functions here reach Sales[Amount] and Sales[Total Amount], so an unseen call could make
+    /// exactly those two used; Sales[Region] is outside every function body and stays Established.
+    /// </summary>
     [Fact]
     public void TheDesktopUdfFixtureRendersItsQualifiedClassifications()
     {
@@ -496,13 +502,13 @@ public sealed class AnalysisCoveragePresentationTests
         var qualified = inventory.SemanticObjectUsages
             .Where(usage => usage.ClassificationConfidence == ClassificationConfidences.QualifiedByLimitation)
             .ToArray();
-        Assert.Equal(3, qualified.Length);
-        // Both absence states occur here, so both must carry the marker.
-        Assert.Contains(qualified, usage => usage.UsageState == SemanticUsageStates.ApparentlyUnused);
-        Assert.Contains(qualified, usage => usage.UsageState == SemanticUsageStates.UsedOnlyByUnusedBranch);
+        Assert.Equal(["Amount", "Total Amount"], qualified.Select(usage => usage.ObjectName).Order(StringComparer.Ordinal).ToArray());
+        Assert.All(qualified, usage => Assert.Equal(SemanticUsageStates.UsedOnlyByUnusedBranch, usage.UsageState));
+        Assert.Equal(ClassificationConfidences.Established,
+            Assert.Single(inventory.SemanticObjectUsages, usage => usage.ObjectName == "Region").ClassificationConfidence);
 
         Assert.Equal(qualified.Length, Occurrences(html, "class=\"confidence-flag\""));
-        Assert.Contains("used or unused result for 3 of 3 model objects", html, StringComparison.Ordinal);
+        Assert.Contains("used or unused result for 2 of 3 model objects", html, StringComparison.Ordinal);
     }
 
     /// <summary>

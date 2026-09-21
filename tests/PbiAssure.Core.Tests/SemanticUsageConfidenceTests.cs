@@ -285,12 +285,11 @@ public sealed class SemanticUsageConfidenceTests
     {
         var inventory = ProjectScanner.Scan(FixturePath("desktop-semantic-constructs"));
 
-        var modelsWithQualifyingLimitations = inventory.AnalysisLimitations
+        var qualifyingLimitations = inventory.AnalysisLimitations
             .Where(limitation => limitation.DependencyImpact
                 is ConstructDependencyImpacts.MayCreateDependencies
                 or ConstructDependencyImpacts.DependencyEffectUnknown)
-            .Select(limitation => limitation.SemanticModel!)
-            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+            .ToArray();
 
         Assert.NotEmpty(inventory.SemanticObjectUsages);
         foreach (var usage in inventory.SemanticObjectUsages)
@@ -298,7 +297,12 @@ public sealed class SemanticUsageConfidenceTests
             var isAbsenceState = usage.UsageState
                 is SemanticUsageStates.ApparentlyUnused
                 or SemanticUsageStates.UsedOnlyByUnusedBranch;
-            var expected = isAbsenceState && modelsWithQualifyingLimitations.Contains(usage.SemanticModel)
+            // A limitation bears on an absence in its model, within its reach when the scanner bounded one.
+            var key = FieldIdentity.Create(usage.Table, usage.ObjectName, usage.ObjectType, usage.HierarchyName);
+            var reached = qualifyingLimitations.Any(limitation =>
+                string.Equals(limitation.SemanticModel, usage.SemanticModel, StringComparison.OrdinalIgnoreCase) &&
+                (limitation.Reach is null || limitation.Reach.Contains(key)));
+            var expected = isAbsenceState && reached
                 ? ClassificationConfidences.QualifiedByLimitation
                 : ClassificationConfidences.Established;
 

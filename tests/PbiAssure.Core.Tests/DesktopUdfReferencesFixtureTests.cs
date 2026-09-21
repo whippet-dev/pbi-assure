@@ -106,13 +106,13 @@ public sealed class DesktopUdfReferencesFixtureTests
     }
 
     /// <summary>
-    /// Functions are now analysed as definitions, but a UDF can also be called from a visual calculation
-    /// or a report-level measure and neither is read, so the limitation must stay and must keep saying
-    /// that dependencies may exist. Narrowing this to NoKnownDependencyEffect would claim coverage of
-    /// consumers that are not read.
+    /// Functions are now analysed as definitions, but a UDF can also be called from a visual calculation,
+    /// which is not read, so the limitation must stay and must keep saying that dependencies may exist.
+    /// Narrowing this to NoKnownDependencyEffect would claim coverage of a consumer that is not read.
+    /// What the limitation can bear on is bounded separately, to the functions' dependency closure.
     /// </summary>
     [Fact]
-    public void TheFunctionLimitationIsStillEmittedAndStillQualifies()
+    public void TheFunctionLimitationIsStillEmittedWithItsDependencyImpact()
     {
         var limitation = Assert.Single(
             ScanFixture().AnalysisLimitations,

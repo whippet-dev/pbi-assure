@@ -172,9 +172,9 @@ internal static class SemanticDefinitionFileRegistry
             Concerns: [AnalysisConcerns.Dependency],
             Reason: "DAX user-defined function definitions are analysed, including what their bodies " +
                     "reference and which functions call one another. What is not analysed is where a " +
-                    "function is called from outside the model definition: visual calculations and " +
-                    "report-level measures can call one, and neither is read, so a function may be " +
-                    "used more than the analysed evidence shows."),
+                    "function is called from outside the model definition: a visual calculation can " +
+                    "call one, and visual calculations are not read, so a function, and whatever its " +
+                    "body references, may be used more than the analysed evidence shows."),
         new(
             // Documented root file holding all data sources. Dependency effect not established.
             LimitationId: "PBI-LIMIT-MODEL-DATASOURCE",

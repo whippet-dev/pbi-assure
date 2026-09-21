@@ -278,9 +278,10 @@ public sealed class FunctionDependencyTests
 
     /// <summary>
     /// Function definitions are now analysed, so the support state moves to partial. The dependency
-    /// impact stays qualifying: Microsoft documents that visual calculations and report-level measures
-    /// can call UDFs, and neither is read, so a call that would make an object used can still be missed.
-    /// The impact is not lowered merely because it is the last remaining qualifying cause.
+    /// impact stays qualifying: Microsoft documents that visual calculations can call UDFs, and visual
+    /// calculations are not read, so a call that would make an object used can still be missed. The
+    /// impact is not lowered merely because it is the last remaining qualifying cause; what it can bear
+    /// on is bounded to the functions' dependency closure instead.
     /// </summary>
     [Fact]
     public void TheFunctionLimitationIsPartialButStillQualifies()

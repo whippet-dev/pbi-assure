@@ -321,21 +321,18 @@ public sealed class RoleDependencyTests
     }
 
     /// <summary>
-    /// The fixture still contains unsupported perspective and function metadata, so absence states there
-    /// remain qualified. RLS support was never expected to clear the whole fixture.
+    /// The fixture still carries the function limitation with its dependency impact. RLS support was
+    /// never expected to remove it; whether it qualifies an object is decided by its reach, not by roles.
     /// </summary>
     [Fact]
-    public void RemainingUnsupportedMetadataStillQualifiesAbsenceStates()
+    public void TheFunctionLimitationRemainsAQualifyingCause()
     {
         var inventory = ScanDesktopFixture();
 
         Assert.Contains(
             inventory.AnalysisLimitations,
-            item => item.ConstructType is "perspective" or "function" &&
+            item => item.ConstructType == "function" &&
                 item.DependencyImpact == ConstructDependencyImpacts.MayCreateDependencies);
-        Assert.Contains(
-            inventory.SemanticObjectUsages,
-            usage => usage.ClassificationConfidence == ClassificationConfidences.QualifiedByLimitation);
     }
 
     // ---- Helpers ----------------------------------------------------------------------------

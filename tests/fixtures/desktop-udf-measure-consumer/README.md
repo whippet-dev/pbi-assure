@@ -101,8 +101,9 @@ evidence is *shown*, never what was *classified*.
 
 ## What this fixture does NOT prove
 
-- Anything about **report-level measures or visual calculations** calling a UDF. Those remain the unread
-  UDF-consumer gap; this fixture contains neither
+- Anything about **report-level measures or visual calculations** calling a UDF. Report-level measure
+  expressions are read elsewhere; visual calculations remain the unread UDF-consumer gap. This fixture
+  contains neither
 - Anything about other Desktop versions, locales, or DirectQuery/Direct Lake models
 - That the Desktop version is exactly the one recorded above — it is inherited from the source project
   rather than re-verified in the About dialog

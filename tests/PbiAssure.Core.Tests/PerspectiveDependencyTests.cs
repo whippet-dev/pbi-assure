@@ -284,8 +284,9 @@ public sealed class PerspectiveDependencyTests
     // ---- 13. Confidence interaction ----------------------------------------------------------
 
     /// <summary>
-    /// Functions remain unparsed, so the fixture still has qualified objects — but the cause is now the
-    /// function limitation alone. No perspective-specific rule exists anywhere in the qualifier.
+    /// The only remaining qualifying cause in the fixture is the function limitation; no
+    /// perspective-specific rule exists anywhere in the qualifier. Its sole function references nothing,
+    /// so that cause reaches no object and the fixture has no qualified object left.
     /// </summary>
     [Fact]
     public void RemainingQualificationComesFromTheFunctionLimitationAlone()
@@ -300,7 +301,7 @@ public sealed class PerspectiveDependencyTests
             .ToArray();
 
         Assert.Equal(["function"], qualifying);
-        Assert.Contains(
+        Assert.DoesNotContain(
             inventory.SemanticObjectUsages,
             usage => usage.ClassificationConfidence == ClassificationConfidences.QualifiedByLimitation);
     }

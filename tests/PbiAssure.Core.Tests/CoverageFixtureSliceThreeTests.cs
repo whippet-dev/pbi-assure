@@ -142,8 +142,11 @@ public sealed class CoverageFixtureSliceThreeTests
 
         Assert.Equal(ClassificationConfidences.Established,
             Usage(inventory, "EstablishedCoverage", "EstablishedUnusedTable", "EstablishedUnusedControl").ClassificationConfidence);
+        // The function limitation reaches what the function bodies reference and nothing else.
         Assert.Equal(ClassificationConfidences.QualifiedByLimitation,
-            Usage(inventory, "CoverageLimited", "CoverageLimited", "QualifiedUnusedControl").ClassificationConfidence);
+            Usage(inventory, "CoverageLimited", "CoverageLimited", "UdfUnusedSource").ClassificationConfidence);
+        Assert.Equal(ClassificationConfidences.Established,
+            Usage(inventory, "CoverageLimited", "CoverageLimited", "UnreachedUnusedControl").ClassificationConfidence);
         Assert.Equal(ClassificationConfidences.Established,
             Usage(inventory, "CoverageLimited", "CoverageLimited", "UdfUsedSource").ClassificationConfidence);
         Assert.Contains(inventory.AnalysisLimitations, limitation =>

@@ -1,3 +1,5 @@
+using System.Text.Json.Serialization;
+
 namespace PbiAssure.Core.Inventory;
 
 /// <summary>
@@ -153,4 +155,18 @@ public sealed record AnalysisLimitation(
 {
     /// <summary>Evidence marker used when an entire file was not analysed, so no inner location applies.</summary>
     public const string WholeFileEvidence = "(entire file)";
+
+    /// <summary>
+    /// The semantic objects this limitation can bear on, as <see cref="FieldIdentity"/> keys, when the
+    /// scanner has bounded its reach from the dependency graph. Null — the default and the conservative
+    /// reading — means every object in the model. An empty set means the unread part of the construct
+    /// can reach no semantic object at all, so nothing is qualified while the limitation itself is
+    /// still recorded.
+    ///
+    /// In process only: the limitation record in JSON is unchanged, and which objects a limitation
+    /// qualifies is already visible through each object's classification confidence and the CSV's
+    /// qualifying-limitation column.
+    /// </summary>
+    [JsonIgnore]
+    public IReadOnlySet<string>? Reach { get; init; }
 }

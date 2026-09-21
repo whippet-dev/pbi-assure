@@ -86,6 +86,16 @@ conservative product rule about the constructs known today, not a permanent guar
 construct that changes how existing evidence should be *read*, rather than only adding to it, would
 qualify positive states too.
 
+Qualification also follows how far a doubt can reach. A DAX user-defined function may be called from a
+visual calculation, which is not read, but such a call can only make the function live and, with it,
+whatever the function's body references — transitively, through other functions and measures. The
+function limitation therefore qualifies exactly that closure, computed over the same dependency edges
+the classifier follows: a function whose body references nothing qualifies no object, a function that
+references `Sales[Amount]` keeps `Amount` and whatever depends on it qualified, and an unrelated measure
+elsewhere in the model stays Established. The limitation itself is still recorded in Analysis coverage.
+When a function body left a reference unresolved, its closure is not known and the limitation keeps its
+model-wide reading.
+
 The HTML report shows this in two places. An **Analysis coverage** section states, per semantic model,
 what PBI Assure could not fully check and whether that could change any used or unused result. Each
 affected object then carries a small **Usage check incomplete** marker beside its status, linking to

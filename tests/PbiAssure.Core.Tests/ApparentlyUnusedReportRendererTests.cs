@@ -279,7 +279,9 @@ public sealed class ApparentlyUnusedReportRendererTests
                 "\tpartition Sales = m\n\t\tmode: import\n\t\tsource = #table({\"Amount\"}, {})\n";
         }
 
-        // A second model whose functions.tmdl qualifies every absence state in it.
+        // A second model whose function body references a column the scan cannot resolve. The function
+        // limitation's reach is then unknown rather than bounded, so every absence state in that model
+        // is qualified by it (and by the unresolved reference itself).
         if (includeUnused && includeLimitedModel)
         {
             files["Limited.SemanticModel/definition.pbism"] = "{}";
@@ -287,7 +289,7 @@ public sealed class ApparentlyUnusedReportRendererTests
                 "table Facts\n\tcolumn Value\n\t\tdataType: int64\n\t\tsourceColumn: Value\n" +
                 "\tpartition Facts = m\n\t\tmode: import\n\t\tsource = #table({\"Value\"}, {})\n";
             files["Limited.SemanticModel/definition/functions.tmdl"] =
-                "function Double = (x) => x * 2\n";
+                "function Double = (x) => x * SUM(Facts[Missing])\n";
         }
 
         return ProjectScanner.Scan(new InMemoryProjectFileSource("Apparently unused", files.Select(file =>
