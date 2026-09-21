@@ -199,15 +199,99 @@ public sealed class DaxUnqualifiedCollisionTests
         Assert.Equal(SemanticUsageStates.ApparentlyUnused, Usage(inventory, "Fact", "X").UsageState);
     }
 
-    [Fact]
-    public void IteratorWithoutHomeColumnStillRetainsNotFoundAndQualifiedAbsence()
+    /// <summary>
+    /// The synthetic form of the desktop-iterator-no-home-column fixture. An evidenced iterator over a
+    /// persisted table proves the row context of its row arguments, so the unqualified name binds to
+    /// that table's column when the expression's own table has none and no measure carries the name.
+    /// </summary>
+    [Theory]
+    [InlineData("SUMX ( Dim, [X] )")]
+    [InlineData("SUMX('Dim', INT([X]) + 1)")]
+    [InlineData("COUNTROWS ( FILTER ( Dim, [X] > 0 ) )")]
+    [InlineData("SUMX ( Dim, [X] * 2 )")]
+    [InlineData("CALCULATE ( SUMX ( Dim, [X] ) )")]
+    [InlineData("SUMX ( Dim, ( [X] ) )")]
+    public void IteratorWithoutHomeColumnBindsToTheIteratedTable(string expression)
     {
-        var inventory = Scan("SUMX ( Dim, [X] )", factColumn: "Other");
-        Assert.DoesNotContain(inventory.SemanticDependencies, edge => edge.ToObjectType == SemanticObjectTypes.Column);
-        Assert.Equal(UnresolvedSemanticDependencyResolutionOutcomes.NotFound,
-            Assert.Single(inventory.UnresolvedSemanticDependencies).ResolutionOutcome);
+        var inventory = Scan(expression, factColumn: "Other");
+        Assert.Empty(inventory.UnresolvedSemanticDependencies);
+        var edge = Assert.Single(inventory.SemanticDependencies, edge =>
+            edge.FromObjectName == "Result" && edge.ToObjectType == SemanticObjectTypes.Column);
+        Assert.Equal("Dim", edge.ToTable);
+        Assert.Equal("X", edge.ToObjectName);
+        Assert.Equal(SemanticUsageStates.IndirectlyUsed, Usage(inventory, "Dim", "X").UsageState);
+        Assert.Equal(ClassificationConfidences.Established, Usage(inventory, "Dim", "X").ClassificationConfidence);
+        Assert.Equal(SemanticUsageStates.ApparentlyUnused, Usage(inventory, "Fact", "Other").UsageState);
+        Assert.Equal(ClassificationConfidences.Established, Usage(inventory, "Fact", "Other").ClassificationConfidence);
+        Assert.DoesNotContain(inventory.AnalysisLimitations, item => item.LimitationId == "PBI-LIMIT-MODEL-UNRESOLVED-REFERENCE");
+    }
+
+    /// <summary>
+    /// Where the row context is not proven the reference stays NotFound with model-wide reach, exactly
+    /// as before: nested iterators, a source that is a variable or table expression, an unaccounted
+    /// call between the occurrence and the iterator, an iterator that is not evidenced, unbalanced
+    /// syntax, and a proven table that simply has no such column.
+    /// </summary>
+    [Theory]
+    [InlineData("SUMX ( Dim, SUMX ( Dim, [X] ) )")]
+    [InlineData("VAR t = Dim RETURN SUMX ( t, [X] )")]
+    [InlineData("SUMX ( FILTER ( Dim, TRUE() ), [X] )")]
+    [InlineData("SUMX ( Dim, CALCULATE ( [X] ) )")]
+    [InlineData("SUMX ( Dim, RELATED ( [X] ) )")]
+    [InlineData("MAXX ( Dim, [X] )")]
+    [InlineData("SUMX ( Dim, [X]")]
+    [InlineData("SUMX ( Dim, [Missing] )")]
+    [InlineData("SUMX ( { 1, 2 }, [X] )")]
+    public void UnprovenIteratorRowContextWithoutHomeColumnStaysNotFound(string expression)
+    {
+        var inventory = Scan(expression, factColumn: "Other");
+        Assert.DoesNotContain(inventory.SemanticDependencies, edge =>
+            edge.FromObjectName == "Result" && edge.ToObjectType == SemanticObjectTypes.Column);
+        var unresolved = Assert.Single(inventory.UnresolvedSemanticDependencies);
+        Assert.Equal(UnresolvedSemanticDependencyResolutionOutcomes.NotFound, unresolved.ResolutionOutcome);
         Assert.Equal(SemanticUsageStates.ApparentlyUnused, Usage(inventory, "Dim", "X").UsageState);
         Assert.Equal(ClassificationConfidences.QualifiedByLimitation, Usage(inventory, "Dim", "X").ClassificationConfidence);
+        Assert.Equal(ClassificationConfidences.QualifiedByLimitation, Usage(inventory, "Fact", "Other").ClassificationConfidence);
+    }
+
+    /// <summary>
+    /// A proven row context never overrides a competing name: a measure of the name still resolves as
+    /// a measure, and a same-named column on the expression's own table still leaves the reference
+    /// ambiguous, as the collision tests above require.
+    /// </summary>
+    [Fact]
+    public void AProvenRowContextDoesNotOverrideAMeasureOfTheSameName()
+    {
+        var inventory = Scan("SUMX ( Dim, [X] )", factColumn: "Other", extraFact: "\tmeasure X = 1\n");
+        Assert.Empty(inventory.UnresolvedSemanticDependencies);
+        var edge = Assert.Single(inventory.SemanticDependencies, edge =>
+            edge.FromObjectName == "Result" && edge.DependencyKind == SemanticDependencyKinds.Dax && !edge.ToObjectName.Equals("Dim", StringComparison.Ordinal));
+        Assert.Equal(SemanticObjectTypes.Measure, edge.ToObjectType);
+        Assert.Equal(SemanticUsageStates.ApparentlyUnused, Usage(inventory, "Dim", "X").UsageState);
+    }
+
+    [Theory]
+    [InlineData("SUMX(Dim, [X])", "Dim")]
+    [InlineData("SUMX('Dim', INT([X]))", "Dim")]
+    [InlineData("FILTER(Dim, [X] > 0)", "Dim")]
+    [InlineData("SELECTCOLUMNS(Dim, \"V\", [X])", "Dim")]
+    [InlineData("CALCULATE(SUMX(Dim, [X]))", "Dim")]
+    [InlineData("SUMX(FILTER(Dim, [X] > 0), 1)", "Dim")]
+    [InlineData("SUMX(Fact, [X])", "Fact")]
+    [InlineData("SUMX(Dim, SUMX(Fact, [X]))", null)]
+    [InlineData("SUMX(FILTER(Dim, TRUE()), [X])", null)]
+    [InlineData("SUMX(Dim, CALCULATE([X]))", null)]
+    [InlineData("MAXX(Dim, [X])", null)]
+    [InlineData("SUMX(Dim, [X]", null)]
+    [InlineData("SUMX(Dim, [X]))", null)]
+    [InlineData("[X]", null)]
+    [InlineData("SUMX(Unknown, [X])", null)]
+    public void TheExtractorProvesTheRowContextTableOnlyForOneEvidencedPersistedIterator(string expression, string? expected)
+    {
+        var reference = DaxReferenceExtractor.Extract(expression,
+            new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "Fact", "Dim" })
+            .Last(item => item.Table is null && item.ObjectName == "X");
+        Assert.Equal(expected, reference.RowContextTable);
     }
 
     private static SemanticObjectUsage Usage(ProjectInventory inventory, string table, string name) =>

@@ -1,0 +1,31 @@
+table 'Measures (2)'
+	lineageTag: 7c083208-06d2-4d60-b3ff-34f3795d9466
+
+	measure 'Iterator Prove' = SUMX(Dim, [X])
+		formatString: 0
+		lineageTag: ba56133d-4290-4dfd-8613-12baf1c49fa6
+
+	measure 'Unused Control' = 1
+		formatString: 0
+		lineageTag: a9ebd43d-33a4-431b-959d-98742423b3b8
+
+	column 1
+		dataType: string
+		lineageTag: 84490e79-396f-4398-9c93-157ff2b332b9
+		summarizeBy: none
+		sourceColumn: 1
+
+		annotation SummarizationSetBy = Automatic
+
+	partition 'Measures (2)' = m
+		mode: import
+		source =
+				let
+				  Source = Table.FromRows(Json.Document(Binary.Decompress(Binary.FromText("i44FAA==", BinaryEncoding.Base64), Compression.Deflate)), let _t = ((type nullable text) meta [Serialized.Text = true]) in type table [#"1" = _t])
+				in
+				  Source
+
+	annotation PBI_NavigationStepName = Navigation
+
+	annotation PBI_ResultType = Table
+

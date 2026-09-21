@@ -1892,6 +1892,22 @@ internal static class SemanticDependencyAnalyzer
 
             measuresByName.TryGetValue(reference.ObjectName, out var measures);
             columns.TryGetValue(QualifiedKey(currentTable, reference.ObjectName), out var localColumn);
+            // An evidenced iterator over a persisted table puts exactly that table in row context
+            // around the occurrence, so an unqualified name there is that table's column when nothing
+            // else could carry the name: no measure, since measures are global, and no column on the
+            // expression's own table, whose row context (a calculated column's, a filter's) an iterator
+            // nests inside. Those cases keep the collision handling below.
+            if (reference.RowContextTable is not null &&
+                measures is null &&
+                localColumn is null &&
+                columns.TryGetValue(QualifiedKey(reference.RowContextTable, reference.ObjectName), out var rowColumn))
+            {
+                target = rowColumn;
+                reason = string.Empty;
+                resolutionOutcome = string.Empty;
+                return true;
+            }
+
             // The expression owner's table does not prove the row context of an unqualified column.
             // Other same-named columns can collide with that fallback (for example inside SUMX).
             // Count them as doubt, never as targets: without a local column, retain the existing

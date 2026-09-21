@@ -1,0 +1,11 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/gitIntegration/platformProperties/2.0.0/schema.json",
+  "metadata": {
+    "type": "Report",
+    "displayName": "desktop-iterator-no-home-column"
+  },
+  "config": {
+    "version": "2.0",
+    "logicalId": "55a39d81-0dd0-4ab1-ba9f-6aa1616055e5"
+  }
+}

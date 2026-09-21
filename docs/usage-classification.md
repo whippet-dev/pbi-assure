@@ -5,7 +5,7 @@ PBI Assure classifies semantic-model objects by traversing an evidence-backed de
 ## Evidence currently included
 
 - PBIR report filters, page filters, drillthrough parameters, and visual projections, filters, sorting, and formatting references.
-- Supported DAX references from measures, calculated columns, calculated-table partitions, measure dynamic format strings, KPI expressions and measure-owned Detail Rows. Ambiguous row contexts retain unresolved evidence rather than inventing a persisted column target.
+- Supported DAX references from measures, calculated columns, calculated-table partitions, measure dynamic format strings, KPI expressions and measure-owned Detail Rows. An unqualified column name inside a row argument of a recognised iterator whose source is a bare table name (`SUMX(Dim, [X])`) binds to that table's column when nothing else carries the name. Ambiguous row contexts — nested iterators, table expressions or variables as the source, a same-named column on the expression's own table — retain unresolved evidence rather than inventing a persisted column target.
 - Standard field-parameter choices declared through `NAMEOF(...)` references in a calculated table.
 - Calculation items, their DAX and format-string expressions, and calculation-group selection expressions.
 - Sort-by column links, aggregation mappings and supported incremental-refresh policy associations.

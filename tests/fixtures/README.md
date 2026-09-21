@@ -12,6 +12,7 @@ These projects use synthetic data or sanitised metadata. Their READMEs distingui
 | `desktop-formatting-semantic-reference-sanitized`, `mobile-semantic-reference-sanitized` | Formatting and mobile references outside ordinary visual projections. |
 | `desktop-hidden-visual-calculation-evidence` | Hidden supporting projections remain used without becoming user-facing evidence. |
 | `desktop-incremental-refresh-evidence`, `desktop-incremental-refresh-evidence-baseline` | Persisted policy versus similar M filters without policy metadata. |
+| `desktop-iterator-no-home-column` | An unqualified column reference bound by an iterator's row context when the measure's own table has no such column. |
 | `desktop-landing-page`, `desktop-landing-page-no-explicit` | Explicit landing page versus absence of that setting. |
 | `desktop-ols-evidence` | Table and column object-level security forms. |
 | `desktop-semantic-constructs` | Desktop semantic baseline: roles, perspectives, functions, generated dates and packaging. |

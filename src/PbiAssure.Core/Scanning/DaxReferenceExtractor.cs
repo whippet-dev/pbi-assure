@@ -19,12 +19,16 @@ internal static class DaxReferenceExtractor
             function.Equals("FILTER", StringComparison.OrdinalIgnoreCase) ||
             function.Equals("SELECTCOLUMNS", StringComparison.OrdinalIgnoreCase));
 
-    private sealed class ReferenceContext(char delimiter, string? function, bool hasPersistedRowSource)
+    private sealed class ReferenceContext(char delimiter, string? function, string? persistedRowSource)
     {
         public char Delimiter { get; } = delimiter;
         public string? Function { get; } = function;
         public int Argument { get; set; }
-        public bool HasUnboundIteratorRow => IsRowIterator(Function) && Argument > 0 && !hasPersistedRowSource;
+
+        /// <summary>The known table an evidenced iterator names as its entire first argument, if any.</summary>
+        public string? PersistedRowSource { get; } = persistedRowSource;
+
+        public bool HasUnboundIteratorRow => IsRowIterator(Function) && Argument > 0 && PersistedRowSource is null;
 
         public bool PreservesOwnerRow => Function is null || OwnerRowScalarFunctions.Contains(Function) ||
             // The table argument is evaluated in the incoming context; the subsequent row expressions
@@ -86,6 +90,7 @@ internal static class DaxReferenceExtractor
                     {
                         CanUseOwnerRowContext = !malformedContext && contexts.All(context => context.PreservesOwnerRow),
                         HasUnboundIteratorRowContext = contexts.Any(context => context.HasUnboundIteratorRow),
+                        RowContextTable = malformedContext ? null : ProvenRowContextTable(contexts),
                     });
                 }
 
@@ -109,8 +114,9 @@ internal static class DaxReferenceExtractor
             if (character is '(' or '{')
             {
                 contexts.Push(new ReferenceContext(character, character == '(' ? pendingFunction : null,
-                    character == '(' && IsRowIterator(pendingFunction) &&
-                    HasPersistedRowSource(expression, index + 1, knownTables)));
+                    character == '(' && IsRowIterator(pendingFunction)
+                        ? PersistedRowSource(expression, index + 1, knownTables)
+                        : null));
             }
             else if (character is ')' or '}')
             {
@@ -123,29 +129,74 @@ internal static class DaxReferenceExtractor
         }
 
         if (malformedContext || contexts.Count != 0)
-            references = references.Select(reference => reference with { CanUseOwnerRowContext = false }).ToList();
+            references = references.Select(reference => reference with { CanUseOwnerRowContext = false, RowContextTable = null }).ToList();
         return references.Distinct().ToArray();
+    }
+
+    /// <summary>
+    /// The one persisted table in row context at the current position, proven by the enclosing
+    /// scopes: the occurrence sits in a row argument of exactly one evidenced iterator whose source is
+    /// a known table, and only scalar wrappers and plain parentheses lie between them. Anything else
+    /// leaves the row context unproven and yields null: a nested iterator (two row contexts), an
+    /// iterator over a table expression or variable (a source not accounted for), or an unaccounted
+    /// call between the occurrence and the iterator. Scopes outside the iterator do not alter the
+    /// row it established, except a further iterator, which nests it.
+    /// </summary>
+    private static string? ProvenRowContextTable(Stack<ReferenceContext> contexts)
+    {
+        string? table = null;
+        // A stack enumerates from the innermost scope outwards.
+        foreach (var context in contexts)
+        {
+            if (context.Function is null || OwnerRowScalarFunctions.Contains(context.Function))
+            {
+                continue;
+            }
+
+            if (IsRowIterator(context.Function))
+            {
+                if (context.Argument == 0)
+                {
+                    continue;
+                }
+
+                if (table is not null || context.PersistedRowSource is null)
+                {
+                    return null;
+                }
+
+                table = context.PersistedRowSource;
+            }
+            else if (table is null)
+            {
+                return null;
+            }
+        }
+
+        return table;
     }
 
     // Only an entire first argument naming a known table is accounted for here. Table expressions,
     // variables and constructors can introduce virtual columns; their row source is not inferred.
-    private static bool HasPersistedRowSource(string expression, int index, IReadOnlySet<string> knownTables)
+    private static string? PersistedRowSource(string expression, int index, IReadOnlySet<string> knownTables)
     {
         SkipTrivia();
         string table;
         if (index < expression.Length && expression[index] == '\'')
         {
-            if (!ReadQuotedIdentifier(expression, ref index, out table)) return false;
+            if (!ReadQuotedIdentifier(expression, ref index, out table)) return null;
         }
         else
         {
-            if (index >= expression.Length || !IsUnquotedIdentifierStart(expression[index])) return false;
+            if (index >= expression.Length || !IsUnquotedIdentifierStart(expression[index])) return null;
             var start = index++;
             while (index < expression.Length && IsUnquotedIdentifierPart(expression[index])) index++;
             table = expression[start..index];
         }
         SkipTrivia();
-        return knownTables.Contains(table) && index < expression.Length && expression[index] is ',' or ';';
+        return knownTables.Contains(table) && index < expression.Length && expression[index] is ',' or ';'
+            ? table
+            : null;
 
         void SkipTrivia()
         {
@@ -612,6 +663,13 @@ internal static class DaxReferenceExtractor
 
         /// <summary>A recognised iterator's row expression over an unbound table expression.</summary>
         public bool HasUnboundIteratorRowContext { get; init; }
+
+        /// <summary>
+        /// The persisted table a recognised iterator holds in row context around this occurrence,
+        /// when exactly one such context encloses it and nothing between them is unaccounted for.
+        /// Null wherever the row context is not proven.
+        /// </summary>
+        public string? RowContextTable { get; init; }
     }
 
     internal sealed record DaxQualifiedColumnReference(string Table, string Column);
