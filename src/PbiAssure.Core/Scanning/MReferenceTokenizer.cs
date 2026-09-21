@@ -94,7 +94,11 @@ internal static class MReferenceTokenizer
                 continue;
             }
             var symbol = current.ToString();
-            if (index + 1 < source.Length && source.Substring(index, 2) is "=>" or "<>" or "<=" or ">=" or "??" or "..")
+            // The not-implemented expression "..." is one token; it must not read as the range
+            // operator ".." followed by a stray dot.
+            if (source.AsSpan(index).StartsWith("...", StringComparison.Ordinal))
+                symbol = "...";
+            else if (index + 1 < source.Length && source.Substring(index, 2) is "=>" or "<>" or "<=" or ">=" or "??" or "..")
                 symbol = source.Substring(index, 2);
             index += symbol.Length;
             tokens.Add(new(MReferenceTokenKind.Symbol, symbol, start, index));

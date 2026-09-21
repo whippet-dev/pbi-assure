@@ -108,6 +108,9 @@ internal sealed class MQueryReferenceResolver
         else if (At("{")) Arguments(scope, "{", "}");
         else if (Take("[")) RecordOrImplicitSelector(scope);
         else if (Take("@")) references.Add(new Reference(Identifier(), scope, Inclusive: true));
+        // The not-implemented expression: a complete primary expression that raises when evaluated and
+        // names nothing. Desktop persists it as a parameter's DefaultValue when none has been chosen.
+        else if (Take("...")) { }
         else if (Current.Kind is MReferenceTokenKind.Identifier or MReferenceTokenKind.QuotedIdentifier) references.Add(new Reference(Identifier(), scope));
         else if (Current.Kind is MReferenceTokenKind.Number or MReferenceTokenKind.Text || At("null") || At("true") || At("false")) position++;
         else throw new UnsupportedSyntaxException();
