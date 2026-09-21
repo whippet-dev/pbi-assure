@@ -10,8 +10,10 @@ namespace PbiAssure.Core.Tests;
 /// model rests on an incomplete picture and must not be reported as Established.
 ///
 /// The doubt is routed through <see cref="AnalysisLimitation"/> rather than read directly by the
-/// qualifier, so confidence keeps a single input. Scope is the semantic model: an unresolved reference
-/// does not say which object it meant, so nothing narrower is safe yet.
+/// qualifier, so confidence keeps a single input. Scope is the semantic model. A NotFound reference
+/// does not say which object it meant, so it reaches every absence in the model; an Ambiguous one
+/// names its candidates, so it reaches only those and what they depend on (see
+/// <see cref="UnresolvedReferenceLimitationReachTests"/>).
 /// </summary>
 public sealed class UnresolvedDependencyConfidenceTests
 {
@@ -39,7 +41,7 @@ public sealed class UnresolvedDependencyConfidenceTests
     }
 
     [Fact]
-    public void AmbiguousReferenceQualifiesAbsenceConclusionsInThatModel()
+    public void AmbiguousReferenceQualifiesItsCandidatesAndNotTheUnrelated()
     {
         // A column and a measure sharing one name on the same table is the documented Ambiguous case.
         var inventory = Scan(
@@ -54,9 +56,16 @@ public sealed class UnresolvedDependencyConfidenceTests
             inventory.AnalysisLimitations,
             candidate => candidate.Cause == AnalysisLimitationCauses.ReferenceUnresolved);
 
+        // The edge would lead to the Dup column or the Dup measure: both stay in doubt, Orphan does not.
+        foreach (var dup in inventory.SemanticObjectUsages.Where(usage => usage.ObjectName == "Dup"))
+        {
+            Assert.Equal(SemanticUsageStates.ApparentlyUnused, dup.UsageState);
+            Assert.Equal(ClassificationConfidences.QualifiedByLimitation, dup.ClassificationConfidence);
+        }
+
         var orphan = Usage(inventory, "Orphan");
         Assert.Equal(SemanticUsageStates.ApparentlyUnused, orphan.UsageState);
-        Assert.Equal(ClassificationConfidences.QualifiedByLimitation, orphan.ClassificationConfidence);
+        Assert.Equal(ClassificationConfidences.Established, orphan.ClassificationConfidence);
     }
 
     [Fact]

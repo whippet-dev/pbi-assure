@@ -49,9 +49,11 @@ public static class ProjectScanner
             dependencyAnalysis.UnresolvedDependencies,
             AnalysisCoverageRefinements.BuildUnanalyzedTableConstructs(semanticModels),
             semanticModels,
-            powerQueryAnalysis.IncompleteReferences);
+            powerQueryAnalysis.IncompleteReferences,
+            dependencyAnalysis.Dependencies);
         // Where a limitation's reach can be read off the dependency graph, it is bounded to that reach
         // before confidence is decided, so it qualifies only what the unread metadata could touch.
+        // Unresolved references carry theirs from detection; the function file's is bounded here.
         analysisLimitations = FunctionLimitationReach.Apply(analysisLimitations, dependencyAnalysis);
 
         // Applied once, after usage states are final and the limitations are known. Usage states are not

@@ -64,8 +64,28 @@ internal static class SemanticDependencyAnalyzer
                 .ThenBy(edge => edge.ToTable, StringComparer.OrdinalIgnoreCase)
                 .ThenBy(edge => edge.ToObjectName, StringComparer.OrdinalIgnoreCase)
                 .ToArray(),
-            UnresolvedDependencies: unresolved.Distinct().ToArray(),
+            UnresolvedDependencies: MergeDuplicates(unresolved),
             NodeReachability: reachability);
+    }
+
+    /// <summary>
+    /// One record per distinct unresolved reference. The candidate set is analysis metadata rather than
+    /// part of the reference's identity, so duplicates are recognised without it and their candidate
+    /// sets are unioned: a reference that recurs in two contexts keeps every object either could mean,
+    /// and loses the set altogether if either occurrence could not bound it.
+    /// </summary>
+    private static UnresolvedSemanticDependency[] MergeDuplicates(List<UnresolvedSemanticDependency> unresolved)
+    {
+        return unresolved
+            .GroupBy(dependency => dependency with { CandidateTargets = null })
+            .Select(group => group.Key with
+            {
+                CandidateTargets = group.All(dependency => dependency.CandidateTargets is not null)
+                    ? group.SelectMany(dependency => dependency.CandidateTargets!)
+                        .ToHashSet(StringComparer.OrdinalIgnoreCase)
+                    : null,
+            })
+            .ToArray();
     }
 
     private static void AnalyzeReportMeasures(
@@ -190,7 +210,8 @@ internal static class SemanticDependencyAnalyzer
                     measure.Entity,
                     out reportMeasureTarget,
                     out var reason,
-                    out var resolutionOutcome))
+                    out var resolutionOutcome,
+                    out _))
             {
                 AddDependencyIfMissing(dependencies, CreateEdge(
                     model.Name,
@@ -202,6 +223,8 @@ internal static class SemanticDependencyAnalyzer
             }
             else
             {
+                // A report measure can also name another report measure, which the model lookup does
+                // not hold, so its candidates are not the complete set here: the doubt stays model-wide.
                 unresolved.Add(CreateUnresolved(
                     model.Name,
                     source,
@@ -567,7 +590,8 @@ internal static class SemanticDependencyAnalyzer
                 column,
                 out var target,
                 out var reason,
-                out var resolutionOutcome))
+                out var resolutionOutcome,
+                out var candidates))
         {
             dependencies.Add(CreateEdge(
                 model.Name,
@@ -587,7 +611,8 @@ internal static class SemanticDependencyAnalyzer
                 $"{table.Name}[{column}]",
                 resolutionOutcome,
                 reason,
-                table.RelativePath));
+                table.RelativePath,
+                candidates));
         }
     }
 
@@ -619,7 +644,8 @@ internal static class SemanticDependencyAnalyzer
                     column.SortByColumn,
                     out var sortTarget,
                     out var reason,
-                    out var resolutionOutcome))
+                    out var resolutionOutcome,
+                    out var candidates))
             {
                 dependencies.Add(CreateEdge(
                     model.Name,
@@ -638,7 +664,8 @@ internal static class SemanticDependencyAnalyzer
                     column.SortByColumn,
                     resolutionOutcome,
                     reason,
-                    table.RelativePath));
+                    table.RelativePath,
+                    candidates));
             }
         }
 
@@ -693,7 +720,8 @@ internal static class SemanticDependencyAnalyzer
                         level.Column,
                         out var levelTarget,
                         out var reason,
-                        out var resolutionOutcome))
+                        out var resolutionOutcome,
+                        out var candidates))
                 {
                     dependencies.Add(CreateEdge(
                         model.Name,
@@ -712,7 +740,8 @@ internal static class SemanticDependencyAnalyzer
                         level.Column,
                         resolutionOutcome,
                         reason,
-                        table.RelativePath));
+                        table.RelativePath,
+                        candidates));
                 }
             }
         }
@@ -811,7 +840,8 @@ internal static class SemanticDependencyAnalyzer
                     entry.ObjectName,
                     out var target,
                     out var reason,
-                    out var resolutionOutcome))
+                    out var resolutionOutcome,
+                    out var candidates))
             {
                 dependencies.Add(CreateEdge(
                     model.Name,
@@ -830,7 +860,8 @@ internal static class SemanticDependencyAnalyzer
                     entry.ReferenceText,
                     resolutionOutcome,
                     $"Field parameter '{parameter.Name}': {reason}",
-                    table.RelativePath));
+                    table.RelativePath,
+                    candidates));
             }
         }
     }
@@ -965,6 +996,7 @@ internal static class SemanticDependencyAnalyzer
                     out var target,
                     out var reason,
                     out var resolutionOutcome,
+                    out var candidates,
                     hasOwnerRowContext: source.ObjectType == SemanticObjectTypes.Column && dependencyKind == SemanticDependencyKinds.Dax))
             {
                 dependencies.Add(CreateEdge(
@@ -985,7 +1017,8 @@ internal static class SemanticDependencyAnalyzer
                     reference.Text,
                     resolutionOutcome,
                     reason,
-                    evidencePath));
+                    evidencePath,
+                    candidates));
             }
         }
     }
@@ -1065,7 +1098,8 @@ internal static class SemanticDependencyAnalyzer
                         string.Empty,
                         out var target,
                         out var reason,
-                        out var resolutionOutcome))
+                        out var resolutionOutcome,
+                        out var candidates))
                 {
                     dependencies.Add(CreateEdge(
                         model.Name, source, target, SemanticDependencyKinds.Dax,
@@ -1076,7 +1110,8 @@ internal static class SemanticDependencyAnalyzer
                     unresolved.Add(CreateUnresolved(
                         model.Name, source, SemanticDependencyKinds.Dax, reference.Text,
                         resolutionOutcome,
-                        $"Function '{function.Name}': {reason}", function.RelativePath));
+                        $"Function '{function.Name}': {reason}", function.RelativePath,
+                        candidates));
                 }
             }
         }
@@ -1133,7 +1168,8 @@ internal static class SemanticDependencyAnalyzer
                             member,
                             out var target,
                             out var reason,
-                            out var resolutionOutcome))
+                            out var resolutionOutcome,
+                            out var candidates))
                     {
                         AddPerspectiveMember(
                             model, source, target, perspective.RelativePath,
@@ -1148,7 +1184,8 @@ internal static class SemanticDependencyAnalyzer
                             $"{table.Name}[{member}]",
                             resolutionOutcome,
                             $"Perspective '{perspective.Name}': {reason}",
-                            perspective.RelativePath));
+                            perspective.RelativePath,
+                            candidates));
                     }
                 }
 
@@ -1284,7 +1321,8 @@ internal static class SemanticDependencyAnalyzer
                             columnPermission.Column,
                             out var target,
                             out var reason,
-                            out var resolutionOutcome))
+                            out var resolutionOutcome,
+                            out var candidates))
                     {
                         dependencies.Add(CreateEdge(
                             model.Name,
@@ -1304,7 +1342,8 @@ internal static class SemanticDependencyAnalyzer
                             $"{permission.Table}[{columnPermission.Column}]",
                             resolutionOutcome,
                             $"Role '{role.Name}' object-level permission: {reason}",
-                            role.RelativePath));
+                            role.RelativePath,
+                            candidates));
                     }
                 }
             }
@@ -1330,7 +1369,8 @@ internal static class SemanticDependencyAnalyzer
                 column,
                 out var target,
                 out var reason,
-                out var resolutionOutcome))
+                out var resolutionOutcome,
+                out var candidates))
         {
             var edge = CreateEdge(
                 model.Name,
@@ -1357,7 +1397,8 @@ internal static class SemanticDependencyAnalyzer
                 $"{table}[{column}]",
                 resolutionOutcome,
                 $"Relationship '{relationship.Name}': {reason}",
-                evidencePath));
+                evidencePath,
+                candidates));
         }
     }
 
@@ -1659,7 +1700,8 @@ internal static class SemanticDependencyAnalyzer
         string referenceText,
         string resolutionOutcome,
         string reason,
-        string evidencePath)
+        string evidencePath,
+        SemanticNode[]? candidates = null)
     {
         return new UnresolvedSemanticDependency(
             model,
@@ -1673,6 +1715,10 @@ internal static class SemanticDependencyAnalyzer
             evidencePath)
         {
             ResolutionOutcome = resolutionOutcome,
+            CandidateTargets = candidates?
+                .Select(candidate => FieldIdentity.Create(
+                    candidate.Table, candidate.ObjectName, candidate.ObjectType, candidate.HierarchyName))
+                .ToHashSet(StringComparer.OrdinalIgnoreCase),
         };
     }
 
@@ -1732,7 +1778,7 @@ internal static class SemanticDependencyAnalyzer
     private sealed class ModelLookup
     {
         private readonly Dictionary<string, SemanticNode> columns;
-        private readonly Dictionary<string, int> columnCountsByName;
+        private readonly Dictionary<string, SemanticNode[]> columnsByName;
         private readonly Dictionary<string, SemanticNode> measuresByQualifiedName;
         private readonly Dictionary<string, SemanticNode[]> measuresByName;
 
@@ -1754,9 +1800,9 @@ internal static class SemanticDependencyAnalyzer
                     usage => QualifiedKey(usage.Table, usage.ObjectName),
                     usage => Source(usage),
                     StringComparer.OrdinalIgnoreCase);
-            columnCountsByName = columns.Values
+            columnsByName = columns.Values
                 .GroupBy(column => column.ObjectName, StringComparer.OrdinalIgnoreCase)
-                .ToDictionary(group => group.Key, group => group.Count(), StringComparer.OrdinalIgnoreCase);
+                .ToDictionary(group => group.Key, group => group.ToArray(), StringComparer.OrdinalIgnoreCase);
             measuresByQualifiedName = usages
                 .Where(usage => usage.ObjectType == SemanticObjectTypes.Measure)
                 .ToDictionary(
@@ -1802,14 +1848,21 @@ internal static class SemanticDependencyAnalyzer
         public bool TryResolveColumn(string table, string column, out SemanticNode target) =>
             columns.TryGetValue(QualifiedKey(table, column), out target!);
 
+        /// <summary>
+        /// Resolves a DAX reference, or explains why it cannot be. When the outcome is Ambiguous,
+        /// <paramref name="candidates"/> is the complete set of persisted objects the reference could
+        /// denote; it is null for every other outcome, including NotFound, where no set is known.
+        /// </summary>
         public bool TryResolveDax(
             DaxReferenceExtractor.DaxReference reference,
             string currentTable,
             out SemanticNode target,
             out string reason,
             out string resolutionOutcome,
+            out SemanticNode[]? candidates,
             bool hasOwnerRowContext = false)
         {
+            candidates = null;
             if (reference.IsTableReference)
             {
                 if (reference.Table is not null && TableNames.Contains(reference.Table))
@@ -1833,7 +1886,8 @@ internal static class SemanticDependencyAnalyzer
                     reference.ObjectName,
                     out target,
                     out reason,
-                    out resolutionOutcome);
+                    out resolutionOutcome,
+                    out candidates);
             }
 
             measuresByName.TryGetValue(reference.ObjectName, out var measures);
@@ -1844,9 +1898,9 @@ internal static class SemanticDependencyAnalyzer
             // measure lookup / NotFound behaviour rather than guessing an iterator's table.
             var candidateCount = (measures?.Length ?? 0) +
                                  (localColumn is null ? 0 : hasOwnerRowContext && reference.CanUseOwnerRowContext
-                                     ? 1 : columnCountsByName[reference.ObjectName]);
-            // A virtual row column is not in columnCountsByName. A unique persisted candidate does
-            // not therefore prove a binding inside an iterator whose source we have not accounted for.
+                                     ? 1 : columnsByName[reference.ObjectName].Length);
+            // A virtual row column is not in columnsByName. A unique persisted candidate does not
+            // therefore prove a binding inside an iterator whose source we have not accounted for.
             if (candidateCount == 1 && !(localColumn is not null && reference.HasUnboundIteratorRowContext))
             {
                 target = localColumn ?? measures![0];
@@ -1856,21 +1910,37 @@ internal static class SemanticDependencyAnalyzer
             }
 
             target = null!;
-            reason = candidateCount == 0
-                ? $"No measure or '{currentTable}' column named '{reference.ObjectName}' was found."
-                : $"The unqualified reference '{reference.ObjectName}' is ambiguous.";
-            resolutionOutcome = candidateCount == 0
-                ? UnresolvedSemanticDependencyResolutionOutcomes.NotFound
-                : UnresolvedSemanticDependencyResolutionOutcomes.Ambiguous;
+            if (candidateCount == 0)
+            {
+                reason = $"No measure or '{currentTable}' column named '{reference.ObjectName}' was found.";
+                resolutionOutcome = UnresolvedSemanticDependencyResolutionOutcomes.NotFound;
+                return false;
+            }
+
+            // Whatever context the name sits in, an unqualified name can denote only a measure of that
+            // name, which is model-global, or a column of that name in whichever table the row context
+            // holds — any persisted table, since the iterator's source is not accounted for. A virtual
+            // column of that name is not a model object, and what defines it is text already read. So
+            // every persisted object of the name is the complete set of objects the edge could reach,
+            // whichever of them the resolver could not choose between.
+            columnsByName.TryGetValue(reference.ObjectName, out var sameNamedColumns);
+            candidates = (measures ?? []).Concat(sameNamedColumns ?? []).ToArray();
+            reason = $"The unqualified reference '{reference.ObjectName}' is ambiguous.";
+            resolutionOutcome = UnresolvedSemanticDependencyResolutionOutcomes.Ambiguous;
             return false;
         }
 
+        /// <summary>
+        /// Resolves a table-qualified name. A name that matches both a column and a measure of that
+        /// table is Ambiguous between exactly those two, which is then the complete candidate set.
+        /// </summary>
         public bool TryResolveQualified(
             string table,
             string objectName,
             out SemanticNode target,
             out string reason,
-            out string resolutionOutcome)
+            out string resolutionOutcome,
+            out SemanticNode[]? candidates)
         {
             var key = QualifiedKey(table, objectName);
             var hasColumn = columns.TryGetValue(key, out var column);
@@ -1880,6 +1950,7 @@ internal static class SemanticDependencyAnalyzer
                 target = hasColumn ? column! : measure!;
                 reason = string.Empty;
                 resolutionOutcome = string.Empty;
+                candidates = null;
                 return true;
             }
 
@@ -1890,6 +1961,7 @@ internal static class SemanticDependencyAnalyzer
             resolutionOutcome = hasColumn
                 ? UnresolvedSemanticDependencyResolutionOutcomes.Ambiguous
                 : UnresolvedSemanticDependencyResolutionOutcomes.NotFound;
+            candidates = hasColumn ? [column!, measure!] : null;
             return false;
         }
 

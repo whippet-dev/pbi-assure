@@ -55,36 +55,11 @@ internal static class FunctionLimitationReach
             return limitation;
         }
 
-        var adjacency = new Dictionary<string, HashSet<string>>(StringComparer.OrdinalIgnoreCase);
-        foreach (var edge in analysis.Dependencies.Where(edge =>
-                     string.Equals(edge.SemanticModel, modelName, StringComparison.OrdinalIgnoreCase)))
-        {
-            var source = FieldIdentity.Create(edge.FromTable, edge.FromObjectName, edge.FromObjectType, edge.FromHierarchyName);
-            if (!adjacency.TryGetValue(source, out var targets))
-            {
-                adjacency[source] = targets = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-            }
-
-            targets.Add(FieldIdentity.Create(edge.ToTable, edge.ToObjectName, edge.ToObjectType, edge.ToHierarchyName));
-        }
-
-        var reach = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-        var queue = new Queue<string>(model.Functions.Select(function =>
-            FieldIdentity.Create(string.Empty, function.Name, SemanticObjectTypes.Function)));
-        var visited = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-        while (queue.TryDequeue(out var current))
-        {
-            if (!visited.Add(current) || !adjacency.TryGetValue(current, out var targets))
-            {
-                continue;
-            }
-
-            foreach (var target in targets)
-            {
-                reach.Add(target);
-                queue.Enqueue(target);
-            }
-        }
+        var reach = SemanticDependencyReach.Closure(
+            analysis.Dependencies,
+            modelName,
+            model.Functions.Select(function =>
+                FieldIdentity.Create(string.Empty, function.Name, SemanticObjectTypes.Function)));
 
         return limitation with { Reach = reach };
     }

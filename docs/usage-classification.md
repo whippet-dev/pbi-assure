@@ -96,6 +96,15 @@ elsewhere in the model stays Established. The limitation itself is still recorde
 When a function body left a reference unresolved, its closure is not known and the limitation keeps its
 model-wide reading.
 
+An unresolved reference is bounded the same way when the resolver could name what it might have meant.
+A reference that is ambiguous — an unqualified name that several persisted measures or columns carry, or
+a table-qualified name that both a column and a measure of that table carry — is a missing edge whose
+target is one of a known set, so it qualifies exactly those candidates and whatever depends on any of
+them; the object holding the reference is not in doubt because of it, since its own state rests on what
+reaches it. A reference that resolved to nothing could have meant any object, so it still qualifies
+every absence in its model, as does an ambiguity inside a report-level measure, which can also mean
+another report-level measure the model lookup does not hold.
+
 The HTML report shows this in two places. An **Analysis coverage** section states, per semantic model,
 what PBI Assure could not fully check and whether that could change any used or unused result. Each
 affected object then carries a small **Usage check incomplete** marker beside its status, linking to

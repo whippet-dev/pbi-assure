@@ -23,7 +23,8 @@ internal static class AnalysisLimitationDetector
         IReadOnlyList<UnresolvedSemanticDependency>? unresolvedDependencies = null,
         IReadOnlyList<UnanalyzedTableConstructs>? unanalyzedTableConstructs = null,
         IReadOnlyList<SemanticModelInventory>? semanticModels = null,
-        IReadOnlyList<IncompleteQueryReferences>? incompleteQueryReferences = null)
+        IReadOnlyList<IncompleteQueryReferences>? incompleteQueryReferences = null,
+        IReadOnlyList<SemanticDependencyEdge>? semanticDependencies = null)
     {
         var refinements = refinedDependencyImpacts ?? new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
         var accountedRolePaths = fullyAccountedRolePaths ?? new HashSet<string>(StringComparer.OrdinalIgnoreCase);
@@ -38,7 +39,7 @@ internal static class AnalysisLimitationDetector
 
         return semanticLimitations
             .Concat(reportLimitations)
-            .Concat(DetectForUnresolvedDependencies(unresolvedDependencies ?? []))
+            .Concat(DetectForUnresolvedDependencies(unresolvedDependencies ?? [], semanticDependencies ?? []))
             .Concat(DetectForUnanalyzedTableConstructs(unanalyzedTableConstructs ?? []))
             .Concat(DetectForIncompleteQueryReferences(incompleteQueryReferences ?? []))
             .OrderBy(limitation => limitation.SemanticModel, StringComparer.OrdinalIgnoreCase)
@@ -56,9 +57,14 @@ internal static class AnalysisLimitationDetector
     /// Only <c>NotFound</c> and <c>Ambiguous</c> qualify. Both mean the edge that reference would have
     /// created is missing from the graph, which is exactly what an absence conclusion depends on.
     ///
-    /// Scope is the semantic model, because an unresolved reference does not say which object it meant:
-    /// a name that resolved to nothing could have been any object in that model. Positive states are
-    /// untouched — the qualifier only ever marks the two absence states.
+    /// Scope is the semantic model. How far the doubt reaches within it depends on what the resolver
+    /// could say: a name that resolved to nothing could have meant any object in that model, so a
+    /// NotFound reference reaches the whole model. An Ambiguous reference whose complete candidate set
+    /// the resolver proved reaches exactly those candidates and whatever depends on them — the only
+    /// objects the missing edge could make used, whichever candidate it would have led to — and the
+    /// limitation carries that as its <see cref="AnalysisLimitation.Reach"/>. Where no complete set
+    /// is known, the reach stays unbounded. Positive states are untouched — the qualifier only ever
+    /// marks the two absence states.
     /// </summary>
     /// <summary>
     /// The tables directory is registered as fully analysed, which holds for every construct the table
@@ -167,36 +173,72 @@ internal static class AnalysisLimitationDetector
         : $"Power Query expression '{reference.QueryName}'";
 
     private static IEnumerable<AnalysisLimitation> DetectForUnresolvedDependencies(
-        IReadOnlyList<UnresolvedSemanticDependency> unresolvedDependencies)
+        IReadOnlyList<UnresolvedSemanticDependency> unresolvedDependencies,
+        IReadOnlyList<SemanticDependencyEdge> semanticDependencies)
     {
         return unresolvedDependencies
             .Where(dependency =>
                 dependency.ResolutionOutcome is UnresolvedSemanticDependencyResolutionOutcomes.NotFound
                     or UnresolvedSemanticDependencyResolutionOutcomes.Ambiguous)
-            .DistinctBy(dependency => (
+            .GroupBy(dependency => (
                 dependency.SemanticModel,
                 dependency.FromTable,
                 dependency.FromObjectName,
                 dependency.DependencyKind,
                 dependency.ReferenceText,
                 dependency.ResolutionOutcome))
-            .Select(dependency => new AnalysisLimitation(
+            .Select(group => new AnalysisLimitation(
                 LimitationId: "PBI-LIMIT-MODEL-UNRESOLVED-REFERENCE",
                 Cause: AnalysisLimitationCauses.ReferenceUnresolved,
                 SupportState: ConstructSupportStates.PartiallyAnalyzed,
                 ConstructType: "semanticReference",
                 Scope: AnalysisLimitationScopes.SemanticModel,
-                SemanticModel: dependency.SemanticModel,
-                Table: dependency.FromTable,
-                ObjectName: dependency.FromObjectName,
-                ArtifactPath: dependency.EvidencePath,
-                EvidencePath: dependency.EvidencePath,
+                SemanticModel: group.Key.SemanticModel,
+                Table: group.Key.FromTable,
+                ObjectName: group.Key.FromObjectName,
+                ArtifactPath: group.First().EvidencePath,
+                EvidencePath: group.First().EvidencePath,
                 DependencyImpact: ConstructDependencyImpacts.MayCreateDependencies,
                 Concerns: [AnalysisConcerns.Dependency],
-                Reason: $"'{dependency.FromTable}[{dependency.FromObjectName}]' references " +
-                        $"'{dependency.ReferenceText}', which could not be resolved to a model object " +
-                        $"({dependency.ResolutionOutcome}). The dependency it would have created is " +
-                        "absent from the graph, so absence conclusions in this model may be incomplete."));
+                Reason: $"'{group.Key.FromTable}[{group.Key.FromObjectName}]' references " +
+                        $"'{group.Key.ReferenceText}', which could not be resolved to a model object " +
+                        $"({group.Key.ResolutionOutcome}). The dependency it would have created is " +
+                        "absent from the graph, so absence conclusions in this model may be incomplete.")
+            {
+                Reach = CandidateReach(group, semanticDependencies),
+            });
+    }
+
+    /// <summary>
+    /// The objects an unresolved reference could make used: each candidate it could have bound to and
+    /// everything reachable from any of them. Null unless every occurrence of the reference carries a
+    /// complete candidate set, since a missing edge whose target is unknown could lead anywhere.
+    /// </summary>
+    private static HashSet<string>? CandidateReach(
+        IEnumerable<UnresolvedSemanticDependency> occurrences,
+        IReadOnlyList<SemanticDependencyEdge> semanticDependencies)
+    {
+        var candidates = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        string? modelName = null;
+        foreach (var occurrence in occurrences)
+        {
+            if (occurrence.CandidateTargets is null)
+            {
+                return null;
+            }
+
+            modelName = occurrence.SemanticModel;
+            candidates.UnionWith(occurrence.CandidateTargets);
+        }
+
+        if (modelName is null)
+        {
+            return null;
+        }
+
+        var reach = SemanticDependencyReach.Closure(semanticDependencies, modelName, candidates);
+        reach.UnionWith(candidates);
+        return reach;
     }
 
     private static IEnumerable<AnalysisLimitation> DetectForModel(
