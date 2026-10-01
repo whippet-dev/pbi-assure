@@ -26,3 +26,11 @@ jobs:
         run: tests/PbiAssure.Privacy.E2E/bin/Release/net10.0/playwright.ps1 install chromium
         shell: pwsh
       - run: dotnet test PbiAssure.slnx -c Release --no-build --logger "console;verbosity=minimal"
+      - name: Retain synthetic privacy verification evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: privacy-evidence-${{ github.sha }}
+          path: artifacts/privacy-e2e/evidence/*.json
+          if-no-files-found: warn
+          retention-days: 30

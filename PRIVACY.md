@@ -12,11 +12,14 @@ visual definitions, semantic-model metadata, tables, columns, measures, DAX, rel
 M and relevant project resources.
 
 PBI Assure does not inspect imported model rows as part of this metadata analysis.
+Power Query expressions can nevertheless contain inline data, hard-coded credentials or other
+sensitive values. Those expressions are project metadata and can appear in the detailed HTML report.
 
 ## Where processing happens
 
 In the browser application, your Power BI project is processed locally in your browser's WebAssembly
-process. The generated findings, HTML report, Data Catalogue, Usage Mapping and Semantic Usage CSV files are created in browser memory.
+process. The generated findings, interactive HTML report, Apparently Unused review, Data Catalogue,
+Usage Mapping and Semantic Usage CSV files are created in browser memory.
 
 PBI Assure's project-processing code does not upload selected project files, their contents, analysis
 results or generated HTML/CSV files to PBI Assure, Cloudflare or another service. No account is required.
@@ -36,10 +39,12 @@ verified.
 
 ## Analytics, cookies and browser storage
 
-PBI Assure application code contains no analytics or telemetry. For the production deployment verified
-on 14 August 2026, Cloudflare Web Analytics was disabled and Zaraz was not configured. Cloudflare account
-settings can change independently of this repository and should be rechecked when deployment assurance
-is required.
+PBI Assure application code contains no analytics or telemetry. On 1 October 2026, a read-only
+Cloudflare dashboard check confirmed that Web Analytics was disabled for the production Pages project
+and Zaraz had no domains configured in the hosting account. The deployed application HTML contained no
+Cloudflare Web Analytics or Zaraz script, and the tested project workflows produced no observable
+cross-origin requests. Cloudflare account settings can change independently of this repository and
+should be rechecked when deployment assurance is required.
 
 PBI Assure does not require an account and does not create application-managed cookies. It does not use
 `localStorage`, `sessionStorage` or IndexedDB to store selected projects or results. Project data is held
@@ -70,15 +75,51 @@ project-processing backend. Its main Content Security Policy restricts connectio
 needed to load the WebAssembly application. The isolated generated-report viewer uses
 `connect-src 'none'`.
 
+The main application's same-origin connection permission is needed for application delivery. CSP is a
+defence against unintended connections, not proof by itself that project content cannot be sent: the
+source review and browser workflow tests establish the application behaviour.
+
 Purpose-built Playwright privacy tests establish an application-ready network baseline, process a
 synthetic PBIP fixture, fail on unexpected scan/export requests, search observable outbound requests for
 synthetic canary values, and verify that processing and standalone output generation work after the
-browser goes offline.
+browser goes offline. Both HTML reports and all three CSV exports are exercised. The tests also check
+that the application origin has no cookies, session storage, IndexedDB databases or service-worker
+registrations, and that local storage contains only a valid appearance preference, if present.
 
 The verified scan and export workflow produced no observable browser network requests after the
 application-ready baseline. Opening a report used only the expected same-origin static viewer shell
 requests; generated report content was transferred locally to that shell and was not included in those
 requests.
+
+### Latest deployed verification
+
+The read-only Cloudflare dashboard check on 1 October 2026 confirmed the `pbiassure` Pages project
+was linked to `whippet-dev/pbi-assure`, with production branch `master`, build command
+`bash ./scripts/Publish-Web-Cloudflare.sh` and output directory `artifacts/web/wwwroot`.
+No custom domain or resource binding was configured. The account's application inventory contained
+two Pages projects and no Workers; its domain inventory was empty, and Zero Trust showed its initial
+setup screen. The active deployment's build log
+recorded no Functions directory, a clean publish and the expected embedded source revision.
+These observations support the static-only deployment; they do not establish Cloudflare's internal
+request-log access or retention policies.
+
+On 1 October 2026, all four Privacy E2E tests passed against `https://pbiassure.pages.dev`, whose displayed
+build was `49fe4d9f2bf6` (source commit `49fe4d9f2bf638a9c34de7f8984518438017adef`), using Chromium
+`149.0.7827.55` and the repository's synthetic privacy-canary project. The verification tests included
+uncommitted extensions for the second report and browser-storage checks; the deployed application was
+not changed by the test.
+
+- Project selection, scanning and export generation/download: zero observable network requests.
+- Opening both reports: six expected same-origin static viewer requests, with no project content in
+  observable request URLs, headers or bodies.
+- Unexpected requests, cross-origin requests and detected canary leaks: zero.
+- After startup, with networking disabled: scanning, both HTML downloads, all three CSV exports and
+  interaction with both downloaded reports passed.
+- Application storage checks and the deployed application/viewer header checks passed.
+
+This workflow uses the alternate folder picker. It does not establish complete coverage of every
+browser, project shape or primary folder-picker/rerun path. Raw project files and generated outputs are
+not uploaded as verification evidence; CI retains compact JSON results from the synthetic tests.
 
 ## Verify it yourself
 

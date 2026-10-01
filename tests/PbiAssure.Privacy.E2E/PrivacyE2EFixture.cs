@@ -17,6 +17,7 @@ public sealed class PrivacyE2EFixture : IAsyncLifetime
     public string EvidenceDirectory => Path.Combine(RepositoryRoot, "artifacts", "privacy-e2e", "evidence");
     public string OutputDirectory => Path.Combine(RepositoryRoot, "artifacts", "privacy-e2e", "outputs");
     public string SourceRevision { get; private set; } = string.Empty;
+    public bool VerificationSourceHasChanges { get; private set; }
     public string BaseUrl { get; private set; } = string.Empty;
     public bool IsDeployedSmoke { get; private set; }
     public IPlaywright Playwright { get; private set; } = null!;
@@ -28,6 +29,7 @@ public sealed class PrivacyE2EFixture : IAsyncLifetime
     {
         Console.WriteLine("Privacy E2E setup: resolving source revision.");
         SourceRevision = (await RunProcessAsync("git", ["rev-parse", "HEAD"])).Trim();
+        VerificationSourceHasChanges = !string.IsNullOrWhiteSpace(await RunProcessAsync("git", ["status", "--porcelain"]));
         var deployedBaseUrl = Environment.GetEnvironmentVariable(DeployedBaseUrlVariable);
         if (string.IsNullOrWhiteSpace(deployedBaseUrl))
         {

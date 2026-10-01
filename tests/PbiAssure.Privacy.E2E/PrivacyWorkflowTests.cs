@@ -117,6 +117,7 @@ public sealed class PrivacyWorkflowTests(PrivacyE2EFixture fixture)
 
         monitor.Begin("Viewer");
         await OpenAndExerciseReportAsync(page);
+        await OpenAndExerciseUnusedReviewAsync(page);
 
         await AssertViewerHeadersAsync();
         Assert.Empty(monitor.UnexpectedEvents());
@@ -127,6 +128,7 @@ public sealed class PrivacyWorkflowTests(PrivacyE2EFixture fixture)
             page.GetByRole(AriaRole.Button, new() { Name = "Download interactive report", Exact = true }).ClickAsync());
         var htmlPath = Path.Combine(outputRoot, htmlDownload.SuggestedFilename);
         await htmlDownload.SaveAsAsync(htmlPath);
+        var unusedReviewPath = await DownloadUnusedReviewAsync(page, outputRoot);
         await page.Locator("details.legacy-output > summary").ClickAsync();
         var csvDownload = await page.RunAndWaitForDownloadAsync(() =>
             page.GetByRole(AriaRole.Button, new() { Name = "Download semantic usage CSV", Exact = true }).ClickAsync());
@@ -139,6 +141,7 @@ public sealed class PrivacyWorkflowTests(PrivacyE2EFixture fixture)
         Assert.Contains(PrivacyCanaries.ModelName, await File.ReadAllTextAsync(csvPath), StringComparison.Ordinal);
         await AssertBrowserCsvAsync(dataCataloguePath);
         await AssertBrowserCsvAsync(usageMappingPath);
+        await AssertProjectStorageIsEmptyAsync(context, page);
         Assert.Empty(monitor.ExternalEvents());
         Assert.Empty(monitor.CanaryLeaks());
         Assert.Empty(monitor.UnexpectedEvents());
@@ -147,6 +150,7 @@ public sealed class PrivacyWorkflowTests(PrivacyE2EFixture fixture)
         await WriteEvidenceAsync("online.json", new
         {
             fixture.SourceRevision,
+            fixture.VerificationSourceHasChanges,
             DisplayedBuild = (await page.Locator("footer.app-footer").InnerTextAsync()).Trim(),
             Browser = fixture.Browser.Version,
             Fixture = PrivacyCanaries.ProjectName,
@@ -160,6 +164,8 @@ public sealed class PrivacyWorkflowTests(PrivacyE2EFixture fixture)
             Scan = "passed",
             Viewer = "passed",
             Html = Path.GetFileName(htmlPath),
+            ApparentlyUnusedHtml = Path.GetFileName(unusedReviewPath),
+            ProjectStorage = "no cookies, project storage or IndexedDB databases; appearance preference only",
             Csv = Path.GetFileName(csvPath),
             DataCatalogueCsv = Path.GetFileName(dataCataloguePath),
             UsageMappingCsv = Path.GetFileName(usageMappingPath),
@@ -188,6 +194,7 @@ public sealed class PrivacyWorkflowTests(PrivacyE2EFixture fixture)
             page.GetByRole(AriaRole.Button, new() { Name = "Download interactive report", Exact = true }).ClickAsync());
         var htmlPath = Path.Combine(outputRoot, htmlDownload.SuggestedFilename);
         await htmlDownload.SaveAsAsync(htmlPath);
+        var unusedReviewPath = await DownloadUnusedReviewAsync(page, outputRoot);
         await page.Locator("details.legacy-output > summary").ClickAsync();
         var csvDownload = await page.RunAndWaitForDownloadAsync(() =>
             page.GetByRole(AriaRole.Button, new() { Name = "Download semantic usage CSV", Exact = true }).ClickAsync());
@@ -202,12 +209,17 @@ public sealed class PrivacyWorkflowTests(PrivacyE2EFixture fixture)
         Assert.Contains(PrivacyCanaries.ModelName, await File.ReadAllTextAsync(csvPath), StringComparison.Ordinal);
         await AssertBrowserCsvAsync(dataCataloguePath);
         await AssertBrowserCsvAsync(usageMappingPath);
+        await AssertProjectStorageIsEmptyAsync(context, page);
 
         monitor.Begin("Offline report");
         var standaloneReport = await context.NewPageAsync();
         await standaloneReport.GotoAsync(new Uri(htmlPath).AbsoluteUri);
         await ExerciseReportContentAsync(standaloneReport);
         await standaloneReport.CloseAsync();
+        var standaloneReview = await context.NewPageAsync();
+        await standaloneReview.GotoAsync(new Uri(unusedReviewPath).AbsoluteUri);
+        await ExerciseUnusedReviewAsync(standaloneReview);
+        await standaloneReview.CloseAsync();
 
         Assert.Empty(monitor.ExternalEvents());
         Assert.Empty(monitor.CanaryLeaks());
@@ -218,6 +230,7 @@ public sealed class PrivacyWorkflowTests(PrivacyE2EFixture fixture)
         await WriteEvidenceAsync("offline.json", new
         {
             fixture.SourceRevision,
+            fixture.VerificationSourceHasChanges,
             DisplayedBuild = (await page.Locator("footer.app-footer").InnerTextAsync()).Trim(),
             Browser = fixture.Browser.Version,
             Fixture = PrivacyCanaries.ProjectName,
@@ -228,6 +241,8 @@ public sealed class PrivacyWorkflowTests(PrivacyE2EFixture fixture)
             CanaryLeaks = monitor.CanaryLeaks().Count,
             Scan = "passed",
             Html = Path.GetFileName(htmlPath),
+            ApparentlyUnusedHtml = Path.GetFileName(unusedReviewPath),
+            ProjectStorage = "no cookies, project storage or IndexedDB databases; appearance preference only",
             Csv = Path.GetFileName(csvPath),
             DataCatalogueCsv = Path.GetFileName(dataCataloguePath),
             UsageMappingCsv = Path.GetFileName(usageMappingPath),
@@ -310,6 +325,59 @@ public sealed class PrivacyWorkflowTests(PrivacyE2EFixture fixture)
         return path;
     }
 
+    private static async Task OpenAndExerciseUnusedReviewAsync(IPage page)
+    {
+        var popup = await page.RunAndWaitForPopupAsync(() =>
+            page.GetByRole(AriaRole.Button, new() { NameRegex = new Regex("^Review apparently unused ") }).ClickAsync());
+        await ExerciseUnusedReviewAsync(popup);
+        Assert.Contains("/report-viewer", popup.Url, StringComparison.Ordinal);
+        Assert.True(await popup.EvaluateAsync<bool>("window.opener === null"));
+        await popup.CloseAsync();
+    }
+
+    private static async Task<string> DownloadUnusedReviewAsync(IPage page, string outputRoot)
+    {
+        var download = await page.RunAndWaitForDownloadAsync(() =>
+            page.GetByRole(AriaRole.Button, new() { Name = "Download apparently unused review", Exact = true }).ClickAsync());
+        Assert.EndsWith(".apparently-unused.html", download.SuggestedFilename, StringComparison.Ordinal);
+        var path = Path.Combine(outputRoot, download.SuggestedFilename);
+        await download.SaveAsAsync(path);
+        var html = await File.ReadAllTextAsync(path);
+        Assert.Contains(PrivacyCanaries.ProjectName, html, StringComparison.Ordinal);
+        Assert.Contains("CanaryValue", html, StringComparison.Ordinal);
+        return path;
+    }
+
+    private static async Task ExerciseUnusedReviewAsync(IPage review)
+    {
+        await review.Locator("body.unused-review").WaitForAsync();
+        Assert.Contains(PrivacyCanaries.ProjectName, await review.Locator("body").InnerTextAsync(), StringComparison.Ordinal);
+        Assert.True(await review.GetByText("CanaryValue", new() { Exact = true }).IsVisibleAsync());
+        await review.Locator("#review-search").FillAsync("PBIASSURE_NO_MATCH_7F3C2A");
+        await review.WaitForFunctionAsync("document.querySelectorAll('.review-row:not([hidden])').length === 0");
+        await review.Locator("#review-search").FillAsync(string.Empty);
+        Assert.True(await review.GetByText("CanaryValue", new() { Exact = true }).IsVisibleAsync());
+        // Exercise the shared appearance path too: only this non-project preference may persist.
+        await review.GetByRole(AriaRole.Button, new() { Name = "Dark appearance", Exact = true }).ClickAsync();
+        await review.GetByRole(AriaRole.Button, new() { Name = "Match system appearance", Exact = true }).ClickAsync();
+    }
+
+    private static async Task AssertProjectStorageIsEmptyAsync(IBrowserContext context, IPage page)
+    {
+        Assert.Empty(await context.CookiesAsync());
+        var unexpectedStorage = await page.EvaluateAsync<string[]>("""
+            () => [
+              ...Object.keys(localStorage).filter(key => key !== 'pbiassure-appearance'),
+              ...Object.keys(sessionStorage)
+            ]
+            """);
+        Assert.Empty(unexpectedStorage);
+        var appearance = await page.EvaluateAsync<string?>("localStorage.getItem('pbiassure-appearance')");
+        Assert.True(appearance is null or "light" or "dark");
+        Assert.Empty(await page.EvaluateAsync<string[]>("async () => (await indexedDB.databases()).map(database => database.name)"));
+        Assert.Empty(await page.EvaluateAsync<string[]>("async () => (await navigator.serviceWorker.getRegistrations()).map(registration => registration.scope)"));
+    }
+
     private static async Task AssertBrowserCsvAsync(string path)
     {
         var bytes = await File.ReadAllBytesAsync(path);
@@ -352,6 +420,15 @@ public sealed class PrivacyWorkflowTests(PrivacyE2EFixture fixture)
     private async Task AssertViewerHeadersAsync()
     {
         await using var api = await fixture.Playwright.APIRequest.NewContextAsync();
+        var appResponse = await api.GetAsync(fixture.BaseUrl);
+        Assert.True(appResponse.Ok);
+        Assert.Contains("connect-src 'self'", appResponse.Headers["content-security-policy"], StringComparison.Ordinal);
+        Assert.Equal("no-referrer", appResponse.Headers["referrer-policy"]);
+        Assert.Equal("nosniff", appResponse.Headers["x-content-type-options"]);
+        // Catch hosting-injected analytics as well as repository script changes.
+        var appHtml = await appResponse.TextAsync();
+        Assert.DoesNotContain("cloudflareinsights", appHtml, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("zaraz", appHtml, StringComparison.OrdinalIgnoreCase);
         var htmlResponse = await api.GetAsync(
             $"{fixture.BaseUrl}/report-viewer.html",
             new APIRequestContextOptions { MaxRedirects = 0 });
@@ -395,7 +472,8 @@ public sealed class PrivacyWorkflowTests(PrivacyE2EFixture fixture)
 
     private async Task WriteEvidenceAsync(string fileName, object evidence)
     {
-        var path = Path.Combine(fixture.EvidenceDirectory, fileName);
+        var mode = fixture.IsDeployedSmoke ? "deployed" : "local";
+        var path = Path.Combine(fixture.EvidenceDirectory, $"{mode}-{fileName}");
         await File.WriteAllTextAsync(
             path,
             JsonSerializer.Serialize(evidence, EvidenceJsonOptions));
