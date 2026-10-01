@@ -109,7 +109,7 @@ internal sealed class PrivacyNetworkMonitor
             return true;
         }
 
-        if (item.Phase is "Scan" or "Exports")
+        if (item.Phase is "Scan" or "Exports" or "Offline report")
         {
             return IsNetworkUrl(item.Url);
         }

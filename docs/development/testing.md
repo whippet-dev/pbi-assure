@@ -51,16 +51,21 @@ The test fails if it observes:
 - any report-viewer request other than the expected same-origin viewer document/script;
 - any fixture canary in an observable outbound URL, request headers or request body;
 - a missing or weakened report-viewer CSP;
-- a scan, report interaction, HTML download or CSV download failure.
+- a scan, interaction with either HTML report, HTML download or CSV download failure;
+- application-origin cookies, session storage, IndexedDB databases or service-worker registrations,
+  or local storage other than a valid appearance preference.
 
-The current local workflow records three expected same-origin viewer requests: the `.html` route that
-redirects, the final extensionless viewer document, and the viewer script. These requests load only the
+Each report open uses three expected same-origin viewer requests: the `.html` route that redirects,
+the final extensionless viewer document, and the viewer script. Both reports are opened. These requests load only the
 static viewer shell. The generated report content is transferred locally with `postMessage` and is not
 included in those requests.
 
 Compact JSON evidence and the generated synthetic HTML/CSV outputs are written under
 `artifacts/privacy-e2e/`. The directory is ignored by Git. Large traffic logs and HAR files are not retained
-by default.
+by default. Evidence filenames distinguish local and deployed runs. Each record identifies the source
+revision, whether the verification checkout had changes, the displayed application build and browser
+version. CI uploads only the compact JSON evidence with a 30-day retention period, including on failure
+when a completed workflow record exists; generated report files and raw traffic are not uploaded.
 
 An optional read-only smoke run can apply the same workflow to a deployed site without making production
 availability part of the normal test suite:
@@ -77,11 +82,11 @@ This uses a local synthetic folder selection; it does not upload the fixture or 
 2. Wait until the project picker and **Run analysis** control are usable.
 3. Open browser developer tools, select **Network**, clear the log, then enable Offline mode.
 4. Select the synthetic privacy fixture and run the scan.
-5. Review the browser results and download the HTML report and semantic-usage CSV.
-6. Open the downloaded standalone HTML file and exercise its navigation/filter controls.
+5. Review the browser results and download both HTML reports and all three CSV exports.
+6. Open both downloaded standalone HTML files and exercise their navigation/filter controls.
 7. Confirm the complete processing/export workflow succeeds while the browser remains offline.
 
-The app's **Open HTML report** button loads the same-origin report-viewer shell before transferring the
+The app's report-opening buttons load the same-origin report-viewer shell before transferring the
 locally generated report to it. That shell is deliberately served with `Cache-Control: no-cache`, so
 opening a new viewer tab is not part of the offline guarantee. The online test verifies that viewer route,
 its restrictive CSP and the local `postMessage` transfer separately.
@@ -96,7 +101,8 @@ every future code path remains local.
 1. Use a clean browser profile where practical, open developer tools and load PBI Assure fully.
 2. In **Network**, wait for startup requests to finish, clear the log and enable **Preserve log**.
 3. Select the synthetic privacy fixture and run the complete scan.
-4. Review results, use **Open HTML report**, then download HTML and CSV outputs.
+4. Review results, open the interactive report and Apparently Unused review, then download both HTML
+   reports and all three CSV outputs.
 5. Inspect HTTP(S), WebSocket and EventSource activity, including request URLs, headers and payloads where
    the browser exposes them. Check for beacon traffic as well.
 6. Search captured request data for the fixture canary prefix `PBIASSURE_CANARY_7F3C2A` and the project
