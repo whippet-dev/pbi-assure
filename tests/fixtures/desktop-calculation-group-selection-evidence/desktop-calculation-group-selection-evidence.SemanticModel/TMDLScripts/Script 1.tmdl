@@ -1,0 +1,42 @@
+createOrReplace
+
+	table Conversion
+		lineageTag: 78c21067-b63c-4ec9-b300-3d35a3576029
+
+		calculationGroup
+
+			calculationItem 'As Reported' = SELECTEDMEASURE()
+
+			calculationItem Converted = SELECTEDMEASURE() * MAX(Rates[Rate])
+
+				formatStringDefinition =
+						SELECTEDVALUE(
+						    Rates[FormatString],
+						    SELECTEDMEASUREFORMATSTRING()
+						)
+
+			noSelectionExpression = SELECTEDMEASURE() * MAX(Rates[DefaultRate])
+
+				formatStringDefinition =
+						SELECTEDVALUE(
+						    Rates[DefaultFormat],
+						    "0"
+						)
+
+		column 'Calculation group column'
+			dataType: string
+			lineageTag: aef91d7c-91a8-4391-984d-2013cf59bfed
+			summarizeBy: none
+			sourceColumn: Name
+			sortByColumn: Ordinal
+
+			annotation SummarizationSetBy = Automatic
+
+		column Ordinal
+			dataType: int64
+			formatString: 0
+			lineageTag: ff1d2b37-7730-4242-861a-61550d4800ce
+			summarizeBy: sum
+			sourceColumn: Ordinal
+
+			annotation SummarizationSetBy = Automatic

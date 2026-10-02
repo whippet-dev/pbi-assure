@@ -1,0 +1,27 @@
+table Sales
+	lineageTag: 2c542a9b-5f8f-48bf-9801-23b61b807692
+
+	measure Total = SUM(Sales[Amount])
+		formatString: 0
+		lineageTag: a485d7e5-9d5c-425a-b096-fb8a5aa052bb
+
+	column Amount
+		dataType: int64
+		formatString: 0
+		lineageTag: ac14b7fd-9221-4682-892c-e8efc68f6ca1
+		summarizeBy: sum
+		sourceColumn: Amount
+
+		annotation SummarizationSetBy = Automatic
+
+	partition Sales = m
+		mode: import
+		source =
+				let
+				  Source = Table.FromRows(Json.Document(Binary.Decompress(Binary.FromText("i45WMjZQitUBUpZKsbEA", BinaryEncoding.Base64), Compression.Deflate)), let _t = ((type nullable text) meta [Serialized.Text = true]) in type table [Amount = _t]),
+				  #"Changed column type" = Table.TransformColumnTypes(Source, {{"Amount", Int64.Type}}, "en-US")
+				in
+				  #"Changed column type"
+
+	annotation PBI_ResultType = Table
+

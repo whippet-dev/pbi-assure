@@ -1,0 +1,22 @@
+model Model
+	culture: en-US
+	defaultPowerBIDataSourceVersion: powerBI_V3
+	discourageImplicitMeasures
+	sourceQueryCulture: en-GB
+	valueFilterBehavior: independent
+	dataAccessOptions
+		legacyRedirects
+		returnErrorValuesAsNull
+
+annotation __PBI_TimeIntelligenceEnabled = 1
+
+annotation PBI_QueryOrder = ["Sales","Rates"]
+
+annotation PBI_ProTooling = ["CalcGroup","TMDLView_Desktop","DevMode"]
+
+ref table Sales
+ref table Rates
+ref table Conversion
+
+ref cultureInfo en-US
+

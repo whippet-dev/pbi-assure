@@ -1,0 +1,11 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/gitIntegration/platformProperties/2.0.0/schema.json",
+  "metadata": {
+    "type": "SemanticModel",
+    "displayName": "desktop-calculation-group-selection-evidence"
+  },
+  "config": {
+    "version": "2.0",
+    "logicalId": "9793adaf-f3b9-4dd0-b65c-76edcebdbbad"
+  }
+}

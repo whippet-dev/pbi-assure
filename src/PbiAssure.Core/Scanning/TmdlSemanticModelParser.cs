@@ -727,10 +727,16 @@ internal static class TmdlSemanticModelParser
                 lines,
                 declarationIndex,
                 endIndex,
-                "multipleOrEmptySelectionExpression"),
+                "multipleOrEmptySelectionExpression",
+                stopAtNestedFormatString: true),
             Items: items)
         {
-            NoSelectionExpression = ReadAssignmentExpression(lines, declarationIndex, endIndex, "noSelectionExpression"),
+            NoSelectionExpression = ReadAssignmentExpression(lines, declarationIndex, endIndex,
+                "noSelectionExpression", stopAtNestedFormatString: true),
+            NoSelectionFormatStringExpression = ReadSelectionFormatStringExpression(
+                lines, declarationIndex, endIndex, "noSelectionExpression"),
+            MultipleOrEmptySelectionFormatStringExpression = ReadSelectionFormatStringExpression(
+                lines, declarationIndex, endIndex, "multipleOrEmptySelectionExpression"),
         };
     }
 
@@ -1325,24 +1331,25 @@ internal static class TmdlSemanticModelParser
         IReadOnlyList<TmdlLine> lines,
         int declarationIndex,
         int endIndex,
-        string propertyName)
+        string propertyName,
+        bool stopAtNestedFormatString = false,
+        bool skipFencedParentExpression = false)
     {
         var propertyIndent = lines[declarationIndex].Indent + 4;
+        var insideParentFence = skipFencedParentExpression && IsFencedExpressionOpening(lines[declarationIndex].Trimmed);
         for (var index = declarationIndex + 1; index < endIndex; index++)
         {
+            if (insideParentFence)
+            {
+                insideParentFence = !IsExpressionFence(lines[index].Trimmed);
+                continue;
+            }
+
             if (lines[index].Indent != propertyIndent ||
-                !lines[index].Trimmed.StartsWith(propertyName, StringComparison.OrdinalIgnoreCase))
+                !TryReadExpressionAssignment(lines[index].Trimmed, propertyName, out var inlineExpression))
             {
                 continue;
             }
-
-            var assignment = lines[index].Trimmed.AsSpan(propertyName.Length).TrimStart();
-            if (assignment.IsEmpty || assignment[0] != '=')
-            {
-                continue;
-            }
-
-            var inlineExpression = assignment[1..].Trim().ToString();
             if (IsExpressionFence(inlineExpression))
             {
                 return ReadFencedExpression(lines, index + 1, endIndex);
@@ -1358,6 +1365,12 @@ internal static class TmdlSemanticModelParser
             {
                 if (!string.IsNullOrWhiteSpace(lines[expressionIndex].Text) &&
                     lines[expressionIndex].Indent <= propertyIndent)
+                {
+                    break;
+                }
+
+                if (stopAtNestedFormatString && lines[expressionIndex].Indent == propertyIndent + 4 &&
+                    TryReadExpressionAssignment(lines[expressionIndex].Trimmed, "formatStringDefinition", out _))
                 {
                     break;
                 }
@@ -1385,6 +1398,33 @@ internal static class TmdlSemanticModelParser
                     : string.Empty));
         }
 
+        return null;
+    }
+
+    private static bool TryReadExpressionAssignment(string text, string propertyName, out string expression)
+    {
+        expression = string.Empty;
+        if (!text.StartsWith(propertyName, StringComparison.OrdinalIgnoreCase)) return false;
+        var assignment = text.AsSpan(propertyName.Length).TrimStart();
+        if (assignment.IsEmpty || assignment[0] != '=') return false;
+        expression = assignment[1..].Trim().ToString();
+        return true;
+    }
+
+    private static string? ReadSelectionFormatStringExpression(
+        IReadOnlyList<TmdlLine> lines, int declarationIndex, int endIndex, string selectionProperty)
+    {
+        var selectionIndent = lines[declarationIndex].Indent + 4;
+        for (var index = declarationIndex + 1; index < endIndex; index++)
+        {
+            if (lines[index].Indent == selectionIndent &&
+                TryReadExpressionAssignment(lines[index].Trimmed, selectionProperty, out _))
+            {
+                // Only the format string owned by this selection expression, never an item's sibling.
+                return ReadAssignmentExpression(lines, index, FindBlockEnd(lines, index, endIndex),
+                    "formatStringDefinition", skipFencedParentExpression: true);
+            }
+        }
         return null;
     }
 

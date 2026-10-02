@@ -50,7 +50,7 @@ public sealed class TmdlTableDeclarationTests
             edge.FromTable == "Calc" && edge.FromObjectType == SemanticObjectTypes.Table &&
             edge.ToTable == "Data" && edge.ToObjectName == "Amount" &&
             edge.DependencyKind == SemanticDependencyKinds.Dax && edge.EvidenceText == "Data[Amount]");
-        Assert.Equal(SemanticUsageStates.UsedOnlyByUnusedBranch,
+        Assert.Equal(SemanticUsageStates.StructurallyRequired,
             inventory.SemanticObjectUsages.Single(usage => usage.Table == "Data" && usage.ObjectName == "Amount").UsageState);
         Assert.Empty(inventory.UnresolvedSemanticDependencies);
         Assert.Equal("0.26", inventory.SchemaVersion);

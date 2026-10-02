@@ -412,7 +412,9 @@ internal static class SemanticDependencyAnalyzer
                          {
                              table.CalculationGroup.SelectionExpression,
                              table.CalculationGroup.NoSelectionExpression,
+                             table.CalculationGroup.NoSelectionFormatStringExpression,
                              table.CalculationGroup.MultipleOrEmptySelectionExpression,
+                             table.CalculationGroup.MultipleOrEmptySelectionFormatStringExpression,
                          }.Where(expression => expression is not null))
                 {
                     foreach (var call in DaxReferenceExtractor.ExtractUserRelationshipCalls(expression!))
@@ -754,7 +756,7 @@ internal static class SemanticDependencyAnalyzer
 
         if (table.CalculationGroup is not null)
         {
-            AnalyzeCalculationGroup(model, table, table.CalculationGroup, lookup, dependencies, unresolved);
+            AnalyzeCalculationGroup(model, table, table.CalculationGroup, lookup, dependencies, unresolved, structuralRoots);
         }
 
         foreach (var partition in table.Partitions.Where(partition =>
@@ -873,7 +875,8 @@ internal static class SemanticDependencyAnalyzer
         SemanticCalculationGroupInventory calculationGroup,
         ModelLookup lookup,
         List<SemanticDependencyEdge> dependencies,
-        List<UnresolvedSemanticDependency> unresolved)
+        List<UnresolvedSemanticDependency> unresolved,
+        ISet<string> structuralRoots)
     {
         var tableNode = Target(table.Name, table.Name, SemanticObjectTypes.Table);
         foreach (var item in calculationGroup.Items)
@@ -912,28 +915,39 @@ internal static class SemanticDependencyAnalyzer
                 unresolved);
         }
 
-        if (calculationGroup.MultipleOrEmptySelectionExpression is not null)
+        foreach (var expression in new[]
+                 {
+                     calculationGroup.MultipleOrEmptySelectionExpression,
+                     calculationGroup.MultipleOrEmptySelectionFormatStringExpression,
+                 }.Where(expression => expression is not null))
         {
             AddDaxDependencies(
                 model,
                 table,
                 tableNode,
-                calculationGroup.MultipleOrEmptySelectionExpression,
+                expression!,
                 lookup,
                 dependencies,
                 unresolved);
         }
 
-        if (calculationGroup.NoSelectionExpression is not null)
+        // The default expression applies without a calculation-group filter. Root its targets,
+        // not the group table: rooting the table would also promote all ordinary calculation items.
+        foreach (var expression in new[]
+                 {
+                     calculationGroup.NoSelectionExpression,
+                     calculationGroup.NoSelectionFormatStringExpression,
+                 }.Where(expression => expression is not null))
         {
             AddDaxDependencies(
                 model,
                 table,
                 tableNode,
-                calculationGroup.NoSelectionExpression,
+                expression!,
                 lookup,
                 dependencies,
-                unresolved);
+                unresolved,
+                structuralRoots);
         }
     }
 
@@ -944,7 +958,8 @@ internal static class SemanticDependencyAnalyzer
         string expression,
         ModelLookup lookup,
         List<SemanticDependencyEdge> dependencies,
-        List<UnresolvedSemanticDependency> unresolved)
+        List<UnresolvedSemanticDependency> unresolved,
+        ISet<string>? structuralRoots = null)
     {
         AddDaxDependencies(
             model,
@@ -956,7 +971,7 @@ internal static class SemanticDependencyAnalyzer
             lookup,
             dependencies,
             unresolved,
-            structuralRoots: null);
+            structuralRoots);
     }
 
     /// <summary>

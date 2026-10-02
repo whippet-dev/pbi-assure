@@ -12,5 +12,11 @@ public sealed record SemanticCalculationGroupInventory(
     [JsonIgnore]
     public string? NoSelectionExpression { get; init; }
 
+    [JsonIgnore]
+    public string? NoSelectionFormatStringExpression { get; init; }
+
+    [JsonIgnore]
+    public string? MultipleOrEmptySelectionFormatStringExpression { get; init; }
+
     public int ItemCount => Items.Count;
 }

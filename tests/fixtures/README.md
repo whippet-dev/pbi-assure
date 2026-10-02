@@ -6,6 +6,7 @@ These projects use synthetic data or sanitised metadata. Their READMEs distingui
 | --- | --- |
 | `aggregation-alternateof-sanitized` | Explicit aggregation mappings and structural dependencies. |
 | `desktop-bookmark-evidence-live-carrier`, `desktop-bookmark-evidence-stale` | Live references versus inert saved bookmark state; keep both controls. |
+| [desktop-calculation-group-selection-evidence](desktop-calculation-group-selection-evidence/README.md) | Default calculation-group selection expressions, owned format strings and unused-item controls retained on a Desktop round trip. |
 | `desktop-descriptions-sanitized` | Description text and significant whitespace. |
 | `desktop-dynamic-format-string-evidence` | Measure format strings as dependency-bearing expressions. |
 | `desktop-entity-partition-evidence` | Composite-model `entity` partitions served by a shared DirectQuery-to-AS expression; a proxied Auto Date/Time table without its annotation. |

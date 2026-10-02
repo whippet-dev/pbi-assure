@@ -25,7 +25,7 @@ public sealed class TmdlExpressionAssignmentTests
         AssertAmountDependency(inventory, "Calc", "Calc");
         var usage = Assert.Single(inventory.SemanticObjectUsages,
             item => item.Table == "Data" && item.ObjectName == "Amount");
-        Assert.Equal(SemanticUsageStates.UsedOnlyByUnusedBranch, usage.UsageState);
+        Assert.Equal(SemanticUsageStates.StructurallyRequired, usage.UsageState);
         Assert.Equal(ClassificationConfidences.Established, usage.ClassificationConfidence);
         Assert.Empty(inventory.UnresolvedSemanticDependencies);
         Assert.Empty(inventory.AnalysisLimitations);

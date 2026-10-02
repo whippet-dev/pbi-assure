@@ -1,0 +1,57 @@
+table Rates
+	lineageTag: 77773845-5f3f-44d1-9ffa-9ffae43827e2
+
+	column Rate
+		dataType: double
+		lineageTag: 02ce6b43-aa42-49ba-8f90-a4e5a6792b3a
+		summarizeBy: sum
+		sourceColumn: Rate
+
+		annotation SummarizationSetBy = Automatic
+
+		annotation PBI_FormatHint = {"isGeneralNumber":true}
+
+	column FormatString
+		dataType: string
+		lineageTag: bc893a70-b0c8-43c0-918d-f686f5328e9a
+		summarizeBy: none
+		sourceColumn: FormatString
+
+		annotation SummarizationSetBy = Automatic
+
+	column DefaultRate
+		dataType: int64
+		formatString: 0
+		lineageTag: d1f330da-3b07-4eeb-b40a-251554f50caf
+		summarizeBy: sum
+		sourceColumn: DefaultRate
+
+		annotation SummarizationSetBy = Automatic
+
+	column DefaultFormat
+		dataType: string
+		lineageTag: 3d7fa0ad-ca46-45f6-8369-dd08ef7190ee
+		summarizeBy: none
+		sourceColumn: DefaultFormat
+
+		annotation SummarizationSetBy = Automatic
+
+	column Notes
+		dataType: string
+		lineageTag: a06bcd28-bdf2-4b95-8fe1-702e5aeb6bee
+		summarizeBy: none
+		sourceColumn: Notes
+
+		annotation SummarizationSetBy = Automatic
+
+	partition Rates = m
+		mode: import
+		source =
+				let
+				  Source = Table.FromRows(Json.Document(Binary.Decompress(Binary.FromText("i45WMtQzVNJROrRYWccASBvqGSDxSvNKi1NTlGJjAQ==", BinaryEncoding.Base64), Compression.Deflate)), let _t = ((type nullable text) meta [Serialized.Text = true]) in type table [Rate = _t, FormatString = _t, DefaultRate = _t, DefaultFormat = _t, Notes = _t]),
+				  #"Changed column type" = Table.TransformColumnTypes(Source, {{"Rate", type number}, {"FormatString", type text}, {"DefaultRate", Int64.Type}, {"DefaultFormat", type text}, {"Notes", type text}}, "en-US")
+				in
+				  #"Changed column type"
+
+	annotation PBI_ResultType = Table
+
