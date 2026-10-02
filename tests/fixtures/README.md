@@ -10,6 +10,7 @@ These projects use synthetic data or sanitised metadata. Their READMEs distingui
 | `desktop-descriptions-sanitized` | Description text and significant whitespace. |
 | `desktop-dynamic-format-string-evidence` | Measure format strings as dependency-bearing expressions. |
 | `desktop-entity-partition-evidence` | Composite-model `entity` partitions served by a shared DirectQuery-to-AS expression; a proxied Auto Date/Time table without its annotation. |
+| [desktop-field-parameter-evidence](desktop-field-parameter-evidence/README.md) | Desktop-authored New parameter > Fields persistence after a selection change and round trip: grouped/hidden helper columns, NAMEOF targets and materialised PBIR projections. |
 | `desktop-formatting-semantic-reference-sanitized`, `mobile-semantic-reference-sanitized` | Formatting and mobile references outside ordinary visual projections. |
 | `desktop-hidden-visual-calculation-evidence` | Hidden supporting projections remain used without becoming user-facing evidence. |
 | `desktop-incremental-refresh-evidence`, `desktop-incremental-refresh-evidence-baseline` | Persisted policy versus similar M filters without policy metadata. |

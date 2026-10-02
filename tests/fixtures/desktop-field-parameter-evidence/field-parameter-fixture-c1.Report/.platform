@@ -1,0 +1,11 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/gitIntegration/platformProperties/2.0.0/schema.json",
+  "metadata": {
+    "type": "Report",
+    "displayName": "field-parameter-fixture-c1"
+  },
+  "config": {
+    "version": "2.0",
+    "logicalId": "e991ecfb-81f7-4ad5-9275-06a8e9da9543"
+  }
+}

@@ -1,0 +1,73 @@
+table Sales
+	lineageTag: a2a5cab9-03b0-4f80-a348-e1cb5cb5b3be
+
+	measure 'Total Amount' = SUM(Sales[Amount])
+		formatString: 0
+		lineageTag: 0c6b0e8a-de3e-45b0-a13d-bd4642117591
+
+	measure 'Total Qty' = SUM(Sales[Qty])
+		formatString: 0
+		lineageTag: a46ff4b3-9d8f-4bd8-ae52-d0017f024331
+
+	measure 'Unused Control' = SUM(Sales[Cost])
+		formatString: "£"#,0.###############;-"£"#,0.###############;"£"#,0.###############
+		lineageTag: 08cd957a-c121-43dc-aa8e-49eb76d69b4e
+
+		annotation PBI_FormatHint = {"currencyCulture":"en-GB"}
+
+	column Region
+		dataType: string
+		lineageTag: 4cffe16b-5bb4-4d92-97c0-a375bd7b6ce1
+		summarizeBy: none
+		sourceColumn: Region
+
+		annotation SummarizationSetBy = Automatic
+
+	column Amount
+		dataType: int64
+		formatString: 0
+		lineageTag: 2814b410-d97a-4d8d-85eb-d0f57109a8d4
+		summarizeBy: sum
+		sourceColumn: Amount
+
+		annotation SummarizationSetBy = Automatic
+
+	column Qty
+		dataType: int64
+		formatString: 0
+		lineageTag: 9d293fc3-7aaa-484d-bc25-bb55ca60336b
+		summarizeBy: sum
+		sourceColumn: Qty
+
+		annotation SummarizationSetBy = Automatic
+
+	column Cost
+		dataType: decimal
+		formatString: "£"#,0.###############;-"£"#,0.###############;"£"#,0.###############
+		lineageTag: 27a50e31-ae3b-4190-a613-1030f034ae5a
+		summarizeBy: sum
+		sourceColumn: Cost
+
+		annotation SummarizationSetBy = Automatic
+
+		annotation PBI_FormatHint = {"currencyCulture":"en-GB"}
+
+	column Notes
+		dataType: string
+		lineageTag: 30c0710d-5ab7-49fa-adfe-49386377766c
+		summarizeBy: none
+		sourceColumn: Notes
+
+		annotation SummarizationSetBy = Automatic
+
+	partition Sales = m
+		mode: import
+		source =
+				let
+				  Source = Table.FromRows(Json.Document(Binary.Decompress(Binary.FromText("i45WCkpNz8zPU3BU0lEyNAIRMIZffkmqgqFSrA5cjRNIyhxIgKSNTWBqjJDVOANFLUHSIGXmMCXGSrGxAA==", BinaryEncoding.Base64), Compression.Deflate)), let _t = ((type nullable text) meta [Serialized.Text = true]) in type table [Region = _t, Amount = _t, Qty = _t, Cost = _t, Notes = _t]),
+				  #"Changed column type" = Table.TransformColumnTypes(Source, {{"Region", type text}, {"Amount", Int64.Type}, {"Qty", Int64.Type}, {"Cost", Currency.Type}, {"Notes", type text}}, "en-US")
+				in
+				  #"Changed column type"
+
+	annotation PBI_ResultType = Table
+

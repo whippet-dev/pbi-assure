@@ -1,0 +1,11 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/gitIntegration/platformProperties/2.0.0/schema.json",
+  "metadata": {
+    "type": "SemanticModel",
+    "displayName": "field-parameter-fixture-c1"
+  },
+  "config": {
+    "version": "2.0",
+    "logicalId": "3b038c78-33aa-4f2c-a651-e45eac305729"
+  }
+}
