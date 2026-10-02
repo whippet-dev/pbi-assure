@@ -1321,16 +1321,21 @@ internal static class TmdlSemanticModelParser
         string propertyName)
     {
         var propertyIndent = lines[declarationIndex].Indent + 4;
-        var prefix = propertyName + " =";
         for (var index = declarationIndex + 1; index < endIndex; index++)
         {
             if (lines[index].Indent != propertyIndent ||
-                !lines[index].Trimmed.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
+                !lines[index].Trimmed.StartsWith(propertyName, StringComparison.OrdinalIgnoreCase))
             {
                 continue;
             }
 
-            var inlineExpression = lines[index].Trimmed[prefix.Length..].Trim();
+            var assignment = lines[index].Trimmed.AsSpan(propertyName.Length).TrimStart();
+            if (assignment.IsEmpty || assignment[0] != '=')
+            {
+                continue;
+            }
+
+            var inlineExpression = assignment[1..].Trim().ToString();
             if (IsExpressionFence(inlineExpression))
             {
                 return ReadFencedExpression(lines, index + 1, endIndex);
