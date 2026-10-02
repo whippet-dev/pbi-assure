@@ -39,8 +39,18 @@ internal static class SemanticDependencyAnalyzer
             reportMeasureNodes, reportMeasureRoots);
 
         var distinctDependencies = dependencies.Distinct().ToArray();
+        // A default selection needs the selector to exist, but must not activate the selector's
+        // outgoing edges into its table/items. Identify it by its source mapping, not display name.
+        var structuralClassificationPins = semanticModels
+            .SelectMany(model => model.Tables
+                .Where(table => table.CalculationGroup?.NoSelectionExpression is not null)
+                .SelectMany(table => table.Columns
+                    .Where(column => string.Equals(column.SourceColumn, "Name", StringComparison.OrdinalIgnoreCase))
+                    .Select(column => NodeKey(model.Name, Target(table.Name, column.Name, SemanticObjectTypes.Column)))))
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
         var classifiedUsages = ClassifyObjects(
             initialUsages, distinctDependencies, structuralRoots, systemGeneratedStructuralRoots,
+            structuralClassificationPins,
             reportMeasureNodes, reportMeasureRoots,
             functionNodes, out var reachability);
         var tableUsages = ClassifyTables(
@@ -1450,6 +1460,7 @@ internal static class SemanticDependencyAnalyzer
         IReadOnlyList<SemanticDependencyEdge> dependencies,
         IReadOnlySet<string> structuralRoots,
         IReadOnlySet<string> systemGeneratedStructuralRoots,
+        IReadOnlySet<string> structuralClassificationPins,
         IReadOnlySet<string> reportMeasureNodes,
         IReadOnlySet<string> reportMeasureRoots,
         IReadOnlySet<string> functionNodes,
@@ -1479,6 +1490,10 @@ internal static class SemanticDependencyAnalyzer
         var userAuthoredStructurallyReachable = Traverse(
             UserAuthoredStructuralRoots(structuralRoots, systemGeneratedStructuralRoots, dependencies),
             adjacency);
+        // Apply pins only after traversal. They count as model structure for classification and
+        // reachability evidence, but never become graph roots (including in ClassifyTables).
+        structurallyReachable.UnionWith(structuralClassificationPins);
+        userAuthoredStructurallyReachable.UnionWith(structuralClassificationPins);
         var incomingTargets = dependencies
             .Where(edge => knownNodes.Contains(NodeKey(edge.SemanticModel, Source(edge))))
             .Select(edge => NodeKey(edge.SemanticModel, Target(edge)))

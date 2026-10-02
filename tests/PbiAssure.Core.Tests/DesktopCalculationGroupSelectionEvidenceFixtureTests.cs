@@ -18,6 +18,10 @@ public sealed class DesktopCalculationGroupSelectionEvidenceFixtureTests
         var inventory = ScanFixture();
         AssertUsage(inventory, "Sales", "Total", SemanticUsageStates.DirectlyUsed);
         AssertUsage(inventory, "Sales", "Amount", SemanticUsageStates.IndirectlyUsed);
+        AssertUsage(inventory, "Conversion", "Calculation group column", SemanticUsageStates.StructurallyRequired);
+        AssertUsage(inventory, "Conversion", "As Reported", SemanticUsageStates.UsedOnlyByUnusedBranch);
+        AssertUsage(inventory, "Conversion", "Converted", SemanticUsageStates.UsedOnlyByUnusedBranch);
+        AssertUsage(inventory, "Conversion", "Ordinal", SemanticUsageStates.UsedOnlyByUnusedBranch);
         AssertUsage(inventory, "Rates", "DefaultRate", SemanticUsageStates.StructurallyRequired);
         AssertUsage(inventory, "Rates", "DefaultFormat", SemanticUsageStates.StructurallyRequired);
         AssertUsage(inventory, "Rates", "Rate", SemanticUsageStates.UsedOnlyByUnusedBranch);
@@ -37,6 +41,16 @@ public sealed class DesktopCalculationGroupSelectionEvidenceFixtureTests
         Assert.NotEmpty(references);
         Assert.All(references, reference => Assert.Equal("Sales", reference.Table));
         Assert.All(references, reference => Assert.Equal("Total", reference.ObjectName));
+    }
+
+    [Fact]
+    public void DefaultSelectionSelectorIsExcludedFromTheApparentlyUnusedReview()
+    {
+        var inventory = ScanFixture();
+        var review = ApparentlyUnusedReportRenderer.Select(inventory);
+        Assert.DoesNotContain(review, item => item.Usage.Table == "Conversion" &&
+            item.Usage.ObjectName == "Calculation group column");
+        Assert.Contains(review, item => item.Usage.Table == "Rates" && item.Usage.ObjectName == "Notes");
     }
 
     [Fact]
