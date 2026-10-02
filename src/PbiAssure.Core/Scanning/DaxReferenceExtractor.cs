@@ -1,6 +1,6 @@
 namespace PbiAssure.Core.Scanning;
 
-internal static class DaxReferenceExtractor
+internal static partial class DaxReferenceExtractor
 {
     public static DaxReference[] Extract(string expression, IReadOnlySet<string> knownTables) =>
         Extract(expression, knownTables, NoKnownFunctions);
@@ -19,7 +19,8 @@ internal static class DaxReferenceExtractor
             function.Equals("FILTER", StringComparison.OrdinalIgnoreCase) ||
             function.Equals("SELECTCOLUMNS", StringComparison.OrdinalIgnoreCase));
 
-    private sealed class ReferenceContext(char delimiter, string? function, string? persistedRowSource)
+    private sealed class ReferenceContext(
+        char delimiter, string? function, string? persistedRowSource, IReadOnlySet<string>? virtualRowColumns)
     {
         public char Delimiter { get; } = delimiter;
         public string? Function { get; } = function;
@@ -28,7 +29,10 @@ internal static class DaxReferenceExtractor
         /// <summary>The known table an evidenced iterator names as its entire first argument, if any.</summary>
         public string? PersistedRowSource { get; } = persistedRowSource;
 
-        public bool HasUnboundIteratorRow => IsRowIterator(Function) && Argument > 0 && PersistedRowSource is null;
+        public IReadOnlySet<string>? VirtualRowColumns { get; } = virtualRowColumns;
+
+        public bool HasUnboundIteratorRow => (IsRowIterator(Function) || VirtualRowColumns is not null) &&
+            Argument > 0 && PersistedRowSource is null;
 
         public bool PreservesOwnerRow => Function is null || OwnerRowScalarFunctions.Contains(Function) ||
             // The table argument is evaluated in the incoming context; the subsequent row expressions
@@ -91,6 +95,8 @@ internal static class DaxReferenceExtractor
                         CanUseOwnerRowContext = !malformedContext && contexts.All(context => context.PreservesOwnerRow),
                         HasUnboundIteratorRowContext = contexts.Any(context => context.HasUnboundIteratorRow),
                         RowContextTable = malformedContext ? null : ProvenRowContextTable(contexts),
+                        IsVirtualRowColumn = !malformedContext &&
+                            ProvenInfoViewRowColumns(contexts)?.Contains(objectName) == true,
                     });
                 }
 
@@ -100,8 +106,7 @@ internal static class DaxReferenceExtractor
             if (IsUnquotedIdentifierStart(expression[index]))
             {
                 var identifierStart = index;
-                var identifierEnd = index + 1;
-                while (identifierEnd < expression.Length && IsUnquotedIdentifierPart(expression[identifierEnd])) identifierEnd++;
+                var identifierEnd = ReadDottedIdentifierEnd(expression, index);
                 ReadUnquotedIdentifierReference(expression, knownTables, knownFunctions, references, ref index);
                 var previous = PreviousNonWhitespace(expression, identifierStart - 1);
                 pendingFunction = index == identifierEnd
@@ -116,6 +121,9 @@ internal static class DaxReferenceExtractor
                 contexts.Push(new ReferenceContext(character, character == '(' ? pendingFunction : null,
                     character == '(' && IsRowIterator(pendingFunction)
                         ? PersistedRowSource(expression, index + 1, knownTables)
+                        : null,
+                    character == '(' && IsInfoViewRowIterator(pendingFunction)
+                        ? InfoViewRowSource(expression, index + 1)
                         : null));
             }
             else if (character is ')' or '}')
@@ -129,7 +137,10 @@ internal static class DaxReferenceExtractor
         }
 
         if (malformedContext || contexts.Count != 0)
-            references = references.Select(reference => reference with { CanUseOwnerRowContext = false, RowContextTable = null }).ToList();
+            references = references.Select(reference => reference with
+            {
+                CanUseOwnerRowContext = false, RowContextTable = null, IsVirtualRowColumn = false,
+            }).ToList();
         return references.Distinct().ToArray();
     }
 
@@ -428,7 +439,17 @@ internal static class DaxReferenceExtractor
         }
 
         var identifier = expression[startIndex..index];
+        // A namespaced call is one function name, not references to tables named INFO or VIEW.
+        var callEnd = ReadDottedIdentifierEnd(expression, startIndex);
         var nextIndex = NextNonWhitespace(expression, index);
+        var callIndex = SkipDaxTrivia(expression, callEnd);
+        if (callEnd > index &&
+            callIndex < expression.Length && expression[callIndex] == '(')
+        {
+            index = callEnd;
+            identifier = expression[startIndex..index];
+            nextIndex = callIndex;
+        }
         if (nextIndex < expression.Length && expression[nextIndex] == '[')
         {
             index = nextIndex;
@@ -670,6 +691,9 @@ internal static class DaxReferenceExtractor
         /// Null wherever the row context is not proven.
         /// </summary>
         public string? RowContextTable { get; init; }
+
+        /// <summary>A bare field in the proven schema of an INFO.VIEW-derived virtual row.</summary>
+        public bool IsVirtualRowColumn { get; init; }
     }
 
     internal sealed record DaxQualifiedColumnReference(string Table, string Column);

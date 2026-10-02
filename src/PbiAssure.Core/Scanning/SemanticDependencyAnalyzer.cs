@@ -986,6 +986,13 @@ internal static class SemanticDependencyAnalyzer
         foreach (var reference in DaxReferenceExtractor.Extract(
                      expression, lookup.TableNames, lookup.FunctionNames))
         {
+            // Metadata rowset fields are values in a virtual row, not persisted semantic objects.
+            // Non-schema names and explicit model references still use the ordinary resolution path.
+            if (reference.IsVirtualRowColumn)
+            {
+                continue;
+            }
+
             // A call to a user-defined function reaches everything that function's body references, so
             // the edge is recorded and — where the caller itself is a root-producing context — the
             // function becomes a root too, otherwise nothing beyond it would be reachable.
