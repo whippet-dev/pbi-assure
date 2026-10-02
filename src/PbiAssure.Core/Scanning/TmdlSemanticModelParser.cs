@@ -184,7 +184,14 @@ internal static class TmdlSemanticModelParser
             var end = FindBlockEnd(lines, index);
             var keyword = LeadingKeyword(lines[index].Trimmed);
             var key = keyword;
-            if (TryParseDeclaration(lines[index].Trimmed, keyword, out var name, out _) &&
+            if (keyword.Equals("changedProperty", StringComparison.OrdinalIgnoreCase) &&
+                lines[index].Trimmed.AsSpan(keyword.Length).TrimStart().StartsWith("="))
+            {
+                // A changedProperty is a collection entry whose default value identifies it,
+                // not a scalar assignment or a named semantic child.
+                key = lines[index].Trimmed;
+            }
+            else if (TryParseDeclaration(lines[index].Trimmed, keyword, out var name, out _) &&
                 !lines[index].Trimmed.StartsWith(keyword + " =", StringComparison.OrdinalIgnoreCase))
             {
                 key = $"{keyword} {name}";
