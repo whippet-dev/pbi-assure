@@ -7,6 +7,14 @@ internal static partial class DaxReferenceExtractor
 
     private static readonly HashSet<string> NoKnownFunctions = new(StringComparer.OrdinalIgnoreCase);
 
+    // Statement/direction words and word operators are language tokens, not unquoted table names.
+    // Reserved table names require quotes (Microsoft DAX syntax documentation). Do not turn this
+    // into a function-name blacklist: ordinary calls and identifiers keep their existing handling.
+    private static readonly HashSet<string> LanguageTokens = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "VAR", "RETURN", "NOT", "IN", "DEFINE", "EVALUATE", "ORDER", "BY", "START", "AT", "ASC", "DESC",
+    };
+
     // Evidenced scalar wrappers in Desktop auto-date calculated columns. Other calls receive no
     // owner-row privilege until their context behaviour is accounted for explicitly.
     private static readonly HashSet<string> OwnerRowScalarFunctions = new(StringComparer.OrdinalIgnoreCase)
@@ -110,8 +118,11 @@ internal static partial class DaxReferenceExtractor
                 var identifierEnd = ReadDottedIdentifierEnd(expression, index);
                 ReadUnquotedIdentifierReference(expression, knownTables, knownFunctions, references, ref index);
                 var previous = PreviousNonWhitespace(expression, identifierStart - 1);
-                pendingFunction = index == identifierEnd
-                    ? (previous >= 0 && expression[previous] == '.' ? "." : string.Empty) + expression[identifierStart..identifierEnd]
+                var identifier = expression[identifierStart..identifierEnd];
+                // RETURN (...) opens a grouping scope; NOT(...) is also a documented function form.
+                pendingFunction = index == identifierEnd &&
+                    (!LanguageTokens.Contains(identifier) || identifier.Equals("NOT", StringComparison.OrdinalIgnoreCase))
+                    ? (previous >= 0 && expression[previous] == '.' ? "." : string.Empty) + identifier
                     : null;
                 continue;
             }
@@ -451,7 +462,7 @@ internal static partial class DaxReferenceExtractor
             identifier = expression[startIndex..index];
             nextIndex = callIndex;
         }
-        if (nextIndex < expression.Length && expression[nextIndex] == '[')
+        if (!LanguageTokens.Contains(identifier) && nextIndex < expression.Length && expression[nextIndex] == '[')
         {
             index = nextIndex;
             if (ReadBracketIdentifier(expression, ref index, out var objectName))
@@ -485,7 +496,7 @@ internal static partial class DaxReferenceExtractor
             return;
         }
 
-        if (knownTables.Contains(identifier))
+        if (!LanguageTokens.Contains(identifier) && knownTables.Contains(identifier))
         {
             references.Add(new DaxReference(
                 Table: identifier,
