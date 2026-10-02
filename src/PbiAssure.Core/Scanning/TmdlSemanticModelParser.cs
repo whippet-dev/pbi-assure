@@ -17,14 +17,22 @@ internal static class TmdlSemanticModelParser
         var definitionDirectory = ProjectFilePaths.Combine(semanticModelDirectory, "definition");
         var tablesDirectory = ProjectFilePaths.Combine(definitionDirectory, "tables");
 
-        var tables = source.EnumerateFiles(tablesDirectory, recursive: false).Any()
-            ? source
-                .EnumerateFiles(tablesDirectory, recursive: false)
-                .Where(file => file.RelativePath.EndsWith(".tmdl", StringComparison.OrdinalIgnoreCase))
-                .Select(file => ParseTable(source, file.RelativePath))
-                .OrderBy(table => table.Name, StringComparer.OrdinalIgnoreCase)
-                .ToArray()
-            : [];
+        var tables = source.EnumerateFiles(tablesDirectory, recursive: false)
+            .Where(file => file.RelativePath.EndsWith(".tmdl", StringComparison.OrdinalIgnoreCase))
+            .OrderBy(file => file.RelativePath, StringComparer.Ordinal)
+            .SelectMany(file => ReadTableDeclarations(source, file.RelativePath))
+            .GroupBy(declaration => declaration.Key, StringComparer.OrdinalIgnoreCase)
+            .Select(group =>
+            {
+                var declarations = group.ToArray();
+                var merged = MergeDeclarationBlocks(declarations, group.Key);
+                return ParseTable(merged.Lines, merged.Path) with
+                {
+                    DefinitionPaths = declarations.Select(item => item.Path).Distinct(StringComparer.Ordinal).ToArray(),
+                };
+            })
+            .OrderBy(table => table.Name, StringComparer.OrdinalIgnoreCase)
+            .ToArray();
         tables = RecogniseProxiedAutoDateTimeTables(tables);
 
         var relationshipsPath = ProjectFilePaths.Combine(definitionDirectory, "relationships.tmdl");
@@ -71,9 +79,142 @@ internal static class TmdlSemanticModelParser
         };
     }
 
-    private static SemanticTableInventory ParseTable(IProjectFileSource source, string path)
+    /// <summary>
+    /// Keep document boundaries before merging partial table declarations. A fence's contents are
+    /// expression text even when they look like a top-level table declaration.
+    /// </summary>
+    private static IEnumerable<DeclarationBlock> ReadTableDeclarations(IProjectFileSource source, string path)
     {
         var lines = ReadLines(source, path);
+        var declarations = new List<(int Index, string Name)>();
+        var insideFence = false;
+        for (var index = 0; index < lines.Length; index++)
+        {
+            if (insideFence)
+            {
+                insideFence = !IsExpressionFence(lines[index].Trimmed);
+                continue;
+            }
+
+            if (IsFencedExpressionOpening(lines[index].Trimmed))
+            {
+                insideFence = true;
+                continue;
+            }
+
+            if (lines[index].Indent != 0 || !TryParseDeclaration(lines[index].Trimmed, "table", out var name, out _))
+            {
+                continue;
+            }
+
+            declarations.Add((index, name));
+        }
+
+        if (declarations.Count == 0)
+        {
+            throw new InvalidDataException($"A top-level TMDL table declaration was not found in: {path}");
+        }
+
+        for (var index = 0; index < declarations.Count; index++)
+        {
+            var declaration = declarations[index];
+            var start = DescriptionStart(lines, declaration.Index);
+            var end = index + 1 < declarations.Count
+                ? DescriptionStart(lines, declarations[index + 1].Index)
+                : lines.Length;
+            yield return new DeclarationBlock(declaration.Name, path, lines[start..end], declaration.Index - start);
+        }
+    }
+
+    /// <summary>
+    /// Combine disjoint properties/children, not already-defaulted inventory values. This preserves
+    /// explicit false versus an absent boolean. Duplicate definitions are invalid TMDL, even if equal.
+    /// Only the table and its singleton calculation-group/refresh-policy containers are composable;
+    /// repeated named children fail before dictionary-based analysis can run.
+    /// </summary>
+    private static DeclarationBlock MergeDeclarationBlocks(DeclarationBlock[] declarations, string owner)
+    {
+        var described = declarations.Where(item => item.DeclarationIndex > 0).ToArray();
+        if (described.Length > 1)
+        {
+            throw DuplicateDeclaration(owner, "description", described[0].Path, described[1].Path);
+        }
+
+        var header = described.FirstOrDefault() ?? declarations[0];
+        var blocks = declarations.SelectMany(OwnedDeclarationBlocks).ToArray();
+        var lines = header.Lines.Take(header.DeclarationIndex + 1).ToList();
+        foreach (var group in blocks.GroupBy(block => block.Key, StringComparer.OrdinalIgnoreCase))
+        {
+            var contributions = group.ToArray();
+            DeclarationBlock block;
+            if (group.Key.Equals("calculationGroup", StringComparison.OrdinalIgnoreCase) ||
+                group.Key.Equals("refreshPolicy", StringComparison.OrdinalIgnoreCase))
+            {
+                block = MergeDeclarationBlocks(contributions, $"{owner}/{group.Key}");
+            }
+            else
+            {
+                if (contributions.Length > 1)
+                {
+                    throw DuplicateDeclaration(owner, group.Key, contributions[0].Path, contributions[1].Path);
+                }
+
+                block = contributions[0];
+            }
+
+            lines.AddRange(block.Lines);
+        }
+
+        return new DeclarationBlock(declarations[0].Key, declarations[0].Path, lines.ToArray(), header.DeclarationIndex);
+    }
+
+    private static IEnumerable<DeclarationBlock> OwnedDeclarationBlocks(DeclarationBlock parent)
+    {
+        var lines = parent.Lines;
+        var childIndent = lines[parent.DeclarationIndex].Indent + 4;
+        for (var index = parent.DeclarationIndex + 1; index < lines.Length; index++)
+        {
+            if (lines[index].Indent != childIndent || string.IsNullOrWhiteSpace(lines[index].Trimmed) ||
+                lines[index].Trimmed.StartsWith("//", StringComparison.Ordinal))
+            {
+                continue;
+            }
+
+            var start = DescriptionStart(lines, index);
+            var end = FindBlockEnd(lines, index);
+            var keyword = LeadingKeyword(lines[index].Trimmed);
+            var key = keyword;
+            if (TryParseDeclaration(lines[index].Trimmed, keyword, out var name, out _) &&
+                !lines[index].Trimmed.StartsWith(keyword + " =", StringComparison.OrdinalIgnoreCase))
+            {
+                key = $"{keyword} {name}";
+            }
+
+            yield return new DeclarationBlock(key, parent.Path, lines[start..end], index - start);
+            index = end - 1;
+        }
+    }
+
+    private static int DescriptionStart(IReadOnlyList<TmdlLine> lines, int index)
+    {
+        var start = index;
+        while (start > 0 && lines[start - 1].Indent == lines[index].Indent &&
+               lines[start - 1].Trimmed.StartsWith("///", StringComparison.Ordinal))
+        {
+            start--;
+        }
+
+        return start;
+    }
+
+    private static InvalidDataException DuplicateDeclaration(string owner, string key, string firstPath, string secondPath) =>
+        new($"Duplicate TMDL definition '{key}' in table '{owner}': {firstPath} and {secondPath}. " +
+            "Partial declarations must not define the same property or named child twice.");
+
+    private sealed record DeclarationBlock(string Key, string Path, TmdlLine[] Lines, int DeclarationIndex);
+
+    private static SemanticTableInventory ParseTable(TmdlLine[] lines, string path)
+    {
         var tableDeclarationIndex = FindDeclaration(lines, "table", startIndex: 0, requiredIndent: null);
         if (tableDeclarationIndex < 0 ||
             !TryParseDeclaration(lines[tableDeclarationIndex].Trimmed, "table", out var tableName, out _))
@@ -88,8 +229,6 @@ internal static class TmdlSemanticModelParser
             .Select(line => line.Indent)
             .DefaultIfEmpty(tableIndent + 4)
             .Min();
-        var firstObjectIndex = FindFirstObjectDeclaration(lines, tableDeclarationIndex + 1, objectIndent);
-        var tablePropertyEnd = firstObjectIndex < 0 ? lines.Length : firstObjectIndex;
 
         var columns = new List<SemanticColumnInventory>();
         var measures = new List<SemanticMeasureInventory>();
@@ -186,8 +325,8 @@ internal static class TmdlSemanticModelParser
         return new SemanticTableInventory(
             Name: tableName,
             RelativePath: path,
-            IsHidden: HasFlag(lines, tableDeclarationIndex, tablePropertyEnd, "isHidden"),
-            IsPrivate: HasFlag(lines, tableDeclarationIndex, tablePropertyEnd, "isPrivate"),
+            IsHidden: HasFlag(lines, tableDeclarationIndex, lines.Length, "isHidden"),
+            IsPrivate: HasFlag(lines, tableDeclarationIndex, lines.Length, "isPrivate"),
             IsSystemGenerated: systemGeneratedKind is not null,
             SystemGeneratedKind: systemGeneratedKind,
             Columns: columns,
@@ -201,7 +340,7 @@ internal static class TmdlSemanticModelParser
             Description = ReadDescription(lines, tableDeclarationIndex),
             UnanalyzedDependencyConstructs = UnanalyzedTableDependencyConstructs(
                 lines, tableDeclarationIndex, objectIndent),
-            ShowAsVariationsOnly = HasFlag(lines, tableDeclarationIndex, tablePropertyEnd, "showAsVariationsOnly"),
+            ShowAsVariationsOnly = HasFlag(lines, tableDeclarationIndex, lines.Length, "showAsVariationsOnly"),
         };
     }
 
@@ -582,7 +721,10 @@ internal static class TmdlSemanticModelParser
                 declarationIndex,
                 endIndex,
                 "multipleOrEmptySelectionExpression"),
-            Items: items);
+            Items: items)
+        {
+            NoSelectionExpression = ReadAssignmentExpression(lines, declarationIndex, endIndex, "noSelectionExpression"),
+        };
     }
 
     private static SemanticHierarchyInventory ParseHierarchy(
@@ -1296,12 +1438,40 @@ internal static class TmdlSemanticModelParser
         string flagName)
     {
         var propertyIndent = lines[declarationIndex].Indent + 4;
+        var insideFence = IsFencedExpressionOpening(lines[declarationIndex].Trimmed);
         for (var index = declarationIndex + 1; index < endIndex; index++)
         {
-            if (lines[index].Indent == propertyIndent &&
-                string.Equals(lines[index].Trimmed, flagName, StringComparison.OrdinalIgnoreCase))
+            if (insideFence)
+            {
+                insideFence = !IsExpressionFence(lines[index].Trimmed);
+                continue;
+            }
+
+            if (IsFencedExpressionOpening(lines[index].Trimmed))
+            {
+                insideFence = true;
+                continue;
+            }
+
+            if (lines[index].Indent != propertyIndent)
+            {
+                continue;
+            }
+
+            if (string.Equals(lines[index].Trimmed, flagName, StringComparison.OrdinalIgnoreCase))
             {
                 return true;
+            }
+
+            if (lines[index].Trimmed.StartsWith(flagName + ":", StringComparison.OrdinalIgnoreCase))
+            {
+                var value = lines[index].Trimmed[(flagName.Length + 1)..].Trim();
+                if (bool.TryParse(value, out var result))
+                {
+                    return result;
+                }
+
+                throw new InvalidDataException($"Invalid TMDL boolean property '{flagName}': {value}");
             }
         }
 
@@ -1326,19 +1496,6 @@ internal static class TmdlSemanticModelParser
                value.StartsWith("formatStringDefinition =", StringComparison.OrdinalIgnoreCase) ||
                value is "isHidden" or "isPrivate" or "isNameInferred" ||
                value.Contains(':');
-    }
-
-    private static int FindFirstObjectDeclaration(IReadOnlyList<TmdlLine> lines, int startIndex, int indent)
-    {
-        for (var index = startIndex; index < lines.Count; index++)
-        {
-            if (lines[index].Indent == indent && IsTableObjectDeclaration(lines[index].Trimmed))
-            {
-                return index;
-            }
-        }
-
-        return -1;
     }
 
     private static bool IsTableObjectDeclaration(string value)
@@ -1501,12 +1658,21 @@ internal static class TmdlSemanticModelParser
     {
         var declarationIndent = lines[declarationIndex].Indent;
         var end = limit ?? lines.Count;
+        var insideFence = IsFencedExpressionOpening(lines[declarationIndex].Trimmed);
         for (var index = declarationIndex + 1; index < end; index++)
         {
+            if (insideFence)
+            {
+                insideFence = !IsExpressionFence(lines[index].Trimmed);
+                continue;
+            }
+
             if (!string.IsNullOrWhiteSpace(lines[index].Text) && lines[index].Indent <= declarationIndent)
             {
                 return index;
             }
+
+            insideFence = IsFencedExpressionOpening(lines[index].Trimmed);
         }
 
         return end;

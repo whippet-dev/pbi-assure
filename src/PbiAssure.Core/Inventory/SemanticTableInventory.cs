@@ -16,6 +16,10 @@ public sealed record SemanticTableInventory(
     SemanticCalculationGroupInventory? CalculationGroup,
     SemanticFieldParameterInventory? FieldParameter)
 {
+    /// <summary>All contributing TMDL paths; RelativePath remains the first deterministic path.</summary>
+    [JsonIgnore]
+    public IReadOnlyList<string> DefinitionPaths { get; init; } = [];
+
     /// <summary>Desktop-authored description, retained in process only; logical lines use LF.</summary>
     [JsonIgnore]
     public string? Description { get; init; }

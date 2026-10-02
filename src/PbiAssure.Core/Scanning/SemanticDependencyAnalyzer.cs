@@ -411,6 +411,7 @@ internal static class SemanticDependencyAnalyzer
                 foreach (var expression in new[]
                          {
                              table.CalculationGroup.SelectionExpression,
+                             table.CalculationGroup.NoSelectionExpression,
                              table.CalculationGroup.MultipleOrEmptySelectionExpression,
                          }.Where(expression => expression is not null))
                 {
@@ -918,6 +919,18 @@ internal static class SemanticDependencyAnalyzer
                 table,
                 tableNode,
                 calculationGroup.MultipleOrEmptySelectionExpression,
+                lookup,
+                dependencies,
+                unresolved);
+        }
+
+        if (calculationGroup.NoSelectionExpression is not null)
+        {
+            AddDaxDependencies(
+                model,
+                table,
+                tableNode,
+                calculationGroup.NoSelectionExpression,
                 lookup,
                 dependencies,
                 unresolved);
