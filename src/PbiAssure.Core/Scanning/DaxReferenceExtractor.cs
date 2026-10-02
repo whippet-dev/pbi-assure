@@ -57,6 +57,7 @@ internal static partial class DaxReferenceExtractor
         var contexts = new Stack<ReferenceContext>();
         string? pendingFunction = null;
         var malformedContext = false;
+        var variableEnvironments = InfoViewVariableEnvironments(expression);
 
         while (index < expression.Length)
         {
@@ -123,7 +124,7 @@ internal static partial class DaxReferenceExtractor
                         ? PersistedRowSource(expression, index + 1, knownTables)
                         : null,
                     character == '(' && IsInfoViewRowIterator(pendingFunction)
-                        ? InfoViewRowSource(expression, index + 1)
+                        ? InfoViewRowSource(expression, index + 1, variableEnvironments.GetValueOrDefault(index + 1))
                         : null));
             }
             else if (character is ')' or '}')

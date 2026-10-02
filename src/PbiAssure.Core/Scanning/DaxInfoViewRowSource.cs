@@ -22,10 +22,10 @@ internal static partial class DaxReferenceExtractor
                 "FromCardinality", "ToTable", "ToColumn", "ToCardinality", "State", "SecurityFilteringBehavior"),
         };
 
-    // These scalar wrappers are evidenced by Microsoft's INFO.VIEW.TABLES example. This allowance
+    // Scalar wrappers evidenced by Microsoft's examples and the supplied work expression. This allowance
     // applies only to virtual-row fields; it does not broaden persisted/owner-row resolution.
     private static readonly HashSet<string> InfoViewRowScalarFunctions = Schema(
-        "SWITCH", "TRUE", "NOT", "ISBLANK");
+        "SWITCH", "TRUE", "NOT", "ISBLANK", "LEFT", "COALESCE", "FALSE", "IF", "LEN", "TRIM");
 
     private static HashSet<string> Schema(params string[] names) =>
         new HashSet<string>(names, StringComparer.OrdinalIgnoreCase);
@@ -57,18 +57,20 @@ internal static partial class DaxReferenceExtractor
         return null;
     }
 
-    private static IReadOnlySet<string>? InfoViewRowSource(string expression, int argumentsStart) =>
+    private static IReadOnlySet<string>? InfoViewRowSource(
+        string expression, int argumentsStart, IReadOnlyDictionary<string, IReadOnlySet<string>?>? bindings) =>
         TryReadCallArguments(expression, argumentsStart, out var arguments, out _) && arguments.Count > 0
-            ? ReadInfoViewSchema(expression, arguments[0], depth: 0)
+            ? ReadInfoViewSchema(expression, arguments[0], depth: 0, bindings)
             : null;
 
     /// <summary>
     /// Proves only INFO.VIEW sources and FILTER/SELECTCOLUMNS/ADDCOLUMNS transformations of them.
-    /// Tracks output names, not virtual-column lineage or values. VAR bindings and all other table
-    /// expressions deliberately remain unproven. Every recognised expression must occupy its entire
+    /// Tracks output names, not virtual-column lineage or values. Proven lexical VAR aliases are
+    /// accepted; other table expressions remain unproven. Every recognised expression must occupy its entire
     /// argument, and recursion is bounded so unsupported syntax retains ordinary unresolved evidence.
     /// </summary>
-    private static IReadOnlySet<string>? ReadInfoViewSchema(string expression, DaxArgument argument, int depth)
+    private static IReadOnlySet<string>? ReadInfoViewSchema(
+        string expression, DaxArgument argument, int depth, IReadOnlyDictionary<string, IReadOnlySet<string>?>? bindings)
     {
         if (depth >= 32) return null;
         var index = SkipDaxTrivia(expression, argument.Start);
@@ -81,6 +83,8 @@ internal static partial class DaxReferenceExtractor
             var end = ReadDottedIdentifierEnd(expression, index);
             function = expression[index..end];
             index = SkipDaxTrivia(expression, end);
+            if (index == argument.End)
+                return bindings?.GetValueOrDefault(function);
         }
 
         if (index >= argument.End || expression[index] != '(' ||
@@ -91,13 +95,13 @@ internal static partial class DaxReferenceExtractor
         }
 
         if (function is null)
-            return arguments.Count == 1 ? ReadInfoViewSchema(expression, arguments[0], depth + 1) : null;
+            return arguments.Count == 1 ? ReadInfoViewSchema(expression, arguments[0], depth + 1, bindings) : null;
 
         if (InfoViewSchemas.TryGetValue(function, out var schema))
             return arguments.Count == 0 ? schema : null;
 
         if (arguments.Count < 2) return null;
-        var input = ReadInfoViewSchema(expression, arguments[0], depth + 1);
+        var input = ReadInfoViewSchema(expression, arguments[0], depth + 1, bindings);
         if (input is null) return null;
 
         if (function.Equals("FILTER", StringComparison.OrdinalIgnoreCase))

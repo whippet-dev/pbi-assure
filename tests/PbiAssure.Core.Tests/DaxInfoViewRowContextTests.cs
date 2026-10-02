@@ -167,12 +167,15 @@ public sealed class DaxInfoViewRowContextTests
     }
 
     [Fact]
-    public void AnExplicitOutputColumnShadowsAGlobalMeasureOnlyInItsOwningRow()
+    public void AnExplicitOutputColumnDoesNotSilentlyErasePossibleGlobalMeasureUsage()
     {
         var inventory = Scan("FILTER(SELECTCOLUMNS(INFO.VIEW.COLUMNS(), \"Some Real Measure\", 1), [Some Real Measure] > 0)",
             extraReal: "    measure 'Some Real Measure' = 1\n");
 
-        Assert.Empty(inventory.UnresolvedSemanticDependencies);
+        var unresolved = Assert.Single(inventory.UnresolvedSemanticDependencies);
+        Assert.Equal(UnresolvedSemanticDependencyResolutionOutcomes.Ambiguous, unresolved.ResolutionOutcome);
+        Assert.Single(unresolved.CandidateTargets!);
+        Assert.Equal(ClassificationConfidences.QualifiedByLimitation, Usage(inventory, "Some Real Measure").ClassificationConfidence);
         Assert.DoesNotContain(inventory.SemanticDependencies, edge =>
             edge.FromTable == "Metadata" && edge.ToObjectName == "Some Real Measure");
     }
@@ -189,7 +192,7 @@ public sealed class DaxInfoViewRowContextTests
 
     [Theory]
     [InlineData("ROW(\"Count\", COUNTROWS(INFO.VIEW.COLUMNS()), \"Outside\", [Name])")]
-    [InlineData("VAR Rows = INFO.VIEW.COLUMNS() RETURN SELECTCOLUMNS(Rows, \"Name\", [Name])")]
+    [InlineData("VAR Rows = UnknownWrapper(INFO.VIEW.COLUMNS()) RETURN SELECTCOLUMNS(Rows, \"Name\", [Name])")]
     [InlineData("SELECTCOLUMNS(INFO.COLUMNS(), \"Name\", [Name])")]
     [InlineData("SELECTCOLUMNS(INFO.VIEW.UNKNOWN(), \"Name\", [Name])")]
     [InlineData("SELECTCOLUMNS(INFO.VIEW.COLUMNS(), \"Name\", CALCULATE([Name]))")]

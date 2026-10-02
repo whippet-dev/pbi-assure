@@ -990,6 +990,14 @@ internal static class SemanticDependencyAnalyzer
             // Non-schema names and explicit model references still use the ordinary resolution path.
             if (reference.IsVirtualRowColumn)
             {
+                // Microsoft documents both bare measure references and row-field references but
+                // does not establish their collision precedence here. Do not erase possible measure
+                // usage: only these measures (and their dependency closures) are persisted candidates.
+                var measures = lookup.MeasureCandidates(reference.ObjectName);
+                if (measures.Length > 0)
+                    unresolved.Add(CreateUnresolved(model.Name, source, dependencyKind, reference.Text,
+                        UnresolvedSemanticDependencyResolutionOutcomes.Ambiguous,
+                        $"The virtual row field '{reference.ObjectName}' also names a model measure.", evidencePath, measures));
                 continue;
             }
 
@@ -1801,6 +1809,8 @@ internal static class SemanticDependencyAnalyzer
         private readonly Dictionary<string, SemanticNode[]> columnsByName;
         private readonly Dictionary<string, SemanticNode> measuresByQualifiedName;
         private readonly Dictionary<string, SemanticNode[]> measuresByName;
+
+        public SemanticNode[] MeasureCandidates(string name) => measuresByName.GetValueOrDefault(name) ?? [];
 
         public ModelLookup(SemanticModelInventory model, IReadOnlyList<SemanticObjectUsage> usages)
         {
