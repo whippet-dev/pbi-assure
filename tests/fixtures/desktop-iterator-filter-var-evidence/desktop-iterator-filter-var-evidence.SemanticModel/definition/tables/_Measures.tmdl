@@ -1,0 +1,63 @@
+table _Measures
+	lineageTag: fe6f2f38-6d58-4fe8-8ddb-79b742d58e7b
+
+	measure 'Direct Iterator' =
+			
+			SUMX(
+			    Dim,
+			    [X]
+			)
+		formatString: 0
+		lineageTag: 58d1637c-3564-4800-abba-b7f2af531c78
+
+	measure 'Filtered Iterator' =
+			
+			SUMX(
+			    FILTER(
+			        Dim,
+			        Dim[Key] > 0
+			    ),
+			    [X]
+			)
+		formatString: 0
+		lineageTag: 82f6bec7-f1be-4d7e-a405-019805d880e8
+
+	measure 'Filtered Iterator Via VAR' =
+			
+			VAR t =
+			    FILTER(
+			        Dim,
+			        Dim[Key] > 0
+			    )
+			RETURN
+			    SUMX(
+			        t,
+			        [X]
+			    )
+		formatString: 0
+		lineageTag: 82163c84-b7f3-4e45-ae81-0d36f62544b2
+
+	measure 'Unused Measure' =
+			
+			SUM(Dim[Key])
+		formatString: 0
+		lineageTag: 7115d1e8-24c5-48e4-905d-87c7defd615e
+
+	column Column1
+		dataType: string
+		lineageTag: 0626f254-1df8-4e25-9faf-101c1e3b6287
+		summarizeBy: none
+		sourceColumn: Column1
+
+		annotation SummarizationSetBy = Automatic
+
+	partition _Measures = m
+		mode: import
+		source =
+				let
+				  Source = Table.FromRows(Json.Document(Binary.Decompress(Binary.FromText("i45WyivNyVGKjQUA", BinaryEncoding.Base64), Compression.Deflate)), let _t = ((type nullable text) meta [Serialized.Text = true]) in type table [Column1 = _t])
+				in
+				  Source
+
+	annotation PBI_ResultType = Table
+

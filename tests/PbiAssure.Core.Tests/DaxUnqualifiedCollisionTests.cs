@@ -211,6 +211,7 @@ public sealed class DaxUnqualifiedCollisionTests
     [InlineData("SUMX ( Dim, [X] * 2 )")]
     [InlineData("CALCULATE ( SUMX ( Dim, [X] ) )")]
     [InlineData("SUMX ( Dim, ( [X] ) )")]
+    [InlineData("SUMX ( FILTER ( Dim, TRUE() ), [X] )")]
     public void IteratorWithoutHomeColumnBindsToTheIteratedTable(string expression)
     {
         var inventory = Scan(expression, factColumn: "Other");
@@ -228,14 +229,13 @@ public sealed class DaxUnqualifiedCollisionTests
 
     /// <summary>
     /// Where the row context is not proven the reference stays NotFound with model-wide reach, exactly
-    /// as before: nested iterators, a source that is a variable or table expression, an unaccounted
+    /// as before: nested iterators, a source that is an unproven variable or table expression, an unaccounted
     /// call between the occurrence and the iterator, an iterator that is not evidenced, unbalanced
     /// syntax, and a proven table that simply has no such column.
     /// </summary>
     [Theory]
     [InlineData("SUMX ( Dim, SUMX ( Dim, [X] ) )")]
     [InlineData("VAR t = Dim RETURN SUMX ( t, [X] )")]
-    [InlineData("SUMX ( FILTER ( Dim, TRUE() ), [X] )")]
     [InlineData("SUMX ( Dim, CALCULATE ( [X] ) )")]
     [InlineData("SUMX ( Dim, RELATED ( [X] ) )")]
     [InlineData("MAXX ( Dim, [X] )")]
@@ -279,7 +279,7 @@ public sealed class DaxUnqualifiedCollisionTests
     [InlineData("SUMX(FILTER(Dim, [X] > 0), 1)", "Dim")]
     [InlineData("SUMX(Fact, [X])", "Fact")]
     [InlineData("SUMX(Dim, SUMX(Fact, [X]))", null)]
-    [InlineData("SUMX(FILTER(Dim, TRUE()), [X])", null)]
+    [InlineData("SUMX(FILTER(Dim, TRUE()), [X])", "Dim")]
     [InlineData("SUMX(Dim, CALCULATE([X]))", null)]
     [InlineData("MAXX(Dim, [X])", null)]
     [InlineData("SUMX(Dim, [X]", null)]

@@ -2,21 +2,24 @@ namespace PbiAssure.Core.Scanning;
 
 internal static partial class DaxReferenceExtractor
 {
-    // Environments are snapshots at call boundaries, not scalar values or model-table bindings.
+    // Environments are snapshots at call boundaries: proven virtual schemas or filtered row tables,
+    // not scalar values or general model-table VAR inference.
     // Null entries deliberately shadow proven outer tables with scalar/unknown local bindings.
-    private static Dictionary<int, IReadOnlyDictionary<string, IReadOnlySet<string>?>> InfoViewVariableEnvironments(string expression)
+    private static Dictionary<int, IReadOnlyDictionary<string, DaxVariableTableBinding?>> TableVariableEnvironments(
+        string expression, IReadOnlySet<string> knownTables)
     {
-        var environments = new Dictionary<int, IReadOnlyDictionary<string, IReadOnlySet<string>?>>();
+        var environments = new Dictionary<int, IReadOnlyDictionary<string, DaxVariableTableBinding?>>();
         VisitVariableScope(expression, new DaxArgument(0, expression.Length),
-            new Dictionary<string, IReadOnlySet<string>?>(StringComparer.OrdinalIgnoreCase), environments, depth: 0);
+            new Dictionary<string, DaxVariableTableBinding?>(StringComparer.OrdinalIgnoreCase), environments, knownTables, depth: 0);
         return environments;
     }
 
     private static void VisitVariableScope(
         string expression,
         DaxArgument span,
-        IReadOnlyDictionary<string, IReadOnlySet<string>?> bindings,
-        Dictionary<int, IReadOnlyDictionary<string, IReadOnlySet<string>?>> environments,
+        IReadOnlyDictionary<string, DaxVariableTableBinding?> bindings,
+        Dictionary<int, IReadOnlyDictionary<string, DaxVariableTableBinding?>> environments,
+        IReadOnlySet<string> knownTables,
         int depth)
     {
         if (depth >= 64) return;
@@ -29,15 +32,17 @@ internal static partial class DaxReferenceExtractor
             if (!TryReadVariableBlock(expression, span, out var declarations, out var returned)) return;
             foreach (var declaration in declarations)
             {
-                VisitVariableScope(expression, declaration.Value, bindings, environments, depth + 1);
+                VisitVariableScope(expression, declaration.Value, bindings, environments, knownTables, depth + 1);
                 var schema = ReadInfoViewSchema(expression, declaration.Value, depth: 0, bindings);
-                var nextBindings = new Dictionary<string, IReadOnlySet<string>?>(bindings, StringComparer.OrdinalIgnoreCase)
+                var rowTable = ReadPersistedRowTable(expression, declaration.Value, knownTables, bindings,
+                    depth: 0, allowDirectTable: false);
+                var nextBindings = new Dictionary<string, DaxVariableTableBinding?>(bindings, StringComparer.OrdinalIgnoreCase)
                 {
-                    [declaration.Name] = schema,
+                    [declaration.Name] = schema is null && rowTable is null ? null : new DaxVariableTableBinding(schema, rowTable),
                 };
                 bindings = nextBindings;
             }
-            VisitVariableScope(expression, returned, bindings, environments, depth + 1);
+            VisitVariableScope(expression, returned, bindings, environments, knownTables, depth + 1);
             return;
         }
 
@@ -59,7 +64,7 @@ internal static partial class DaxReferenceExtractor
                 if (!TryReadCallArguments(expression, index + 1, out var arguments, out var end) || end > span.End) return;
                 environments[index + 1] = bindings;
                 foreach (var argument in arguments)
-                    VisitVariableScope(expression, argument, bindings, environments, depth + 1);
+                    VisitVariableScope(expression, argument, bindings, environments, knownTables, depth + 1);
                 index = end;
                 continue;
             }
@@ -151,4 +156,6 @@ internal static partial class DaxReferenceExtractor
          !IsUnquotedIdentifierPart(expression[index + keyword.Length]) && expression[index + keyword.Length] != '.');
 
     private readonly record struct DaxVariableDeclaration(string Name, DaxArgument Value);
+
+    private sealed record DaxVariableTableBinding(IReadOnlySet<string>? VirtualRowColumns, string? PersistedRowTable);
 }

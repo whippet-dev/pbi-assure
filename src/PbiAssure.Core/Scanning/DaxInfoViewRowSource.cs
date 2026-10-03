@@ -58,7 +58,7 @@ internal static partial class DaxReferenceExtractor
     }
 
     private static IReadOnlySet<string>? InfoViewRowSource(
-        string expression, int argumentsStart, IReadOnlyDictionary<string, IReadOnlySet<string>?>? bindings) =>
+        string expression, int argumentsStart, IReadOnlyDictionary<string, DaxVariableTableBinding?>? bindings) =>
         TryReadCallArguments(expression, argumentsStart, out var arguments, out _) && arguments.Count > 0
             ? ReadInfoViewSchema(expression, arguments[0], depth: 0, bindings)
             : null;
@@ -70,7 +70,7 @@ internal static partial class DaxReferenceExtractor
     /// argument, and recursion is bounded so unsupported syntax retains ordinary unresolved evidence.
     /// </summary>
     private static IReadOnlySet<string>? ReadInfoViewSchema(
-        string expression, DaxArgument argument, int depth, IReadOnlyDictionary<string, IReadOnlySet<string>?>? bindings)
+        string expression, DaxArgument argument, int depth, IReadOnlyDictionary<string, DaxVariableTableBinding?>? bindings)
     {
         if (depth >= 32) return null;
         var index = SkipDaxTrivia(expression, argument.Start);
@@ -84,7 +84,7 @@ internal static partial class DaxReferenceExtractor
             function = expression[index..end];
             index = SkipDaxTrivia(expression, end);
             if (index == argument.End)
-                return bindings?.GetValueOrDefault(function);
+                return bindings?.GetValueOrDefault(function)?.VirtualRowColumns;
         }
 
         if (index >= argument.End || expression[index] != '(' ||

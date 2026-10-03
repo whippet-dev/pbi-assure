@@ -34,7 +34,7 @@ internal static partial class DaxReferenceExtractor
         public string? Function { get; } = function;
         public int Argument { get; set; }
 
-        /// <summary>The known table an evidenced iterator names as its entire first argument, if any.</summary>
+        /// <summary>The single persisted row table proven for the iterator's entire first argument.</summary>
         public string? PersistedRowSource { get; } = persistedRowSource;
 
         public IReadOnlySet<string>? VirtualRowColumns { get; } = virtualRowColumns;
@@ -65,7 +65,7 @@ internal static partial class DaxReferenceExtractor
         var contexts = new Stack<ReferenceContext>();
         string? pendingFunction = null;
         var malformedContext = false;
-        var variableEnvironments = InfoViewVariableEnvironments(expression);
+        var variableEnvironments = TableVariableEnvironments(expression, knownTables);
 
         while (index < expression.Length)
         {
@@ -132,7 +132,7 @@ internal static partial class DaxReferenceExtractor
             {
                 contexts.Push(new ReferenceContext(character, character == '(' ? pendingFunction : null,
                     character == '(' && IsRowIterator(pendingFunction)
-                        ? PersistedRowSource(expression, index + 1, knownTables)
+                        ? PersistedRowSource(expression, index + 1, knownTables, variableEnvironments.GetValueOrDefault(index + 1))
                         : null,
                     character == '(' && IsInfoViewRowIterator(pendingFunction)
                         ? InfoViewRowSource(expression, index + 1, variableEnvironments.GetValueOrDefault(index + 1))
@@ -161,7 +161,7 @@ internal static partial class DaxReferenceExtractor
     /// scopes: the occurrence sits in a row argument of exactly one evidenced iterator whose source is
     /// a known table, and only scalar wrappers and plain parentheses lie between them. Anything else
     /// leaves the row context unproven and yields null: a nested iterator (two row contexts), an
-    /// iterator over a table expression or variable (a source not accounted for), or an unaccounted
+    /// iterator over an unproven table expression or variable, or an unaccounted
     /// call between the occurrence and the iterator. Scopes outside the iterator do not alter the
     /// row it established, except a further iterator, which nests it.
     /// </summary>
@@ -199,33 +199,54 @@ internal static partial class DaxReferenceExtractor
         return table;
     }
 
-    // Only an entire first argument naming a known table is accounted for here. Table expressions,
-    // variables and constructors can introduce virtual columns; their row source is not inferred.
-    private static string? PersistedRowSource(string expression, int index, IReadOnlySet<string> knownTables)
-    {
-        SkipTrivia();
-        string table;
-        if (index < expression.Length && expression[index] == '\'')
-        {
-            if (!ReadQuotedIdentifier(expression, ref index, out table)) return null;
-        }
-        else
-        {
-            if (index >= expression.Length || !IsUnquotedIdentifierStart(expression[index])) return null;
-            var start = index++;
-            while (index < expression.Length && IsUnquotedIdentifierPart(expression[index])) index++;
-            table = expression[start..index];
-        }
-        SkipTrivia();
-        return knownTables.Contains(table) && index < expression.Length && expression[index] is ',' or ';'
-            ? table
+    private static string? PersistedRowSource(
+        string expression, int argumentsStart, IReadOnlySet<string> knownTables,
+        IReadOnlyDictionary<string, DaxVariableTableBinding?>? bindings) =>
+        TryReadCallArguments(expression, argumentsStart, out var arguments, out _) && arguments.Count > 0
+            ? ReadPersistedRowTable(expression, arguments[0], knownTables, bindings, depth: 0)
             : null;
 
-        void SkipTrivia()
+    // FILTER returns a subset of its input rows, preserving their table identity. No projections,
+    // joins, constructors or arbitrary transforms are inferred. A VAR may carry this filtered-table
+    // proof or alias a prior proven binding, but a direct VAR = ModelTable stays outside this slice.
+    // Every recognised source must occupy its whole argument; recursion is deliberately bounded.
+    private static string? ReadPersistedRowTable(
+        string expression, DaxArgument argument, IReadOnlySet<string> knownTables,
+        IReadOnlyDictionary<string, DaxVariableTableBinding?>? bindings, int depth, bool allowDirectTable = true)
+    {
+        if (depth >= 32) return null;
+        var index = SkipDaxTrivia(expression, argument.Start);
+        if (index >= argument.End) return null;
+        if (expression[index] == '\'')
         {
-            index = NextNonWhitespace(expression, index);
-            while (TrySkipComment(expression, ref index)) index = NextNonWhitespace(expression, index);
+            if (!ReadQuotedIdentifier(expression, ref index, out var quotedTable)) return null;
+            return allowDirectTable && SkipDaxTrivia(expression, index) == argument.End && knownTables.Contains(quotedTable)
+                ? quotedTable : null;
         }
+
+        string? identifier = null;
+        if (expression[index] != '(')
+        {
+            if (!IsUnquotedIdentifierStart(expression[index])) return null;
+            var end = ReadDottedIdentifierEnd(expression, index);
+            identifier = expression[index..end];
+            index = SkipDaxTrivia(expression, end);
+            if (index == argument.End)
+            {
+                if (bindings is not null && bindings.TryGetValue(identifier, out var binding))
+                    return binding?.PersistedRowTable;
+                return allowDirectTable && knownTables.Contains(identifier) ? identifier : null;
+            }
+        }
+
+        if (index >= argument.End || expression[index] != '(' ||
+            !TryReadCallArguments(expression, index + 1, out var arguments, out var callEnd) ||
+            SkipDaxTrivia(expression, callEnd) != argument.End) return null;
+        if (identifier is null)
+            return arguments.Count == 1
+                ? ReadPersistedRowTable(expression, arguments[0], knownTables, bindings, depth + 1, allowDirectTable) : null;
+        return identifier.Equals("FILTER", StringComparison.OrdinalIgnoreCase) && arguments.Count == 2
+            ? ReadPersistedRowTable(expression, arguments[0], knownTables, bindings, depth + 1) : null;
     }
 
     /// <summary>
