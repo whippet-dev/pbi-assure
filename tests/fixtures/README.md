@@ -9,6 +9,7 @@ These projects use synthetic data or sanitised metadata. Their READMEs distingui
 | [desktop-calculation-group-selection-evidence](desktop-calculation-group-selection-evidence/README.md) | Default calculation-group selection expressions, owned format strings and unused-item controls retained on a Desktop round trip. |
 | `desktop-descriptions-sanitized` | Description text and significant whitespace. |
 | `desktop-dynamic-format-string-evidence` | Measure format strings as dependency-bearing expressions. |
+| `desktop-dynamic-text-evidence` | Desktop-authored text-box and custom Narrative value persistence: explicit measure expressions, formatting report locations and indirect dependency controls. |
 | `desktop-entity-partition-evidence` | Composite-model `entity` partitions served by a shared DirectQuery-to-AS expression; a proxied Auto Date/Time table without its annotation. |
 | [desktop-field-parameter-evidence](desktop-field-parameter-evidence/README.md) | Desktop-authored New parameter > Fields persistence after a selection change and round trip: grouped/hidden helper columns, NAMEOF targets and materialised PBIR projections. |
 | `desktop-formatting-semantic-reference-sanitized`, `mobile-semantic-reference-sanitized` | Formatting and mobile references outside ordinary visual projections. |

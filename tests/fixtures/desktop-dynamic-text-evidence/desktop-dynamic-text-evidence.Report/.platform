@@ -1,0 +1,11 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/gitIntegration/platformProperties/2.0.0/schema.json",
+  "metadata": {
+    "type": "Report",
+    "displayName": "desktop-dynamic-text-evidence"
+  },
+  "config": {
+    "version": "2.0",
+    "logicalId": "c3fb4136-e809-4299-b724-b6611532c18e"
+  }
+}

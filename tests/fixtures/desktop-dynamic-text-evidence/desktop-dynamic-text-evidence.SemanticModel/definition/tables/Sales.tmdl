@@ -1,0 +1,32 @@
+table Sales
+	lineageTag: 68930959-7226-4e91-a161-d3e117e9a376
+
+	column Amount
+		dataType: int64
+		formatString: 0
+		lineageTag: 5e3367b4-96b1-4c7d-8158-7f038636c8bf
+		summarizeBy: sum
+		sourceColumn: Amount
+
+		annotation SummarizationSetBy = Automatic
+
+	column UnusedValue
+		dataType: int64
+		formatString: 0
+		lineageTag: cd368986-823c-45bc-a4f2-c1ed8e7394cb
+		summarizeBy: sum
+		sourceColumn: UnusedValue
+
+		annotation SummarizationSetBy = Automatic
+
+	partition Sales = m
+		mode: import
+		source =
+				let
+				  Source = Table.FromRows(Json.Document(Binary.Decompress(Binary.FromText("i45WMjQwUNJRMlSK1YlWMgKzjcBsYzDbWCk2FgA=", BinaryEncoding.Base64), Compression.Deflate)), let _t = ((type nullable text) meta [Serialized.Text = true]) in type table [Amount = _t, UnusedValue = _t]),
+				  #"Changed column type" = Table.TransformColumnTypes(Source, {{"Amount", Int64.Type}, {"UnusedValue", Int64.Type}}, "en-US")
+				in
+				  #"Changed column type"
+
+	annotation PBI_ResultType = Table
+

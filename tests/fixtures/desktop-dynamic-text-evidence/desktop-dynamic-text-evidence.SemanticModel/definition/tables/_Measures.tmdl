@@ -1,0 +1,47 @@
+table _Measures
+	lineageTag: 10446c9f-caf8-41d4-b026-665550ab249d
+
+	measure 'Total Sales' =
+			
+			SUM(Sales[Amount])
+		formatString: 0
+		lineageTag: 05829ae9-51f3-4902-8cae-7f4844e0ed10
+
+	measure Headline =
+			
+			"Total sales: " & FORMAT([Total Sales], "#,##0")
+		lineageTag: af995420-f447-4dfb-a30b-589f1c58190e
+
+	measure Narrative =
+			
+			IF(
+			    [Total Sales] > 100,
+			    "Sales are above target",
+			    "Sales are below target"
+			)
+		lineageTag: df0907cd-7a9b-499c-8d35-877d22ab6244
+
+	measure 'Unused Measure' =
+			
+			SUM(Sales[UnusedValue])
+		formatString: 0
+		lineageTag: 98f55622-563d-4a39-903b-8bde572dc2d3
+
+	column Column1
+		dataType: string
+		lineageTag: b24cdc42-506a-4c55-9ab4-81be6bad0f60
+		summarizeBy: none
+		sourceColumn: Column1
+
+		annotation SummarizationSetBy = Automatic
+
+	partition _Measures = m
+		mode: import
+		source =
+				let
+				  Source = Table.FromRows(Json.Document(Binary.Decompress(Binary.FromText("i45WyivNyVGKjQUA", BinaryEncoding.Base64), Compression.Deflate)), let _t = ((type nullable text) meta [Serialized.Text = true]) in type table [Column1 = _t])
+				in
+				  Source
+
+	annotation PBI_ResultType = Table
+
