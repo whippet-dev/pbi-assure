@@ -1074,7 +1074,7 @@ public static partial class HtmlReportRenderer
             }
 
             AppendModelConnection(html, report);
-            AppendReportMeasures(html, report);
+            AppendReportMeasures(html, lineage, report);
 
             foreach (var page in report.Pages)
             {
@@ -1104,7 +1104,7 @@ public static partial class HtmlReportRenderer
             .Append(Encode(message)).AppendLine("</p>");
     }
 
-    private static void AppendReportMeasures(StringBuilder html, ReportInventory report)
+    private static void AppendReportMeasures(StringBuilder html, SemanticLineageProjection lineage, ReportInventory report)
     {
         if (report.ReportMeasures.Count == 0)
         {
@@ -1123,11 +1123,24 @@ public static partial class HtmlReportRenderer
                 .Any(reference => reference.ObjectType == SemanticObjectTypes.Measure &&
                     string.Equals(reference.Table, measure.Entity, StringComparison.OrdinalIgnoreCase) &&
                     string.Equals(reference.ObjectName, measure.Name, StringComparison.OrdinalIgnoreCase));
-            html.Append("            <details class=\"semantic-table\"><summary><span class=\"summary-copy\"><strong>")
+            var card = lineage.CardForReportMeasure(report.Name, measure.Entity, measure.Name);
+            html.Append("            <details class=\"semantic-table\"");
+            if (card?.DetailsAnchor is not null)
+            {
+                html.Append(" id=\"").Append(Encode(card.DetailsAnchor)).Append('"');
+            }
+
+            html.Append("><summary><span class=\"summary-copy\"><strong>")
                 .Append(Encode(measure.Name)).Append("</strong><span>")
                 .Append(Encode(measure.Entity)).Append(" · ")
                 .Append(isUsed ? "used on the report" : "not placed directly on the report")
                 .AppendLine("</span></span></summary>");
+            if (card is not null)
+            {
+                html.Append("              <p class=\"lineage-entry\"><a href=\"#").Append(Encode(card.Id))
+                    .Append("\">View lineage<span class=\"visually-hidden\"> for ").Append(Encode(card.Title))
+                    .AppendLine("</span></a></p>");
+            }
             html.AppendLine("              <dl class=\"facts\">");
             AppendFact(html, "Formula", measure.Expression, code: true);
             AppendFact(html, "Data type", measure.DataType);
@@ -2052,9 +2065,16 @@ public static partial class HtmlReportRenderer
         html.AppendLine("                </div></details>");
     }
 
-    private static string UsageRoleLabel(SemanticObjectUsage usage, SemanticUsageLocation location, bool hasVisual)
+    private static string UsageRoleLabel(SemanticObjectUsage usage, SemanticUsageLocation location, bool hasVisual) =>
+        UsageRoleLabel(usage.DirectReportReferences, location, hasVisual);
+
+    /// <summary>The roles one location's evidence shows, read from the owner's direct-usage evidence.</summary>
+    private static string UsageRoleLabel(
+        IReadOnlyList<SemanticUsageEvidence> ownerReferences,
+        SemanticUsageLocation location,
+        bool hasVisual)
     {
-        var references = usage.DirectReportReferences
+        var references = ownerReferences
             .Where(evidence => string.Equals(evidence.Report, location.Report, StringComparison.OrdinalIgnoreCase) &&
                 string.Equals(evidence.Page, location.Page, StringComparison.OrdinalIgnoreCase) &&
                 string.Equals(evidence.Visual, location.Visual, StringComparison.OrdinalIgnoreCase) &&

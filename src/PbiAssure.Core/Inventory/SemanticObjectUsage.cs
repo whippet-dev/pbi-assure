@@ -29,23 +29,8 @@ public sealed record SemanticObjectUsage(
 
     public int DirectReportReferenceCount => DirectReportReferences.Count;
 
-    public IReadOnlyList<SemanticUsageLocation> DirectReportLocations
-    {
-        get
-        {
-            var locations = DirectReportReferences.Select(SemanticUsageLocation.FromEvidence).Distinct().ToArray();
-            var drillthroughPages = locations
-                .Where(location => location.Visual is null && location.UsageContext == UsageContexts.Drillthrough)
-                .Select(location => $"{location.Report}\u001f{location.Page}")
-                .ToHashSet(StringComparer.OrdinalIgnoreCase);
-
-            return locations.Where(location =>
-                location.Visual is not null ||
-                location.UsageContext != UsageContexts.Filter ||
-                !drillthroughPages.Contains($"{location.Report}\u001f{location.Page}"))
-                .ToArray();
-        }
-    }
+    public IReadOnlyList<SemanticUsageLocation> DirectReportLocations =>
+        SemanticUsageLocation.Distinct(DirectReportReferences);
 
     public int DirectReportLocationCount => DirectReportLocations.Count;
 }

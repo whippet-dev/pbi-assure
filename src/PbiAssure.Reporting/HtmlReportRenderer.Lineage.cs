@@ -45,6 +45,7 @@ public static partial class HtmlReportRenderer
             .Append(card.Kind switch
             {
                 LineageFocusKind.Function => "function",
+                LineageFocusKind.ReportMeasure => "report-measure",
                 LineageFocusKind.Visual => "visual",
                 _ => "semantic",
             })
@@ -89,7 +90,7 @@ public static partial class HtmlReportRenderer
             AppendLineageGroup(html, "used-by", "downstream", "Used by", card.UsedBy,
                 "No model object found in this project uses this.",
                 neighbour => AppendLineageNeighbour(html, neighbour));
-            if (card.Kind == LineageFocusKind.SemanticObject)
+            if (card.Kind is LineageFocusKind.SemanticObject or LineageFocusKind.ReportMeasure)
             {
                 AppendLineageGroup(html, "report", "downstream", "Used in the report", card.UsedInReport,
                     "No direct report use found in this project.",
@@ -105,6 +106,11 @@ public static partial class HtmlReportRenderer
         }
 
         html.AppendLine("</div>");
+        if (card.Path is not null)
+        {
+            AppendLineagePath(html, inventory, card.Path);
+        }
+
         AppendLineageEvidence(html, card);
         html.AppendLine("</article>");
     }
@@ -138,6 +144,11 @@ public static partial class HtmlReportRenderer
                 facts.Add($"Table {card.Table}");
             }
 
+            if (card.ReportName is not null)
+            {
+                facts.Add($"Report {card.ReportName}");
+            }
+
             if (inventory.SemanticModels.Count > 1 && card.SemanticModel is not null)
             {
                 facts.Add($"Model {card.SemanticModel}");
@@ -161,23 +172,33 @@ public static partial class HtmlReportRenderer
             return;
         }
 
-        if (card.Reachability is { } reachability)
+        if (card.Kind is LineageFocusKind.Function or LineageFocusKind.ReportMeasure)
         {
-            // A function has no usage state of its own; the scanner's reachability is the published fact.
+            // Functions and report measures have no usage state of their own. A function's reachability is
+            // the scanner's; a report measure's is its own report's, not a same-named one's elsewhere.
+            var reached = card.ReachedFromReport ?? false;
             html.Append("<p class=\"lineage-status\"><span class=\"lineage-reach\">")
-                .Append(reachability.ReachableFromReport ? "Reached from a report" : "Not reached from a report")
+                .Append(reached ? "Reached from a report" : "Not reached from a report")
                 .AppendLine("</span></p>");
+        }
+
+        if (card.SharedWithReports.Count > 0)
+        {
+            html.Append("<p class=\"lineage-shared\">")
+                .Append(Encode($"{JoinNames(card.SharedWithReports, "and")} also {(card.SharedWithReports.Count == 1 ? "defines" : "define")} a report measure named {card.Title} for this model. This card shows only this report's own relationships, uses and reachability. PBI Assure's usage results for the model objects these report measures use still count them as one item."))
+                .AppendLine("</p>");
         }
     }
 
     private static void AppendLineageActions(StringBuilder html, LineageCard card)
     {
         html.Append("<p class=\"lineage-actions\">");
-        if (card.Kind == LineageFocusKind.Visual)
+        if (card.Kind is LineageFocusKind.Visual or LineageFocusKind.ReportMeasure)
         {
             if (card.DetailsAnchor is not null)
             {
-                html.Append("<a href=\"#").Append(Encode(card.DetailsAnchor)).Append("\">Visual details</a>");
+                html.Append("<a href=\"#").Append(Encode(card.DetailsAnchor)).Append("\">")
+                    .Append(card.Kind == LineageFocusKind.Visual ? "Visual details" : "Object details").Append("</a>");
             }
 
             html.AppendLine("<a href=\"#reports\">Back to Report pages</a></p>");
@@ -279,8 +300,172 @@ public static partial class HtmlReportRenderer
                 .Append(Encode(string.Join(" · ", neighbour.RelationshipLabels))).Append("</span>");
         }
 
+        AppendLineageSharedName(html, neighbour.IsSharedReportMeasure, neighbour.ReportCount, neighbour.Report);
         AppendLineageNeighbourState(html, neighbour);
         html.Append("</span>");
+    }
+
+    /// <summary>
+    /// For a report measure whose name several reports share: the report it belongs to here, or where
+    /// no report could be identified, that the name is shared.
+    /// </summary>
+    private static void AppendLineageSharedName(StringBuilder html, bool isShared, int reportCount, string? report)
+    {
+        if (!isShared)
+        {
+            return;
+        }
+
+        if (report is not null)
+        {
+            html.Append(" · <span class=\"lineage-shared\">Report ").Append(Encode(report)).Append("</span>");
+            return;
+        }
+
+        html.Append(" · <span class=\"lineage-shared\">same name in ")
+            .Append(reportCount.ToString(CultureInfo.InvariantCulture)).Append(" reports</span>");
+    }
+
+    /// <summary>
+    /// Path to report: the focus, each item that uses the one before it, and the report location the
+    /// last of them is used in. Steps are list items so a later layout can draw them as a spine; the
+    /// notes are what the path does not show, counted for what they are.
+    /// </summary>
+    private static void AppendLineagePath(StringBuilder html, ProjectInventory inventory, LineagePath path)
+    {
+        html.Append("<section class=\"lineage-path\" data-lineage-path=\"")
+            .Append(path.Status switch
+            {
+                LineagePathStatus.DirectlyUsed => "direct",
+                LineagePathStatus.ReachedThroughModel => "model",
+                _ => "none",
+            })
+            .Append("\"><h3>Path to report</h3>");
+        if (path.Status == LineagePathStatus.NotFound)
+        {
+            html.Append("<p class=\"lineage-path-none\">No report path found in this project.</p>");
+            if (path.SharedReportMeasures.Count > 0)
+            {
+                html.Append("<p class=\"lineage-path-note\">")
+                    .Append(Encode($"Its usage result is shared: PBI Assure counts same-named report measures as one item ({string.Join("; ", path.SharedReportMeasures)}), and none of them reaches a report location through this item."))
+                    .Append("</p>");
+            }
+
+            if (path.OnlyReachedFrom.TotalCount > 0)
+            {
+                html.Append("<p class=\"lineage-path-note\">Only reached from: ");
+                AppendLineagePathNames(html, path.OnlyReachedFrom, neighbour => neighbour.UsageState is not null
+                    ? UsageLabel(neighbour.UsageState)
+                    : neighbour.IsSharedReportMeasure && neighbour.Report is not null
+                        ? $"Report {neighbour.Report}"
+                        : null);
+                html.Append("</p>");
+            }
+
+            if (path.StructuralSources.TotalCount > 0)
+            {
+                html.Append("<p class=\"lineage-path-note\">Required by model structure: ");
+                AppendLineagePathNames(html, path.StructuralSources, neighbour => string.Join(" · ", neighbour.RelationshipLabels));
+                html.Append("</p>");
+            }
+            else if (!string.IsNullOrWhiteSpace(path.StructuralReason))
+            {
+                html.Append("<p class=\"lineage-path-note\">Required by model structure: ").Append(Encode(path.StructuralReason)).Append("</p>");
+            }
+            else if (path.RequiredByModelStructure)
+            {
+                html.Append("<p class=\"lineage-path-note\">Required by model structure.</p>");
+            }
+
+            if (path.ChecksLimited)
+            {
+                html.Append("<p class=\"lineage-path-note\"><span class=\"confidence-flag\">").Append(CoverageMarkerLabel)
+                    .Append("<span class=\"visually-hidden\">").Append(CoverageMarkerDescription).Append("</span></span></p>");
+            }
+
+            html.AppendLine("</section>");
+            return;
+        }
+
+        html.AppendLine("<ol class=\"lineage-path-steps\">");
+        for (var index = 0; index < path.Steps.Count; index++)
+        {
+            var step = path.Steps[index];
+            html.Append("<li class=\"lineage-path-step\" data-lineage-path-step=\"").Append(index == 0 ? "focus" : "model").Append('"');
+            if (step.UsageState is not null)
+            {
+                html.Append(" data-lineage-state=\"").Append(Encode(step.UsageState)).Append('"');
+            }
+
+            html.Append('>');
+            AppendLineageNode(html, step.CardId, step.Name);
+            html.Append("<span class=\"lineage-meta\">").Append(Encode(SemanticLineageProjection.ObjectTypeLabel(step.ObjectType)));
+            if (step.HasOnlyDefaultRelationship)
+            {
+                html.Append("<span class=\"visually-hidden\"> · via DAX</span>");
+            }
+            else if (step.RelationshipLabels.Count > 0)
+            {
+                html.Append(" · <span class=\"lineage-relationship\">")
+                    .Append(Encode(string.Join(" · ", step.RelationshipLabels))).Append("</span>");
+            }
+
+            AppendLineageSharedName(html, step.IsSharedReportMeasure, step.ReportCount, step.Report);
+            html.AppendLine("</span></li>");
+        }
+
+        html.Append("<li class=\"lineage-path-step\" data-lineage-path-step=\"report\">");
+        AppendLineageLocation(html, inventory, path.Endpoint!);
+        html.AppendLine("</li></ol>");
+        var otherLocations = path.EndpointLocationCount - 1;
+        if (otherLocations > 0)
+        {
+            html.Append("<p class=\"lineage-path-note\">")
+                .Append(Encode(path.Status == LineagePathStatus.DirectlyUsed ? "Also used" : $"{path.Steps[^1].Name} is also used"))
+                .Append(" in ").Append(otherLocations.ToString(CultureInfo.InvariantCulture))
+                .Append(otherLocations == 1 ? " other report location.</p>" : " other report locations.</p>");
+        }
+
+        // The count is of the focus's other immediate consumers that are themselves reached from a report,
+        // not of routes: it never enumerates paths.
+        if (path.OtherReportReachingConsumers > 0)
+        {
+            html.Append("<p class=\"lineage-path-note\">")
+                .Append(path.OtherReportReachingConsumers.ToString(CultureInfo.InvariantCulture))
+                .Append(path.OtherReportReachingConsumers == 1
+                    ? " other item that uses this is also reached from a report.</p>"
+                    : " other items that use this are also reached from a report.</p>");
+        }
+
+        html.AppendLine("</section>");
+    }
+
+    private static void AppendLineagePathNames(
+        StringBuilder html,
+        LineageGroup<LineageNeighbour> neighbours,
+        Func<LineageNeighbour, string?> detail)
+    {
+        var shown = neighbours.Items.Take(SemanticLineageProjection.PathNoteLimit).ToArray();
+        for (var index = 0; index < shown.Length; index++)
+        {
+            if (index > 0)
+            {
+                html.Append(", ");
+            }
+
+            AppendLineageNode(html, shown[index].CardId, shown[index].Name);
+            var text = detail(shown[index]);
+            if (!string.IsNullOrWhiteSpace(text))
+            {
+                html.Append(" (").Append(Encode(text)).Append(')');
+            }
+        }
+
+        var more = neighbours.TotalCount - shown.Length;
+        if (more > 0)
+        {
+            html.Append(" and ").Append(more.ToString(CultureInfo.InvariantCulture)).Append(" more");
+        }
     }
 
     private static void AppendLineageNeighbourState(StringBuilder html, LineageNeighbour neighbour)
@@ -345,7 +530,7 @@ public static partial class HtmlReportRenderer
             facts.Add($"Report {location.Report?.Name ?? location.Location.Report}");
         }
 
-        var role = UsageRoleLabel(location.Usage, location.Location, hasVisual);
+        var role = UsageRoleLabel(location.OwnerReferences, location.Location, hasVisual);
         if (!string.IsNullOrWhiteSpace(role) && !string.Equals(role, label, StringComparison.OrdinalIgnoreCase))
         {
             facts.Add(role);
@@ -358,7 +543,7 @@ public static partial class HtmlReportRenderer
     {
         AppendLineageNode(html, use.Object.CardId, use.Object.Name);
         html.Append("<span class=\"lineage-meta\">").Append(Encode(SemanticLineageProjection.ObjectTypeLabel(use.Object.ObjectType)));
-        var role = UsageRoleLabel(use.Location.Usage, use.Location.Location, hasVisual: true);
+        var role = UsageRoleLabel(use.Location.OwnerReferences, use.Location.Location, hasVisual: true);
         if (!string.IsNullOrWhiteSpace(role))
         {
             html.Append(" · <span class=\"lineage-relationship\">").Append(Encode(role)).Append("</span>");
@@ -532,11 +717,13 @@ public static partial class HtmlReportRenderer
                 : $"{table}[{name}]";
     }
 
-    private static string JoinAlternatives(IReadOnlyList<string> names) => names.Count switch
+    private static string JoinAlternatives(IReadOnlyList<string> names) => JoinNames(names, "or");
+
+    private static string JoinNames(IReadOnlyList<string> names, string conjunction) => names.Count switch
     {
         0 => string.Empty,
         1 => names[0],
-        _ => $"{string.Join(", ", names.Take(names.Count - 1))} or {names[^1]}",
+        _ => $"{string.Join(", ", names.Take(names.Count - 1))} {conjunction} {names[^1]}",
     };
 
     /// <summary>The entry point on a Semantic model row. The link text names the object for screen readers.</summary>

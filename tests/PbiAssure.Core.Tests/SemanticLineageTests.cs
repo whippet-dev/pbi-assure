@@ -69,9 +69,7 @@ public sealed partial class SemanticLineageTests
             // Every item is one side of an edge that genuinely touches the focus.
             if (card.Kind != LineageFocusKind.Visual)
             {
-                var focus = card.Kind == LineageFocusKind.SemanticObject
-                    ? SemanticLineageProjection.NodeKey(card.Usage!)
-                    : SemanticGraphIndex.NodeKey(card.Reachability!.SemanticModel, card.Reachability.Table, card.Reachability.ObjectName, card.Reachability.ObjectType, card.Reachability.HierarchyName);
+                var focus = card.NodeKey!;
                 Assert.All(card.DependsOn.Items, neighbour => Assert.All(neighbour.Dependencies, edge =>
                     Assert.Equal(focus, SemanticGraphIndex.SourceKey(edge), StringComparer.OrdinalIgnoreCase)));
                 Assert.All(card.UsedBy.Items.Concat(card.RequiredByModel.Items), neighbour => Assert.All(neighbour.Dependencies, edge =>
@@ -101,13 +99,15 @@ public sealed partial class SemanticLineageTests
         var lineage = SemanticLineageProjection.Build(ScanFixture(fixture));
         var cards = lineage.Cards.Where(card => card.Kind != LineageFocusKind.Visual).ToArray();
         var keyOf = cards.ToDictionary(card => card.Id, FocusKey);
+        LineageCard CardOf(string key) =>
+            cards.First(card => string.Equals(FocusKey(card), key, StringComparison.OrdinalIgnoreCase));
 
         var forward = cards
             .Where(card => card.DependsOn.HiddenCount == 0)
             .SelectMany(card => card.DependsOn.Items.Where(item => item.CardId is not null).Select(item => (From: FocusKey(card), To: item.NodeKey)));
         foreach (var (from, to) in forward)
         {
-            var target = Assert.Single(cards, card => string.Equals(FocusKey(card), to, StringComparison.OrdinalIgnoreCase));
+            var target = CardOf(to);
             if (target.UsedBy.HiddenCount == 0)
             {
                 Assert.Contains(target.UsedBy.Items, item => string.Equals(item.NodeKey, from, StringComparison.OrdinalIgnoreCase));
@@ -119,7 +119,7 @@ public sealed partial class SemanticLineageTests
             .SelectMany(card => card.UsedBy.Items.Where(item => item.CardId is not null).Select(item => (To: FocusKey(card), From: keyOf[item.CardId!])));
         foreach (var (to, from) in backward)
         {
-            var source = Assert.Single(cards, card => string.Equals(FocusKey(card), from, StringComparison.OrdinalIgnoreCase));
+            var source = CardOf(from);
             if (source.DependsOn.HiddenCount == 0)
             {
                 Assert.Contains(source.DependsOn.Items, item => string.Equals(item.NodeKey, to, StringComparison.OrdinalIgnoreCase));
@@ -132,8 +132,9 @@ public sealed partial class SemanticLineageTests
     public void VisualAndObjectViewsAreOneRelation(string fixture)
     {
         var lineage = SemanticLineageProjection.Build(ScanFixture(fixture));
+        // Model objects and report measures both own direct report evidence.
         var fromObjects = lineage.Cards
-            .Where(card => card.Kind == LineageFocusKind.SemanticObject)
+            .Where(card => card.Kind is LineageFocusKind.SemanticObject or LineageFocusKind.ReportMeasure)
             .SelectMany(card => card.UsedInReport.Items
                 .Where(location => location.VisualCardId is not null)
                 .Select(location => (Object: card.Id, Visual: location.VisualCardId!)))
@@ -539,7 +540,10 @@ public sealed partial class SemanticLineageTests
             $"<p class=\"lineage-entry\"><a href=\"#{lineage.CardFor(usage)!.Id}\">View lineage<span class=\"visually-hidden\"> for Fact[BaseAmount]</span></a></p>",
             html,
             StringComparison.Ordinal);
-        Assert.Equal(inventory.SemanticObjectUsages.Count, Occurrences(html, "<p class=\"lineage-entry\">"));
+        // One entry per model object row, plus one per report measure in Report pages.
+        Assert.Equal(
+            inventory.SemanticObjectUsages.Count + inventory.ReportMeasureUsages.Count,
+            Occurrences(html, "<p class=\"lineage-entry\">"));
     }
 
     [Fact]
@@ -724,13 +728,7 @@ public sealed partial class SemanticLineageTests
     private static string HtmlEncodedScopeNote() =>
         System.Text.Encodings.Web.HtmlEncoder.Default.Encode(HtmlReportRenderer.LineageScopeNote);
 
-    private static string FocusKey(LineageCard card) => card.Kind switch
-    {
-        LineageFocusKind.SemanticObject => SemanticLineageProjection.NodeKey(card.Usage!),
-        LineageFocusKind.Function => SemanticGraphIndex.NodeKey(card.Reachability!.SemanticModel, card.Reachability.Table,
-            card.Reachability.ObjectName, card.Reachability.ObjectType, card.Reachability.HierarchyName),
-        _ => card.Id,
-    };
+    private static string FocusKey(LineageCard card) => card.NodeKey ?? card.Id;
 
     private static LineageCard Card(SemanticLineageProjection lineage, ProjectInventory inventory, string table, string objectName) =>
         lineage.CardFor(Assert.Single(inventory.SemanticObjectUsages, usage =>

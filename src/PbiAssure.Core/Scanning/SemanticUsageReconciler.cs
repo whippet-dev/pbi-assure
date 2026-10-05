@@ -163,7 +163,11 @@ internal static class SemanticUsageReconciler
             string.Equals(measure.Name, reference.ObjectName, StringComparison.OrdinalIgnoreCase));
     }
 
-    private static IEnumerable<ReportReferenceContext> EnumerateReferences(ReportInventory report)
+    /// <summary>
+    /// Every field reference a report stores, with the page, visual and file it was found in. Model
+    /// objects and report measures are both located through this one enumeration.
+    /// </summary>
+    internal static IEnumerable<ReportReferenceContext> EnumerateReferences(ReportInventory report)
     {
         foreach (var reference in report.FieldReferences)
         {
@@ -263,7 +267,7 @@ internal static class SemanticUsageReconciler
         string ObjectType,
         string? HierarchyName);
 
-    private sealed record ReportReferenceContext(
+    internal sealed record ReportReferenceContext(
         string? Page,
         string? Visual,
         string ArtifactPath,

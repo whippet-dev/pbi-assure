@@ -34,7 +34,7 @@ internal static class SemanticDependencyAnalyzer
             userRelationshipCalls.AddRange(CollectUserRelationshipCalls(model));
         }
 
-        AnalyzeReportMeasures(
+        var reportMeasureUsages = AnalyzeReportMeasures(
             semanticModels, initialUsages, reports, dependencies, unresolved,
             reportMeasureNodes, reportMeasureRoots);
 
@@ -75,7 +75,10 @@ internal static class SemanticDependencyAnalyzer
                 .ThenBy(edge => edge.ToObjectName, StringComparer.OrdinalIgnoreCase)
                 .ToArray(),
             UnresolvedDependencies: MergeDuplicates(unresolved),
-            NodeReachability: reachability);
+            NodeReachability: reachability)
+        {
+            ReportMeasureUsages = reportMeasureUsages,
+        };
     }
 
     /// <summary>
@@ -98,7 +101,15 @@ internal static class SemanticDependencyAnalyzer
             .ToArray();
     }
 
-    private static void AnalyzeReportMeasures(
+    /// <summary>
+    /// Report measures become graph nodes keyed by model, entity and name, and a report reference that
+    /// the direct-usage policy accepts makes one a report root. The same loop that roots a report
+    /// measure records where the reference was found, per report, so the published evidence is exactly
+    /// the evidence that rooted it. The graph node is not report scoped: same-named report measures in
+    /// two reports bound to one model share it, which the per-report evidence lets presentation state
+    /// rather than hide.
+    /// </summary>
+    private static ReportMeasureUsage[] AnalyzeReportMeasures(
         IReadOnlyList<SemanticModelInventory> semanticModels,
         IReadOnlyList<SemanticObjectUsage> usages,
         IReadOnlyList<ReportInventory> reports,
@@ -107,6 +118,7 @@ internal static class SemanticDependencyAnalyzer
         HashSet<string> reportMeasureNodes,
         HashSet<string> reportMeasureRoots)
     {
+        var reportMeasureUsages = new List<ReportMeasureUsage>();
         foreach (var report in reports)
         {
             var model = ReportModelBinder.FindLocalModel(report, semanticModels);
@@ -138,14 +150,46 @@ internal static class SemanticDependencyAnalyzer
                 reportMeasureNodes.Add(NodeKey(model.Name, source));
             }
 
-            foreach (var reference in EnumerateReportFieldReferences(report))
+            var evidence = new Dictionary<string, List<SemanticUsageEvidence>>(StringComparer.OrdinalIgnoreCase);
+            foreach (var context in SemanticUsageReconciler.EnumerateReferences(report))
             {
+                var reference = context.Reference;
                 if (SemanticReportReferencePolicy.EstablishesDirectUsage(reference) &&
                     reference.ObjectType == SemanticObjectTypes.Measure &&
                     reportMeasures.TryGetValue(QualifiedKey(reference.Table, reference.ObjectName), out var root))
                 {
                     reportMeasureRoots.Add(NodeKey(model.Name, root));
+                    var key = QualifiedKey(reference.Table, reference.ObjectName);
+                    if (!evidence.TryGetValue(key, out var locations))
+                    {
+                        locations = [];
+                        evidence.Add(key, locations);
+                    }
+
+                    locations.Add(new SemanticUsageEvidence(
+                        Report: report.Name,
+                        Page: context.Page,
+                        Visual: context.Visual,
+                        ArtifactPath: context.ArtifactPath,
+                        UsageContext: reference.UsageContext,
+                        Role: reference.Role,
+                        EvidencePath: reference.EvidencePath)
+                    {
+                        IsHiddenProjection = reference.IsHiddenProjection,
+                    });
                 }
+            }
+
+            foreach (var measure in report.ReportMeasures)
+            {
+                reportMeasureUsages.Add(new ReportMeasureUsage(
+                    report.Name,
+                    model.Name,
+                    measure.Entity,
+                    measure.Name,
+                    evidence.TryGetValue(QualifiedKey(measure.Entity, measure.Name), out var found)
+                        ? found.Distinct().ToArray()
+                        : []));
             }
 
             foreach (var measure in report.ReportMeasures)
@@ -187,6 +231,13 @@ internal static class SemanticDependencyAnalyzer
                 dependencies.AddRange(measureDependencies);
             }
         }
+
+        return reportMeasureUsages
+            .OrderBy(usage => usage.SemanticModel, StringComparer.OrdinalIgnoreCase)
+            .ThenBy(usage => usage.Report, StringComparer.OrdinalIgnoreCase)
+            .ThenBy(usage => usage.Entity, StringComparer.OrdinalIgnoreCase)
+            .ThenBy(usage => usage.Name, StringComparer.OrdinalIgnoreCase)
+            .ToArray();
     }
 
     private static void AddReportMeasureExpressionDependencies(
@@ -293,11 +344,6 @@ internal static class SemanticDependencyAnalyzer
         string.Equals(first.ToObjectType, second.ToObjectType, StringComparison.Ordinal) &&
         string.Equals(first.ToHierarchyName, second.ToHierarchyName, StringComparison.OrdinalIgnoreCase) &&
         string.Equals(first.DependencyKind, second.DependencyKind, StringComparison.Ordinal);
-
-    private static IEnumerable<VisualFieldReference> EnumerateReportFieldReferences(ReportInventory report) =>
-        report.FieldReferences
-            .Concat(report.Pages.SelectMany(page => page.FieldReferences))
-            .Concat(report.Pages.SelectMany(page => page.Visuals.SelectMany(visual => visual.FieldReferences)));
 
     private static void AnalyzeModel(
         SemanticModelInventory model,
@@ -2061,4 +2107,8 @@ internal sealed record SemanticDependencyAnalysis(
     SemanticTableUsage[] TableUsages,
     SemanticDependencyEdge[] Dependencies,
     UnresolvedSemanticDependency[] UnresolvedDependencies,
-    SemanticNodeReachability[] NodeReachability);
+    SemanticNodeReachability[] NodeReachability)
+{
+    /// <summary>Every report measure of a report bound to a local model, with its own direct-usage evidence.</summary>
+    public ReportMeasureUsage[] ReportMeasureUsages { get; init; } = [];
+}

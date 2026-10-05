@@ -926,6 +926,17 @@ pre {
 .lineage-empty, .lineage-more { margin: 0; color: var(--pa-text-2); font-size: var(--pa-t-xs); }
 .lineage-more { margin-top: 0.375rem; }
 .lineage-evidence li { overflow-wrap: anywhere; }
+.lineage-shared { color: var(--pa-text-2); font-size: var(--pa-t-2xs); }
+p.lineage-shared { max-width: 78ch; margin: 0; }
+
+/* Path to report: plain steps for now; a later layout draws them as the card's spine. */
+.lineage-path { min-width: 0; }
+.lineage-path h3 { margin: 0 0 0.375rem; font-size: var(--pa-t-sm); }
+.lineage-path-steps { display: grid; min-width: 0; gap: 0.25rem; margin: 0; padding-left: 1.5rem; }
+.lineage-path-step { min-width: 0; }
+.lineage-path-step > .lineage-node { margin-right: 0.375rem; }
+.lineage-path-none, .lineage-path-note { max-width: 78ch; margin: 0; font-size: var(--pa-t-xs); overflow-wrap: anywhere; }
+.lineage-path-note { margin-top: 0.25rem; color: var(--pa-text-2); }
 
 /* ------------------------------------------------------------------ footer */
 

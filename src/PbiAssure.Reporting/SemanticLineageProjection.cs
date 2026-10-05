@@ -46,8 +46,12 @@ internal sealed class SemanticLineageProjection
         SemanticObjectTypes.RefreshPolicy,
     };
 
+    /// <summary>How many branch heads or structural sources a no-path explanation names before summarising.</summary>
+    public const int PathNoteLimit = 5;
+
     private readonly Dictionary<string, LineageCard> cardsByNode;
     private readonly Dictionary<string, LineageCard> cardsByVisual;
+    private readonly Dictionary<string, LineageCard> cardsByReportMeasure;
     private readonly Dictionary<string, string> objectRowIds;
     private readonly Dictionary<string, SemanticUsageReason?> reasons;
     private readonly Dictionary<string, string?> reportModels;
@@ -56,6 +60,7 @@ internal sealed class SemanticLineageProjection
         IReadOnlyList<LineageCard> cards,
         Dictionary<string, LineageCard> cardsByNode,
         Dictionary<string, LineageCard> cardsByVisual,
+        Dictionary<string, LineageCard> cardsByReportMeasure,
         Dictionary<string, string> objectRowIds,
         Dictionary<string, SemanticUsageReason?> reasons,
         Dictionary<string, string?> reportModels)
@@ -63,6 +68,7 @@ internal sealed class SemanticLineageProjection
         Cards = cards;
         this.cardsByNode = cardsByNode;
         this.cardsByVisual = cardsByVisual;
+        this.cardsByReportMeasure = cardsByReportMeasure;
         this.objectRowIds = objectRowIds;
         this.reasons = reasons;
         this.reportModels = reportModels;
@@ -93,15 +99,32 @@ internal sealed class SemanticLineageProjection
     public string? ReasonFor(SemanticObjectUsage usage) =>
         reasons.GetValueOrDefault(NodeKey(usage))?.Text;
 
-    /// <summary>The lineage card for a field a report refers to, resolved within the report's own model.</summary>
+    /// <summary>
+    /// The lineage card for a field a report refers to: the report's own report measure when it defines
+    /// one of that name, otherwise the object in the report's own model.
+    /// </summary>
     public LineageCard? CardForReference(ReportInventory report, VisualFieldReference reference)
     {
+        if (reference.ObjectType == SemanticObjectTypes.Measure &&
+            CardForReportMeasure(report.Name, reference.Table, reference.ObjectName) is { } reportMeasure)
+        {
+            return reportMeasure;
+        }
+
         var model = reportModels.GetValueOrDefault(report.Name);
         return model is null
             ? null
             : cardsByNode.GetValueOrDefault(SemanticGraphIndex.NodeKey(
                 model, reference.Table, reference.ObjectName, reference.ObjectType, reference.HierarchyName));
     }
+
+    /// <summary>The card for one report's own report measure.</summary>
+    public LineageCard? CardForReportMeasure(string report, string entity, string name) =>
+        cardsByReportMeasure.GetValueOrDefault(ReportMeasureKey(report, entity, name));
+
+    /// <summary>The id of a report measure's entry in Report pages.</summary>
+    public static string ReportMeasureRowId(string semanticModel, string report, string entity, string name) =>
+        LineageIds.Create("obj", $"{report} {entity} {name}", ReportMeasureIdentity(semanticModel, report, entity, name));
 
     /// <summary>The user-facing label for one dependency kind, read from the edge's direction-free meaning.</summary>
     public static string RelationshipLabel(string dependencyKind, string sourceObjectType) => dependencyKind switch
@@ -137,6 +160,16 @@ internal sealed class SemanticLineageProjection
     private static string VisualKey(string report, string page, string visual) =>
         string.Join('\u001f', report, page, visual);
 
+    private static string ReportMeasureKey(string report, string entity, string name) =>
+        string.Join('\u001f', report, entity, name);
+
+    /// <summary>
+    /// A report measure's identity includes its report. The graph node does not, so it cannot be used
+    /// to tell two reports' same-named report measures apart.
+    /// </summary>
+    private static string ReportMeasureIdentity(string semanticModel, string report, string entity, string name) =>
+        string.Join('\u001e', SemanticObjectTypes.ReportMeasure, semanticModel, report, entity, name);
+
     private static int KindOrder(string label) => label switch
     {
         "sort by" => 0,
@@ -170,8 +203,35 @@ internal sealed class SemanticLineageProjection
         return new LineageGroup<T>(all.Take(GroupLimit).ToArray(), all.Length);
     }
 
+    /// <summary>Anything that owns direct report-usage evidence: a model object or one report's report measure.</summary>
+    private sealed record UsageOwner(
+        string NodeKey,
+        string CardId,
+        string SemanticModel,
+        string Table,
+        string ObjectName,
+        string ObjectType,
+        string? HierarchyName,
+        string? Report,
+        IReadOnlyList<SemanticUsageEvidence> References);
+
+    /// <summary>
+    /// A place in lineage: a graph node, and for a report measure the report that owns it there. Two
+    /// reports' same-named report measures share a node but never a position.
+    /// </summary>
+    private readonly record struct Position(string NodeKey, UsageOwner? Owner)
+    {
+        public string Id => Owner is null ? NodeKey : string.Join('\u001e', NodeKey, Owner.Report);
+    }
+
     private sealed class Builder(ProjectInventory inventory)
     {
+        /// <summary>The most nodes the search for the start of an unused branch visits.</summary>
+        private const int BranchSearchLimit = 500;
+
+        private readonly Dictionary<string, LineageGroup<LineageReportLocation>> terminalLocations = new(StringComparer.OrdinalIgnoreCase);
+        private readonly Dictionary<string, UsageOwner> reportMeasureOwnersByEvidence = new(StringComparer.OrdinalIgnoreCase);
+        private readonly HashSet<string> reachedReportMeasures = new(StringComparer.OrdinalIgnoreCase);
         private readonly SemanticGraphIndex index = SemanticGraphIndex.For(inventory);
         private readonly Dictionary<string, SemanticObjectUsage> usagesByNode = new(StringComparer.OrdinalIgnoreCase);
         private readonly Dictionary<string, string> tableStates = new(StringComparer.OrdinalIgnoreCase);
@@ -182,7 +242,10 @@ internal sealed class SemanticLineageProjection
         private readonly Dictionary<string, SemanticUsageReason?> reasons = new(StringComparer.OrdinalIgnoreCase);
         private readonly Dictionary<string, List<UnresolvedSemanticDependency>> unresolvedBySource = new(StringComparer.OrdinalIgnoreCase);
         private readonly Dictionary<string, List<UnresolvedSemanticDependency>> ambiguityByCandidate = new(StringComparer.OrdinalIgnoreCase);
-        private readonly Dictionary<string, List<(SemanticObjectUsage Usage, SemanticUsageLocation Location)>> visualUses = new(StringComparer.OrdinalIgnoreCase);
+        private readonly Dictionary<string, List<(UsageOwner Owner, SemanticUsageLocation Location)>> visualUses = new(StringComparer.OrdinalIgnoreCase);
+        private readonly Dictionary<string, List<UsageOwner>> reportMeasureOwnersByNode = new(StringComparer.OrdinalIgnoreCase);
+        private readonly Dictionary<string, UsageOwner> reportMeasureOwnersByKey = new(StringComparer.OrdinalIgnoreCase);
+        private readonly HashSet<string> tablesWithObjects = new(StringComparer.OrdinalIgnoreCase);
         private readonly Dictionary<string, (ReportInventory Report, PageInventory Page, VisualInventory Visual)> visuals = new(StringComparer.OrdinalIgnoreCase);
         private readonly Dictionary<string, ReportInventory> reports = new(StringComparer.OrdinalIgnoreCase);
 
@@ -223,33 +286,48 @@ internal sealed class SemanticLineageProjection
                 objectRowIds.Add(key, LineageIds.Create("obj", readable, key));
                 reasons.Add(key, SemanticUsagePresentation.ExplainReason(inventory, usage));
 
-                foreach (var location in usage.DirectReportLocations)
+                tablesWithObjects.Add(TableKey(usage.SemanticModel, usage.Table));
+                AddVisualUses(new UsageOwner(key, nodeCardIds[key], usage.SemanticModel, usage.Table, usage.ObjectName,
+                    usage.ObjectType, usage.HierarchyName, Report: null, usage.DirectReportReferences));
+            }
+
+            // Report measures are owned by their report. Each gets its own card even where the graph keys
+            // two reports' same-named report measures as one node; the card then says so.
+            foreach (var reportMeasure in inventory.ReportMeasureUsages)
+            {
+                var nodeKey = SemanticGraphIndex.NodeKey(reportMeasure.SemanticModel, reportMeasure.Entity, reportMeasure.Name,
+                    SemanticObjectTypes.ReportMeasure, null);
+                var owner = new UsageOwner(
+                    nodeKey,
+                    LineageIds.Create("lin", $"report measure {reportMeasure.Report} {reportMeasure.Entity} {reportMeasure.Name}",
+                        ReportMeasureIdentity(reportMeasure.SemanticModel, reportMeasure.Report, reportMeasure.Entity, reportMeasure.Name)),
+                    reportMeasure.SemanticModel,
+                    reportMeasure.Entity,
+                    reportMeasure.Name,
+                    SemanticObjectTypes.ReportMeasure,
+                    HierarchyName: null,
+                    reportMeasure.Report,
+                    reportMeasure.DirectReportReferences);
+                if (!reportMeasureOwnersByKey.TryAdd(ReportMeasureKey(reportMeasure.Report, reportMeasure.Entity, reportMeasure.Name), owner))
                 {
-                    if (location.Visual is null || location.Page is null)
-                    {
-                        continue;
-                    }
+                    continue;
+                }
 
-                    var visualKey = VisualKey(location.Report, location.Page, location.Visual);
-                    if (!visuals.TryGetValue(visualKey, out var visual))
-                    {
-                        continue;
-                    }
+                Add(reportMeasureOwnersByNode, nodeKey, owner);
+                AddVisualUses(owner);
+            }
 
-                    if (!visualUses.TryGetValue(visualKey, out var uses))
-                    {
-                        uses = [];
-                        visualUses.Add(visualKey, uses);
-                        visualCardIds.Add(visualKey, LineageIds.Create(
-                            "lin",
-                            HtmlReportRenderer.VisualAnchor(visual.Report, visual.Page, visual.Visual),
-                            visualKey,
-                            maximumTokenLength: 96));
-                    }
-
-                    uses.Add((usage, location));
+            // A neighbour that is a report measure links to its card only when exactly one report defines
+            // it; otherwise there is no single object to send the reader to.
+            foreach (var (nodeKey, owners) in reportMeasureOwnersByNode)
+            {
+                if (owners.Count == 1)
+                {
+                    nodeCardIds.TryAdd(nodeKey, owners[0].CardId);
                 }
             }
+
+            AttributeReportMeasureEdges();
 
             var functionNodes = inventory.SemanticNodeReachability
                 .Where(node => node.ObjectType == SemanticObjectTypes.Function)
@@ -287,6 +365,7 @@ internal sealed class SemanticLineageProjection
             var cards = new List<LineageCard>();
             var cardsByNode = new Dictionary<string, LineageCard>(StringComparer.OrdinalIgnoreCase);
             var cardsByVisual = new Dictionary<string, LineageCard>(StringComparer.OrdinalIgnoreCase);
+            var cardsByReportMeasure = new Dictionary<string, LineageCard>(StringComparer.OrdinalIgnoreCase);
             foreach (var (key, usage) in usagesByNode)
             {
                 var card = SemanticCard(key, usage);
@@ -307,6 +386,17 @@ internal sealed class SemanticLineageProjection
                 cardsByNode.Add(key, card);
             }
 
+            foreach (var (reportMeasureKey, owner) in reportMeasureOwnersByKey)
+            {
+                var card = ReportMeasureCard(owner);
+                cards.Add(card);
+                cardsByReportMeasure.Add(reportMeasureKey, card);
+                if (reportMeasureOwnersByNode[owner.NodeKey].Count == 1)
+                {
+                    cardsByNode.TryAdd(owner.NodeKey, card);
+                }
+            }
+
             foreach (var (visualKey, uses) in visualUses)
             {
                 var card = VisualCard(visualKey, uses);
@@ -315,49 +405,177 @@ internal sealed class SemanticLineageProjection
             }
 
             return new SemanticLineageProjection(
-                cards, cardsByNode, cardsByVisual, objectRowIds, reasons, reportModels);
+                cards, cardsByNode, cardsByVisual, cardsByReportMeasure, objectRowIds, reasons, reportModels);
+        }
+
+        /// <summary>
+        /// The graph keys a report measure by model, entity and name, so two reports' same-named report
+        /// measures share one node. Every edge a report measure contributes carries its own report's
+        /// extension file as evidence, which identifies the report that owns the edge. Lineage reads
+        /// report-measure relationships through that ownership so nothing crosses a report boundary.
+        /// An edge whose evidence matches no report's measure is left unattributed and is never followed.
+        ///
+        /// A report measure is reached from a report when its own report places it, or when another
+        /// report measure of the same report that is reached uses it.
+        /// </summary>
+        private void AttributeReportMeasureEdges()
+        {
+            foreach (var owner in reportMeasureOwnersByKey.Values)
+            {
+                var definition = reports.GetValueOrDefault(owner.Report!)?.ReportMeasures.FirstOrDefault(measure =>
+                    string.Equals(measure.Entity, owner.Table, StringComparison.OrdinalIgnoreCase) &&
+                    string.Equals(measure.Name, owner.ObjectName, StringComparison.OrdinalIgnoreCase));
+                if (definition is not null)
+                {
+                    reportMeasureOwnersByEvidence.TryAdd(string.Join('\u001e', owner.NodeKey, definition.RelativePath), owner);
+                }
+            }
+
+            var queue = new Queue<UsageOwner>(reportMeasureOwnersByKey.Values.Where(owner => owner.References.Count > 0));
+            foreach (var owner in queue)
+            {
+                reachedReportMeasures.Add(owner.CardId);
+            }
+
+            while (queue.TryDequeue(out var owner))
+            {
+                foreach (var edge in index.OutgoingFromNode(owner.NodeKey))
+                {
+                    if (edge.ToObjectType != SemanticObjectTypes.ReportMeasure ||
+                        !ReferenceEquals(EdgeOwner(edge), owner) ||
+                        !reportMeasureOwnersByKey.TryGetValue(ReportMeasureKey(owner.Report!, edge.ToTable, edge.ToObjectName), out var used) ||
+                        !reachedReportMeasures.Add(used.CardId))
+                    {
+                        continue;
+                    }
+
+                    queue.Enqueue(used);
+                }
+            }
+        }
+
+        /// <summary>The report measure, in its own report, that contributed this edge; null for other sources.</summary>
+        private UsageOwner? EdgeOwner(SemanticDependencyEdge edge) =>
+            edge.FromObjectType == SemanticObjectTypes.ReportMeasure
+                ? reportMeasureOwnersByEvidence.GetValueOrDefault(string.Join('\u001e', SemanticGraphIndex.SourceKey(edge), edge.EvidencePath))
+                : null;
+
+        private bool IsReached(UsageOwner owner) => reachedReportMeasures.Contains(owner.CardId);
+
+        private void AddVisualUses(UsageOwner owner)
+        {
+            foreach (var location in SemanticUsageLocation.Distinct(owner.References))
+            {
+                if (location.Visual is null || location.Page is null)
+                {
+                    continue;
+                }
+
+                var visualKey = VisualKey(location.Report, location.Page, location.Visual);
+                if (!visuals.TryGetValue(visualKey, out var visual))
+                {
+                    continue;
+                }
+
+                if (!visualUses.TryGetValue(visualKey, out var uses))
+                {
+                    uses = [];
+                    visualUses.Add(visualKey, uses);
+                    visualCardIds.Add(visualKey, LineageIds.Create(
+                        "lin",
+                        HtmlReportRenderer.VisualAnchor(visual.Report, visual.Page, visual.Visual),
+                        visualKey,
+                        maximumTokenLength: 96));
+                }
+
+                uses.Add((owner, location));
+            }
         }
 
         private LineageCard SemanticCard(string key, SemanticObjectUsage usage)
         {
             var reason = reasons[key];
-            var (usedBy, requiredByModel) = Incoming(key, reason?.Dependency);
+            var (usedBy, requiredByModel) = Incoming(new Position(key, null), reason?.Dependency);
+            var usedInReport = ReportLocations(usage.DirectReportReferences);
             return new LineageCard(
                 nodeCardIds[key],
                 LineageFocusKind.SemanticObject,
                 DisplayName(usage.SemanticModel, usage.Table, usage.ObjectName, usage.ObjectType, usage.HierarchyName),
                 usage.ObjectType)
             {
+                NodeKey = key,
                 SemanticModel = usage.SemanticModel,
                 Table = usage.Table,
                 Usage = usage,
+                Reachability = index.ReachabilityOfNode(key),
                 Reason = reason?.Text,
                 DetailsAnchor = objectRowIds[key],
                 PowerQuery = PowerQueryContext(usage),
-                DependsOn = Outgoing(key, reason?.Dependency),
+                DependsOn = Outgoing(new Position(key, null), reason?.Dependency),
                 NotResolved = NotResolved(key, usage.SemanticModel),
                 UsedBy = usedBy,
                 RequiredByModel = requiredByModel,
-                UsedInReport = ReportLocations(usage),
+                UsedInReport = usedInReport,
                 PossibleUse = PossibleUse(usage),
+                Path = PathFor(new Position(key, null), usage.IsDirectlyReferencedByReport ? usedInReport : null, usage, reason?.Text, requiredByModel),
             };
         }
 
         private LineageCard FunctionCard(string key, SemanticNodeReachability function)
         {
-            var (usedBy, requiredByModel) = Incoming(key, reasonDependency: null);
+            var (usedBy, requiredByModel) = Incoming(new Position(key, null), reasonDependency: null);
             return new LineageCard(
                 nodeCardIds[key],
                 LineageFocusKind.Function,
                 function.ObjectName,
                 SemanticObjectTypes.Function)
             {
+                NodeKey = key,
                 SemanticModel = function.SemanticModel,
                 Reachability = function,
-                DependsOn = Outgoing(key, reasonDependency: null),
+                ReachedFromReport = function.ReachableFromReport,
+                DependsOn = Outgoing(new Position(key, null), reasonDependency: null),
                 NotResolved = NotResolved(key, function.SemanticModel),
                 UsedBy = usedBy,
                 RequiredByModel = requiredByModel,
+                Path = PathFor(new Position(key, null), directLocations: null, usage: null, reason: null, requiredByModel),
+            };
+        }
+
+        /// <summary>
+        /// One report's report measure: its own relationships (the edges its report contributed), its own
+        /// report locations and its own reachability. Other reports' same-named report measures share the
+        /// graph node but none of what is shown here.
+        /// </summary>
+        private LineageCard ReportMeasureCard(UsageOwner owner)
+        {
+            var position = new Position(owner.NodeKey, owner);
+            var (usedBy, requiredByModel) = Incoming(position, reasonDependency: null);
+            var usedInReport = ReportLocations(owner.References);
+            return new LineageCard(
+                owner.CardId,
+                LineageFocusKind.ReportMeasure,
+                DisplayName(owner.SemanticModel, owner.Table, owner.ObjectName, owner.ObjectType, null),
+                SemanticObjectTypes.ReportMeasure)
+            {
+                NodeKey = owner.NodeKey,
+                SemanticModel = owner.SemanticModel,
+                Table = owner.Table,
+                Report = reports.GetValueOrDefault(owner.Report!),
+                ReportName = owner.Report,
+                ReachedFromReport = IsReached(owner),
+                SharedWithReports = reportMeasureOwnersByNode[owner.NodeKey]
+                    .Where(other => !ReferenceEquals(other, owner))
+                    .Select(other => other.Report!)
+                    .Order(StringComparer.OrdinalIgnoreCase)
+                    .ToArray(),
+                DetailsAnchor = ReportMeasureRowId(owner.SemanticModel, owner.Report!, owner.Table, owner.ObjectName),
+                DependsOn = Outgoing(position, reasonDependency: null),
+                NotResolved = NotResolved(owner.NodeKey, owner.SemanticModel, OwnEvidencePath(owner)),
+                UsedBy = usedBy,
+                RequiredByModel = requiredByModel,
+                UsedInReport = usedInReport,
+                Path = PathFor(position, owner.References.Count > 0 ? usedInReport : null, usage: null, reason: null, requiredByModel),
             };
         }
 
@@ -367,13 +585,15 @@ internal sealed class SemanticLineageProjection
         /// visual field references are deliberately not used: the scanner's direct-usage policy excludes
         /// some of them, and showing those here would contradict the object's own card.
         /// </summary>
-        private LineageCard VisualCard(string visualKey, List<(SemanticObjectUsage Usage, SemanticUsageLocation Location)> uses)
+        private LineageCard VisualCard(string visualKey, List<(UsageOwner Owner, SemanticUsageLocation Location)> uses)
         {
             var (report, page, visual) = visuals[visualKey];
             var items = uses
                 .Select(use => new LineageVisualUse(
-                    Neighbour(use.Usage.SemanticModel, use.Usage.Table, use.Usage.ObjectName, use.Usage.ObjectType, use.Usage.HierarchyName, [], isReasonSource: false),
-                    Location(use.Usage, use.Location)))
+                    use.Owner.Report is null
+                        ? Neighbour(use.Owner.SemanticModel, use.Owner.Table, use.Owner.ObjectName, use.Owner.ObjectType, use.Owner.HierarchyName, [], isReasonSource: false)
+                        : OwnerNeighbour(use.Owner, [], isReasonSource: false),
+                    Location(use.Owner.References, use.Location)))
                 .OrderBy(use => use.Object.Name, StringComparer.OrdinalIgnoreCase)
                 .ThenBy(use => use.Object.NodeKey, StringComparer.Ordinal);
             var unresolved = inventory.UnresolvedSemanticReferences
@@ -407,16 +627,306 @@ internal sealed class SemanticLineageProjection
             };
         }
 
-        private LineageGroup<LineageNeighbour> Outgoing(string key, SemanticDependencyEdge? reasonDependency)
+        /// <summary>
+        /// Path to report, read entirely from facts the scanner published; nothing is reclassified.
+        ///
+        /// A focus with its own direct report evidence needs no walk: its first report location, in the
+        /// cards' location order, is the endpoint. Otherwise, when published reachability says the focus is
+        /// reached from a report, a breadth-first walk follows incoming edges back through predecessors
+        /// that are themselves reached from a report, over the same edges the classifier traverses —
+        /// containing-table and calculation-group hops included, structural sources excluded — and stops
+        /// at the first item with direct report evidence. Breadth-first gives the fewest hops; ties go to
+        /// the stable qualified order used elsewhere.
+        ///
+        /// A report measure is walked as a position in its own report: entered only through an edge its
+        /// report contributed, left only through its report's edges, and ending only at its report's own
+        /// locations. Where the classifier's merged report-measure node is the only thing that makes the
+        /// focus reached, no report path exists, and the path says that the result is shared.
+        /// </summary>
+        private LineagePath PathFor(
+            Position focusPosition,
+            LineageGroup<LineageReportLocation>? directLocations,
+            SemanticObjectUsage? usage,
+            string? reason,
+            LineageGroup<LineageNeighbour> requiredByModel)
         {
-            var neighbours = index.OutgoingFromNode(key)
+            var focus = FocusStep(focusPosition);
+            if (directLocations is { TotalCount: > 0 })
+            {
+                return new LineagePath(LineagePathStatus.DirectlyUsed, [focus], directLocations.Items[0], directLocations.TotalCount, 0);
+            }
+
+            var reachability = index.ReachabilityOfNode(focusPosition.NodeKey);
+            var shared = new SortedSet<string>(StringComparer.OrdinalIgnoreCase);
+            var reached = focusPosition.Owner is { } focusOwner ? IsReached(focusOwner) : reachability?.ReachableFromReport == true;
+            if (reached && SearchTowardReport(focusPosition, focus, shared) is { } found)
+            {
+                return found;
+            }
+
+            var path = new LineagePath(LineagePathStatus.NotFound, [focus], null, 0, 0)
+            {
+                ChecksLimited = usage?.ClassificationConfidence == ClassificationConfidences.QualifiedByLimitation,
+            };
+            if (reached)
+            {
+                // Reached only by way of a report-measure node that several reports share.
+                return path with { SharedReportMeasures = shared.ToArray() };
+            }
+
+            if (usage?.UsageState == SemanticUsageStates.StructurallyRequired || reachability?.ReachableFromModelStructure == true)
+            {
+                return path with
+                {
+                    RequiredByModelStructure = true,
+                    StructuralSources = requiredByModel,
+                    StructuralReason = usage?.UsageState == SemanticUsageStates.StructurallyRequired ? reason : null,
+                };
+            }
+
+            return Predecessors(focusPosition, shared: null).Length == 0
+                ? path
+                : path with { OnlyReachedFrom = BranchHeads(focusPosition) };
+        }
+
+        private LineagePath? SearchTowardReport(Position focusPosition, LineagePathStep focus, ISet<string> shared)
+        {
+            var visited = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { focusPosition.Id };
+            var next = new Dictionary<string, (Position Toward, IReadOnlyList<SemanticDependencyEdge> Edges)>(StringComparer.OrdinalIgnoreCase);
+            var positions = new Dictionary<string, Position>(StringComparer.OrdinalIgnoreCase) { [focusPosition.Id] = focusPosition };
+            var queue = new Queue<Position>();
+            queue.Enqueue(focusPosition);
+            var otherFirstHops = 0;
+            while (queue.TryDequeue(out var current))
+            {
+                var predecessors = Predecessors(current, shared)
+                    .Where(item => item.Source.Owner is { } owner
+                        ? IsReached(owner)
+                        : index.ReachabilityOfNode(item.Source.NodeKey)?.ReachableFromReport == true)
+                    .ToArray();
+                if (current.Id == focusPosition.Id)
+                {
+                    otherFirstHops = Math.Max(0, predecessors.Length - 1);
+                }
+
+                foreach (var (source, edges) in predecessors)
+                {
+                    if (!visited.Add(source.Id))
+                    {
+                        continue;
+                    }
+
+                    next[source.Id] = (current, edges);
+                    positions[source.Id] = source;
+                    var endpoint = TerminalLocations(source);
+                    if (endpoint.TotalCount > 0)
+                    {
+                        var chain = new List<LineagePathStep>();
+                        for (var position = source; position.Id != focusPosition.Id; position = next[position.Id].Toward)
+                        {
+                            chain.Add(Step(position, next[position.Id].Edges));
+                        }
+
+                        chain.Reverse();
+                        return new LineagePath(
+                            LineagePathStatus.ReachedThroughModel,
+                            [focus, .. chain],
+                            endpoint.Items[0],
+                            endpoint.TotalCount,
+                            otherFirstHops);
+                    }
+
+                    queue.Enqueue(source);
+                }
+            }
+
+            return null;
+        }
+
+        /// <summary>
+        /// The positions whose edges the classifier traverses into this one, grouped per position, in the
+        /// stable qualified order. Structural sources (relationships, roles, perspectives, refresh policies)
+        /// are never traversed by the classifier, so they are never path steps. A report measure is a
+        /// position in the report that contributed the edge; into a report measure, only that report's
+        /// own report measures lead. An edge no report can be identified for is not followed. Shared
+        /// report-measure names met on the way are recorded for the explanation.
+        /// </summary>
+        private (Position Source, IReadOnlyList<SemanticDependencyEdge> Edges)[] Predecessors(Position position, ISet<string>? shared) =>
+            index.IncomingToNode(position.NodeKey)
+                .Where(IsTraversedSource)
+                .Select(edge =>
+                {
+                    var owner = EdgeOwner(edge);
+                    if (edge.FromObjectType == SemanticObjectTypes.ReportMeasure &&
+                        reportMeasureOwnersByNode.TryGetValue(SemanticGraphIndex.SourceKey(edge), out var owners) && owners.Count > 1)
+                    {
+                        shared?.Add($"{edge.FromTable}[{edge.FromObjectName}] in {JoinReports(owners)}");
+                    }
+
+                    return (Edge: edge, Owner: owner);
+                })
+                .Where(item => item.Edge.FromObjectType != SemanticObjectTypes.ReportMeasure
+                    ? position.Owner is null
+                    : item.Owner is not null && (position.Owner is null ||
+                        string.Equals(item.Owner.Report, position.Owner.Report, StringComparison.OrdinalIgnoreCase)))
+                .GroupBy(item => new Position(SemanticGraphIndex.SourceKey(item.Edge), item.Owner).Id, StringComparer.OrdinalIgnoreCase)
+                .Select(group => (
+                    Source: new Position(SemanticGraphIndex.SourceKey(group.First().Edge), group.First().Owner),
+                    Edges: (IReadOnlyList<SemanticDependencyEdge>)group.Select(item => item.Edge).ToArray()))
+                .OrderBy(item => item.Edges[0].FromTable, StringComparer.OrdinalIgnoreCase)
+                .ThenBy(item => item.Edges[0].FromObjectName, StringComparer.OrdinalIgnoreCase)
+                .ThenBy(item => item.Edges[0].FromObjectType, StringComparer.Ordinal)
+                .ThenBy(item => item.Edges[0].FromHierarchyName ?? string.Empty, StringComparer.OrdinalIgnoreCase)
+                .ThenBy(item => item.Source.Id, StringComparer.Ordinal)
+                .ToArray();
+
+        private static string JoinReports(IEnumerable<UsageOwner> owners)
+        {
+            var names = owners.Select(owner => owner.Report!).Order(StringComparer.OrdinalIgnoreCase).ToArray();
+            return names.Length switch
+            {
+                1 => $"report {names[0]}",
+                _ => $"reports {string.Join(", ", names.Take(names.Length - 1))} and {names[^1]}",
+            };
+        }
+
+        /// <summary>Whether the classifier's traversal follows edges from this edge's source.</summary>
+        private bool IsTraversedSource(SemanticDependencyEdge edge)
+        {
+            if (StructuralSourceTypes.Contains(edge.FromObjectType))
+            {
+                return false;
+            }
+
+            return edge.FromObjectType switch
+            {
+                SemanticObjectTypes.Table => tablesWithObjects.Contains(TableKey(edge.SemanticModel, edge.FromTable)),
+                SemanticObjectTypes.ReportMeasure or SemanticObjectTypes.Function => true,
+                _ => usagesByNode.ContainsKey(SemanticGraphIndex.SourceKey(edge)),
+            };
+        }
+
+        /// <summary>
+        /// A position's own direct report locations in the cards' order: a model object's, or one report
+        /// measure's in its own report. Never another report's.
+        /// </summary>
+        private LineageGroup<LineageReportLocation> TerminalLocations(Position position)
+        {
+            if (terminalLocations.TryGetValue(position.Id, out var cached))
+            {
+                return cached;
+            }
+
+            IEnumerable<LineageReportLocation> locations = [];
+            if (position.Owner is { } owner)
+            {
+                locations = SemanticUsageLocation.Distinct(owner.References)
+                    .Select(location => Location(owner.References, location));
+            }
+            else if (usagesByNode.TryGetValue(position.NodeKey, out var usage))
+            {
+                locations = SemanticUsageLocation.Distinct(usage.DirectReportReferences)
+                    .Select(location => Location(usage.DirectReportReferences, location));
+            }
+
+            var result = Cap(OrderLocations(locations));
+            terminalLocations.Add(position.Id, result);
+            return result;
+        }
+
+        private LineagePathStep FocusStep(Position position)
+        {
+            var key = position.NodeKey;
+            var neighbour = position.Owner is { } owner
+                ? OwnerNeighbour(owner, [], false)
+                : usagesByNode.TryGetValue(key, out var usage)
+                    ? Neighbour(usage.SemanticModel, usage.Table, usage.ObjectName, usage.ObjectType, usage.HierarchyName, [], false)
+                    : index.ReachabilityOfNode(key) is { } node
+                        ? Neighbour(node.SemanticModel, node.Table, node.ObjectName, node.ObjectType, node.HierarchyName, [], false)
+                        : throw new InvalidOperationException($"No lineage node for '{key}'.");
+            return PathStep(neighbour with { CardId = null });
+        }
+
+        /// <summary>One hop toward the report: the item, and how it uses the previous one.</summary>
+        private LineagePathStep Step(Position position, IReadOnlyList<SemanticDependencyEdge> edges)
+        {
+            var edge = edges[0];
+            return PathStep(position.Owner is { } owner
+                ? OwnerNeighbour(owner, edges, false)
+                : Neighbour(edge.SemanticModel, edge.FromTable, edge.FromObjectName, edge.FromObjectType, edge.FromHierarchyName, edges, false));
+        }
+
+        private static LineagePathStep PathStep(LineageNeighbour neighbour) =>
+            new(neighbour.NodeKey, neighbour.CardId, neighbour.Name, neighbour.ObjectType, neighbour.UsageState,
+                neighbour.ReachableFromReport, neighbour.RelationshipLabels, neighbour.ReportCount)
+            {
+                Report = neighbour.Report,
+            };
+
+        /// <summary>
+        /// Where an unused branch starts: the items above the focus that nothing traversed references. They
+        /// are what the focus is reached from, and nothing reaches them from a report. A cycle with no
+        /// start names the focus's immediate referrers instead.
+        /// </summary>
+        private LineageGroup<LineageNeighbour> BranchHeads(Position focusPosition)
+        {
+            var visited = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { focusPosition.Id };
+            var edgesInto = new Dictionary<string, (Position Source, IReadOnlyList<SemanticDependencyEdge> Edges)>(StringComparer.OrdinalIgnoreCase);
+            var heads = new List<string>();
+            var queue = new Queue<Position>();
+            queue.Enqueue(focusPosition);
+            while (queue.TryDequeue(out var current) && visited.Count <= BranchSearchLimit)
+            {
+                var predecessors = Predecessors(current, shared: null);
+                if (current.Id != focusPosition.Id && predecessors.Length == 0)
+                {
+                    heads.Add(current.Id);
+                }
+
+                foreach (var (source, edges) in predecessors)
+                {
+                    if (visited.Add(source.Id))
+                    {
+                        edgesInto[source.Id] = (source, edges);
+                        queue.Enqueue(source);
+                    }
+                }
+            }
+
+            var ids = heads.Count > 0 ? heads : Predecessors(focusPosition, shared: null).Select(item => item.Source.Id).ToList();
+            return Cap(ids
+                .Select(id =>
+                {
+                    var (source, edges) = edgesInto[id];
+                    var edge = edges[0];
+                    return source.Owner is { } owner
+                        ? OwnerNeighbour(owner, [], false)
+                        : Neighbour(edge.SemanticModel, edge.FromTable, edge.FromObjectName, edge.FromObjectType, edge.FromHierarchyName, [], false);
+                })
+                .OrderBy(neighbour => neighbour.Name, StringComparer.OrdinalIgnoreCase)
+                .ThenBy(neighbour => neighbour.Report ?? string.Empty, StringComparer.OrdinalIgnoreCase)
+                .ThenBy(neighbour => neighbour.NodeKey, StringComparer.Ordinal));
+        }
+
+        /// <summary>
+        /// What the focus depends on. For a report measure, only the edges its own report contributed;
+        /// a report measure it uses is that same report's.
+        /// </summary>
+        private LineageGroup<LineageNeighbour> Outgoing(Position position, SemanticDependencyEdge? reasonDependency)
+        {
+            var neighbours = index.OutgoingFromNode(position.NodeKey)
                 .Where(edge => edge.DependencyKind != SemanticDependencyKinds.ContainingTable)
+                .Where(edge => position.Owner is null || ReferenceEquals(EdgeOwner(edge), position.Owner))
                 .GroupBy(SemanticGraphIndex.TargetKey, StringComparer.OrdinalIgnoreCase)
                 .Select(group =>
                 {
                     var first = group.First();
-                    return Neighbour(first.SemanticModel, first.ToTable, first.ToObjectName, first.ToObjectType, first.ToHierarchyName,
-                        group.ToArray(), group.Contains(reasonDependency));
+                    return position.Owner is { } owner &&
+                           first.ToObjectType == SemanticObjectTypes.ReportMeasure &&
+                           reportMeasureOwnersByKey.TryGetValue(ReportMeasureKey(owner.Report!, first.ToTable, first.ToObjectName), out var used)
+                        ? OwnerNeighbour(used, group.ToArray(), group.Contains(reasonDependency))
+                        : Neighbour(first.SemanticModel, first.ToTable, first.ToObjectName, first.ToObjectType, first.ToHierarchyName,
+                            group.ToArray(), group.Contains(reasonDependency));
                 })
                 .OrderByDescending(neighbour => neighbour.IsReasonSource)
                 .ThenBy(neighbour => neighbour.Name, StringComparer.OrdinalIgnoreCase)
@@ -425,18 +935,35 @@ internal sealed class SemanticLineageProjection
             return Cap(neighbours);
         }
 
+        /// <summary>
+        /// What uses the focus. A report measure that uses it is shown as that report's own report
+        /// measure; one no report can be identified for is shown without a link or a reachability claim.
+        /// For a report-measure focus, only its own report's report measures are its consumers.
+        /// </summary>
         private (LineageGroup<LineageNeighbour> UsedBy, LineageGroup<LineageNeighbour> RequiredByModel) Incoming(
-            string key,
+            Position position,
             SemanticDependencyEdge? reasonDependency)
         {
-            var neighbours = index.IncomingToNode(key)
+            var neighbours = index.IncomingToNode(position.NodeKey)
                 .Where(edge => edge.DependencyKind != SemanticDependencyKinds.ContainingTable)
-                .GroupBy(SemanticGraphIndex.SourceKey, StringComparer.OrdinalIgnoreCase)
+                .Select(edge => (Edge: edge, Owner: EdgeOwner(edge)))
+                .Where(item => position.Owner is null ||
+                    (item.Owner is not null && string.Equals(item.Owner.Report, position.Owner.Report, StringComparison.OrdinalIgnoreCase)))
+                .GroupBy(item => new Position(SemanticGraphIndex.SourceKey(item.Edge), item.Owner).Id, StringComparer.OrdinalIgnoreCase)
                 .Select(group =>
                 {
-                    var first = group.First();
-                    return Neighbour(first.SemanticModel, first.FromTable, first.FromObjectName, first.FromObjectType, first.FromHierarchyName,
-                        group.ToArray(), group.Contains(reasonDependency));
+                    var (first, owner) = group.First();
+                    var edges = group.Select(item => item.Edge).ToArray();
+                    if (owner is not null)
+                    {
+                        return OwnerNeighbour(owner, edges, edges.Contains(reasonDependency));
+                    }
+
+                    var neighbour = Neighbour(first.SemanticModel, first.FromTable, first.FromObjectName, first.FromObjectType, first.FromHierarchyName,
+                        edges, edges.Contains(reasonDependency));
+                    return first.FromObjectType == SemanticObjectTypes.ReportMeasure
+                        ? neighbour with { CardId = null, ReachableFromReport = null, ReachableFromModelStructure = null }
+                        : neighbour;
                 })
                 .ToArray();
 
@@ -456,6 +983,22 @@ internal sealed class SemanticLineageProjection
                 .ThenBy(neighbour => neighbour.NodeKey, StringComparer.Ordinal);
             return (Cap(usedBy), Cap(requiredByModel));
         }
+
+        /// <summary>One report's report measure as a neighbour: its own card, report and reachability.</summary>
+        private LineageNeighbour OwnerNeighbour(UsageOwner owner, IReadOnlyList<SemanticDependencyEdge> dependencies, bool isReasonSource) =>
+            Neighbour(owner.SemanticModel, owner.Table, owner.ObjectName, owner.ObjectType, owner.HierarchyName, dependencies, isReasonSource)
+                with
+                {
+                    CardId = owner.CardId,
+                    Report = owner.Report,
+                    ReachableFromReport = IsReached(owner),
+                    ReachableFromModelStructure = null,
+                };
+
+        private string? OwnEvidencePath(UsageOwner owner) =>
+            reports.GetValueOrDefault(owner.Report!)?.ReportMeasures.FirstOrDefault(measure =>
+                string.Equals(measure.Entity, owner.Table, StringComparison.OrdinalIgnoreCase) &&
+                string.Equals(measure.Name, owner.ObjectName, StringComparison.OrdinalIgnoreCase))?.RelativePath;
 
         private LineageNeighbour Neighbour(
             string model,
@@ -488,21 +1031,28 @@ internal sealed class SemanticLineageProjection
                 reachability?.ReachableFromReport,
                 reachability?.ReachableFromModelStructure,
                 isReasonSource,
-                dependencies);
+                dependencies)
+            {
+                ReportCount = objectType == SemanticObjectTypes.ReportMeasure
+                    ? reportMeasureOwnersByNode.GetValueOrDefault(key)?.Count ?? 0
+                    : 0,
+            };
         }
 
-        private LineageGroup<LineageReportLocation> ReportLocations(SemanticObjectUsage usage) =>
-            Cap(usage.DirectReportLocations
-                .Select(location => Location(usage, location))
+        private LineageGroup<LineageReportLocation> ReportLocations(IReadOnlyList<SemanticUsageEvidence> references) =>
+            Cap(OrderLocations(SemanticUsageLocation.Distinct(references).Select(location => Location(references, location))));
+
+        private static IOrderedEnumerable<LineageReportLocation> OrderLocations(IEnumerable<LineageReportLocation> locations) =>
+            locations
                 .OrderBy(location => location.Location.Report, StringComparer.OrdinalIgnoreCase)
                 .ThenBy(location => location.Page?.Order ?? int.MaxValue)
                 .ThenBy(location => location.Page?.DisplayName ?? location.Location.Page ?? string.Empty, StringComparer.OrdinalIgnoreCase)
                 .ThenBy(location => location.Visual is null ? 0 : 1)
                 .ThenBy(location => location.Visual?.Position.Y ?? double.MaxValue)
                 .ThenBy(location => location.Visual?.Position.X ?? double.MaxValue)
-                .ThenBy(location => location.Location.Visual ?? location.Location.UsageContext ?? string.Empty, StringComparer.OrdinalIgnoreCase));
+                .ThenBy(location => location.Location.Visual ?? location.Location.UsageContext ?? string.Empty, StringComparer.OrdinalIgnoreCase);
 
-        private LineageReportLocation Location(SemanticObjectUsage usage, SemanticUsageLocation location)
+        private LineageReportLocation Location(IReadOnlyList<SemanticUsageEvidence> ownerReferences, SemanticUsageLocation location)
         {
             var report = reports.GetValueOrDefault(location.Report);
             var page = location.Page is null
@@ -512,11 +1062,11 @@ internal sealed class SemanticLineageProjection
                 ? null
                 : VisualKey(location.Report, location.Page, location.Visual);
             var visual = visualKey is not null && visuals.TryGetValue(visualKey, out var match) ? match.Visual : null;
-            var evidence = usage.DirectReportReferences
+            var evidence = ownerReferences
                 .Where(reference => SemanticUsageLocation.FromEvidence(reference) == location)
                 .ToArray();
             return new LineageReportLocation(
-                usage,
+                ownerReferences,
                 location,
                 report,
                 page,
@@ -525,8 +1075,10 @@ internal sealed class SemanticLineageProjection
                 evidence);
         }
 
-        private LineageGroup<LineageUnresolvedReference> NotResolved(string key, string model) =>
+        private LineageGroup<LineageUnresolvedReference> NotResolved(string key, string model, string? evidencePath = null) =>
             Cap((unresolvedBySource.GetValueOrDefault(key) ?? [])
+                .Where(unresolved => evidencePath is null ||
+                    string.Equals(unresolved.EvidencePath, evidencePath, StringComparison.OrdinalIgnoreCase))
                 .Select(unresolved => new LineageUnresolvedReference(
                     unresolved,
                     RelationshipLabel(unresolved.DependencyKind, unresolved.FromObjectType),
@@ -662,6 +1214,7 @@ internal enum LineageFocusKind
 {
     SemanticObject,
     Function,
+    ReportMeasure,
     Visual,
 }
 
@@ -692,21 +1245,109 @@ internal sealed record LineageNeighbour(
     bool IsReasonSource,
     IReadOnlyList<SemanticDependencyEdge> Dependencies)
 {
+    /// <summary>
+    /// For a report measure, how many reports define one of this name for this model. More than one
+    /// means the graph analyses them as one node.
+    /// </summary>
+    public int ReportCount { get; init; }
+
+    public bool IsSharedReportMeasure => ReportCount > 1;
+
+    /// <summary>For a report measure attributed to its report, that report.</summary>
+    public string? Report { get; init; }
+
     /// <summary>Whether every edge to this neighbour is an ordinary DAX reference, the unlabelled default.</summary>
     public bool HasOnlyDefaultRelationship =>
         RelationshipLabels.Count > 0 &&
         RelationshipLabels.All(label => label == SemanticLineageProjection.DaxLabel);
 }
 
-/// <summary>One direct-usage location of an object, with the evidence the scanner kept for it.</summary>
+/// <summary>
+/// One direct-usage location of an object or report measure, with the evidence the scanner kept for it.
+/// <see cref="OwnerReferences"/> is all of the owner's direct-usage evidence, which role labels read.
+/// </summary>
 internal sealed record LineageReportLocation(
-    SemanticObjectUsage Usage,
+    IReadOnlyList<SemanticUsageEvidence> OwnerReferences,
     SemanticUsageLocation Location,
     ReportInventory? Report,
     PageInventory? Page,
     VisualInventory? Visual,
     string? VisualCardId,
     IReadOnlyList<SemanticUsageEvidence> Evidence);
+
+internal enum LineagePathStatus
+{
+    /// <summary>The focus has its own direct report evidence.</summary>
+    DirectlyUsed,
+
+    /// <summary>A walk through report-reachable predecessors reached an item with direct report evidence.</summary>
+    ReachedThroughModel,
+
+    /// <summary>No path to a report location was found in the analysed project.</summary>
+    NotFound,
+}
+
+/// <summary>
+/// One step of a path to report. Every step after the focus uses the step before it, by the
+/// relationships named in <see cref="RelationshipLabels"/>.
+/// </summary>
+internal sealed record LineagePathStep(
+    string NodeKey,
+    string? CardId,
+    string Name,
+    string ObjectType,
+    string? UsageState,
+    bool? ReachableFromReport,
+    IReadOnlyList<string> RelationshipLabels,
+    int ReportCount)
+{
+    /// <summary>A report measure node that several reports' same-named report measures share.</summary>
+    public bool IsSharedReportMeasure => ReportCount > 1;
+
+    /// <summary>For a report measure, the report it belongs to on this path.</summary>
+    public string? Report { get; init; }
+
+    public bool HasOnlyDefaultRelationship =>
+        RelationshipLabels.Count > 0 &&
+        RelationshipLabels.All(label => label == SemanticLineageProjection.DaxLabel);
+}
+
+/// <summary>
+/// The path to report shown on a card: one shortest path, never the only one.
+/// <see cref="OtherReportReachingConsumers"/> counts the focus's other immediate consumers that are
+/// themselves reached from a report — not every route. <see cref="EndpointLocationCount"/> is how many
+/// direct report locations the path's last item has; the endpoint is the first of them.
+/// </summary>
+internal sealed record LineagePath(
+    LineagePathStatus Status,
+    IReadOnlyList<LineagePathStep> Steps,
+    LineageReportLocation? Endpoint,
+    int EndpointLocationCount,
+    int OtherReportReachingConsumers)
+{
+    /// <summary>Where an unused branch above the focus starts, when no report path exists.</summary>
+    public LineageGroup<LineageNeighbour> OnlyReachedFrom { get; init; } = LineageGroup<LineageNeighbour>.Empty;
+
+    /// <summary>
+    /// Whether the focus is required by model structure: its state is Structurally required, or for a
+    /// function or report measure, published reachability says the model structure reaches it.
+    /// </summary>
+    public bool RequiredByModelStructure { get; init; }
+
+    /// <summary>The existing structural usage reason, when the focus is structurally required.</summary>
+    public string? StructuralReason { get; init; }
+
+    public LineageGroup<LineageNeighbour> StructuralSources { get; init; } = LineageGroup<LineageNeighbour>.Empty;
+
+    public bool ChecksLimited { get; init; }
+
+    /// <summary>
+    /// Set when the focus's usage result counts it as reached only because the classifier analyses
+    /// same-named report measures in several reports as one item: each such report measure, with its
+    /// reports. No report path exists within any one report.
+    /// </summary>
+    public IReadOnlyList<string> SharedReportMeasures { get; init; } = [];
+}
 
 /// <summary>An object a visual uses, seen from the visual.</summary>
 internal sealed record LineageVisualUse(LineageNeighbour Object, LineageReportLocation Location);
@@ -735,11 +1376,31 @@ internal sealed record LineageCard(
     string Title,
     string ObjectType)
 {
+    /// <summary>The graph node the card focuses on; null for a visual.</summary>
+    public string? NodeKey { get; init; }
+
     public string? SemanticModel { get; init; }
 
     public string? Table { get; init; }
 
     public SemanticObjectUsage? Usage { get; init; }
+
+    /// <summary>The report that owns a report measure.</summary>
+    public string? ReportName { get; init; }
+
+    /// <summary>
+    /// Other reports bound to the same model that define a report measure of the same name. The
+    /// dependency graph analyses all of them as one node.
+    /// </summary>
+    public IReadOnlyList<string> SharedWithReports { get; init; } = [];
+
+    public LineagePath? Path { get; init; }
+
+    /// <summary>
+    /// For a function or report measure, which have no usage state: whether it is reached from a report.
+    /// A report measure's is its own report's, never a same-named report measure's elsewhere.
+    /// </summary>
+    public bool? ReachedFromReport { get; init; }
 
     public SemanticNodeReachability? Reachability { get; init; }
 

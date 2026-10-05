@@ -32,6 +32,14 @@ public sealed record ProjectInventory(
     /// </summary>
     public IReadOnlyList<SemanticNodeReachability> SemanticNodeReachability { get; init; } = [];
 
+    /// <summary>
+    /// In-process evidence of where each report measure is used directly in its own report. It is the
+    /// evidence that made the report measure a report root, kept per report because the dependency graph
+    /// keys report measures by model. Not part of the public JSON contract.
+    /// </summary>
+    [System.Text.Json.Serialization.JsonIgnore]
+    public IReadOnlyList<ReportMeasureUsage> ReportMeasureUsages { get; init; } = [];
+
     public int ReportCount => Artifacts.Count(artifact => artifact.Kind == ArtifactKinds.Report);
 
     public int SemanticModelCount => Artifacts.Count(artifact => artifact.Kind == ArtifactKinds.SemanticModel);
