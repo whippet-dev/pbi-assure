@@ -2,21 +2,27 @@ using PbiAssure.Core.Inventory;
 
 namespace PbiAssure.Reporting;
 
+/// <summary>The wording of a usage reason, with the dependency it was drawn from where there is one.</summary>
+internal sealed record SemanticUsageReason(string Text, SemanticDependencyEdge? Dependency);
+
 internal static class SemanticUsagePresentation
 {
-    public static string? DescribeReason(ProjectInventory inventory, SemanticObjectUsage usage)
+    public static string? DescribeReason(ProjectInventory inventory, SemanticObjectUsage usage) =>
+        ExplainReason(inventory, usage)?.Text;
+
+    /// <summary>
+    /// The reason shown for a usage state and the edge it names. The edge lets lineage list the object
+    /// the reason names first, without choosing it a second time by different rules.
+    /// </summary>
+    public static SemanticUsageReason? ExplainReason(ProjectInventory inventory, SemanticObjectUsage usage)
     {
         if (usage.UsageState is SemanticUsageStates.DirectlyUsed or SemanticUsageStates.ApparentlyUnused)
         {
             return null;
         }
 
-        var incoming = inventory.SemanticDependencies.Where(dependency =>
-            string.Equals(dependency.SemanticModel, usage.SemanticModel, StringComparison.OrdinalIgnoreCase) &&
-            string.Equals(dependency.ToTable, usage.Table, StringComparison.OrdinalIgnoreCase) &&
-            string.Equals(dependency.ToObjectName, usage.ObjectName, StringComparison.OrdinalIgnoreCase) &&
-            string.Equals(dependency.ToObjectType, usage.ObjectType, StringComparison.OrdinalIgnoreCase))
-            .ToArray();
+        var index = SemanticGraphIndex.For(inventory);
+        var incoming = index.IncomingToObject(usage.SemanticModel, usage.Table, usage.ObjectName, usage.ObjectType);
         // A relationship endpoint is the one reason kind whose edge *creates* the requirement rather
         // than carrying reachability from a predecessor: the column is seeded as a model-structure root,
         // and the edge's source is a relationship, not a model object with a reachability of its own. It
@@ -29,14 +35,14 @@ internal static class SemanticUsagePresentation
             if (usage.StructuralRequirementProvenance ==
                 StructuralRequirementProvenances.SystemGeneratedAutoDateTime)
             {
-                return "Required only by Power BI-generated Auto Date/Time structure";
+                return new("Required only by Power BI-generated Auto Date/Time structure", null);
             }
 
             var refreshPolicy = incoming.FirstOrDefault(dependency =>
                 dependency.DependencyKind == SemanticDependencyKinds.IncrementalRefreshPolicy);
             if (refreshPolicy is not null)
             {
-                return $"Needed by the {refreshPolicy.FromTable} incremental refresh change-detection setting";
+                return new($"Needed by the {refreshPolicy.FromTable} incremental refresh change-detection setting", refreshPolicy);
             }
 
             var relationship = incoming
@@ -47,45 +53,45 @@ internal static class SemanticUsagePresentation
                 .FirstOrDefault();
             if (relationship is not null)
             {
-                var otherEndpoint = inventory.SemanticDependencies.FirstOrDefault(dependency =>
-                    dependency.DependencyKind == SemanticDependencyKinds.RelationshipEndpoint &&
-                    string.Equals(dependency.SemanticModel, relationship.SemanticModel, StringComparison.OrdinalIgnoreCase) &&
-                    string.Equals(dependency.FromObjectName, relationship.FromObjectName, StringComparison.OrdinalIgnoreCase) &&
-                    (!string.Equals(dependency.ToTable, usage.Table, StringComparison.OrdinalIgnoreCase) ||
-                     !string.Equals(dependency.ToObjectName, usage.ObjectName, StringComparison.OrdinalIgnoreCase)));
-                return otherEndpoint is null
-                    ? "Used as a relationship key"
-                    : $"Relationship key between {usage.Table}[{usage.ObjectName}] and {otherEndpoint.ToTable}[{otherEndpoint.ToObjectName}]";
+                var otherEndpoint = index.RelationshipEndpoints(relationship.SemanticModel, relationship.FromObjectName)
+                    .FirstOrDefault(dependency =>
+                        !string.Equals(dependency.ToTable, usage.Table, StringComparison.OrdinalIgnoreCase) ||
+                        !string.Equals(dependency.ToObjectName, usage.ObjectName, StringComparison.OrdinalIgnoreCase));
+                return new(
+                    otherEndpoint is null
+                        ? "Used as a relationship key"
+                        : $"Relationship key between {usage.Table}[{usage.ObjectName}] and {otherEndpoint.ToTable}[{otherEndpoint.ToObjectName}]",
+                    relationship);
             }
 
             var objectLevelPermission = incoming.FirstOrDefault(dependency =>
                 dependency.DependencyKind == SemanticDependencyKinds.ObjectLevelPermission);
             if (objectLevelPermission is not null)
             {
-                return $"Needed by the {objectLevelPermission.FromObjectName} object-level security permission";
+                return new($"Needed by the {objectLevelPermission.FromObjectName} object-level security permission", objectLevelPermission);
             }
         }
 
         // Every remaining kind carries reachability from a real predecessor, so each is eligible only
         // when that predecessor's own reachability matches the state being explained. The wording and
         // the order the kinds are tried in are unchanged.
-        var sortBy = FirstSupporting(inventory, usage, incoming, SemanticDependencyKinds.SortBy);
+        var sortBy = FirstSupporting(index, usage, incoming, SemanticDependencyKinds.SortBy);
         if (sortBy is not null)
         {
-            return $"Sorts {sortBy.FromTable}[{sortBy.FromObjectName}]";
+            return new($"Sorts {sortBy.FromTable}[{sortBy.FromObjectName}]", sortBy);
         }
 
-        var fieldParameter = FirstSupporting(inventory, usage, incoming, SemanticDependencyKinds.FieldParameter);
+        var fieldParameter = FirstSupporting(index, usage, incoming, SemanticDependencyKinds.FieldParameter);
         if (fieldParameter is not null)
         {
-            return $"Available through field parameter {fieldParameter.FromTable}";
+            return new($"Available through field parameter {fieldParameter.FromTable}", fieldParameter);
         }
 
         var calculationGroupItem = FirstSupporting(
-            inventory, usage, incoming, SemanticDependencyKinds.CalculationGroupItem);
+            index, usage, incoming, SemanticDependencyKinds.CalculationGroupItem);
         if (calculationGroupItem is not null)
         {
-            return $"Available through calculation group {calculationGroupItem.FromTable}";
+            return new($"Available through calculation group {calculationGroupItem.FromTable}", calculationGroupItem);
         }
 
         // An incoming reference and the evidence for a classification are different things. An uncalled
@@ -95,14 +101,14 @@ internal static class SemanticUsagePresentation
         // Where several are eligible they are all truthful; one is shown, chosen by qualified name so
         // the explanation never depends on the order dependencies were parsed in.
         var dax = FirstSupporting(
-            inventory, usage, incoming,
+            index, usage, incoming,
             SemanticDependencyKinds.Dax, SemanticDependencyKinds.ReportMeasure);
         if (dax is not null)
         {
             var prefix = usage.UsageState == SemanticUsageStates.UsedOnlyByUnusedBranch
                 ? "Referenced only by unused object"
                 : "Referenced by";
-            return $"{prefix} {dax.FromTable}[{dax.FromObjectName}]";
+            return new($"{prefix} {dax.FromTable}[{dax.FromObjectName}]", dax);
         }
 
         // Role filters and perspective membership make their targets model-structure roots directly.
@@ -113,32 +119,36 @@ internal static class SemanticUsagePresentation
         if (usage.UsageState == SemanticUsageStates.StructurallyRequired)
         {
             var roleFilter = FirstDirectStructuralRoot(
-                inventory, usage, incoming,
+                index, usage, incoming,
                 SemanticDependencyKinds.TablePermission, SemanticObjectTypes.Role);
             if (roleFilter is not null)
             {
-                return $"Needed by the {roleFilter.FromObjectName} security filter";
+                return new($"Needed by the {roleFilter.FromObjectName} security filter", roleFilter);
             }
 
             var perspective = FirstDirectStructuralRoot(
-                inventory, usage, incoming,
+                index, usage, incoming,
                 SemanticDependencyKinds.PerspectiveMember, SemanticObjectTypes.Perspective);
             if (perspective is not null)
             {
-                return $"Included in the {perspective.FromObjectName} perspective";
+                return new($"Included in the {perspective.FromObjectName} perspective", perspective);
             }
 
             var aggregationTarget = FirstSupporting(
-                inventory, usage, incoming, SemanticDependencyKinds.AggregationMapping);
+                index, usage, incoming, SemanticDependencyKinds.AggregationMapping);
             if (aggregationTarget is not null)
             {
-                return $"Used as the detail column in {DescribeAggregationMapping(inventory, aggregationTarget)} from {aggregationTarget.FromTable}[{aggregationTarget.FromObjectName}]";
+                return new(
+                    $"Used as the detail column in {DescribeAggregationMapping(inventory, aggregationTarget)} from {aggregationTarget.FromTable}[{aggregationTarget.FromObjectName}]",
+                    aggregationTarget);
             }
 
-            var aggregationSource = FirstAggregationMappingOwnedBy(inventory, usage);
+            var aggregationSource = FirstAggregationMappingOwnedBy(index, usage);
             if (aggregationSource is not null)
             {
-                return $"Needed by {DescribeAggregationMapping(inventory, aggregationSource)} to {aggregationSource.ToTable}[{aggregationSource.ToObjectName}]";
+                return new(
+                    $"Needed by {DescribeAggregationMapping(inventory, aggregationSource)} to {aggregationSource.ToTable}[{aggregationSource.ToObjectName}]",
+                    aggregationSource);
             }
         }
 
@@ -146,15 +156,11 @@ internal static class SemanticUsagePresentation
     }
 
     private static SemanticDependencyEdge? FirstAggregationMappingOwnedBy(
-        ProjectInventory inventory,
+        SemanticGraphIndex index,
         SemanticObjectUsage usage) =>
-        inventory.SemanticDependencies
-            .Where(dependency => dependency.DependencyKind == SemanticDependencyKinds.AggregationMapping &&
-                                 string.Equals(dependency.SemanticModel, usage.SemanticModel, StringComparison.OrdinalIgnoreCase) &&
-                                 string.Equals(dependency.FromTable, usage.Table, StringComparison.OrdinalIgnoreCase) &&
-                                 string.Equals(dependency.FromObjectName, usage.ObjectName, StringComparison.OrdinalIgnoreCase) &&
-                                 string.Equals(dependency.FromObjectType, usage.ObjectType, StringComparison.OrdinalIgnoreCase))
-            .Where(dependency => SupportsClassification(inventory, usage, dependency))
+        index.OutgoingFromObject(usage.SemanticModel, usage.Table, usage.ObjectName, usage.ObjectType)
+            .Where(dependency => dependency.DependencyKind == SemanticDependencyKinds.AggregationMapping)
+            .Where(dependency => SupportsClassification(index, usage, dependency))
             .OrderBy(dependency => dependency.ToTable, StringComparer.OrdinalIgnoreCase)
             .ThenBy(dependency => dependency.ToObjectName, StringComparer.OrdinalIgnoreCase)
             .FirstOrDefault();
@@ -183,17 +189,13 @@ internal static class SemanticUsagePresentation
     /// explaining the displayed structural state without Reporting recreating graph traversal.
     /// </summary>
     private static SemanticDependencyEdge? FirstDirectStructuralRoot(
-        ProjectInventory inventory,
+        SemanticGraphIndex index,
         SemanticObjectUsage usage,
         IReadOnlyList<SemanticDependencyEdge> incoming,
         string dependencyKind,
         string sourceObjectType)
     {
-        var target = inventory.SemanticNodeReachability.FirstOrDefault(node =>
-            string.Equals(node.SemanticModel, usage.SemanticModel, StringComparison.OrdinalIgnoreCase) &&
-            string.Equals(node.Table, usage.Table, StringComparison.OrdinalIgnoreCase) &&
-            string.Equals(node.ObjectName, usage.ObjectName, StringComparison.OrdinalIgnoreCase) &&
-            string.Equals(node.ObjectType, usage.ObjectType, StringComparison.OrdinalIgnoreCase));
+        var target = index.ReachabilityOfObject(usage.SemanticModel, usage.Table, usage.ObjectName, usage.ObjectType);
         if (target is null || !target.ReachableFromModelStructure)
         {
             return null;
@@ -213,13 +215,13 @@ internal static class SemanticUsagePresentation
     /// never depends on the order dependencies were parsed in.
     /// </summary>
     private static SemanticDependencyEdge? FirstSupporting(
-        ProjectInventory inventory,
+        SemanticGraphIndex index,
         SemanticObjectUsage usage,
         IReadOnlyList<SemanticDependencyEdge> incoming,
         params string[] kinds) =>
         incoming
             .Where(dependency => kinds.Contains(dependency.DependencyKind, StringComparer.Ordinal))
-            .Where(dependency => SupportsClassification(inventory, usage, dependency))
+            .Where(dependency => SupportsClassification(index, usage, dependency))
             .OrderBy(dependency => dependency.FromTable, StringComparer.OrdinalIgnoreCase)
             .ThenBy(dependency => dependency.FromObjectName, StringComparer.OrdinalIgnoreCase)
             .ThenBy(dependency => dependency.FromObjectType, StringComparer.Ordinal)
@@ -234,15 +236,12 @@ internal static class SemanticUsagePresentation
     /// public objects could not follow.
     /// </summary>
     private static bool SupportsClassification(
-        ProjectInventory inventory,
+        SemanticGraphIndex index,
         SemanticObjectUsage usage,
         SemanticDependencyEdge dependency)
     {
-        var source = inventory.SemanticNodeReachability.FirstOrDefault(node =>
-            string.Equals(node.SemanticModel, dependency.SemanticModel, StringComparison.OrdinalIgnoreCase) &&
-            string.Equals(node.Table, dependency.FromTable, StringComparison.OrdinalIgnoreCase) &&
-            string.Equals(node.ObjectName, dependency.FromObjectName, StringComparison.OrdinalIgnoreCase) &&
-            string.Equals(node.ObjectType, dependency.FromObjectType, StringComparison.OrdinalIgnoreCase));
+        var source = index.ReachabilityOfObject(
+            dependency.SemanticModel, dependency.FromTable, dependency.FromObjectName, dependency.FromObjectType);
         if (source is null)
         {
             return false;

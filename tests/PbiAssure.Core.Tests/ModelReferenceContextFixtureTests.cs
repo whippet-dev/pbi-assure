@@ -115,20 +115,21 @@ public sealed class ModelReferenceContextFixtureTests
         Assert.Equal(1, usage.DirectReportLocationCount);
 
         var html = HtmlReportRenderer.Render(inventory);
+        // The object now links to its lineage card; the row's text is unchanged.
         const string visualObjectRow =
-            "<li><code>ReferenceTest[VisualFilter]</code><span>Column — <span class=\"usage-label\">Used as:</span> Visual filter &#xB7; Tooltips</span></li>";
+            "<code>ReferenceTest[VisualFilter]</code><span class=\"visually-hidden\"> (view lineage)</span></a><span>Column — <span class=\"usage-label\">Used as:</span> Visual filter &#xB7; Tooltips</span></li>";
         Assert.Equal(1, CountOccurrences(html, visualObjectRow));
-        Assert.Equal(2, CountOccurrences(html, "Visual filter &#xB7; Tooltips"));
+        Assert.Equal(2, CountOccurrences(ReportHtml.WithoutLineage(html), "Visual filter &#xB7; Tooltips"));
         Assert.Contains(
             "<span class=\"usage-role\"><span class=\"usage-label\">Used as:</span> Visual filter &#xB7; Tooltips</span>",
             html,
             StringComparison.Ordinal);
         Assert.Contains(
-            "<li><code>ReferenceTest[Category]</code><span>Column — <span class=\"usage-label\">Used as:</span> Category</span></li>",
+            "<code>ReferenceTest[Category]</code><span class=\"visually-hidden\"> (view lineage)</span></a><span>Column — <span class=\"usage-label\">Used as:</span> Category</span></li>",
             html,
             StringComparison.Ordinal);
         Assert.Contains(
-            "<li><code>ReferenceTest[TooltipField]</code><span>Column — <span class=\"usage-label\">Used as:</span> Tooltips</span></li>",
+            "<code>ReferenceTest[TooltipField]</code><span class=\"visually-hidden\"> (view lineage)</span></a><span>Column — <span class=\"usage-label\">Used as:</span> Tooltips</span></li>",
             html,
             StringComparison.Ordinal);
         Assert.DoesNotContain("Visual filter &#xB7; Visual filter", html, StringComparison.Ordinal);

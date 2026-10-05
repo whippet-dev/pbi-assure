@@ -1494,6 +1494,36 @@ public static class DesignSystem
         .theme-observation p { margin: 0.375rem 0 0; }
         .theme-comparison-state { margin: 0.375rem 0 0; }
 
+        /* ------------------------------------------------------------------ lineage */
+
+        /* One card at a time, as text. Each group carries data-lineage-side so a later layout can place
+           upstream groups beside downstream ones without changing the markup. */
+        .lineage-index[hidden], .lineage-card[hidden] { display: none; }
+        .lineage-entry { margin: 0.375rem 0 0; font-size: var(--pa-t-2xs); }
+        .lineage-object-link { text-decoration: none; }
+        .lineage-object-link:hover code, .lineage-object-link:focus-visible code { text-decoration: underline; }
+        .lineage-card { display: grid; min-width: 0; grid-template-columns: minmax(0, 1fr); gap: 0.875rem; }
+        .lineage-header { display: grid; min-width: 0; gap: 0.375rem; padding-bottom: 0.75rem; border-bottom: 1px solid var(--pa-line); }
+        .lineage-header .kicker, .lineage-header h2, .lineage-facts, .lineage-status, .lineage-why, .lineage-actions { margin: 0; }
+        .lineage-title { overflow-wrap: anywhere; }
+        .lineage-facts, .lineage-why { color: var(--pa-text-2); font-size: var(--pa-t-xs); overflow-wrap: anywhere; }
+        .lineage-status { display: flex; flex-wrap: wrap; align-items: center; gap: 0.375rem 0.625rem; }
+        .lineage-reach { color: var(--pa-text-2); font-size: var(--pa-t-xs); font-weight: 600; }
+        .lineage-actions { display: flex; flex-wrap: wrap; gap: 0.25rem 1rem; font-size: var(--pa-t-xs); }
+        .lineage-scope { max-width: 78ch; margin: 0; color: var(--pa-text-3); font-size: var(--pa-t-2xs); }
+        .lineage-content { display: grid; min-width: 0; grid-template-columns: minmax(0, 1fr); gap: 1rem; }
+        .lineage-group { min-width: 0; }
+        .lineage-group h3 { margin: 0 0 0.375rem; font-size: var(--pa-t-sm); }
+        .lineage-list { display: grid; min-width: 0; grid-template-columns: minmax(0, 1fr); gap: 0.375rem; margin: 0; padding: 0; list-style: none; }
+        .lineage-item { display: grid; min-width: 0; gap: 0.125rem; padding: 0.4375rem 0.625rem; border: 1px solid var(--pa-line); border-radius: var(--pa-r1); background: var(--pa-surface); }
+        .lineage-item[data-lineage-state="UsedOnlyByUnusedBranch"], .lineage-item[data-lineage-state="ApparentlyUnused"], .lineage-item:has(> .lineage-unresolved) { border-style: dashed; }
+        .lineage-node { min-width: 0; font-size: var(--pa-t-xs); font-weight: 600; overflow-wrap: anywhere; }
+        .lineage-meta { min-width: 0; color: var(--pa-text-2); font-size: var(--pa-t-2xs); overflow-wrap: anywhere; }
+        .lineage-meta .confidence-flag { display: inline-block; margin-left: 0.25rem; }
+        .lineage-empty, .lineage-more { margin: 0; color: var(--pa-text-2); font-size: var(--pa-t-xs); }
+        .lineage-more { margin-top: 0.375rem; }
+        .lineage-evidence li { overflow-wrap: anywhere; }
+
         /* ------------------------------------------------------------------ footer */
 
         .site-footer { margin-top: 1.5rem; padding: 1rem 0 1.5rem; border-top: 1px solid var(--pa-line); color: var(--pa-text-3); font-size: var(--pa-t-2xs); }
@@ -1558,6 +1588,10 @@ public static class DesignSystem
           .report-workspace { display: block; }
           .skip-link, .section-navigator, .filters, .filter-status, .details-controls, .finding-investigation, .finding-results-row, .filter-chips, .finding-empty-state, .info-tooltip, .appearance-control { display: none; }
           .report-section[hidden] { display: block !important; }
+          /* Lineage prints only when it is what the reader is looking at, and then only the card on screen. */
+          .report-section[data-report-section="lineage"][hidden] { display: none !important; }
+          main[data-active-section="lineage"] > .report-section:not([data-report-section="lineage"]) { display: none !important; }
+          .lineage-card[hidden], .lineage-index[hidden] { display: none !important; }
           main > section { break-inside: avoid; }
           details { break-inside: avoid; }
           a { color: #000; }

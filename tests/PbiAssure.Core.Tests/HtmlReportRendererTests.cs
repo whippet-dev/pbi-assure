@@ -487,7 +487,8 @@ public sealed class HtmlReportRendererTests : IDisposable
 
         var html = HtmlReportRenderer.Render(ProjectScanner.Scan(testRoot));
 
-        Assert.Equal(10, html.Split("<p class=\"section-intro\">", StringSplitOptions.None).Length - 1);
+        Assert.Equal(11, html.Split("<p class=\"section-intro\">", StringSplitOptions.None).Length - 1);
+        Assert.Contains("Lineage shows what a model object depends on, what uses it and where the report uses it.", html, StringComparison.Ordinal);
         Assert.Contains("Start here for model usage, project structure, Power Query context and assurance observations.", html, StringComparison.Ordinal);
         Assert.Contains("Keep these limits in mind", html, StringComparison.Ordinal);
         Assert.Contains("See which queries load data into the model", html, StringComparison.Ordinal);
@@ -725,7 +726,7 @@ public sealed class HtmlReportRendererTests : IDisposable
         Assert.Contains("<p class=\"usage-page-kind\">Drillthrough page</p>", html, StringComparison.Ordinal);
         Assert.Contains("<span class=\"usage-label\">Used in:</span> Drillthrough field", html, StringComparison.Ordinal);
         Assert.Contains(
-            "<code>Customer[CustomerName]</code><span>Column — <span class=\"usage-label\">Used as:</span> Drillthrough field</span>",
+            "<code>Customer[CustomerName]</code><span class=\"visually-hidden\"> (view lineage)</span></a><span>Column — <span class=\"usage-label\">Used as:</span> Drillthrough field</span>",
             html,
             StringComparison.Ordinal);
     }

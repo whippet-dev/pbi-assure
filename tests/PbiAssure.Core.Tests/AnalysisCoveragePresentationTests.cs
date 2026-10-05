@@ -139,7 +139,8 @@ public sealed class AnalysisCoveragePresentationTests
 
         var html = RenderWithUsages(usages, [limitation]);
 
-        Assert.Equal(12, Occurrences(html, "class=\"confidence-flag\""));
+        // One marker per object row; each object's lineage card repeats its own marker.
+        Assert.Equal(12, Occurrences(ReportHtml.WithoutLineage(html), "class=\"confidence-flag\""));
         Assert.Equal(1, Occurrences(html, limitation.Reason));
     }
 
@@ -508,7 +509,7 @@ public sealed class AnalysisCoveragePresentationTests
         Assert.Equal(ClassificationConfidences.Established,
             Assert.Single(inventory.SemanticObjectUsages, usage => usage.ObjectName == "Region").ClassificationConfidence);
 
-        Assert.Equal(qualified.Length, Occurrences(html, "class=\"confidence-flag\""));
+        Assert.Equal(qualified.Length, Occurrences(ReportHtml.WithoutLineage(html), "class=\"confidence-flag\""));
         Assert.Contains("used or unused result for 2 of 3 model objects", html, StringComparison.Ordinal);
     }
 

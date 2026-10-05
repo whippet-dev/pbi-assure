@@ -16,19 +16,23 @@ public static partial class HtmlReportRenderer
         // Built once and threaded through: the model summary, the navigation entry and every
         // object-level marker all read from the same result.
         var coverage = AnalysisCoveragePresentation.Build(inventory);
+        // Lineage is projected once: the Semantic model rows, the visual cards and the lineage cards all
+        // read the same ids and the same usage reasons from it.
+        var lineage = SemanticLineageProjection.Build(inventory);
         var mainFindings = inventory.Findings.Where(IsMainFinding).ToArray();
         var accessibilityFindings = inventory.Findings.Where(IsAccessibilityFinding).ToArray();
         AppendDocumentStart(html, inventory, coverage);
         AppendSummary(html, inventory, coverage, mainFindings);
-        AppendSemanticUsage(html, inventory, coverage);
+        AppendSemanticUsage(html, inventory, lineage, coverage);
         AppendPowerQueryLineage(html, inventory);
         AppendRelationships(html, inventory);
         AppendRowLevelSecurity(html, inventory, coverage);
-        AppendReportInventory(html, inventory);
+        AppendReportInventory(html, inventory, lineage);
         AppendFindings(html, inventory, mainFindings);
         AppendAnalysisCoverage(html, coverage);
         AppendThemeReview(html, inventory);
         AppendAccessibilityReview(html, inventory, accessibilityFindings);
+        AppendLineage(html, inventory, lineage, coverage);
         AppendDocumentEnd(html, inventory);
         return html.ToString();
     }
@@ -1038,7 +1042,7 @@ public static partial class HtmlReportRenderer
             .Append(prefix).AppendLine("\">Clear search and filters</button></div>");
     }
 
-    private static void AppendReportInventory(StringBuilder html, ProjectInventory inventory)
+    private static void AppendReportInventory(StringBuilder html, ProjectInventory inventory, SemanticLineageProjection lineage)
     {
         html.AppendLine("    <section id=\"reports\" class=\"report-section\" data-report-section=\"reports\" aria-labelledby=\"reports-heading\">");
         html.AppendLine("      <h2 id=\"reports-heading\" tabindex=\"-1\">Report pages</h2>");
@@ -1074,7 +1078,7 @@ public static partial class HtmlReportRenderer
 
             foreach (var page in report.Pages)
             {
-                AppendPageCard(html, inventory, report, page);
+                AppendPageCard(html, inventory, lineage, report, page);
             }
         }
 
@@ -1438,6 +1442,7 @@ public static partial class HtmlReportRenderer
     private static void AppendSemanticUsage(
         StringBuilder html,
         ProjectInventory inventory,
+        SemanticLineageProjection lineage,
         AnalysisCoverage coverage)
     {
         html.AppendLine("    <section id=\"semantic-usage\" class=\"report-section\" data-report-section=\"semantic-usage\" aria-labelledby=\"semantic-usage-heading\">");
@@ -1461,7 +1466,7 @@ public static partial class HtmlReportRenderer
         html.AppendLine("      <div id=\"semantic-table-list\" class=\"semantic-table-list\">");
         foreach (var model in inventory.SemanticModels)
         {
-            AppendSemanticModel(html, inventory, model, coverage);
+            AppendSemanticModel(html, inventory, lineage, model, coverage);
         }
 
         html.AppendLine("      </div>");
@@ -1479,6 +1484,7 @@ public static partial class HtmlReportRenderer
     private static void AppendPageCard(
         StringBuilder html,
         ProjectInventory inventory,
+        SemanticLineageProjection lineage,
         ReportInventory report,
         PageInventory page)
     {
@@ -1533,7 +1539,7 @@ public static partial class HtmlReportRenderer
         {
             html.AppendLine("            <h3>Objects used at page level</h3>");
             html.AppendLine("            <p class=\"secondary\">These are used by page filters, drillthrough or other page-level settings.</p>");
-            AppendGroupedFieldReferenceList(html, page.FieldReferences, visualScope: false);
+            AppendGroupedFieldReferenceList(html, lineage, report, page.FieldReferences, visualScope: false);
         }
 
         html.AppendLine("            <h3>Visuals on this page</h3>");
@@ -1546,7 +1552,7 @@ public static partial class HtmlReportRenderer
             html.AppendLine("            <div class=\"visual-list\">");
             foreach (var visual in page.Visuals)
             {
-                AppendVisualCard(html, inventory, report, page, visual, hierarchyContexts[visual.RelativePath]);
+                AppendVisualCard(html, inventory, lineage, report, page, visual, hierarchyContexts[visual.RelativePath]);
             }
 
             html.AppendLine("            </div>");
@@ -1559,6 +1565,7 @@ public static partial class HtmlReportRenderer
     private static void AppendVisualCard(
         StringBuilder html,
         ProjectInventory inventory,
+        SemanticLineageProjection lineage,
         ReportInventory report,
         PageInventory page,
         VisualInventory visual,
@@ -1595,7 +1602,7 @@ public static partial class HtmlReportRenderer
         }
         else
         {
-            AppendGroupedFieldReferenceList(html, visual.FieldReferences, visualScope: true);
+            AppendGroupedFieldReferenceList(html, lineage, report, visual.FieldReferences, visualScope: true);
         }
 
         AppendVisualBehaviour(html, report, visual);
@@ -1662,6 +1669,8 @@ public static partial class HtmlReportRenderer
 
     private static void AppendGroupedFieldReferenceList(
         StringBuilder html,
+        SemanticLineageProjection lineage,
+        ReportInventory report,
         IReadOnlyList<VisualFieldReference> references,
         bool visualScope)
     {
@@ -1687,8 +1696,22 @@ public static partial class HtmlReportRenderer
                     candidate.EvidencePath)),
                 visualScope,
                 pageScope: !visualScope);
-            html.Append("                    <li><code>").Append(Encode($"{reference.Table}[{reference.ObjectName}]")).Append("</code><span>")
-                .Append(Encode(HumanizeIdentifier(reference.ObjectType)));
+            // The object links to its lineage where it has a card. The list itself stays the visual's raw
+            // references, exactly as before; lineage shows only those the direct-usage policy accepts.
+            var card = lineage.CardForReference(report, reference);
+            html.Append("                    <li>");
+            if (card is not null)
+            {
+                html.Append("<a class=\"lineage-object-link\" href=\"#").Append(Encode(card.Id)).Append("\">");
+            }
+
+            html.Append("<code>").Append(Encode($"{reference.Table}[{reference.ObjectName}]")).Append("</code>");
+            if (card is not null)
+            {
+                html.Append("<span class=\"visually-hidden\"> (view lineage)</span></a>");
+            }
+
+            html.Append("<span>").Append(Encode(HumanizeIdentifier(reference.ObjectType)));
             if (roleLabels.Length > 0)
             {
                 html.Append(" — <span class=\"usage-label\">Used as:</span> ")
@@ -1752,6 +1775,7 @@ public static partial class HtmlReportRenderer
     private static void AppendSemanticModel(
         StringBuilder html,
         ProjectInventory inventory,
+        SemanticLineageProjection lineage,
         SemanticModelInventory model,
         AnalysisCoverage coverage)
     {
@@ -1848,7 +1872,7 @@ public static partial class HtmlReportRenderer
             foreach (var usage in usages)
             {
                 var usageReason = usage.DirectReportLocationCount == 0
-                    ? DescribeSemanticUsageReason(inventory, usage)
+                    ? DescribeSemanticUsageReason(lineage, usage)
                     : null;
                 html.Append("              <li class=\"semantic-object\" data-investigation-item=\"usage\" data-filter-table=\"").Append(Encode(table.Name))
                     .Append("\" data-filter-object-type=\"").Append(Encode(usage.ObjectType)).Append("\" data-filter-usage-state=\"").Append(Encode(usage.UsageState))
@@ -1856,6 +1880,7 @@ public static partial class HtmlReportRenderer
                     .Append("\" data-object-type=\"").Append(Encode(usage.ObjectType))
                     .Append("\" data-object-origin=\"").Append(table.IsSystemGenerated ? "system" : "developer")
                     .Append("\" data-classification-confidence=\"").Append(Encode(usage.ClassificationConfidence))
+                    .Append("\" id=\"").Append(Encode(lineage.ObjectRowId(usage)))
                     // Typing "qualified" into the existing search finds every qualified classification,
                     // so discoverability does not depend on spotting the marker.
                     .Append("\" data-search-text=\"").Append(Encode(
@@ -1877,6 +1902,7 @@ public static partial class HtmlReportRenderer
                 {
                     html.Append("                <p class=\"usage-reason\">").Append(Encode(usageReason)).AppendLine("</p>");
                 }
+                AppendLineageEntry(html, lineage, usage);
                 AppendPowerQueryColumnUsage(html, inventory, usage);
                 AppendUsageDetails(html, inventory, usage);
                 AppendSemanticObjectExpression(html, table, usage);
@@ -2500,9 +2526,9 @@ public static partial class HtmlReportRenderer
         html.AppendLine("</code></pre></details>");
     }
 
-    private static string? DescribeSemanticUsageReason(ProjectInventory inventory, SemanticObjectUsage usage)
+    private static string? DescribeSemanticUsageReason(SemanticLineageProjection lineage, SemanticObjectUsage usage)
     {
-        var reason = SemanticUsagePresentation.DescribeReason(inventory, usage);
+        var reason = lineage.ReasonFor(usage);
         return reason is null ? null : $"Why: {reason}";
     }
 
@@ -3355,7 +3381,7 @@ public static partial class HtmlReportRenderer
         return !string.IsNullOrWhiteSpace(value) && value.Count(char.IsLetterOrDigit) >= 2;
     }
 
-    private static string VisualAnchor(ReportInventory report, PageInventory page, VisualInventory visual)
+    internal static string VisualAnchor(ReportInventory report, PageInventory page, VisualInventory visual)
     {
         return $"visual-{DomToken(report.Name)}-{DomToken(page.Name)}-{DomToken(visual.Name)}";
     }
@@ -3376,7 +3402,7 @@ public static partial class HtmlReportRenderer
         return PowerQueryAnchor(usage);
     }
 
-    private static string DomToken(string value)
+    internal static string DomToken(string value)
     {
         var result = new StringBuilder(value.Length);
         var previousWasSeparator = false;
@@ -3532,11 +3558,23 @@ public static partial class HtmlReportRenderer
       };
 
       const sectionForTarget = target => target?.closest?.('[data-report-section]')?.dataset.reportSection;
+      const mainContent = document.getElementById('main-content');
+
+      // Lineage cards are rendered visible so the report still reads without script; with script, one
+      // card is shown at a time and the section's own introduction stands in when none is chosen.
+      const lineageCards = [...document.querySelectorAll('[data-lineage-card]')];
+      const lineageIndex = document.querySelector('[data-lineage-index]');
+      const showLineageCard = card => {
+        lineageCards.forEach(item => { item.hidden = item !== card; });
+        if (lineageIndex) lineageIndex.hidden = Boolean(card);
+      };
+      showLineageCard(null);
 
       const activateSection = (sectionName, options = {}) => {
         const { focus = false, updateFragment = false } = options;
         if (!reportSections.some(section => section.dataset.reportSection === sectionName)) return false;
         reportSections.forEach(section => { section.hidden = section.dataset.reportSection !== sectionName; });
+        if (mainContent) mainContent.dataset.activeSection = sectionName;
         sectionLinks.forEach(link => {
           const selected = link.dataset.sectionTarget === sectionName;
           if (selected) link.setAttribute('aria-current', 'page');
@@ -3554,11 +3592,20 @@ public static partial class HtmlReportRenderer
       const revealFragmentTarget = (fragment, options = {}) => {
         const target = document.getElementById(fragment);
         if (!target) return false;
+        // A link can point at a row the current search or filters hide, including system-generated
+        // objects, which the Semantic model hides by default. Clear that list's filters so the
+        // destination is actually shown.
+        const filteredItem = target.closest('[data-investigation-item]');
+        if (filteredItem?.hidden) document.getElementById(`${filteredItem.dataset.investigationItem}-clear-filters`)?.click();
         const sectionName = sectionForTarget(target);
         if (sectionName) activateSection(sectionName);
+        const lineageCard = target.closest('[data-lineage-card]');
+        if (sectionName === 'lineage') showLineageCard(lineageCard);
         revealDetails(target);
         if (options.focus) {
-          const focusTarget = target instanceof HTMLDetailsElement ? target.querySelector('summary') : target;
+          const focusTarget = lineageCard === target
+            ? target.querySelector('h2')
+            : target instanceof HTMLDetailsElement ? target.querySelector('summary') : target;
           if (focusTarget) {
             focusTarget.setAttribute('tabindex', '-1');
             focusTarget.focus({ preventScroll: true });
@@ -3759,7 +3806,13 @@ public static partial class HtmlReportRenderer
       if (!initialFragment || !revealFragmentTarget(initialFragment)) activateSection('summary');
       window.addEventListener('hashchange', () => {
         const fragment = decodeURIComponent(window.location.hash.slice(1));
-        if (fragment) revealFragmentTarget(fragment, { focus: true });
+        // Back to the report's first, hash-less entry returns to where the report opens.
+        if (!fragment) {
+          activateSection('summary', { focus: true });
+          return;
+        }
+
+        revealFragmentTarget(fragment, { focus: true });
       });
     })();
     """;

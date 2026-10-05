@@ -263,7 +263,7 @@ public sealed class UnresolvedReferenceLimitationReachTests
         Assert.Equal(string.Empty, unusedMeasure[qualifyingIndex]);
 
         var html = HtmlReportRenderer.Render(inventory);
-        Assert.Equal(2, html.Split("class=\"confidence-flag\"").Length - 1);
+        Assert.Equal(2, ReportHtml.WithoutLineage(html).Split("class=\"confidence-flag\"").Length - 1);
         Assert.Contains("used or unused result for 2 of 5 model objects", html, StringComparison.Ordinal);
     }
 
