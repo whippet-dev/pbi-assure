@@ -125,19 +125,23 @@ public static partial class HtmlReportRenderer
           restoring = false;
         });
       };
-      const canRoute = fragment => !fragment || usageShortcuts.has(fragment) || Boolean(document.getElementById(fragment)?.closest('[data-report-section]'));
+      const canRoute = fragment => !fragment || usageShortcuts.has(fragment) || Boolean(document.getElementById(fragment)?.closest('[data-report-section], [data-workspace-group]'));
       const navigate = (fragment, link, { external = false } = {}) => {
         if (!canRoute(fragment)) return false;
         // Capture the initiating control before revealing anything in the destination.
         saveEntry(link || document.activeElement);
-        const isCollection = !fragment || reportSections.some(section => section.id === fragment) || usageShortcuts.has(fragment);
+        const collectionDestination = !fragment || reportSections.some(section => section.id === fragment) || usageShortcuts.has(fragment);
         const contextFor = value => {
           let target = document.getElementById(value);
           if (target?.dataset.objectSummary) target = document.getElementById(target.dataset.objectSummary);
           if (target?.dataset.contextRoute) target = document.getElementById(target.dataset.contextRoute);
-          return target?.closest('[data-lineage-card]:not([data-lineage-card="visual"]), [data-report-context]');
+          return target?.closest('[data-lineage-card]:not([data-lineage-card="visual"]), [data-report-context], [data-workspace-group]');
         };
         const localSwitch = contextFor(fragment) && contextFor(fragment) === contextFor(entry?.fragment);
+        // Local workspace links preserve external origins; global navigation starts a collection.
+        const workspaceDestination = contextFor(fragment)?.matches('[data-workspace-group]');
+        const contextEntry = contextFor(entry?.fragment);
+        const isCollection = collectionDestination && !(workspaceDestination && (localSwitch || contextEntry) && !link?.dataset.sectionTarget);
         const origin = isCollection ? null : entry?.origin
           ? { ...entry.origin, distance: entry.origin.distance + 1 }
           : entry && !localSwitch ? { fragment: entry.fragment, view: entry.view, distance: 1 } : null;
@@ -156,6 +160,13 @@ public static partial class HtmlReportRenderer
         return true;
       };
 
+      document.querySelector('.skip-link')?.addEventListener('click', event => {
+        if (event.button !== 0 || event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) return;
+        // Moving focus into the current workspace is cosmetic, not an investigation route.
+        event.preventDefault();
+        mainContent.focus({ preventScroll: true });
+        mainContent.scrollIntoView({ block: 'start', behavior: 'instant' });
+      });
       document.querySelectorAll('a[href^="#"]').forEach(link => {
         if (link.classList.contains('skip-link') || link === returnLink) return;
         link.addEventListener('click', event => {

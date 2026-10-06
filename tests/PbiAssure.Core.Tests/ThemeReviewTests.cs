@@ -123,7 +123,7 @@ public sealed class ThemeReviewTests
         var inventory = Scan(ReportJson(customName: "Custom.json"), BaseThemeJson, CustomThemeJson, DynamicVisual);
         var html = HtmlReportRenderer.Render(inventory);
 
-        Assert.Contains("data-section-target=\"theme-review\"", html, StringComparison.Ordinal);
+        Assert.Contains("data-workspace-target=\"theme-review\"", html, StringComparison.Ordinal);
         Assert.Contains("id=\"theme-review\"", html, StringComparison.Ordinal);
         Assert.Contains("Theme status", html, StringComparison.Ordinal);
         Assert.Contains("Significant theme deviations", html, StringComparison.Ordinal);

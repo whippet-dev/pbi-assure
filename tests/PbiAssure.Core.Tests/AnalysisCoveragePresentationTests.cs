@@ -171,15 +171,17 @@ public sealed class AnalysisCoveragePresentationTests
     // ---- 9. No limitations ----------------------------------------------------------------------
 
     [Fact]
-    public void AProjectWithNoLimitationsShowsNoCoverageSection()
+    public void AProjectWithNoLimitationsKeepsTechnicalCoverageWithoutReassurance()
     {
         var html = RenderWithUsages(
             Usage("Sales", "Amount", SemanticUsageStates.ApparentlyUnused, ClassificationConfidences.Established),
             limitations: []);
 
-        Assert.DoesNotContain("id=\"analysis-coverage\"", html, StringComparison.Ordinal);
+        Assert.Contains("id=\"analysis-coverage\"", html, StringComparison.Ordinal);
         Assert.DoesNotContain("data-section-target=\"analysis-coverage\"", html, StringComparison.Ordinal);
-        Assert.DoesNotContain("Analysis coverage", html, StringComparison.Ordinal);
+        Assert.Contains("No project-specific analysis limitations were recorded.", html, StringComparison.Ordinal);
+        Assert.Contains("this is not a completeness claim", html, StringComparison.Ordinal);
+        Assert.DoesNotContain("Checks complete", html, StringComparison.Ordinal);
     }
 
     // ---- 10. A limitation that cannot affect confidence -----------------------------------------

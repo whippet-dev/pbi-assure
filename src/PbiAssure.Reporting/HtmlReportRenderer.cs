@@ -24,15 +24,24 @@ public static partial class HtmlReportRenderer
         AppendDocumentStart(html, inventory, coverage);
         AppendSummary(html, inventory, coverage, mainFindings);
         AppendSemanticUsage(html, inventory, lineage, coverage);
+        AppendReportInventory(html, inventory, lineage);
+        AppendReportContexts(html, inventory, lineage);
+        AppendWorkspaceStart(html, "reviews", "Reviews", "findings",
+            "Three review families, each with its own scope and evidence.",
+            [("findings", "Findings"), ("theme-review", "Theme"), ("accessibility-review", "Accessibility")]);
+        AppendFindings(html, inventory, mainFindings);
+        AppendThemeReview(html, inventory);
+        AppendAccessibilityReview(html, inventory, accessibilityFindings);
+        html.AppendLine("    </div>");
+        AppendWorkspaceStart(html, "technical", "Technical", "power-query",
+            "Sources, model structure, security and analysis boundaries.",
+            [("power-query", "Power Query"), ("relationships", "Relationships"),
+             ("row-level-security", "Security"), ("analysis-coverage", "Analysis coverage")]);
         AppendPowerQueryLineage(html, inventory);
         AppendRelationships(html, inventory);
         AppendRowLevelSecurity(html, inventory, coverage);
-        AppendReportInventory(html, inventory, lineage);
-        AppendReportContexts(html, inventory, lineage);
-        AppendFindings(html, inventory, mainFindings);
         AppendAnalysisCoverage(html, coverage);
-        AppendThemeReview(html, inventory);
-        AppendAccessibilityReview(html, inventory, accessibilityFindings);
+        html.AppendLine("    </div>");
         AppendLineage(html, inventory, lineage, coverage);
         AppendDocumentEnd(html, inventory);
         return html.ToString();
@@ -66,43 +75,36 @@ public static partial class HtmlReportRenderer
         html.AppendLine("    <div class=\"content\">");
         html.AppendLine("      <div class=\"site-header-bar\">");
         html.Append("        <span class=\"brand\">").Append(BrandIdentity.MarkSvg)
-            .AppendLine("PBI Assure<span class=\"brand-qualifier\">Report</span></span>");
+            .AppendLine("PBI Assure</span>");
         AppendAppearanceControl(html, "        ");
         html.AppendLine("      </div>");
         html.AppendLine("      <div class=\"site-header-identity\">");
-        html.AppendLine("      <p class=\"eyebrow\">Model intelligence</p>");
         html.Append("      <h1>").Append(Encode(projectName)).AppendLine("</h1>");
-        html.AppendLine("      <p class=\"lede\">A read-only review of this Power BI project.</p>");
+        html.AppendLine("      <p class=\"lede\">Read-only review. Processed locally.</p>");
+        html.AppendLine("      <details class=\"project-details\"><summary>Project details</summary>");
         html.AppendLine("      <dl class=\"report-meta\">");
         AppendScanTimestamp(html, inventory.ScannedAtUtc);
         AppendDefinition(html, "Inventory schema", inventory.SchemaVersion);
         AppendDefinition(html, "Source project", DisplayPath(inventory.RootPath));
         html.AppendLine("      </dl>");
+        html.AppendLine("      </details>");
         html.AppendLine("      </div>");
         html.AppendLine("    </div>");
         html.AppendLine("  </header>");
         html.AppendLine("  <div class=\"content report-workspace\">");
-        html.AppendLine("      <nav class=\"section-navigator\" aria-label=\"Report sections\">");
+        html.AppendLine("      <nav class=\"section-navigator\" aria-label=\"Report navigation\">");
+        html.AppendLine("        <button id=\"report-navigation-toggle\" class=\"report-navigation-toggle\" type=\"button\" aria-expanded=\"false\" aria-controls=\"report-navigation-links\" hidden>Navigation <span id=\"current-area-label\">Overview</span></button>");
+        html.AppendLine("        <div id=\"report-navigation-links\">");
         html.AppendLine("        <ul class=\"section-nav\">");
-        AppendSectionNavigationItem(html, "summary", "Summary", "Overview and key counts");
-        AppendSectionNavigationItem(html, "semantic-usage", "Semantic model", "Model objects and usage");
-        AppendSectionNavigationItem(html, "power-query", "Power Query", "Queries, sources and dependencies");
-        AppendSectionNavigationItem(html, "relationships", "Model relationships", "Table connections and filtering");
-        if (inventory.SemanticModels.Any(model => model.Roles.Count > 0))
-        {
-            AppendSectionNavigationItem(html, "row-level-security", "Security roles", "Roles, filters and object permissions");
-        }
-
-        AppendSectionNavigationItem(html, "reports", "Report pages", "Pages, visuals and fields");
-        AppendSectionNavigationItem(html, "findings", "Findings", "Issues and review items");
-        if (coverage.HasCoverage)
-        {
-            AppendSectionNavigationItem(html, "analysis-coverage", "Analysis coverage", "What was and was not checked");
-        }
-
-        AppendSectionNavigationItem(html, "theme-review", "Theme Review", "Design and theme review");
-        AppendSectionNavigationItem(html, "accessibility-review", "Accessibility review", "Supporting accessibility analysis");
+        AppendSectionNavigationItem(html, "summary", "Overview", null);
+        AppendSectionNavigationItem(html, "semantic-usage", "Model", null);
+        AppendSectionNavigationItem(html, "reports", "Reports", null);
+        AppendSectionNavigationItem(html, "findings", "Reviews", null, "reviews");
         html.AppendLine("        </ul>");
+        html.AppendLine("        <ul class=\"section-nav technical-nav\">");
+        AppendSectionNavigationItem(html, "power-query", "Technical", null, "technical");
+        html.AppendLine("        </ul>");
+        html.AppendLine("        </div>");
         html.AppendLine("      </nav>");
         html.AppendLine("  <main id=\"main-content\" class=\"report-content\" tabindex=\"-1\">");
         html.AppendLine("    <p id=\"investigation-return-row\" class=\"investigation-return\" hidden><a id=\"investigation-return\">Return</a></p>");
@@ -112,9 +114,8 @@ public static partial class HtmlReportRenderer
     /// <summary>
     /// What PBI Assure read in this project's semantic models, and what it did not.
     ///
-    /// Two decisions shape this section. First, it is only rendered when something was actually left
-    /// unanalysed: a panel announcing that there is nothing to report would be reassurance nobody asked
-    /// for, and the standing caveats already live in the Summary disclosure. Second, the
+    /// The Technical destination remains available even without recorded limitations, with an explicit
+    /// boundary rather than reassurance. The
     /// limitations that cannot affect a usage conclusion are disclosed but tucked into a details
     /// element, because a real Desktop model records six of those and one that matters — showing all
     /// seven with equal weight would bury the one worth reading.
@@ -123,6 +124,11 @@ public static partial class HtmlReportRenderer
     {
         if (!coverage.HasCoverage)
         {
+            html.AppendLine("    <section id=\"analysis-coverage\" class=\"report-section\" data-report-section=\"analysis-coverage\" aria-labelledby=\"analysis-coverage-heading\">");
+            html.AppendLine("      <h2 id=\"analysis-coverage-heading\" tabindex=\"-1\">Analysis coverage</h2>");
+            html.AppendLine("      <p class=\"section-intro\">No project-specific analysis limitations were recorded. The standing scope boundaries still apply; this is not a completeness claim.</p>");
+            html.AppendLine("      <p><a href=\"#scope-heading\">Standing scope boundaries</a></p>");
+            html.AppendLine("    </section>");
             return;
         }
 
@@ -1122,6 +1128,11 @@ public static partial class HtmlReportRenderer
             .ToArray();
         if (models.Length == 0)
         {
+            html.AppendLine("    <section id=\"row-level-security\" class=\"report-section\" data-report-section=\"row-level-security\" aria-labelledby=\"row-level-security-heading\">");
+            html.AppendLine("      <h2 id=\"row-level-security-heading\" tabindex=\"-1\">Security roles</h2>");
+            AppendSectionEmptyState(html, "No security roles recorded",
+                "No role definitions were found in the scanned project. This does not assess Power BI Service assignments or effective runtime access.", "security");
+            html.AppendLine("    </section>");
             return;
         }
 
@@ -2619,10 +2630,10 @@ public static partial class HtmlReportRenderer
         ("dark", "Dark appearance"),
     ];
 
-    private static void AppendSectionNavigationItem(StringBuilder html, string target, string label, string? context)
+    private static void AppendSectionNavigationItem(StringBuilder html, string target, string label, string? context, string? area = null)
     {
         html.Append("          <li><a href=\"#").Append(Encode(target)).Append("\" data-section-target=\"")
-            .Append(Encode(target)).Append("\"><span>").Append(Encode(label)).Append("</span>");
+            .Append(Encode(area ?? target)).Append("\"><span>").Append(Encode(label)).Append("</span>");
         if (!string.IsNullOrWhiteSpace(context))
         {
             html.Append("<small>").Append(Encode(context)).Append("</small>");
@@ -3246,6 +3257,34 @@ public static partial class HtmlReportRenderer
       }
       const reportSections = [...document.querySelectorAll('[data-report-section]')];
       const sectionLinks = [...document.querySelectorAll('[data-section-target]')];
+      const workspaceGroups = [...document.querySelectorAll('[data-workspace-group]')];
+      const workspaceLinks = [...document.querySelectorAll('[data-workspace-target]')];
+      const areaForSection = name => ['findings', 'theme-review', 'accessibility-review'].includes(name) ? 'reviews'
+        : ['power-query', 'relationships', 'row-level-security', 'analysis-coverage'].includes(name) ? 'technical' : name;
+      const navigationToggle = document.getElementById('report-navigation-toggle');
+      const reportNavigator = document.querySelector('.section-navigator');
+      const narrowNavigation = matchMedia('(max-width: 71.999rem)');
+      const closeNavigation = () => {
+        reportNavigator.dataset.navigationOpen = 'false';
+        navigationToggle.setAttribute('aria-expanded', 'false');
+      };
+      reportNavigator.dataset.enhanced = 'true';
+      navigationToggle.hidden = false;
+      closeNavigation();
+      navigationToggle.addEventListener('click', () => {
+        const open = navigationToggle.getAttribute('aria-expanded') !== 'true';
+        reportNavigator.dataset.navigationOpen = String(open);
+        navigationToggle.setAttribute('aria-expanded', String(open));
+      });
+      reportNavigator.addEventListener('keydown', event => {
+        if (event.key === 'Escape' && narrowNavigation.matches && navigationToggle.getAttribute('aria-expanded') === 'true') {
+          closeNavigation(); navigationToggle.focus(); event.preventDefault();
+        }
+      });
+      narrowNavigation.addEventListener('change', () => {
+        if (narrowNavigation.matches && reportNavigator.contains(document.activeElement)) navigationToggle.focus();
+        closeNavigation();
+      });
 
       const revealDetails = target => {
         if (target instanceof HTMLDetailsElement) target.open = true;
@@ -3276,9 +3315,18 @@ public static partial class HtmlReportRenderer
         const { focus = false, parentSection = sectionName } = options;
         if (!reportSections.some(section => section.dataset.reportSection === sectionName)) return false;
         reportSections.forEach(section => { section.hidden = section.dataset.reportSection !== sectionName; });
-        if (mainContent) mainContent.dataset.activeSection = sectionName;
+        const area = areaForSection(parentSection);
+        workspaceGroups.forEach(group => { group.hidden = group.dataset.workspaceGroup !== area; });
+        workspaceLinks.forEach(link => {
+          if (link.dataset.workspaceTarget === sectionName) link.setAttribute('aria-current', 'page');
+          else link.removeAttribute('aria-current');
+        });
+        if (mainContent) { mainContent.dataset.activeSection = sectionName; mainContent.dataset.activeArea = area; }
+        const currentLink = sectionLinks.find(link => link.dataset.sectionTarget === area);
+        document.getElementById('current-area-label').textContent = currentLink?.textContent || 'Model';
+        closeNavigation();
         sectionLinks.forEach(link => {
-          const selected = link.dataset.sectionTarget === parentSection;
+          const selected = link.dataset.sectionTarget === area;
           if (selected) link.setAttribute('aria-current', 'page');
           else link.removeAttribute('aria-current');
         });

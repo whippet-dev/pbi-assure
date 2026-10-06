@@ -148,7 +148,7 @@ public sealed class ObjectLevelSecurityTests
         var html = HtmlReportRenderer.Render(ScanDesktopFixture());
 
         Assert.Contains(">Security roles<", html, StringComparison.Ordinal);
-        Assert.Contains("Roles, filters and object permissions", html, StringComparison.Ordinal);
+        Assert.Contains("data-workspace-target=\"row-level-security\"", html, StringComparison.Ordinal);
         Assert.Contains("Table protected</span>Confidential", html, StringComparison.Ordinal);
         Assert.Contains("Column protected</span>Employee[Salary]", html, StringComparison.Ordinal);
         Assert.Contains("Metadata access: None", html, StringComparison.Ordinal);

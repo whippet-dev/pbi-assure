@@ -1088,7 +1088,6 @@ pre {
   .section-nav small { display: none; }
   .section-nav a:hover { border-left-color: var(--pa-line-strong); background: var(--pa-surface-2); }
   .section-nav a[aria-current="page"] { border-left-color: var(--pa-accent); background: var(--pa-accent-soft); color: var(--pa-accent); font-weight: 600; }
-  .section-nav li:has(> a[href="#findings"]), .section-nav li:has(> a[href="#theme-review"]) { margin-top: 0.5rem; padding-top: 0.5rem; border-top: 1px solid var(--pa-line); }
 }
 
 @media (max-width: 45rem) {
@@ -1126,7 +1125,7 @@ pre {
   body { background: #fff; color: #000; }
   .report-workspace { display: block; }
   .skip-link, .section-navigator, .filters, .filter-status, .details-controls, .finding-investigation, .finding-results-row, .filter-chips, .finding-empty-state, .info-tooltip, .appearance-control, .investigation-return, #investigation-selection-note { display: none; }
-  .report-section[hidden] { display: block !important; }
+  .report-section[hidden], [data-workspace-group][hidden] { display: none !important; }
   /* Lineage prints only when it is what the reader is looking at, and then only the card on screen. */
   .report-section[data-report-section="lineage"][hidden] { display: none !important; }
   main[data-active-section="lineage"] > .report-section:not([data-report-section="lineage"]) { display: none !important; }
@@ -1167,4 +1166,36 @@ pre {
   #report-contexts[hidden], [data-report-context][hidden] { display: none !important; }
   main[data-active-section="report-contexts"] > .report-section:not(#report-contexts) { display: none !important; }
   .report-context .lineage-diagram { display: block; }
+}
+
+/* One report shell, four primary areas and a quieter forensic workspace. */
+.project-details { margin-top: 0.5rem; font-size: var(--pa-t-xs); color: var(--pa-text-2); }
+.project-details > summary { width: fit-content; cursor: pointer; padding-block: 0.25rem; }
+.project-details .report-meta { margin: 0.25rem 0 0.5rem; }
+.technical-nav { border-top: 1px solid var(--pa-line); padding-top: 0.75rem; margin-top: 0.75rem; }
+.technical-nav a { color: var(--pa-text-3); font-weight: 400; }
+.workspace-heading { margin: 1.5rem 0 1rem; padding-bottom: 0.75rem; border-bottom: 1px solid var(--pa-line-strong); }
+.workspace-title { font-size: var(--pa-t-xl); font-weight: 700; color: var(--pa-text); }
+.workspace-heading .object-view-nav { margin-bottom: 0; }
+.review-workspace > .report-section { margin-top: 1rem; min-width: 0; }
+.report-navigation-toggle { width: 100%; display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; margin: 0.75rem 0; }
+.report-navigation-toggle span { color: var(--pa-accent); font-weight: 600; }
+.report-navigation-toggle[hidden] { display: none; }
+@media (min-width: 72rem) {
+  .report-navigation-toggle { display: none; }
+}
+@media (max-width: 71.999rem) {
+  .section-navigator[data-enhanced="true"][data-navigation-open="false"] #report-navigation-links { display: none; }
+  .section-navigator #report-navigation-links { margin-bottom: 1rem; }
+  .technical-nav { grid-template-columns: minmax(0, 1fr); }
+}
+@media (forced-colors: active) {
+  .section-nav a[aria-current="page"] { border: 2px solid Highlight; }
+  .workspace-heading .object-view-nav a[aria-current="page"] { outline: 2px solid Highlight; }
+}
+@media print {
+  .site-header-bar { border-bottom: 0; }
+  .site-header-identity { padding-block: 0.25rem; }
+  .site-header .lede, .project-details, .workspace-heading .object-view-nav { display: none; }
+  .workspace-heading { margin-top: 0.5rem; }
 }

@@ -28,19 +28,12 @@ public sealed class HtmlReportRendererTests : IDisposable
         Assert.Contains("<title>PBI Assure report — Assurance</title>", html, StringComparison.Ordinal);
         Assert.Contains("href=\"#main-content\">Skip to main content", html, StringComparison.Ordinal);
         Assert.Contains("<main id=\"main-content\"", html, StringComparison.Ordinal);
-        Assert.Contains("class=\"section-navigator\" aria-label=\"Report sections\"", html, StringComparison.Ordinal);
+        Assert.Contains("class=\"section-navigator\" aria-label=\"Report navigation\"", html, StringComparison.Ordinal);
         Assert.Contains("data-section-target=\"summary\"", html, StringComparison.Ordinal);
-        Assert.Contains("data-section-target=\"findings\"", html, StringComparison.Ordinal);
-        Assert.Contains("data-section-target=\"accessibility-review\"", html, StringComparison.Ordinal);
+        Assert.Contains("data-section-target=\"reviews\"", html, StringComparison.Ordinal);
         Assert.Contains("data-section-target=\"reports\"", html, StringComparison.Ordinal);
-        Assert.Contains("data-section-target=\"power-query\"", html, StringComparison.Ordinal);
-        Assert.Contains("data-section-target=\"relationships\"", html, StringComparison.Ordinal);
+        Assert.Contains("data-section-target=\"technical\"", html, StringComparison.Ordinal);
         Assert.Contains("data-section-target=\"semantic-usage\"", html, StringComparison.Ordinal);
-        Assert.Contains("<small>Overview and key counts</small>", html, StringComparison.Ordinal);
-        Assert.Contains("<small>Issues and review items</small>", html, StringComparison.Ordinal);
-        Assert.Contains("<small>Supporting accessibility analysis</small>", html, StringComparison.Ordinal);
-        Assert.Contains("<small>Model objects and usage</small>", html, StringComparison.Ordinal);
-        Assert.Contains("<small>Design and theme review</small>", html, StringComparison.Ordinal);
         Assert.True(html.IndexOf("id=\"semantic-usage\"", StringComparison.Ordinal) <
             html.IndexOf("id=\"theme-review\"", StringComparison.Ordinal));
         Assert.Contains("class=\"report-section\" data-report-section=\"summary\"", html, StringComparison.Ordinal);
@@ -84,7 +77,7 @@ public sealed class HtmlReportRendererTests : IDisposable
         Assert.Contains("sales-card", html, StringComparison.Ordinal);
         Assert.DoesNotContain("<table", html, StringComparison.OrdinalIgnoreCase);
         Assert.Contains("@media print", html, StringComparison.Ordinal);
-        Assert.Contains(".report-section[hidden] { display: block !important; }", html, StringComparison.Ordinal);
+        Assert.Contains(".report-section[hidden], [data-workspace-group][hidden] { display: none !important; }", html, StringComparison.Ordinal);
         Assert.Contains("const activateSection = (sectionName, options = {})", html, StringComparison.Ordinal);
         Assert.Contains("heading?.focus({ preventScroll: true });", html, StringComparison.Ordinal);
         Assert.Contains("window.scrollTo({ top: 0, left: 0, behavior: 'instant' });", html, StringComparison.Ordinal);
@@ -487,7 +480,7 @@ public sealed class HtmlReportRendererTests : IDisposable
         Assert.Equal("Go to details", button.OnCanvasText);
         Assert.False(button.OnCanvasTextIsDynamic);
 
-        Assert.Contains(">Summary</h2>", html, StringComparison.Ordinal);
+        Assert.Contains(">Overview</h2>", html, StringComparison.Ordinal);
         Assert.Contains("Indirectly used", html, StringComparison.Ordinal);
         Assert.Contains("Structurally required", html, StringComparison.Ordinal);
         Assert.Contains("Only used by unused items", html, StringComparison.Ordinal);
@@ -720,7 +713,7 @@ public sealed class HtmlReportRendererTests : IDisposable
     }
 
     [Fact]
-    public void RenderPrioritizesModelIntelligenceAndPreservesNavigationTargets()
+    public void RenderGroupsGlobalAreasAndPreservesLegacyDestinationsAndAnalysisOutputs()
     {
         CreateSampleProject();
         var inventory = ProjectScanner.Scan(testRoot);
@@ -731,17 +724,18 @@ public sealed class HtmlReportRendererTests : IDisposable
         var html = HtmlReportRenderer.Render(inventory);
         var targets = System.Text.RegularExpressions.Regex.Matches(html, "<a [^>]*data-section-target=\"([^\"]+)\"")
             .Select(match => match.Groups[1].Value).ToArray();
-        string[] expected = ["summary", "semantic-usage", "power-query", "relationships", "reports",
-            "findings", "analysis-coverage", "theme-review", "accessibility-review"];
+        string[] expected = ["summary", "semantic-usage", "reports", "reviews", "technical"];
         Assert.Equal(expected, targets);
-        var previous = -1;
-        foreach (var target in targets)
+        foreach (var target in new[] { "summary", "semantic-usage", "reports", "findings", "theme-review",
+                     "accessibility-review", "power-query", "relationships", "row-level-security", "analysis-coverage" })
         {
-            var section = html.IndexOf($"<section id=\"{target}\"", StringComparison.Ordinal);
-            Assert.True(section > previous, $"Section {target} must follow navigation order.");
+            Assert.Contains($"<section id=\"{target}\"", html, StringComparison.Ordinal);
             Assert.Contains($"href=\"#{target}\"", html, StringComparison.Ordinal);
-            previous = section;
         }
+        Assert.Contains("data-workspace-group=\"reviews\"", html, StringComparison.Ordinal);
+        Assert.Contains("data-workspace-group=\"technical\"", html, StringComparison.Ordinal);
+        Assert.Contains("aria-label=\"Reviews views\"", html, StringComparison.Ordinal);
+        Assert.Contains("aria-label=\"Technical views\"", html, StringComparison.Ordinal);
 
         var summary = html[html.IndexOf("<section id=\"summary\"", StringComparison.Ordinal)..
             html.IndexOf("<section id=\"semantic-usage\"", StringComparison.Ordinal)];

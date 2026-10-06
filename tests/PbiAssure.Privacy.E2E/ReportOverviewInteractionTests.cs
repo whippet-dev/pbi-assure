@@ -41,11 +41,11 @@ public sealed class ReportOverviewInteractionTests(PrivacyE2EFixture fixture)
         await using var context = await fixture.Browser.NewContextAsync();
         var page = await context.NewPageAsync();
         await page.SetContentAsync(Render("model-reference-context"));
-        await page.GetByRole(AriaRole.Link, new() { Name = "Semantic model", Exact = true }).ClickAsync();
+        await page.GetByRole(AriaRole.Link, new() { Name = "Model", Exact = true }).ClickAsync();
         await page.GetByRole(AriaRole.Searchbox, new() { Name = "Search model objects" }).FillAsync("Category");
         await page.Locator("#semantic-usage summary").Filter(new() { HasText = "More filters" }).ClickAsync();
         await page.Locator("#usage-origin").SelectOptionAsync("system");
-        await page.GetByRole(AriaRole.Link, new() { Name = "Summary", Exact = true }).ClickAsync();
+        await page.GetByRole(AriaRole.Link, new() { Name = "Overview", Exact = true }).ClickAsync();
         await page.Locator("#summary [data-usage-shortcut='ApparentlyUnused']").ClickAsync();
         Assert.Equal("", await page.Locator("#usage-search").InputValueAsync());
         Assert.Equal("developer", await page.Locator("#usage-origin").InputValueAsync());
@@ -69,7 +69,7 @@ public sealed class ReportOverviewInteractionTests(PrivacyE2EFixture fixture)
         Assert.True(await page.Locator(target!).EvaluateAsync<bool>("element => element.open"));
         foreach (var (label, section) in new[] { ("Theme review", "theme-review"), ("Accessibility review", "accessibility-review") })
         {
-            await page.GetByRole(AriaRole.Link, new() { Name = "Summary", Exact = true }).ClickAsync();
+            await page.GetByRole(AriaRole.Link, new() { Name = "Overview", Exact = true }).ClickAsync();
             await page.Locator("#summary").GetByRole(AriaRole.Link, new() { Name = label, Exact = true }).FocusAsync();
             await page.Keyboard.PressAsync("Enter");
             Assert.True(await page.Locator($"#{section}").IsVisibleAsync());

@@ -14,7 +14,7 @@ public static partial class HtmlReportRenderer
         AssuranceFinding[] mainFindings)
     {
         html.AppendLine("    <section id=\"summary\" class=\"report-section\" data-report-section=\"summary\" aria-labelledby=\"summary-heading\">");
-        html.AppendLine("      <h2 id=\"summary-heading\" tabindex=\"-1\">Summary</h2>");
+        html.AppendLine("      <h2 id=\"summary-heading\" tabindex=\"-1\">Overview</h2>");
         html.AppendLine("      <p class=\"section-intro\">What needs attention and where to investigate next.</p>");
         html.AppendLine("      <div class=\"summary-groups\">");
         AppendOverviewAttention(html, inventory, mainFindings);

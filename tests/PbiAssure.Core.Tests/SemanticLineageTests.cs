@@ -570,17 +570,17 @@ public sealed partial class SemanticLineageTests
         Assert.Contains("const focusTarget = objectCard && target.matches('[data-object-view]')", html, StringComparison.Ordinal);
         Assert.Contains("? target.querySelector('h2')", html, StringComparison.Ordinal);
         Assert.Contains("activateSection('summary', { focus: true });", html, StringComparison.Ordinal);
-        Assert.Contains("if (mainContent) mainContent.dataset.activeSection = sectionName;", html, StringComparison.Ordinal);
+        Assert.Contains("mainContent.dataset.activeSection = sectionName;", html, StringComparison.Ordinal);
         Assert.DoesNotContain("document.getElementById(`${filteredItem.dataset.investigationItem}-clear-filters`)?.click();", html, StringComparison.Ordinal);
     }
 
     [Fact]
-    public void PrintShowsEveryOrdinarySectionButOnlyTheActiveLineageCard()
+    public void PrintShowsOnlyTheActiveSectionAndLineageCard()
     {
         var css = DesignSystem.Report;
 
-        // The full report still prints every section, as before.
-        Assert.Contains(".report-section[hidden] { display: block !important; }", css, StringComparison.Ordinal);
+        // Print follows the active workspace; unrelated collections remain hidden.
+        Assert.Contains(".report-section[hidden], [data-workspace-group][hidden] { display: none !important; }", css, StringComparison.Ordinal);
         Assert.Contains(".report-section[data-report-section=\"lineage\"][hidden] { display: none !important; }", css, StringComparison.Ordinal);
         Assert.Contains("main[data-active-section=\"lineage\"] > .report-section:not([data-report-section=\"lineage\"]) { display: none !important; }", css, StringComparison.Ordinal);
         Assert.Contains(".lineage-card[hidden], .lineage-index[hidden] { display: none !important; }", css, StringComparison.Ordinal);

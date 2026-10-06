@@ -60,8 +60,8 @@ public sealed class RowLevelSecurityHtmlRendererTests
 
         var html = HtmlReportRenderer.Render(inventory);
 
-        Assert.Contains("data-section-target=\"row-level-security\"", html, StringComparison.Ordinal);
-        Assert.Contains("<small>Roles, filters and object permissions</small>", html, StringComparison.Ordinal);
+        Assert.Contains("data-workspace-target=\"row-level-security\"", html, StringComparison.Ordinal);
+        Assert.Contains("aria-label=\"Technical views\"", html, StringComparison.Ordinal);
         Assert.Contains("id=\"row-level-security\"", html, StringComparison.Ordinal);
         Assert.True(
             html.IndexOf("<h3>Alpha</h3>", StringComparison.Ordinal) <
@@ -135,7 +135,7 @@ public sealed class RowLevelSecurityHtmlRendererTests
     }
 
     [Fact]
-    public void RenderOmitsRowLevelSecurityWhenNoRolesExist()
+    public void RenderKeepsSecurityDestinationWithHonestEmptyStateWhenNoRolesExist()
     {
         var inventory = Scan([
             File("Review.pbip", "{}"),
@@ -145,9 +145,10 @@ public sealed class RowLevelSecurityHtmlRendererTests
 
         var html = HtmlReportRenderer.Render(inventory);
 
-        Assert.DoesNotContain("data-section-target=\"row-level-security\"", html, StringComparison.Ordinal);
-        Assert.DoesNotContain("id=\"row-level-security\"", html, StringComparison.Ordinal);
-        Assert.DoesNotContain("Project definitions only", html, StringComparison.Ordinal);
+        Assert.Contains("data-workspace-target=\"row-level-security\"", html, StringComparison.Ordinal);
+        Assert.Contains("id=\"row-level-security\"", html, StringComparison.Ordinal);
+        Assert.Contains("No security roles recorded", html, StringComparison.Ordinal);
+        Assert.Contains("This does not assess Power BI Service assignments or effective runtime access.", html, StringComparison.Ordinal);
     }
 
     [Fact]

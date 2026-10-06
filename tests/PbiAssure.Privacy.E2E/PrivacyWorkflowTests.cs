@@ -388,7 +388,7 @@ public sealed class PrivacyWorkflowTests(PrivacyE2EFixture fixture)
     private static async Task ExerciseReportContentAsync(IPage report)
     {
         await report.Locator(".section-nav a[href='#summary']").ClickAsync();
-        await report.GetByRole(AriaRole.Heading, new() { Name = "Summary", Exact = true })
+        await report.GetByRole(AriaRole.Heading, new() { Name = "Overview", Exact = true })
             .WaitForAsync(new LocatorWaitForOptions { State = WaitForSelectorState.Visible });
         var limits = report.Locator("#summary details.scope");
         Assert.Null(await limits.GetAttributeAsync("open"));
@@ -410,7 +410,7 @@ public sealed class PrivacyWorkflowTests(PrivacyE2EFixture fixture)
             return;
         }
 
-        await report.Locator(".section-nav a[href='#accessibility-review']").ClickAsync();
+        await report.Locator(".object-view-nav a[href='#accessibility-review']").ClickAsync();
         await report.Locator("#accessibility-review-heading")
             .WaitForAsync(new LocatorWaitForOptions { State = WaitForSelectorState.Visible });
         Assert.True(await report.Locator(
