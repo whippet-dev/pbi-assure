@@ -131,9 +131,15 @@ public static partial class HtmlReportRenderer
         // Capture the initiating control before revealing anything in the destination.
         saveEntry(link || document.activeElement);
         const isCollection = !fragment || reportSections.some(section => section.id === fragment) || usageShortcuts.has(fragment);
+        const contextFor = value => {
+          let target = document.getElementById(value);
+          if (target?.dataset.objectSummary) target = document.getElementById(target.dataset.objectSummary);
+          return target?.closest('[data-lineage-card]:not([data-lineage-card="visual"])');
+        };
+        const localSwitch = contextFor(fragment) && contextFor(fragment) === contextFor(entry?.fragment);
         const origin = isCollection ? null : entry?.origin
           ? { ...entry.origin, distance: entry.origin.distance + 1 }
-          : entry ? { fragment: entry.fragment, view: entry.view, distance: 1 } : null;
+          : entry && !localSwitch ? { fragment: entry.fragment, view: entry.view, distance: 1 } : null;
         restoring = true;
         routeRevision += 1;
         resetSelectedDestination();

@@ -413,7 +413,7 @@ public sealed partial class SemanticLineageTests
             Assert.Null(card.PowerQuery);
             var article = Article(html, card.Id);
             Assert.DoesNotContain("data-lineage-group=\"power-query\"", article, StringComparison.Ordinal);
-            Assert.DoesNotContain("Power Query", article, StringComparison.Ordinal);
+            Assert.Contains("No preparation evidence stored here", article, StringComparison.Ordinal);
             Assert.DoesNotContain("Source column:", article, StringComparison.Ordinal);
         }
     }
@@ -538,14 +538,9 @@ public sealed partial class SemanticLineageTests
         var html = ReportHtml.WithoutLineage(HtmlReportRenderer.Render(inventory));
 
         Assert.Contains($"id=\"{lineage.ObjectRowId(usage)}\"", html, StringComparison.Ordinal);
-        Assert.Contains(
-            $"<p class=\"lineage-entry\"><a href=\"#{lineage.CardFor(usage)!.Id}\">View lineage<span class=\"visually-hidden\"> for Fact[BaseAmount]</span></a></p>",
-            html,
-            StringComparison.Ordinal);
-        // One entry per model object row, plus one per report measure in Report pages.
-        Assert.Equal(
-            inventory.SemanticObjectUsages.Count + inventory.ReportMeasureUsages.Count,
-            Occurrences(html, "<p class=\"lineage-entry\">"));
+        Assert.Contains($"<a href=\"#sum-{lineage.CardFor(usage)!.Id[4..]}\">BaseAmount</a>", html, StringComparison.Ordinal);
+        Assert.Equal(inventory.SemanticObjectUsages.Count, Occurrences(html, "data-object-summary=\"") - inventory.ReportMeasureUsages.Count);
+
     }
 
     [Fact]
@@ -556,7 +551,7 @@ public sealed partial class SemanticLineageTests
         Assert.Contains("<section id=\"lineage\" class=\"report-section lineage-section\" data-report-section=\"lineage\"", html, StringComparison.Ordinal);
         Assert.DoesNotContain("data-section-target=\"lineage\"", html, StringComparison.Ordinal);
         Assert.DoesNotContain("href=\"#lineage\"", html, StringComparison.Ordinal);
-        Assert.Contains("<a href=\"#semantic-usage\">Open Semantic model</a>", html, StringComparison.Ordinal);
+        Assert.Contains("aria-label=\"Object views\"", html, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -567,7 +562,7 @@ public sealed partial class SemanticLineageTests
         Assert.Contains("const showLineageCard = card => {", html, StringComparison.Ordinal);
         Assert.Contains("lineageCards.forEach(item => { item.hidden = item !== card; });", html, StringComparison.Ordinal);
         Assert.Contains("if (sectionName === 'lineage') showLineageCard(lineageCard);", html, StringComparison.Ordinal);
-        Assert.Contains("const focusTarget = lineageCard === target", html, StringComparison.Ordinal);
+        Assert.Contains("const focusTarget = objectCard && target.matches('[data-object-view]')", html, StringComparison.Ordinal);
         Assert.Contains("? target.querySelector('h2')", html, StringComparison.Ordinal);
         Assert.Contains("activateSection('summary', { focus: true });", html, StringComparison.Ordinal);
         Assert.Contains("if (mainContent) mainContent.dataset.activeSection = sectionName;", html, StringComparison.Ordinal);
@@ -654,11 +649,11 @@ public sealed partial class SemanticLineageTests
         var hub = Article(section, Card(SemanticLineageProjection.Build(inventory), inventory, "Sales", "Hub").Id);
 
         Assert.Equal(columns + 1 + measures + 150, cards);
-        // About 3 KB per card at the time of writing; the budget leaves room without letting a
+        // Object contexts now include Summary, Definition and the relocated row evidence. The 6 KB budget leaves room without letting a
         // per-card regression go unnoticed. A hub's card is bounded by the group cap, not by the model.
-        Assert.True(section.Length / cards < 4_000, $"Average lineage card was {section.Length / cards} bytes.");
+        Assert.True(section.Length / cards < 6_000, $"Average lineage card was {section.Length / cards} bytes.");
         Assert.True(hub.Length < 40_000, $"Hub lineage card was {hub.Length} bytes.");
-        Assert.True(section.Length < html.Length * 3 / 4, "Lineage should not dominate the report.");
+        Assert.True(section.Length < html.Length * 9 / 10, "Object contexts must remain bounded within the report.");
     }
 
     // ---- 7. Copy ---------------------------------------------------------------------------------

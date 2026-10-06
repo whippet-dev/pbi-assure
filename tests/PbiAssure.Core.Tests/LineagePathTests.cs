@@ -299,7 +299,7 @@ public sealed class LineagePathTests
         Assert.DoesNotContain("badge-used", article, StringComparison.Ordinal);
         // Report pages lists the report measure with an id and a way into its lineage.
         Assert.Contains($"id=\"{active.DetailsAnchor}\"", html, StringComparison.Ordinal);
-        Assert.Contains($"<a href=\"#{active.Id}\">View lineage<span class=\"visually-hidden\"> for Fact[ActiveReportMeasure]</span></a>", html, StringComparison.Ordinal);
+        Assert.Contains($"<a href=\"#sum-{active.Id[4..]}\">Open Fact[ActiveReportMeasure]</a>", html, StringComparison.Ordinal);
 
         var unused = lineage.CardForReportMeasure("PbiAssureCoverage", "Fact", "UnusedReportMeasure")!;
         Assert.Equal(LineagePathStatus.NotFound, unused.Path!.Status);

@@ -42,7 +42,7 @@ public sealed class ReportInvestigationHistoryTests(PrivacyE2EFixture fixture) :
         await page.Locator("#usage-usage-state").SelectOptionAsync("IndirectlyUsed");
         await page.Locator("#usage-table").SelectOptionAsync("Fact");
         await page.GetByRole(AriaRole.Button, new() { Name = "Expand all tables", Exact = true }).ClickAsync();
-        var link = page.Locator(".semantic-object:not([hidden]) a[href^='#lin-']");
+        var link = page.Locator(".semantic-object:not([hidden]) a[href^='#sum-']");
         await link.ScrollIntoViewIfNeededAsync();
         await link.FocusAsync();
         await SettleAsync(page);
@@ -68,12 +68,13 @@ public sealed class ReportInvestigationHistoryTests(PrivacyE2EFixture fixture) :
         var scroll = await page.EvaluateAsync<double>("scrollY");
         var rowId = await source.EvaluateAsync<string>("link => link.closest('.semantic-object').id");
         await source.PressAsync("Enter");
+        await Card(page).GetByRole(AriaRole.Link, new() { Name = "Lineage", Exact = true }).PressAsync("Enter");
         await Card(page).GetByRole(AriaRole.Link, new() { Name = "Fact[DirectlyUsedMeasure]", Exact = true }).First.PressAsync("Enter");
-        await Card(page).GetByRole(AriaRole.Link, new() { Name = "Object details", Exact = true }).PressAsync("Enter");
+        await Card(page).GetByRole(AriaRole.Link, new() { Name = "Definition", Exact = true }).PressAsync("Enter");
         await SettleAsync(page);
         await AssertModelFiltersAsync(page);
-        Assert.True(await page.Locator("#investigation-selection-note").IsVisibleAsync());
-        Assert.Equal(2, await page.Locator(".semantic-object:not([hidden])").CountAsync()); // One match plus only the selected exception.
+        Assert.False(await page.Locator("#investigation-selection-note").IsVisibleAsync());
+        Assert.Equal(1, await page.Locator(".semantic-object:not([hidden])").CountAsync()); // Context navigation does not reveal unrelated collection rows.
         Assert.Contains("search “IndirectlyUsedColumn”", await page.Locator("#investigation-return").InnerTextAsync(), StringComparison.Ordinal);
         Assert.Equal(rowId, await page.EvaluateAsync<string>("history.state.reportInvestigation.origin.view.initiatingId"));
         await page.Locator("#investigation-return").PressAsync("Enter");
@@ -85,7 +86,7 @@ public sealed class ReportInvestigationHistoryTests(PrivacyE2EFixture fixture) :
         Assert.InRange(Math.Abs(await page.EvaluateAsync<double>("scrollY") - scroll), 0, 3);
         Assert.Equal(1, await page.Locator(".semantic-object:not([hidden])").CountAsync());
         Assert.False(await page.Locator("#investigation-return-row").IsVisibleAsync());
-        var directory = Path.Combine(fixture.RepositoryRoot, "artifacts", "ux-slice2");
+        var directory = Path.Combine(fixture.RepositoryRoot, "artifacts", "ux-slice3");
         Directory.CreateDirectory(directory);
         await page.ScreenshotAsync(new() { Path = Path.Combine(directory, "model-return-restored.png") });
     }
@@ -97,10 +98,11 @@ public sealed class ReportInvestigationHistoryTests(PrivacyE2EFixture fixture) :
         var page = await OpenAsync(context);
         var source = await FilteredModelAsync(page);
         await source.ClickAsync();
+        await Card(page).GetByRole(AriaRole.Link, new() { Name = "Lineage", Exact = true }).ClickAsync();
         var lineageA = page.Url;
         await Card(page).GetByRole(AriaRole.Link, new() { Name = "Fact[DirectlyUsedMeasure]", Exact = true }).First.ClickAsync();
         var lineageB = page.Url;
-        await Card(page).Locator("a[href^='#lin-visual-']").First.ClickAsync();
+        await Card(page).Locator("[data-object-view='lineage'] a[href^='#lin-visual-']").First.ClickAsync();
         var visual = page.Url;
         Assert.Equal("page", await page.Locator(".section-nav a[href='#reports']").GetAttributeAsync("aria-current"));
         await Card(page).GetByRole(AriaRole.Link, new() { Name = "Visual details", Exact = true }).ClickAsync();
@@ -125,7 +127,7 @@ public sealed class ReportInvestigationHistoryTests(PrivacyE2EFixture fixture) :
         await page.WaitForURLAsync("**#semantic-usage");
         await SettleAsync(page);
         await AssertModelFiltersAsync(page);
-        Assert.Contains("View lineage", await FocusAsync(page), StringComparison.Ordinal);
+        Assert.Contains("href=\"#sum-", await FocusAsync(page), StringComparison.Ordinal);
     }
 
     [Theory]
@@ -142,8 +144,8 @@ public sealed class ReportInvestigationHistoryTests(PrivacyE2EFixture fixture) :
         var name = await row.Locator(".object-name strong").InnerTextAsync();
         await page.Locator("#usage-search").FillAsync(name);
         await page.GetByRole(AriaRole.Button, new() { Name = "Expand all tables", Exact = true }).ClickAsync();
-        await row.Locator("a[href^='#lin-']").ClickAsync();
-        await Card(page).GetByRole(AriaRole.Link, new() { Name = "Object details", Exact = true }).ClickAsync();
+        await row.Locator("a[href^='#sum-']").ClickAsync();
+        await Card(page).GetByRole(AriaRole.Link, new() { Name = "Definition", Exact = true }).ClickAsync();
         await page.Locator("#investigation-return").ClickAsync();
         await page.WaitForURLAsync("**#semantic-usage");
         await SettleAsync(page);
@@ -222,7 +224,7 @@ public sealed class ReportInvestigationHistoryTests(PrivacyE2EFixture fixture) :
         Assert.False(await direct.Locator("#investigation-return-row").IsVisibleAsync());
         var parent = kind == "visual" ? "reports" : "semantic-usage";
         Assert.Equal("page", await direct.Locator($".section-nav a[href='#{parent}']").GetAttributeAsync("aria-current"));
-        Assert.True(await Card(direct).GetByRole(AriaRole.Link, new() { Name = kind == "visual" ? "Open Report pages" : "Open Semantic model", Exact = true }).IsVisibleAsync());
+        Assert.True(await Card(direct).GetByRole(AriaRole.Link, new() { Name = kind == "visual" ? "Open Report pages" : "Summary", Exact = true }).IsVisibleAsync());
     }
 
     [Fact]
@@ -233,7 +235,8 @@ public sealed class ReportInvestigationHistoryTests(PrivacyE2EFixture fixture) :
         var source = await FilteredModelAsync(page);
         await source.ClickAsync();
         await Card(page).GetByRole(AriaRole.Link, new() { Name = "Fact[DirectlyUsedMeasure]", Exact = true }).First.ClickAsync();
-        await Card(page).GetByRole(AriaRole.Link, new() { Name = "Object details", Exact = true }).ClickAsync();
+        await Card(page).GetByRole(AriaRole.Link, new() { Name = "Definition", Exact = true }).ClickAsync();
+        await GoModelAsync(page);
         await page.Locator("#usage-search").FillAsync("DirectlyUsedMeasure");
         await page.Locator("#usage-usage-state").SelectOptionAsync("DirectlyUsed");
         await GoModelAsync(page);
@@ -268,11 +271,11 @@ public sealed class ReportInvestigationHistoryTests(PrivacyE2EFixture fixture) :
         var page = await OpenAsync(context);
         var id = await page.Locator(".semantic-object[data-object-origin='system']").First.GetAttributeAsync("id");
         var direct = await OpenAsync(context, "#" + id);
-        Assert.True(await direct.Locator($"#{id}").IsVisibleAsync());
-        Assert.Equal(id, await direct.EvaluateAsync<string>("document.activeElement.id"));
+        Assert.True(await Card(direct).IsVisibleAsync());
+        Assert.Equal("Summary", await direct.EvaluateAsync<string>("document.activeElement.textContent"));
         Assert.Equal("developer", await direct.Locator("#usage-origin").InputValueAsync());
         Assert.False(await direct.Locator("#investigation-return-row").IsVisibleAsync());
-        Assert.True(await direct.Locator("#investigation-selection-note").IsVisibleAsync());
+        Assert.False(await direct.Locator("#investigation-selection-note").IsVisibleAsync());
         Assert.Equal("page", await direct.Locator(".section-nav a[href='#semantic-usage']").GetAttributeAsync("aria-current"));
     }
 

@@ -37,8 +37,8 @@ public sealed partial class LineageVisualTests
 
         // One focus: its heading is the card's only h2, and nothing on the card links to the card itself.
         Assert.Equal(1, Occurrences(article, "<h2 "));
-        Assert.Contains($"<h2 id=\"{card.Id}-title\" class=\"lineage-title\" tabindex=\"-1\">Sales[Net Sales]</h2>", article, StringComparison.Ordinal);
-        Assert.DoesNotContain($"href=\"#{card.Id}\"", article, StringComparison.Ordinal);
+        Assert.Contains($"<h2 id=\"{card.Id}-title\" tabindex=\"-1\" class=\"object-context-title\">Sales[Net Sales]</h2>", article, StringComparison.Ordinal);
+        Assert.Equal(1, Occurrences(article, $"href=\"#{card.Id}\"")); // The local Lineage link.
         // The focus is named once on screen: the path's start mark names it for assistive technology only,
         // and the collapsed evidence below is the files behind the edges, not another view of the focus.
         var view = article[..article.IndexOf("<details class=\"technical-details lineage-evidence\">", StringComparison.Ordinal)];

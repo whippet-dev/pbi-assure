@@ -387,7 +387,7 @@ public sealed class UsageReasonSelectionTests
     /// <summary>The rendered "Why" line for an object, or null when the report shows none.</summary>
     private static string? ReasonFor(string html, string objectName)
     {
-        var anchor = $"<strong>{objectName}</strong>";
+        var anchor = $">{objectName}</a></strong>";
         var start = html.IndexOf(anchor, StringComparison.Ordinal);
         Assert.True(start >= 0, $"Expected '{objectName}' in the rendered report.");
 

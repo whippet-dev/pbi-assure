@@ -35,7 +35,7 @@ public static partial class HtmlReportRenderer
         html.AppendLine("    <section id=\"lineage\" class=\"report-section lineage-section\" data-report-section=\"lineage\" aria-labelledby=\"lineage-heading\">");
         html.AppendLine("      <div class=\"lineage-index\" data-lineage-index>");
         html.AppendLine("        <h2 id=\"lineage-heading\" tabindex=\"-1\">Lineage</h2>");
-        html.AppendLine("        <p class=\"section-intro\">Lineage shows what a model object depends on, what uses it and where the report uses it. Choose View lineage beside an object in Semantic model, or an object listed on a visual in Report pages.</p>");
+        html.AppendLine("        <p class=\"section-intro\">Lineage shows what a model object depends on, what uses it and where the report uses it. Open an object in Semantic model and choose its Lineage view, or follow an object listed on a visual in Report pages.</p>");
         html.AppendLine("        <p><a href=\"#semantic-usage\">Go to Semantic model</a></p>");
         html.AppendLine("      </div>");
         foreach (var card in lineage.Cards)
@@ -44,6 +44,7 @@ public static partial class HtmlReportRenderer
         }
 
         // One scope note for the whole view, below whichever card is shown.
+        AppendTableContexts(html, inventory, coverage);
         html.Append("      <p class=\"lineage-scope\">").Append(Encode(LineageScopeNote)).AppendLine("</p>");
         html.AppendLine("    </section>");
     }
@@ -64,19 +65,28 @@ public static partial class HtmlReportRenderer
                 _ => "semantic",
             })
             .Append("\" aria-labelledby=\"").Append(Encode(titleId)).AppendLine("\">");
+        var objectContext = card.Kind != LineageFocusKind.Visual;
+        if (objectContext) AppendObjectContextStart(html, inventory, card, coverage);
         html.AppendLine("<div class=\"lineage-diagram\">");
         html.AppendLine("<header class=\"lineage-focus\">");
-        html.Append("<p class=\"kicker\">Lineage</p>");
-        html.Append("<h2 id=\"").Append(Encode(titleId)).Append("\" class=\"lineage-title\" tabindex=\"-1\">")
-            .Append(Encode(LineageTitle(card))).AppendLine("</h2>");
-        AppendLineageFacts(html, inventory, card);
-        AppendLineageStatus(html, card, coverage);
-        if (!string.IsNullOrWhiteSpace(card.Reason))
+        if (objectContext)
         {
-            html.Append("<p class=\"lineage-why\">Why: ").Append(Encode(card.Reason)).AppendLine("</p>");
+            html.AppendLine("<p class=\"kicker\">Selected object</p><p class=\"lineage-focus-reference\">Dependencies into this object · consumers out</p>");
         }
+        else
+        {
+            html.Append("<p class=\"kicker\">Lineage</p>");
+            html.Append("<h2 id=\"").Append(Encode(titleId)).Append("\" class=\"lineage-title\" tabindex=\"-1\">")
+                .Append(Encode(LineageTitle(card))).AppendLine("</h2>");
+            AppendLineageFacts(html, inventory, card);
+            AppendLineageStatus(html, card, coverage);
+            if (!string.IsNullOrWhiteSpace(card.Reason))
+            {
+                html.Append("<p class=\"lineage-why\">Why: ").Append(Encode(card.Reason)).AppendLine("</p>");
+            }
 
-        AppendLineageActions(html, card);
+            AppendLineageActions(html, card);
+        }
         html.AppendLine("</header>");
         html.AppendLine("<div class=\"lineage-side\" data-lineage-side=\"upstream\">");
         if (card.Kind == LineageFocusKind.Visual)
@@ -115,12 +125,18 @@ public static partial class HtmlReportRenderer
             AppendLineagePath(html, inventory, card.Path);
         }
 
-        if (card.PowerQuery is not null)
+        if (objectContext)
+        {
+            html.AppendLine("</section>");
+            AppendObjectDefinition(html, inventory, card);
+            AppendObjectDetails(html, inventory, card, coverage);
+        }
+        else if (card.PowerQuery is not null)
         {
             AppendLineagePowerQuery(html, inventory, card);
         }
 
-        AppendLineageEvidence(html, card);
+        if (!objectContext) AppendLineageEvidence(html, card);
         html.AppendLine("</article>");
     }
 
@@ -834,16 +850,4 @@ public static partial class HtmlReportRenderer
         _ => $"{string.Join(", ", names.Take(names.Count - 1))} or {names[^1]}",
     };
 
-    /// <summary>The entry point on a Semantic model row. The link text names the object for screen readers.</summary>
-    private static void AppendLineageEntry(StringBuilder html, SemanticLineageProjection lineage, SemanticObjectUsage usage)
-    {
-        var card = lineage.CardFor(usage);
-        if (card is null)
-        {
-            return;
-        }
-
-        html.Append("                <p class=\"lineage-entry\"><a href=\"#").Append(Encode(card.Id)).Append("\">View lineage<span class=\"visually-hidden\"> for ")
-            .Append(Encode(card.Title)).AppendLine("</span></a></p>");
-    }
 }

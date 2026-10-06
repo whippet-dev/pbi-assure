@@ -90,7 +90,7 @@ public sealed class HtmlReportRendererTests : IDisposable
         Assert.Contains("window.scrollTo({ top: 0, left: 0, behavior: 'instant' });", html, StringComparison.Ordinal);
         Assert.DoesNotContain("heading?.scrollIntoView", html, StringComparison.Ordinal);
         Assert.Contains("navigate(fragment, link)", html, StringComparison.Ordinal);
-        Assert.Contains("target.scrollIntoView({ block: 'start' })", html, StringComparison.Ordinal);
+        Assert.Contains("(objectCard || target).scrollIntoView({ block: 'start' })", html, StringComparison.Ordinal);
         Assert.Contains("const revealFragmentTarget = (fragment, options = {})", html, StringComparison.Ordinal);
         Assert.Contains("revealDetails(target);", html, StringComparison.Ordinal);
         Assert.Contains("if (!initialFragment || !revealFragmentTarget(initialFragment)) activateSection('summary');", html, StringComparison.Ordinal);
@@ -627,9 +627,9 @@ public sealed class HtmlReportRendererTests : IDisposable
         var inventory = ProjectScanner.Scan(testRoot);
         var html = HtmlReportRenderer.Render(inventory);
 
-        Assert.Equal(3, CountOccurrences(html, "<summary>View DAX expression</summary>"));
-        Assert.Contains("class=\"technical-details semantic-expression calculated-table-expression\"", html, StringComparison.Ordinal);
-        Assert.Contains("<summary>View calculated-table DAX expression</summary>", html, StringComparison.Ordinal);
+        Assert.DoesNotContain("<summary>View DAX expression</summary>", html, StringComparison.Ordinal);
+        Assert.Contains("data-object-view=\"definition\"", html, StringComparison.Ordinal);
+        Assert.Contains("<h4>Calculated-table expression</h4>", html, StringComparison.Ordinal);
         Assert.Contains("VAR MeasureMarkup = &quot;&lt;DAX-MEASURE-UNSAFE&gt;&amp;&quot;", html, StringComparison.Ordinal);
         Assert.Contains("VAR ColumnMarkup = &quot;&lt;DAX-COLUMN-UNSAFE&gt;&amp;&quot;", html, StringComparison.Ordinal);
         Assert.Contains("VAR TableMarkup = &quot;&lt;DAX-TABLE-UNSAFE&gt;&amp;&quot;", html, StringComparison.Ordinal);

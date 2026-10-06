@@ -1543,6 +1543,31 @@ public static class DesignSystem
 
         /* ------------------------------------------------------------------ lineage */
 
+        .object-context-header { min-width: 0; padding: 1.25rem 0; border-bottom: 1px solid var(--pa-line); }
+        .object-context-header .kicker { margin: 0 0 0.5rem; }
+        .object-context-title { max-width: 100%; margin: 0 0 0.625rem; font-size: var(--pa-t-2xl); overflow-wrap: anywhere; }
+        .object-context-why { max-width: 85ch; margin: 0.625rem 0 0; color: var(--pa-text-2); overflow-wrap: anywhere; }
+        .object-view-nav { display: flex; flex-wrap: wrap; gap: 0.25rem 1.5rem; padding: 0.25rem 0; border-bottom: 1px solid var(--pa-line); }
+        .object-view-nav a { padding: 0.625rem 0.125rem; text-decoration: none; border-bottom: 3px solid transparent; }
+        .object-view-nav a[aria-current="page"] { color: var(--pa-text); font-weight: 700; border-bottom-color: var(--pa-accent); }
+        .object-local-view { min-width: 0; }
+        .object-local-view[hidden], .model-block[hidden], .model-block > .fact-strip[hidden] { display: none !important; }
+        .object-local-view > h3 { margin: 0 0 1rem; }
+        .object-summary-facts { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 13rem), 1fr)); gap: 1rem 2rem; margin: 0 0 1.5rem; }
+        .object-summary-facts dt { color: var(--pa-text-2); font-size: var(--pa-t-xs); }
+        .object-summary-facts dd { margin: 0.25rem 0 0; font-weight: 650; }
+        .object-summary-group { margin: 1rem 0; }
+        .object-summary-group h4 { margin: 0 0 0.375rem; }
+        .object-summary-group .lineage-meta { display: block; }
+        .object-context-details { border-top: 1px solid var(--pa-line); padding: 1rem 0; }
+        .object-context-details > summary { width: fit-content; font-weight: 650; cursor: pointer; list-style: disclosure-closed inside; }
+        .object-context-details[open] > summary { list-style-type: disclosure-open; }
+        .object-context-details > summary::-webkit-details-marker { display: initial; }
+        .object-context-details > section { margin-top: 1.25rem; }
+        .object-context-details h3 { font-size: var(--pa-t-md); }
+        .object-definition pre { max-width: 100%; white-space: pre-wrap; overflow-wrap: anywhere; }
+        .lineage-focus-reference { margin: 0; color: var(--pa-text-2); font-size: var(--pa-t-xs); }
+
         /* One card at a time. A card is the focus, one titled list per relationship group in a container for
            each side of the focus, then the path to report and its context. On a wide card the same elements
            form a diagram: what the focus depends on to its left, what uses it to its right. Connectors are
@@ -1627,6 +1652,7 @@ public static class DesignSystem
         }
 
         @media (forced-colors: active) {
+          .object-view-nav a[aria-current="page"] { border-bottom-color: CanvasText; }
           .summary-group-assurance, .overview-usage { border-color: CanvasText; }
           .overview-usage a { border: 1px solid CanvasText; }
           .lineage-focus { border-color: CanvasText; }
@@ -1702,6 +1728,7 @@ public static class DesignSystem
           .report-section[data-report-section="lineage"][hidden] { display: none !important; }
           main[data-active-section="lineage"] > .report-section:not([data-report-section="lineage"]) { display: none !important; }
           .lineage-card[hidden], .lineage-index[hidden] { display: none !important; }
+          .object-local-view[hidden], .object-view-nav { display: none !important; }
           /* A printed card is the stacked reading order; connectors are screen decoration. */
           .lineage-diagram { grid-template-columns: minmax(0, 1fr) !important; grid-template-areas: none !important; }
           .lineage-diagram > * { grid-area: auto !important; }

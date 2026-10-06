@@ -1018,7 +1018,7 @@ public static partial class HtmlReportRenderer
             html.Append("            <details class=\"semantic-table\"");
             if (card?.DetailsAnchor is not null)
             {
-                html.Append(" id=\"").Append(Encode(card.DetailsAnchor)).Append('"');
+                html.Append(" id=\"").Append(Encode(card.DetailsAnchor)).Append("\" data-object-summary=\"").Append(Encode(ObjectSummaryId(card))).Append('"');
             }
 
             html.Append("><summary><span class=\"summary-copy\"><strong>")
@@ -1028,29 +1028,9 @@ public static partial class HtmlReportRenderer
                 .AppendLine("</span></span></summary>");
             if (card is not null)
             {
-                html.Append("              <p class=\"lineage-entry\"><a href=\"#").Append(Encode(card.Id))
-                    .Append("\">View lineage<span class=\"visually-hidden\"> for ").Append(Encode(card.Title))
-                    .AppendLine("</span></a></p>");
+                html.Append("              <p><a href=\"#").Append(Encode(ObjectSummaryId(card)))
+                    .Append("\">Open ").Append(Encode(card.Title)).AppendLine("</a></p>");
             }
-            html.AppendLine("              <dl class=\"facts\">");
-            AppendFact(html, "Formula", measure.Expression, code: true);
-            AppendFact(html, "Data type", measure.DataType);
-            if (!string.IsNullOrWhiteSpace(measure.Description))
-            {
-                AppendFact(html, "Description", measure.Description);
-            }
-            if (!string.IsNullOrWhiteSpace(measure.FormatString))
-            {
-                AppendFact(html, "Display format", measure.FormatString, code: true);
-            }
-            var dependencies = measure.References.Select(reference =>
-                $"{reference.Entity}[{reference.Name}] ({(reference.IsReportMeasureReference ? "report measure" : "model measure")})").ToArray();
-            AppendFact(html, "Uses", dependencies.Length == 0 ? "No measure dependencies listed" : string.Join(", ", dependencies));
-            if (measure.HasUnrecognizedReferences)
-            {
-                AppendFact(html, "Dependency check", "Power BI could not identify every reference in this formula; review it manually.");
-            }
-            html.AppendLine("              </dl>");
             html.AppendLine("            </details>");
         }
         html.AppendLine("          </div>");
@@ -1351,7 +1331,7 @@ public static partial class HtmlReportRenderer
     {
         html.AppendLine("    <section id=\"semantic-usage\" class=\"report-section\" data-report-section=\"semantic-usage\" aria-labelledby=\"semantic-usage-heading\">");
         html.AppendLine("      <h2 id=\"semantic-usage-heading\" tabindex=\"-1\">Semantic model</h2>");
-        html.AppendLine("      <p class=\"section-intro\">Review tables, columns, measures and other model objects. Expand an object to see why it has its status, where it is used and, where available, its DAX expression.</p>");
+        html.AppendLine("      <p class=\"section-intro\">Review tables, columns, measures and other model objects. Open an object name to explore its Summary, Lineage and Definition. Supporting evidence is in Details.</p>");
         AppendUsageGuide(html, coverage);
         if (inventory.SemanticModels.Count == 0)
         {
@@ -1770,8 +1750,8 @@ public static partial class HtmlReportRenderer
 
             html.AppendLine("</summary>");
             AppendSemanticTablePowerQueryContext(html, inventory, model, table, usages, unusedCount);
-            AppendSemanticFeatures(html, table);
-            AppendCalculatedTableExpressions(html, table);
+            if (TableContext(model, table) is { } tableContext)
+                html.Append("<p><a href=\"#").Append(Encode(ObjectSummaryId(tableContext))).Append("\">Open ").Append(Encode(table.Name)).AppendLine(" definition and metadata</a></p>");
             html.AppendLine("            <ul class=\"semantic-object-list\">");
             foreach (var usage in usages)
             {
@@ -1790,8 +1770,10 @@ public static partial class HtmlReportRenderer
                     .Append("\" data-search-text=\"").Append(Encode(
                         $"{table.Name} {usage.ObjectName} {HumanizeIdentifier(usage.ObjectType)} {UsageLabel(usage.UsageState)} " +
                         $"{ConfidenceSearchText(usage)}{usageReason}"))
-                    .Append("\"><div class=\"semantic-object-header\"><span class=\"object-name\"><strong>").Append(Encode(usage.ObjectName))
-                    .Append("</strong><span>").Append(Encode(HumanizeIdentifier(usage.ObjectType)));
+                    .Append("\" data-object-summary=\"").Append(Encode(ObjectSummaryId(lineage.CardFor(usage)!)))
+                    .Append("\"><div class=\"semantic-object-header\"><span class=\"object-name\"><strong><a href=\"#")
+                    .Append(Encode(ObjectSummaryId(lineage.CardFor(usage)!))).Append("\">").Append(Encode(usage.ObjectName))
+                    .Append("</a></strong><span>").Append(Encode(HumanizeIdentifier(usage.ObjectType)));
                 if (usage.DirectReportLocationCount > 0)
                 {
                     html.Append(" · used in ").Append(usage.DirectReportLocationCount.ToString(CultureInfo.InvariantCulture))
@@ -1806,10 +1788,6 @@ public static partial class HtmlReportRenderer
                 {
                     html.Append("                <p class=\"usage-reason\">").Append(Encode(usageReason)).AppendLine("</p>");
                 }
-                AppendLineageEntry(html, lineage, usage);
-                AppendPowerQueryColumnUsage(html, inventory, usage);
-                AppendUsageDetails(html, inventory, usage);
-                AppendSemanticObjectExpression(html, table, usage);
                 html.AppendLine("              </li>");
             }
 
@@ -2290,7 +2268,6 @@ public static partial class HtmlReportRenderer
                 }
 
                 html.AppendLine("</span></span>");
-                AppendDaxExpression(html, item.Expression);
                 html.AppendLine("                </li>");
             }
 
@@ -2375,66 +2352,6 @@ public static partial class HtmlReportRenderer
 
         var unit = HumanizeIdentifier(granularity).ToLowerInvariant();
         return $"{periods.Value.ToString(CultureInfo.InvariantCulture)} {unit}{(periods.Value == 1 ? string.Empty : "s")}";
-    }
-
-    private static void AppendCalculatedTableExpressions(StringBuilder html, SemanticTableInventory table)
-    {
-        if (table.IsFieldParameter)
-        {
-            return;
-        }
-
-        foreach (var partition in table.Partitions.Where(partition =>
-                     string.Equals(partition.SourceType, "calculated", StringComparison.OrdinalIgnoreCase) &&
-                     !string.IsNullOrWhiteSpace(partition.Expression)))
-        {
-            AppendDaxExpression(
-                html,
-                partition.Expression!,
-                "View calculated-table DAX expression",
-                "calculated-table-expression");
-        }
-    }
-
-    private static void AppendSemanticObjectExpression(
-        StringBuilder html,
-        SemanticTableInventory table,
-        SemanticObjectUsage usage)
-    {
-        var expression = usage.ObjectType switch
-        {
-            SemanticObjectTypes.Measure => table.Measures.FirstOrDefault(measure =>
-                string.Equals(measure.Name, usage.ObjectName, StringComparison.OrdinalIgnoreCase))?.Expression,
-            SemanticObjectTypes.Column => table.Columns.FirstOrDefault(column =>
-                string.Equals(column.Name, usage.ObjectName, StringComparison.OrdinalIgnoreCase))?.Expression,
-            _ => null,
-        };
-
-        AppendDaxExpression(html, expression);
-    }
-
-    private static void AppendDaxExpression(
-        StringBuilder html,
-        string? expression,
-        string summary = "View DAX expression",
-        string? additionalClass = null)
-    {
-        if (string.IsNullOrWhiteSpace(expression))
-        {
-            return;
-        }
-
-        html.Append("                <details class=\"technical-details semantic-expression");
-        if (!string.IsNullOrWhiteSpace(additionalClass))
-        {
-            html.Append(' ').Append(Encode(additionalClass));
-        }
-
-        html.Append("\"><summary>");
-        html.Append(Encode(summary));
-        html.AppendLine("</summary><pre><code>");
-        html.Append(Encode(expression));
-        html.AppendLine("</code></pre></details>");
     }
 
     private static string? DescribeSemanticUsageReason(SemanticLineageProjection lineage, SemanticObjectUsage usage)
@@ -3480,6 +3397,7 @@ public static partial class HtmlReportRenderer
       const showLineageCard = card => {
         lineageCards.forEach(item => { item.hidden = item !== card; });
         if (lineageIndex) lineageIndex.hidden = Boolean(card);
+        document.getElementById('lineage')?.setAttribute('aria-labelledby', card ? card.id + '-title' : 'lineage-heading');
       };
       showLineageCard(null);
 
@@ -3522,19 +3440,33 @@ public static partial class HtmlReportRenderer
         }
         const target = document.getElementById(fragment);
         if (!target) return false;
+        // Collection object ids are kept as aliases. Never expose a second object destination.
+        if (target.dataset.objectSummary) return revealFragmentTarget(target.dataset.objectSummary, options);
+        const objectCard = target.closest('[data-lineage-card]:not([data-lineage-card="visual"])');
+        if (objectCard) {
+          const selectedView = target.closest('[data-object-view]')?.dataset.objectView
+            || (target === objectCard ? 'lineage' : objectCard.dataset.activeObjectView || 'summary');
+          objectCard.dataset.activeObjectView = selectedView;
+          objectCard.querySelectorAll('[data-object-view]').forEach(view => { view.hidden = view.dataset.objectView !== selectedView; });
+          objectCard.querySelectorAll('[data-object-view-link]').forEach(link => {
+            if (link.dataset.objectViewLink === selectedView) link.setAttribute('aria-current', 'page');
+            else link.removeAttribute('aria-current');
+          });
+        }
         // Reveal only the selected destination and its containers; collection controls and counts
         // retain their existing semantics. The history helper removes this temporary exception.
         revealSelectedDestination(target);
         const sectionName = sectionForTarget(target);
         const lineageCard = target.closest('[data-lineage-card]');
         const parentSection = sectionName === 'lineage'
-          ? ['visual', 'report-measure'].includes(lineageCard?.dataset.lineageCard) ? 'reports' : 'semantic-usage'
+          ? lineageCard?.dataset.lineageCard === 'visual' ? 'reports' : 'semantic-usage'
           : sectionName;
         if (sectionName) activateSection(sectionName, { parentSection });
         if (sectionName === 'lineage') showLineageCard(lineageCard);
         revealDetails(target);
         if (options.focus) {
-          const focusTarget = lineageCard === target
+          const focusTarget = objectCard && target.matches('[data-object-view]')
+            ? target.querySelector('h3') : lineageCard === target
             ? target.querySelector('h2')
             : target instanceof HTMLDetailsElement ? target.querySelector('summary') : target;
           if (focusTarget) {
@@ -3542,7 +3474,7 @@ public static partial class HtmlReportRenderer
             focusTarget.focus({ preventScroll: true });
           }
           const revision = routeRevision;
-          requestAnimationFrame(() => { if (revision === routeRevision) target.scrollIntoView({ block: 'start' }); });
+          requestAnimationFrame(() => { if (revision === routeRevision) (objectCard || target).scrollIntoView({ block: 'start' }); });
         }
         return true;
       };
@@ -3687,6 +3619,10 @@ public static partial class HtmlReportRenderer
             document.querySelectorAll('#semantic-table-list .semantic-table').forEach(table => {
               const shown = [...table.querySelectorAll('.semantic-object')].some(item => !item.hidden);
               table.hidden = !shown;
+            });
+            document.querySelectorAll('#semantic-table-list .model-block').forEach(model => {
+              model.hidden = ![...model.querySelectorAll('.semantic-object')].some(item => !item.hidden);
+              model.querySelector(':scope > .fact-strip').hidden = Boolean(query);
             });
           }
           const activeCount = activeFacets.length + (query ? 1 : 0);
