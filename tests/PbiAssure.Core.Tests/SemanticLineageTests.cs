@@ -476,7 +476,9 @@ public sealed partial class SemanticLineageTests
         var article = Article(ReportHtml.LineageSection(HtmlReportRenderer.Render(inventory)), card.Id);
         Assert.Contains("data-lineage-card=\"visual\"", article, StringComparison.Ordinal);
         Assert.Contains($"<a href=\"#{card.DetailsAnchor}\">Visual details</a>", article, StringComparison.Ordinal);
-        Assert.Contains("data-lineage-group=\"uses\" data-lineage-side=\"upstream\"", article, StringComparison.Ordinal);
+        var upstream = article.IndexOf("<div class=\"lineage-side\" data-lineage-side=\"upstream\">", StringComparison.Ordinal);
+        Assert.InRange(article.IndexOf("data-lineage-group=\"uses\"", StringComparison.Ordinal), upstream + 1, article.IndexOf("<section class=\"lineage-path\"", StringComparison.Ordinal) is var end and >= 0 ? end : article.Length);
+        Assert.True(upstream > article.IndexOf("<header class=\"lineage-focus\">", StringComparison.Ordinal));
         Assert.DoesNotContain("data-lineage-side=\"downstream\"", article, StringComparison.Ordinal);
         Assert.All(card.Uses.Items, use => Assert.Contains($"href=\"#{use.Object.CardId}\"", article, StringComparison.Ordinal));
     }
@@ -612,8 +614,14 @@ public sealed partial class SemanticLineageTests
 
         var article = Article(ReportHtml.LineageSection(HtmlReportRenderer.Render(inventory)), hub.Id);
         Assert.Contains("<h3>Used by (120)</h3>", article, StringComparison.Ordinal);
-        Assert.Contains("Showing 50 of 120. 70 more are not shown in this view.", article, StringComparison.Ordinal);
-        Assert.Equal(SemanticLineageProjection.GroupLimit - SemanticLineageProjection.PreviewLimit, Occurrences(article, " data-lineage-overflow"));
+        // The first few are shown, the rest of the listed items are behind "+N more", and the cap is
+        // stated there: the disclosure counts every consumer, not only the listed ones.
+        var usedBy = Group(article, "used-by");
+        var overflowStart = usedBy.IndexOf("<details class=\"lineage-overflow\">", StringComparison.Ordinal);
+        Assert.Equal(SemanticLineageProjection.PreviewLimit, Occurrences(usedBy[..overflowStart], "<li "));
+        Assert.Equal(SemanticLineageProjection.GroupLimit - SemanticLineageProjection.PreviewLimit, Occurrences(usedBy[overflowStart..], "<li "));
+        Assert.Contains("<summary>+116 more<span class=\"visually-hidden\"> in Used by</span></summary>", usedBy, StringComparison.Ordinal);
+        Assert.Contains("Showing 50 of 120. 70 more are not shown in this view.", usedBy, StringComparison.Ordinal);
         Assert.Equal(
             SemanticLineageProjection.Build(inventory).Cards.Single(card => card.Id == hub.Id).UsedBy.Items.Select(item => item.NodeKey),
             hub.UsedBy.Items.Select(item => item.NodeKey));
@@ -679,7 +687,8 @@ public sealed partial class SemanticLineageTests
             .Replace("Only used by unused items", string.Empty, StringComparison.Ordinal)
             .Replace("Referenced only by unused object", string.Empty, StringComparison.Ordinal);
         Assert.DoesNotContain("unused", allowed, StringComparison.OrdinalIgnoreCase);
-        Assert.Equal(Occurrences(section, "<article "), Occurrences(section, HtmlEncodedScopeNote()));
+        // The scope is stated once for the view, not on every card.
+        Assert.Equal(1, Occurrences(section, HtmlEncodedScopeNote()));
     }
 
     // ---- helpers ---------------------------------------------------------------------------------

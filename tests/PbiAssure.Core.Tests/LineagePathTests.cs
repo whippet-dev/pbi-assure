@@ -125,7 +125,8 @@ public sealed class LineagePathTests
         Assert.Equal(2, metric.Path.EndpointLocationCount);
         var article = Article(inventory, metric);
         Assert.Contains("data-lineage-path=\"direct\"", article, StringComparison.Ordinal);
-        Assert.Contains("Also used in 1 other report location.", article, StringComparison.Ordinal);
+        Assert.Contains("Used directly in 2 report locations.", article, StringComparison.Ordinal);
+        Assert.DoesNotContain("other report location", article, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -170,9 +171,9 @@ public sealed class LineagePathTests
         var article = Article(inventory, amount);
         Assert.Contains("<section class=\"lineage-path\" data-lineage-path=\"model\"><h3>Path to report</h3>", article, StringComparison.Ordinal);
         Assert.Contains($"<li class=\"lineage-path-step\" data-lineage-path-step=\"model\" data-lineage-state=\"DirectlyUsed\"><a class=\"lineage-node\" href=\"#{amount.Path.Steps[1].CardId}\">Sales[Total Amount]</a>", article, StringComparison.Ordinal);
-        Assert.Contains($"<li class=\"lineage-path-step\" data-lineage-path-step=\"report\"><a class=\"lineage-node\" href=\"#{amount.Path.Endpoint.VisualCardId}\">", article, StringComparison.Ordinal);
-        // The focus is the current card, so it is not a link.
-        Assert.Contains("data-lineage-path-step=\"focus\" data-lineage-state=\"IndirectlyUsed\"><span class=\"lineage-node\">Sales[Amount]</span>", article, StringComparison.Ordinal);
+        Assert.Contains($"<li class=\"lineage-path-step lineage-endpoint\" data-lineage-path-step=\"report\"><a class=\"lineage-node\" href=\"#{amount.Path.Endpoint.VisualCardId}\">", article, StringComparison.Ordinal);
+        // The focus is the card's centre: in the path it is only the start mark, named for assistive technology.
+        Assert.Contains("data-lineage-path-step=\"focus\"><span class=\"visually-hidden\">Sales[Amount]</span></li>", article, StringComparison.Ordinal);
     }
 
     [Theory]

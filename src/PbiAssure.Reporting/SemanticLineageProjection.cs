@@ -30,10 +30,10 @@ internal sealed class SemanticLineageProjection
     public const int GroupLimit = 50;
 
     /// <summary>
-    /// How many neighbours a compact presentation shows before offering the rest. The text cards show
-    /// every listed neighbour; items beyond this are marked so a later layout can collapse them.
+    /// How many items of one group a card shows before offering the rest behind a "+N more" disclosure.
+    /// Kept low so the diagram reads at a glance; the listed items beyond it are one click away.
     /// </summary>
-    public const int PreviewLimit = 8;
+    public const int PreviewLimit = 4;
 
     /// <summary>The relationship label of an ordinary DAX reference, the default edge.</summary>
     public const string DaxLabel = "DAX";

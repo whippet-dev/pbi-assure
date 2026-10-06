@@ -5,14 +5,26 @@ using PbiAssure.Core.Inventory;
 namespace PbiAssure.Reporting;
 
 /// <summary>
-/// Object-focused lineage cards. Each card is ordinary semantic HTML — a heading, then one titled list
-/// per relationship group — so the text is the lineage view rather than a fallback for one. The groups
-/// carry the side of the focus they sit on, so a later layout can arrange them without restructuring.
+/// Object-focused lineage cards. Each card is ordinary semantic HTML: the focus, with the card's
+/// heading; then one titled list per relationship group, in a container for each side of the focus;
+/// then the path to report and the supporting context. That text is the lineage view, not a fallback
+/// for one. On a wide card the stylesheet arranges the same elements as a diagram — what the focus
+/// depends on to its left, what uses it to its right — and draws the connectors as decoration. No
+/// second representation of the relationships is emitted.
 /// </summary>
 public static partial class HtmlReportRenderer
 {
     internal const string LineageScopeNote =
         "Lineage shows the dependencies PBI Assure found in this project's files. Some usage can't be checked, and anything outside this project isn't visible.";
+
+    /// <summary>A path with more steps than this, the report location included, shows its middle collapsed.</summary>
+    internal const int LineagePathStepLimit = 10;
+
+    /// <summary>How many steps a collapsed path keeps after the focus.</summary>
+    internal const int LineagePathHeadSteps = 3;
+
+    /// <summary>How many model steps a collapsed path keeps before the report location.</summary>
+    internal const int LineagePathTailSteps = 2;
 
     private static void AppendLineage(
         StringBuilder html,
@@ -31,6 +43,8 @@ public static partial class HtmlReportRenderer
             AppendLineageCard(html, inventory, card, coverage);
         }
 
+        // One scope note for the whole view, below whichever card is shown.
+        html.Append("      <p class=\"lineage-scope\">").Append(Encode(LineageScopeNote)).AppendLine("</p>");
         html.AppendLine("    </section>");
     }
 
@@ -50,7 +64,8 @@ public static partial class HtmlReportRenderer
                 _ => "semantic",
             })
             .Append("\" aria-labelledby=\"").Append(Encode(titleId)).AppendLine("\">");
-        html.AppendLine("<header class=\"lineage-header\">");
+        html.AppendLine("<div class=\"lineage-diagram\">");
+        html.AppendLine("<header class=\"lineage-focus\">");
         html.Append("<p class=\"kicker\">Lineage</p>");
         html.Append("<h2 id=\"").Append(Encode(titleId)).Append("\" class=\"lineage-title\" tabindex=\"-1\">")
             .Append(Encode(LineageTitle(card))).AppendLine("</h2>");
@@ -63,52 +78,46 @@ public static partial class HtmlReportRenderer
 
         AppendLineageActions(html, card);
         html.AppendLine("</header>");
-        html.Append("<p class=\"lineage-scope\">").Append(Encode(LineageScopeNote)).AppendLine("</p>");
-        html.AppendLine("<div class=\"lineage-content\">");
+        html.AppendLine("<div class=\"lineage-side\" data-lineage-side=\"upstream\">");
         if (card.Kind == LineageFocusKind.Visual)
         {
-            AppendLineageGroup(html, "uses", "upstream", "Uses", card.Uses,
-                "No model objects were found for this visual.",
+            AppendLineageGroup(html, "uses", "Uses", card.Uses, "None found",
                 use => AppendLineageVisualUse(html, use));
-            AppendLineageGroup(html, "not-resolved", "upstream", "Not resolved", card.UnresolvedReportReferences,
-                emptyText: null,
-                reference => AppendLineageReportReferenceNote(html, reference));
+            AppendLineageGroup(html, "not-resolved", "Not resolved", card.UnresolvedReportReferences, emptyText: null,
+                reference => AppendLineageReportReferenceNote(html, reference), unresolved: true);
+            html.AppendLine("</div>");
         }
         else
         {
-            if (card.PowerQuery is not null)
-            {
-                AppendLineagePowerQuery(html, inventory, card);
-            }
-
-            AppendLineageGroup(html, "depends-on", "upstream", "Depends on", card.DependsOn,
-                "No dependencies found.",
+            AppendLineageGroup(html, "depends-on", "Depends on", card.DependsOn, "None found",
                 neighbour => AppendLineageNeighbour(html, neighbour));
-            AppendLineageGroup(html, "not-resolved", "upstream", "Not resolved", card.NotResolved,
-                emptyText: null,
-                reference => AppendLineageUnresolved(html, reference));
-            AppendLineageGroup(html, "used-by", "downstream", "Used by", card.UsedBy,
-                "No model object found in this project uses this.",
+            AppendLineageGroup(html, "not-resolved", "Not resolved", card.NotResolved, emptyText: null,
+                reference => AppendLineageUnresolved(html, reference), unresolved: true);
+            html.AppendLine("</div>");
+            html.AppendLine("<div class=\"lineage-side\" data-lineage-side=\"downstream\">");
+            AppendLineageGroup(html, "used-by", "Used by", card.UsedBy, "None found",
                 neighbour => AppendLineageNeighbour(html, neighbour));
             if (card.Kind is LineageFocusKind.SemanticObject or LineageFocusKind.ReportMeasure)
             {
-                AppendLineageGroup(html, "report", "downstream", "Used in the report", card.UsedInReport,
-                    "No direct report use found in this project.",
-                    location => AppendLineageLocation(html, inventory, location));
+                AppendLineageReportUse(html, inventory, card.UsedInReport);
             }
 
-            AppendLineageGroup(html, "required", "downstream", "Required by model", card.RequiredByModel,
-                emptyText: null,
+            AppendLineageGroup(html, "required", "Required by model", card.RequiredByModel, emptyText: null,
                 neighbour => AppendLineageNeighbour(html, neighbour));
-            AppendLineageGroup(html, "possible", "downstream", "Possible use", card.PossibleUse,
-                emptyText: null,
-                possible => AppendLineagePossibleUse(html, possible));
+            AppendLineageGroup(html, "possible", "Possible use", card.PossibleUse, emptyText: null,
+                possible => AppendLineagePossibleUse(html, possible), unresolved: true);
+            html.AppendLine("</div>");
         }
 
         html.AppendLine("</div>");
         if (card.Path is not null)
         {
             AppendLineagePath(html, inventory, card.Path);
+        }
+
+        if (card.PowerQuery is not null)
+        {
+            AppendLineagePowerQuery(html, inventory, card);
         }
 
         AppendLineageEvidence(html, card);
@@ -129,6 +138,11 @@ public static partial class HtmlReportRenderer
             if (card.Page is not null)
             {
                 facts.Add($"Page {card.Page.DisplayName}");
+                if (card.Visual is not null && VisualFriendlyName(card.Visual) is null &&
+                    DescribePosition(card.Page, card.Visual) is var position && position != "Position unavailable")
+                {
+                    facts.Add(position);
+                }
             }
 
             if (card.Report is not null)
@@ -207,39 +221,53 @@ public static partial class HtmlReportRenderer
         html.AppendLine("<a href=\"#semantic-usage\">Back to Semantic model</a></p>");
     }
 
+    /// <summary>
+    /// One relationship group: its heading and count, the first <see cref="SemanticLineageProjection.PreviewLimit"/>
+    /// items, and the rest of the listed items behind a "+N more" disclosure. An empty group that is
+    /// worth stating is one quiet line; any other empty group is left out.
+    /// </summary>
     private static void AppendLineageGroup<T>(
         StringBuilder html,
         string group,
-        string side,
         string heading,
         LineageGroup<T> items,
         string? emptyText,
-        Action<T> appendItem)
+        Action<T> appendItem,
+        bool unresolved = false)
     {
-        if (items.TotalCount == 0 && emptyText is null)
-        {
-            return;
-        }
-
-        html.Append("<section class=\"lineage-group\" data-lineage-group=\"").Append(group)
-            .Append("\" data-lineage-side=\"").Append(side).Append("\"><h3>").Append(Encode(heading)).Append(" (")
-            .Append(items.TotalCount.ToString(CultureInfo.InvariantCulture)).Append(")</h3>");
         if (items.TotalCount == 0)
         {
-            html.Append("<p class=\"lineage-empty\">").Append(Encode(emptyText!)).AppendLine("</p></section>");
+            if (emptyText is not null)
+            {
+                html.Append("<section class=\"lineage-group\" data-lineage-group=\"").Append(group).Append("\"><h3>")
+                    .Append(Encode(heading)).Append("</h3><p class=\"lineage-empty\">").Append(Encode(emptyText)).AppendLine("</p></section>");
+            }
+
             return;
         }
 
-        html.AppendLine("<ul class=\"lineage-list\">");
-        for (var index = 0; index < items.Items.Count; index++)
-        {
-            html.Append("<li class=\"lineage-item\"");
-            if (index >= SemanticLineageProjection.PreviewLimit)
-            {
-                html.Append(" data-lineage-overflow");
-            }
+        var itemClass = unresolved ? "lineage-item lineage-item-unresolved" : "lineage-item";
+        html.Append("<section class=\"lineage-group\" data-lineage-group=\"").Append(group).Append("\"><h3>").Append(Encode(heading)).Append(" (")
+            .Append(items.TotalCount.ToString(CultureInfo.InvariantCulture)).AppendLine(")</h3>");
+        var shown = Math.Min(items.Items.Count, SemanticLineageProjection.PreviewLimit);
+        AppendLineageItems(html, items.Items, 0, shown, appendItem, itemClass);
+        AppendLineageOverflow(html, heading, items, shown, appendItem, itemClass);
+        html.AppendLine("</section>");
+    }
 
-            var state = items.Items[index] switch
+    private static void AppendLineageItems<T>(
+        StringBuilder html,
+        IReadOnlyList<T> items,
+        int start,
+        int end,
+        Action<T> appendItem,
+        string itemClass)
+    {
+        html.AppendLine("<ul class=\"lineage-list\">");
+        for (var index = start; index < end; index++)
+        {
+            html.Append("<li class=\"").Append(itemClass).Append('"');
+            var state = items[index] switch
             {
                 LineageNeighbour neighbour => neighbour.UsageState,
                 LineageVisualUse use => use.Object.UsageState,
@@ -252,11 +280,38 @@ public static partial class HtmlReportRenderer
             }
 
             html.Append('>');
-            appendItem(items.Items[index]);
+            appendItem(items[index]);
             html.AppendLine("</li>");
         }
 
         html.Append("</ul>");
+    }
+
+    /// <summary>
+    /// The listed items after the first <paramref name="shown"/>, behind a native disclosure that says
+    /// how many more there are. Where the group itself was capped, the cap is stated inside.
+    /// </summary>
+    private static void AppendLineageOverflow<T>(
+        StringBuilder html,
+        string heading,
+        LineageGroup<T> items,
+        int shown,
+        Action<T> appendItem,
+        string itemClass)
+    {
+        if (items.TotalCount <= shown)
+        {
+            return;
+        }
+
+        html.Append("<details class=\"lineage-overflow\"><summary>+")
+            .Append((items.TotalCount - shown).ToString(CultureInfo.InvariantCulture))
+            .Append(" more<span class=\"visually-hidden\"> in ").Append(Encode(heading)).Append("</span></summary>");
+        if (items.Items.Count > shown)
+        {
+            AppendLineageItems(html, items.Items, shown, items.Items.Count, appendItem, itemClass);
+        }
+
         if (items.HiddenCount > 0)
         {
             html.Append("<p class=\"lineage-more\">Showing ").Append(items.ShownCount.ToString(CultureInfo.InvariantCulture))
@@ -265,6 +320,29 @@ public static partial class HtmlReportRenderer
                 .Append(" more are not shown in this view.</p>");
         }
 
+        html.AppendLine("</details>");
+    }
+
+    /// <summary>
+    /// Where the focus is used in the report. Only direct use has locations, and the first of them is the
+    /// endpoint of the path to report, shown there in full; here it is a compact node, and the other
+    /// locations are behind "+N more".
+    /// </summary>
+    private static void AppendLineageReportUse(StringBuilder html, ProjectInventory inventory, LineageGroup<LineageReportLocation> locations)
+    {
+        if (locations.TotalCount == 0)
+        {
+            html.AppendLine("<section class=\"lineage-group\" data-lineage-group=\"report\"><h3>Used in the report</h3><p class=\"lineage-empty\">None directly</p></section>");
+            return;
+        }
+
+        html.Append("<section class=\"lineage-group\" data-lineage-group=\"report\"><h3>Used in the report (")
+            .Append(locations.TotalCount.ToString(CultureInfo.InvariantCulture)).AppendLine(")</h3>");
+        html.Append("<ul class=\"lineage-list\"><li class=\"lineage-item lineage-endpoint\">");
+        AppendLineageLocation(html, inventory, locations.Items[0], compact: true);
+        html.AppendLine("</li></ul>");
+        AppendLineageOverflow(html, "Used in the report", locations, 1,
+            location => AppendLineageLocation(html, inventory, location), "lineage-item lineage-endpoint");
         html.AppendLine("</section>");
     }
 
@@ -321,9 +399,10 @@ public static partial class HtmlReportRenderer
     }
 
     /// <summary>
-    /// Path to report: the focus, each item that uses the one before it, and the report location the
-    /// last of them is used in. Steps are list items so a later layout can draw them as a spine; the
-    /// notes are what the path does not show, counted for what they are.
+    /// Path to report: from the focus, each item that uses the one before it, then the report location
+    /// the last of them is used in. The focus is the card's centre, so here it is only the start mark,
+    /// named for assistive technology. A long path keeps its start and end and collapses its middle,
+    /// saying how many steps are behind the disclosure.
     /// </summary>
     private static void AppendLineagePath(StringBuilder html, ProjectInventory inventory, LineagePath path)
     {
@@ -374,41 +453,48 @@ public static partial class HtmlReportRenderer
             return;
         }
 
-        html.AppendLine("<ol class=\"lineage-path-steps\">");
-        for (var index = 0; index < path.Steps.Count; index++)
+        html.Append("<ol class=\"lineage-path-steps\"><li class=\"lineage-path-step lineage-path-start\" data-lineage-path-step=\"focus\"><span class=\"visually-hidden\">")
+            .Append(Encode(path.Steps[0].Name)).AppendLine("</span></li>");
+        var model = path.Steps.Count - 1;
+        var collapse = model + 1 > LineagePathStepLimit;
+        var head = collapse ? LineagePathHeadSteps : model;
+        for (var index = 1; index <= head; index++)
         {
-            var step = path.Steps[index];
-            html.Append("<li class=\"lineage-path-step\" data-lineage-path-step=\"").Append(index == 0 ? "focus" : "model").Append('"');
-            if (step.UsageState is not null)
-            {
-                html.Append(" data-lineage-state=\"").Append(Encode(step.UsageState)).Append('"');
-            }
-
-            html.Append('>');
-            AppendLineageNode(html, step.CardId, step.Name);
-            html.Append("<span class=\"lineage-meta\">").Append(Encode(SemanticLineageProjection.ObjectTypeLabel(step.ObjectType)));
-            if (step.HasOnlyDefaultRelationship)
-            {
-                html.Append("<span class=\"visually-hidden\"> · via DAX</span>");
-            }
-            else if (step.RelationshipLabels.Count > 0)
-            {
-                html.Append(" · <span class=\"lineage-relationship\">")
-                    .Append(Encode(string.Join(" · ", step.RelationshipLabels))).Append("</span>");
-            }
-
-            AppendLineageSharedName(html, step.IsSharedReportMeasure, step.ReportCount, step.Report);
-            html.AppendLine("</span></li>");
+            AppendLineagePathStep(html, path.Steps[index]);
         }
 
-        html.Append("<li class=\"lineage-path-step\" data-lineage-path-step=\"report\">");
+        if (collapse)
+        {
+            var hidden = model - LineagePathHeadSteps - LineagePathTailSteps;
+            html.Append("<li class=\"lineage-path-gap\" data-lineage-path-step=\"hidden\"><details><summary>")
+                .Append(hidden.ToString(CultureInfo.InvariantCulture)).Append(" more steps</summary><ol class=\"lineage-path-hidden\">");
+            for (var index = LineagePathHeadSteps + 1; index <= model - LineagePathTailSteps; index++)
+            {
+                html.Append("<li>");
+                AppendLineageNode(html, path.Steps[index].CardId, path.Steps[index].Name);
+                html.Append("</li>");
+            }
+
+            html.AppendLine("</ol></details></li>");
+            for (var index = model - LineagePathTailSteps + 1; index <= model; index++)
+            {
+                AppendLineagePathStep(html, path.Steps[index]);
+            }
+        }
+
+        html.Append("<li class=\"lineage-path-step lineage-endpoint\" data-lineage-path-step=\"report\">");
         AppendLineageLocation(html, inventory, path.Endpoint!);
         html.AppendLine("</li></ol>");
-        var otherLocations = path.EndpointLocationCount - 1;
-        if (otherLocations > 0)
+        if (path.Status == LineagePathStatus.DirectlyUsed)
         {
-            html.Append("<p class=\"lineage-path-note\">")
-                .Append(Encode(path.Status == LineagePathStatus.DirectlyUsed ? "Also used" : $"{path.Steps[^1].Name} is also used"))
+            html.Append("<p class=\"lineage-path-note\">Used directly in ")
+                .Append(path.EndpointLocationCount.ToString(CultureInfo.InvariantCulture))
+                .Append(path.EndpointLocationCount == 1 ? " report location.</p>" : " report locations.</p>");
+        }
+        else if (path.EndpointLocationCount > 1)
+        {
+            var otherLocations = path.EndpointLocationCount - 1;
+            html.Append("<p class=\"lineage-path-note\">").Append(Encode($"{path.Steps[^1].Name} is also used"))
                 .Append(" in ").Append(otherLocations.ToString(CultureInfo.InvariantCulture))
                 .Append(otherLocations == 1 ? " other report location.</p>" : " other report locations.</p>");
         }
@@ -425,6 +511,28 @@ public static partial class HtmlReportRenderer
         }
 
         html.AppendLine("</section>");
+    }
+
+    private static void AppendLineagePathStep(StringBuilder html, LineagePathStep step)
+    {
+        html.Append("<li class=\"lineage-path-step\" data-lineage-path-step=\"model\"");
+        if (step.UsageState is not null)
+        {
+            html.Append(" data-lineage-state=\"").Append(Encode(step.UsageState)).Append('"');
+        }
+
+        html.Append('>');
+        AppendLineageNode(html, step.CardId, step.Name);
+        html.Append("<span class=\"lineage-meta\">").Append(Encode(SemanticLineageProjection.ObjectTypeLabel(step.ObjectType)));
+        // An ordinary DAX use is what a path step means, so only another relationship is named.
+        if (!step.HasOnlyDefaultRelationship && step.RelationshipLabels.Count > 0)
+        {
+            html.Append(" · <span class=\"lineage-relationship\">")
+                .Append(Encode(string.Join(" · ", step.RelationshipLabels))).Append("</span>");
+        }
+
+        AppendLineageSharedName(html, step.IsSharedReportMeasure, step.ReportCount, step.Report);
+        html.AppendLine("</span></li>");
     }
 
     private static void AppendLineagePathNames(
@@ -475,7 +583,12 @@ public static partial class HtmlReportRenderer
         }
     }
 
-    private static void AppendLineageLocation(StringBuilder html, ProjectInventory inventory, LineageReportLocation location)
+    /// <summary>
+    /// A report location as an endpoint. An untitled visual is named by its type, so its position on the
+    /// page tells it apart from the page's other visuals of that type. A compact endpoint is the name and
+    /// page only, for a location shown in full elsewhere on the card.
+    /// </summary>
+    private static void AppendLineageLocation(StringBuilder html, ProjectInventory inventory, LineageReportLocation location, bool compact = false)
     {
         var hasVisual = location.Visual is not null;
         string label;
@@ -498,7 +611,7 @@ public static partial class HtmlReportRenderer
 
         AppendLineageNode(html, location.VisualCardId, label);
         var facts = new List<string>();
-        if (location.Visual is not null)
+        if (location.Visual is not null && !compact)
         {
             var visualType = HumanizeVisualType(location.Visual.VisualType);
             if (!string.Equals(visualType, label, StringComparison.OrdinalIgnoreCase))
@@ -510,6 +623,11 @@ public static partial class HtmlReportRenderer
         if (location.Location.Page is not null)
         {
             facts.Add($"Page {location.Page?.DisplayName ?? location.Location.Page}");
+            if (!compact && location.Visual is not null && location.Page is not null && VisualFriendlyName(location.Visual) is null &&
+                DescribePosition(location.Page, location.Visual) is var position && position != "Position unavailable")
+            {
+                facts.Add(position);
+            }
         }
 
         if (inventory.ReportCount > 1 || location.Location.Page is null)
@@ -517,7 +635,7 @@ public static partial class HtmlReportRenderer
             facts.Add($"Report {location.Report?.Name ?? location.Location.Report}");
         }
 
-        var role = UsageRoleLabel(location.OwnerReferences, location.Location, hasVisual);
+        var role = compact ? null : UsageRoleLabel(location.OwnerReferences, location.Location, hasVisual);
         if (!string.IsNullOrWhiteSpace(role) && !string.Equals(role, label, StringComparison.OrdinalIgnoreCase))
         {
             facts.Add(role);
@@ -584,13 +702,18 @@ public static partial class HtmlReportRenderer
             .Append(" · Not resolved: not found in the model</span>");
     }
 
+    /// <summary>
+    /// Power Query context for a column: the queries that load its table and the bounded column
+    /// evidence. It is context beside the card, never a node of the diagram: the query loads the table,
+    /// and the column's own route through the query is not claimed.
+    /// </summary>
     private static void AppendLineagePowerQuery(StringBuilder html, ProjectInventory inventory, LineageCard card)
     {
         var context = card.PowerQuery!;
-        html.AppendLine("<section class=\"lineage-group\" data-lineage-group=\"power-query\" data-lineage-side=\"upstream\"><h3>Power Query context</h3><ul class=\"lineage-list lineage-context-list\">");
+        html.AppendLine("<section class=\"lineage-context\" data-lineage-group=\"power-query\"><h3>Power Query context</h3><ul class=\"lineage-context-list\">");
         foreach (var query in context.TableQueries)
         {
-            html.Append("<li class=\"lineage-item lineage-context\">");
+            html.Append("<li>");
             var usage = inventory.PowerQueryUsages.FirstOrDefault(item =>
                 string.Equals(item.SemanticModel, query.SemanticModel, StringComparison.OrdinalIgnoreCase) &&
                 string.Equals(item.QueryName, query.QueryName, StringComparison.OrdinalIgnoreCase));
@@ -604,7 +727,7 @@ public static partial class HtmlReportRenderer
                 html.Append("<a href=\"#").Append(Encode(PowerQueryAnchor(usage))).Append("\">").Append(Encode(query.QueryName)).Append("</a>");
             }
 
-            html.Append("</span><span class=\"lineage-meta\">").Append(Encode($"Loads table {query.Table}"));
+            html.Append("</span> <span class=\"lineage-meta\">").Append(Encode($"Loads table {query.Table}"));
             if (query.HasDynamicReferences)
             {
                 html.Append(" · uses dynamic references");
@@ -615,13 +738,13 @@ public static partial class HtmlReportRenderer
 
         if (!string.IsNullOrWhiteSpace(context.SourceColumn))
         {
-            html.Append("<li class=\"lineage-item lineage-context\"><span class=\"lineage-node\">")
+            html.Append("<li><span class=\"lineage-meta\">")
                 .Append(Encode($"Source column: {context.SourceColumn}")).AppendLine("</span></li>");
         }
 
         foreach (var evidence in context.ColumnEvidence)
         {
-            html.Append("<li class=\"lineage-item lineage-context\"><span class=\"lineage-meta\">")
+            html.Append("<li><span class=\"lineage-meta\">")
                 .Append(Encode($"Power Query evidence: {PowerQueryColumnUsageLabel(evidence)}")).AppendLine("</span></li>");
         }
 
@@ -704,13 +827,11 @@ public static partial class HtmlReportRenderer
                 : $"{table}[{name}]";
     }
 
-    private static string JoinAlternatives(IReadOnlyList<string> names) => JoinNames(names, "or");
-
-    private static string JoinNames(IReadOnlyList<string> names, string conjunction) => names.Count switch
+    private static string JoinAlternatives(IReadOnlyList<string> names) => names.Count switch
     {
         0 => string.Empty,
         1 => names[0],
-        _ => $"{string.Join(", ", names.Take(names.Count - 1))} {conjunction} {names[^1]}",
+        _ => $"{string.Join(", ", names.Take(names.Count - 1))} or {names[^1]}",
     };
 
     /// <summary>The entry point on a Semantic model row. The link text names the object for screen readers.</summary>

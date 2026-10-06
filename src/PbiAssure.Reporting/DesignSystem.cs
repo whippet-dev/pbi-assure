@@ -1496,43 +1496,94 @@ public static class DesignSystem
 
         /* ------------------------------------------------------------------ lineage */
 
-        /* One card at a time, as text. Each group carries data-lineage-side so a later layout can place
-           upstream groups beside downstream ones without changing the markup. */
+        /* One card at a time. A card is the focus, one titled list per relationship group in a container for
+           each side of the focus, then the path to report and its context. On a wide card the same elements
+           form a diagram: what the focus depends on to its left, what uses it to its right. Connectors are
+           decoration drawn with borders; headings and content order carry the direction, so the card reads the
+           same with styles off, stacked, or in print. Dashed means not resolved, and nothing else. */
         .lineage-index[hidden], .lineage-card[hidden] { display: none; }
         .lineage-entry { margin: 0.375rem 0 0; font-size: var(--pa-t-2xs); }
         .lineage-object-link { text-decoration: none; }
         .lineage-object-link:hover code, .lineage-object-link:focus-visible code { text-decoration: underline; }
-        .lineage-card { display: grid; min-width: 0; grid-template-columns: minmax(0, 1fr); gap: 0.875rem; }
-        .lineage-header { display: grid; min-width: 0; gap: 0.375rem; padding-bottom: 0.75rem; border-bottom: 1px solid var(--pa-line); }
-        .lineage-header .kicker, .lineage-header h2, .lineage-facts, .lineage-status, .lineage-why, .lineage-actions { margin: 0; }
-        .lineage-title { overflow-wrap: anywhere; }
+        .lineage-card { --lineage-gutter: 2.25rem; --lineage-connector: var(--pa-text-3); display: grid; min-width: 0; grid-template-columns: minmax(0, 1fr); gap: 1rem; container-type: inline-size; }
+        .lineage-diagram { display: grid; min-width: 0; grid-template-columns: minmax(0, 1fr); gap: 1rem; }
+
+        /* The focus: the card's anchor and its heading. */
+        .lineage-focus { display: grid; min-width: 0; align-content: center; gap: 0.375rem; padding: 0.875rem 1rem; border: 2px solid var(--pa-accent-line); border-top: 4px solid var(--pa-accent); border-radius: var(--pa-r2); background: var(--pa-surface); }
+        .lineage-focus .kicker, .lineage-focus h2, .lineage-facts, .lineage-status, .lineage-why, .lineage-actions { margin: 0; }
+        .lineage-title { font-size: var(--pa-t-lg); overflow-wrap: anywhere; }
         .lineage-facts, .lineage-why { color: var(--pa-text-2); font-size: var(--pa-t-xs); overflow-wrap: anywhere; }
         .lineage-status { display: flex; flex-wrap: wrap; align-items: center; gap: 0.375rem 0.625rem; }
         .lineage-reach { color: var(--pa-text-2); font-size: var(--pa-t-xs); font-weight: 600; }
-        .lineage-actions { display: flex; flex-wrap: wrap; gap: 0.25rem 1rem; font-size: var(--pa-t-xs); }
-        .lineage-scope { max-width: 78ch; margin: 0; color: var(--pa-text-3); font-size: var(--pa-t-2xs); }
-        .lineage-content { display: grid; min-width: 0; grid-template-columns: minmax(0, 1fr); gap: 1rem; }
+        .lineage-actions { display: flex; flex-wrap: wrap; gap: 0.25rem 1rem; padding-top: 0.25rem; font-size: var(--pa-t-2xs); }
+
+        /* Neighbours. */
+        .lineage-side { display: grid; min-width: 0; align-content: start; gap: 0.875rem; }
         .lineage-group { min-width: 0; }
-        .lineage-group h3 { margin: 0 0 0.375rem; font-size: var(--pa-t-sm); }
+        .lineage-group h3, .lineage-path h3, .lineage-context h3 { margin: 0 0 0.375rem; color: var(--pa-text-2); font-size: var(--pa-t-2xs); font-weight: 650; letter-spacing: 0.06em; text-transform: uppercase; }
         .lineage-list { display: grid; min-width: 0; grid-template-columns: minmax(0, 1fr); gap: 0.375rem; margin: 0; padding: 0; list-style: none; }
-        .lineage-item { display: grid; min-width: 0; gap: 0.125rem; padding: 0.4375rem 0.625rem; border: 1px solid var(--pa-line); border-radius: var(--pa-r1); background: var(--pa-surface); }
-        .lineage-item[data-lineage-state="UsedOnlyByUnusedBranch"], .lineage-item[data-lineage-state="ApparentlyUnused"], .lineage-item:has(> .lineage-unresolved) { border-style: dashed; }
+        .lineage-item { position: relative; display: grid; min-width: 0; gap: 0.0625rem; padding: 0.375rem 0.625rem; border: 1px solid var(--pa-line); border-radius: var(--pa-r1); background: var(--pa-surface); }
+        .lineage-item-unresolved { border-style: dashed; background: transparent; }
+        .lineage-endpoint { border-left: 3px solid var(--pa-line-strong); }
+        .lineage-group[data-lineage-group="required"] .lineage-item { background: var(--pa-surface-2); }
         .lineage-node { min-width: 0; font-size: var(--pa-t-xs); font-weight: 600; overflow-wrap: anywhere; }
         .lineage-meta { min-width: 0; color: var(--pa-text-2); font-size: var(--pa-t-2xs); overflow-wrap: anywhere; }
         .lineage-meta .confidence-flag { display: inline-block; margin-left: 0.25rem; }
-        .lineage-empty, .lineage-more { margin: 0; color: var(--pa-text-2); font-size: var(--pa-t-xs); }
-        .lineage-more { margin-top: 0.375rem; }
-        .lineage-evidence li { overflow-wrap: anywhere; }
+        .lineage-state::before { content: ""; display: inline-block; width: 0.5rem; height: 0.5rem; margin-right: 0.25rem; border-radius: 50%; background: var(--lineage-state, var(--pa-line-strong)); }
+        [data-lineage-state="DirectlyUsed"] { --lineage-state: var(--pa-used); }
+        [data-lineage-state="IndirectlyUsed"] { --lineage-state: var(--pa-indirect); }
+        [data-lineage-state="StructurallyRequired"] { --lineage-state: var(--pa-structural); }
+        [data-lineage-state="UsedOnlyByUnusedBranch"] { --lineage-state: var(--pa-branch); }
+        [data-lineage-state="ApparentlyUnused"] { --lineage-state: var(--pa-unused); }
+        .lineage-empty { margin: 0; color: var(--pa-text-3); font-size: var(--pa-t-2xs); }
+        .lineage-overflow > summary { width: fit-content; margin-top: 0.375rem; color: var(--pa-accent); font-size: var(--pa-t-2xs); font-weight: 600; cursor: pointer; }
+        .lineage-overflow > .lineage-list { margin-top: 0.375rem; }
+        .lineage-more { margin: 0.375rem 0 0; color: var(--pa-text-2); font-size: var(--pa-t-2xs); }
         .lineage-shared { color: var(--pa-text-2); font-size: var(--pa-t-2xs); }
+        .lineage-scope { max-width: 78ch; margin: 1rem 0 0; color: var(--pa-text-3); font-size: var(--pa-t-2xs); }
 
-        /* Path to report: plain steps for now; a later layout draws them as the card's spine. */
-        .lineage-path { min-width: 0; }
-        .lineage-path h3 { margin: 0 0 0.375rem; font-size: var(--pa-t-sm); }
-        .lineage-path-steps { display: grid; min-width: 0; gap: 0.25rem; margin: 0; padding-left: 1.5rem; }
-        .lineage-path-step { min-width: 0; }
-        .lineage-path-step > .lineage-node { margin-right: 0.375rem; }
+        /* Path to report: a spine from the focus's start mark to a report location. */
+        .lineage-path { min-width: 0; padding: 0.75rem 0.875rem; border: 1px solid var(--pa-line); border-radius: var(--pa-r2); background: var(--pa-surface-2); }
+        .lineage-path-steps, .lineage-path-hidden { display: flex; min-width: 0; flex-wrap: wrap; align-items: center; gap: 0.375rem 1.125rem; margin: 0; padding: 0; list-style: none; }
+        .lineage-path-step, .lineage-path-hidden > li { position: relative; display: grid; min-width: 0; max-width: 100%; padding: 0.25rem 0.5rem; border: 1px solid var(--pa-line); border-radius: var(--pa-r1); background: var(--pa-surface); }
+        .lineage-path-steps > li + li::before, .lineage-path-hidden > li + li::before { content: ""; position: absolute; top: 50%; left: -0.75rem; width: 0.375rem; height: 0.375rem; border-top: 1.5px solid var(--lineage-connector); border-right: 1.5px solid var(--lineage-connector); transform: translateY(-50%) rotate(45deg); }
+        .lineage-path-start { width: 0.75rem; height: 0.75rem; padding: 0; border: 2px solid var(--pa-accent); border-radius: 50%; background: var(--pa-accent); }
+        .lineage-path-gap { position: relative; min-width: 0; max-width: 100%; }
+        .lineage-path-gap > details > summary { color: var(--pa-accent); font-size: var(--pa-t-2xs); font-weight: 600; cursor: pointer; }
+        .lineage-path-gap > details[open] { padding: 0.375rem 0.5rem; border: 1px solid var(--pa-line); border-radius: var(--pa-r1); }
+        .lineage-path-hidden { margin-top: 0.375rem; }
         .lineage-path-none, .lineage-path-note { max-width: 78ch; margin: 0; font-size: var(--pa-t-xs); overflow-wrap: anywhere; }
-        .lineage-path-note { margin-top: 0.25rem; color: var(--pa-text-2); }
+        .lineage-path-note { margin-top: 0.375rem; color: var(--pa-text-2); }
+
+        /* Context beside the diagram, never part of it. */
+        .lineage-context { min-width: 0; }
+        .lineage-context-list { display: grid; min-width: 0; gap: 0.125rem; margin: 0; padding: 0; list-style: none; font-size: var(--pa-t-xs); }
+        .lineage-context-list .lineage-node { font-weight: 600; }
+        .lineage-evidence li { overflow-wrap: anywhere; }
+
+        /* The diagram, where the card is wide enough for three columns. */
+        @container (min-width: 42rem) {
+          .lineage-diagram { grid-template-columns: minmax(0, 1fr) minmax(11rem, 15rem) minmax(0, 1fr); grid-template-areas: "up focus down"; column-gap: var(--lineage-gutter); }
+          .lineage-card[data-lineage-card="visual"] .lineage-diagram { grid-template-columns: minmax(0, 1.25fr) minmax(12rem, 1fr); grid-template-areas: "up focus"; }
+          .lineage-focus { grid-area: focus; }
+          .lineage-side[data-lineage-side="upstream"] { grid-area: up; }
+          .lineage-side[data-lineage-side="downstream"] { grid-area: down; }
+          .lineage-side .lineage-item::before, .lineage-side .lineage-item::after { content: ""; position: absolute; top: 50%; pointer-events: none; }
+          .lineage-side .lineage-item::before { width: calc(var(--lineage-gutter) + 1px); border-top: 1px solid var(--lineage-connector); }
+          .lineage-side .lineage-item::after { width: 7px; height: 8px; margin-top: -4px; background: var(--lineage-connector); clip-path: polygon(0 0, 100% 50%, 0 100%); }
+          .lineage-side[data-lineage-side="upstream"] .lineage-item::before { left: 100%; }
+          .lineage-side[data-lineage-side="upstream"] .lineage-item::after { left: calc(100% + var(--lineage-gutter) - 6px); }
+          .lineage-side[data-lineage-side="downstream"] .lineage-item::before { right: 100%; }
+          .lineage-side[data-lineage-side="downstream"] .lineage-item::after { right: 100%; }
+          .lineage-side .lineage-item-unresolved::before { border-top-style: dashed; }
+          .lineage-group[data-lineage-group="required"] .lineage-item::before, .lineage-group[data-lineage-group="required"] .lineage-item::after { content: none; }
+        }
+
+        @media (forced-colors: active) {
+          .lineage-focus { border-color: CanvasText; }
+          .lineage-side .lineage-item::after, .lineage-path-start { forced-color-adjust: none; background: CanvasText; border-color: CanvasText; }
+          .lineage-state::before { display: none; }
+        }
 
         /* ------------------------------------------------------------------ footer */
 
@@ -1602,6 +1653,10 @@ public static class DesignSystem
           .report-section[data-report-section="lineage"][hidden] { display: none !important; }
           main[data-active-section="lineage"] > .report-section:not([data-report-section="lineage"]) { display: none !important; }
           .lineage-card[hidden], .lineage-index[hidden] { display: none !important; }
+          /* A printed card is the stacked reading order; connectors are screen decoration. */
+          .lineage-diagram { grid-template-columns: minmax(0, 1fr) !important; grid-template-areas: none !important; }
+          .lineage-diagram > * { grid-area: auto !important; }
+          .lineage-side .lineage-item::before, .lineage-side .lineage-item::after { content: none !important; }
           main > section { break-inside: avoid; }
           details { break-inside: avoid; }
           a { color: #000; }
