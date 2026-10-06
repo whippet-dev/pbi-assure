@@ -24,8 +24,8 @@ public sealed class LineagePathTests
         var inventory = ScanFixture(fixture);
         var lineage = SemanticLineageProjection.Build(inventory);
         var structural = new[] { SemanticObjectTypes.Relationship, SemanticObjectTypes.Role, SemanticObjectTypes.Perspective, SemanticObjectTypes.RefreshPolicy };
-        var reachability = inventory.SemanticNodeReachability.ToDictionary(
-            node => SemanticGraphIndex.NodeKey(node.SemanticModel, node.Table, node.ObjectName, node.ObjectType, node.HierarchyName),
+        var reachability = inventory.ReportScopedNodeReachability.ToDictionary(
+            node => SemanticGraphIndex.NodeKey(node.SemanticModel, node.Table, node.ObjectName, node.ObjectType, node.HierarchyName, node.Report),
             StringComparer.OrdinalIgnoreCase);
 
         foreach (var card in lineage.Cards.Where(card => card.Kind != LineageFocusKind.Visual))
@@ -41,23 +41,11 @@ public sealed class LineagePathTests
                     Assert.Equal(card.Usage.DirectReportLocationCount, path.EndpointLocationCount);
                     break;
                 case SemanticUsageStates.IndirectlyUsed:
-                    // The one documented exception: the classifier keys same-named report measures of
-                    // different reports as one node, so an object can be counted as reached when no single
-                    // report's report measure reaches it. Lineage then shows no path and says why.
-                    if (path.SharedReportMeasures.Count == 0)
-                    {
-                        Assert.Equal(LineagePathStatus.ReachedThroughModel, path.Status);
-                    }
-                    else
-                    {
-                        Assert.Equal(LineagePathStatus.NotFound, path.Status);
-                    }
-
+                    Assert.Equal(LineagePathStatus.ReachedThroughModel, path.Status);
                     break;
                 case null:
-                    // Functions and report measures: a path exists exactly when they are reached, with the
-                    // same shared-report-measure exception for a function.
-                    Assert.Equal(card.ReachedFromReport == true && path.SharedReportMeasures.Count == 0, path.Status != LineagePathStatus.NotFound);
+                    // Functions and report measures: a path exists exactly when they are reached.
+                    Assert.Equal(card.ReachedFromReport == true, path.Status != LineagePathStatus.NotFound);
                     break;
                 default:
                     Assert.Equal(LineagePathStatus.NotFound, path.Status);
@@ -83,17 +71,16 @@ public sealed class LineagePathTests
                     string.Equals(SemanticGraphIndex.TargetKey(edge), previous.NodeKey, StringComparison.OrdinalIgnoreCase));
             }
 
-            // The endpoint is the last step's own policy-filtered direct evidence.
-            // A report measure's endpoint is its own report's evidence, never a same-named one's elsewhere.
+            // The endpoint is the last step's own policy-filtered direct evidence. A report measure's node is
+            // its own report's, so its endpoint is that report's evidence, never a same-named one's elsewhere.
             var last = path.Steps[^1];
             var lastEvidence = inventory.SemanticObjectUsages
                 .Where(usage => string.Equals(SemanticLineageProjection.NodeKey(usage), last.NodeKey, StringComparison.OrdinalIgnoreCase))
                 .SelectMany(usage => usage.DirectReportLocations)
                 .Concat(inventory.ReportMeasureUsages
                     .Where(usage => string.Equals(
-                        SemanticGraphIndex.NodeKey(usage.SemanticModel, usage.Entity, usage.Name, SemanticObjectTypes.ReportMeasure, null),
+                        SemanticGraphIndex.NodeKey(usage.SemanticModel, usage.Entity, usage.Name, SemanticObjectTypes.ReportMeasure, null, usage.ReportPath),
                         last.NodeKey, StringComparison.OrdinalIgnoreCase))
-                    .Where(usage => last.ObjectType != SemanticObjectTypes.ReportMeasure || usage.Report == (last.Report ?? card.ReportName))
                     .SelectMany(usage => usage.DirectReportLocations))
                 .ToArray();
             Assert.Contains(path.Endpoint.Location, lastEvidence);
@@ -296,7 +283,6 @@ public sealed class LineagePathTests
         Assert.Equal(LineageFocusKind.ReportMeasure, active.Kind);
         Assert.Equal("PbiAssureCoverage", active.ReportName);
         Assert.Null(active.Usage);
-        Assert.Empty(active.SharedWithReports);
         Assert.Equal(LineagePathStatus.DirectlyUsed, active.Path!.Status);
         Assert.NotNull(active.Path.Endpoint!.VisualCardId);
 
@@ -336,15 +322,16 @@ public sealed class LineagePathTests
     [Fact]
     public void SameNamedReportMeasuresInTwoReportsKeepTheirLineageInTheirOwnReport()
     {
-        // A.Local = SUM(Amount) is placed; B.Local = SUM(Qty) is not. The classifier keys both as one node.
+        // A.Local = SUM(Amount) is placed; B.Local = SUM(Qty) is not. Each is its own report's node.
         var inventory = ReportMeasureUsageTests.ScanTwoReports();
         var lineage = SemanticLineageProjection.Build(inventory);
         var inA = lineage.CardForReportMeasure("A", "Sales", "Local")!;
         var inB = lineage.CardForReportMeasure("B", "Sales", "Local")!;
 
         Assert.NotEqual(inA.Id, inB.Id);
-        Assert.Equal(["B"], inA.SharedWithReports);
-        Assert.Equal(["A"], inB.SharedWithReports);
+        Assert.NotEqual(inA.NodeKey, inB.NodeKey, StringComparer.OrdinalIgnoreCase);
+        Assert.Same(inA, lineage.CardForNode(inA.NodeKey!));
+        Assert.Same(inB, lineage.CardForNode(inB.NodeKey!));
         Assert.Equal(["Sales[Amount]"], inA.DependsOn.Items.Select(item => item.Name).ToArray());
         Assert.Equal(["Sales[Qty]"], inB.DependsOn.Items.Select(item => item.Name).ToArray());
         Assert.True(inA.ReachedFromReport);
@@ -352,12 +339,12 @@ public sealed class LineagePathTests
         Assert.Equal(0, inB.UsedInReport.TotalCount);
         Assert.Equal(LineagePathStatus.NotFound, inB.Path!.Status);
 
-        // Qty is used only by B's unplaced measure. The classifier still counts it as reached, but no
-        // report's own report measure reaches it, so lineage shows no path and says the result is shared.
+        // Qty is used only by B's unplaced measure, so it is in an unused branch that starts there.
         var qty = Card(lineage, inventory, "Sales", "Qty");
-        Assert.Equal(SemanticUsageStates.IndirectlyUsed, qty.Usage!.UsageState);
+        Assert.Equal(SemanticUsageStates.UsedOnlyByUnusedBranch, qty.Usage!.UsageState);
         Assert.Equal(LineagePathStatus.NotFound, qty.Path!.Status);
-        Assert.Equal(["Sales[Local] in reports A and B"], qty.Path.SharedReportMeasures);
+        var head = Assert.Single(qty.Path.OnlyReachedFrom.Items);
+        Assert.Equal((inB.Id, "B", false), (head.CardId, head.Report, head.ReachableFromReport));
 
         // Each neighbour is one report's own report measure, linked to that report's card.
         var amountUser = Assert.Single(Card(lineage, inventory, "Sales", "Amount").UsedBy.Items);
@@ -365,20 +352,27 @@ public sealed class LineagePathTests
         var qtyUser = Assert.Single(qty.UsedBy.Items);
         Assert.Equal((inB.Id, "B", false), (qtyUser.CardId, qtyUser.Report, qtyUser.ReachableFromReport));
 
-        var html = HtmlReportRenderer.Render(inventory);
-        var articleB = System.Net.WebUtility.HtmlDecode(Article(html, inB.Id));
-        Assert.Contains("A also defines a report measure named Sales[Local] for this model. This card shows only this report's own relationships, uses and reachability.", articleB, StringComparison.Ordinal);
+        var html = System.Net.WebUtility.HtmlDecode(HtmlReportRenderer.Render(inventory));
+        var articleB = Article(html, inB.Id);
         Assert.Contains("<span class=\"lineage-reach\">Not reached from a report</span>", articleB, StringComparison.Ordinal);
-        var qtyPath = System.Net.WebUtility.HtmlDecode(PathSection(Article(html, qty.Id)));
+        var qtyArticle = Article(html, qty.Id);
+        var qtyPath = PathSection(qtyArticle);
         Assert.Contains("No report path found in this project.", qtyPath, StringComparison.Ordinal);
-        Assert.Contains("Its usage result is shared: PBI Assure counts same-named report measures as one item (Sales[Local] in reports A and B)", qtyPath, StringComparison.Ordinal);
-        Assert.Contains("Report B</span>", System.Net.WebUtility.HtmlDecode(Article(html, qty.Id)), StringComparison.Ordinal);
+        Assert.Contains("Only reached from: ", qtyPath, StringComparison.Ordinal);
+        Assert.Contains("Report B</span>", qtyArticle, StringComparison.Ordinal);
+
+        // The caveats that explained a shared usage result are gone: there is no shared result.
+        Assert.DoesNotContain("also defines a report measure named", html, StringComparison.Ordinal);
+        Assert.DoesNotContain("This card shows only this report's own", html, StringComparison.Ordinal);
+        Assert.DoesNotContain("usage result is shared", html, StringComparison.Ordinal);
+        Assert.DoesNotContain("count them as one item", html, StringComparison.Ordinal);
+        Assert.DoesNotContain("same-named report measures as one item", html, StringComparison.Ordinal);
     }
 
     /// <summary>
     /// Report A: RM = [BaseA] over Amount. Report B: RM = [BaseB] over Qty. Both reports are bound to one
-    /// model, so the classifier keys both RMs as one node. Lineage must keep each report's RM in its own
-    /// report whichever of them is placed.
+    /// model and each RM is its own report's node, so whichever is placed, each report's RM, base measure
+    /// and column are classified, explained and walked by that report alone.
     /// </summary>
     [Theory]
     [InlineData(true, false)]
@@ -401,7 +395,6 @@ public sealed class LineagePathTests
         foreach (var report in new[] { "A", "B" })
         {
             var card = cards[report];
-            var other = report == "A" ? "B" : "A";
 
             // The card is this report's own: its dependencies, locations and reachability.
             Assert.Equal([$"Sales[{bases[report].Measure}]"], card.DependsOn.Items.Select(item => item.Name).ToArray());
@@ -412,28 +405,36 @@ public sealed class LineagePathTests
 
             foreach (var name in new[] { bases[report].Measure, bases[report].Column })
             {
-                var path = Card(lineage, inventory, "Sales", name).Path!;
+                var item = Card(lineage, inventory, "Sales", name);
+                var path = item.Path!;
                 if (placed[report])
                 {
                     // Reached through this report's RM, ending at this report's visual and counting only it.
+                    Assert.Equal(SemanticUsageStates.IndirectlyUsed, item.Usage!.UsageState);
                     Assert.Equal(LineagePathStatus.ReachedThroughModel, path.Status);
-                    var step = Assert.Single(path.Steps, item => item.ObjectType == SemanticObjectTypes.ReportMeasure);
+                    var step = Assert.Single(path.Steps, step => step.ObjectType == SemanticObjectTypes.ReportMeasure);
                     Assert.Equal((card.Id, report), (step.CardId, step.Report));
                     Assert.Equal(report, path.Endpoint!.Location.Report);
                     Assert.Equal(1, path.EndpointLocationCount);
                 }
                 else
                 {
-                    // Never reached through the other report's placed RM.
+                    // Never reached through the other report's RM, placed or not: the genuine consumer is
+                    // this report's unplaced RM, where the unused branch starts.
+                    Assert.Equal(SemanticUsageStates.UsedOnlyByUnusedBranch, item.Usage!.UsageState);
                     Assert.Equal(LineagePathStatus.NotFound, path.Status);
                     Assert.Null(path.Endpoint);
-                    Assert.Equal(placed[other], path.SharedReportMeasures.Count > 0);
+                    var head = Assert.Single(path.OnlyReachedFrom.Items);
+                    Assert.Equal((card.Id, report), (head.CardId, head.Report));
                 }
             }
 
-            // The base measure's consumer is this report's RM, linked to this report's card.
-            var consumer = Assert.Single(Card(lineage, inventory, "Sales", bases[report].Measure).UsedBy.Items);
+            // The base measure's consumer and its reason are this report's RM, linked to this report's card.
+            var baseCard = Card(lineage, inventory, "Sales", bases[report].Measure);
+            var consumer = Assert.Single(baseCard.UsedBy.Items);
             Assert.Equal((card.Id, report, placed[report]), (consumer.CardId, consumer.Report, consumer.ReachableFromReport));
+            Assert.True(consumer.IsReasonSource);
+            Assert.Equal(placed[report] ? "Referenced by Sales[RM]" : "Referenced only by unused object Sales[RM]", baseCard.Reason);
         }
 
         // No visual card lists the other report's RM.

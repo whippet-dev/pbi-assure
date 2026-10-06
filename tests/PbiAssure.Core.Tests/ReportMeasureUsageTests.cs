@@ -38,30 +38,28 @@ public sealed class ReportMeasureUsageTests
     public void PublishedEvidenceIsExactlyWhatRootsAReportMeasure(string fixture)
     {
         var inventory = ScanFixture(fixture);
-        var reachability = inventory.SemanticNodeReachability
+        var reachability = inventory.ReportScopedNodeReachability
             .Where(node => node.ObjectType == SemanticObjectTypes.ReportMeasure)
-            .ToDictionary(node => (node.SemanticModel, node.Table, node.ObjectName));
+            .ToDictionary(node => (node.SemanticModel, node.Report, node.Table, node.ObjectName));
 
         foreach (var usage in inventory.ReportMeasureUsages)
         {
-            if (!reachability.TryGetValue((usage.SemanticModel, usage.Entity, usage.Name), out var node))
-            {
-                continue;
-            }
-
+            // Every report measure has a report-scoped row, whether or not it has edges.
+            var node = reachability[(usage.SemanticModel, usage.ReportPath, usage.Entity, usage.Name)];
             if (usage.IsDirectlyReferencedByReport)
             {
                 Assert.True(node.ReachableFromReport, usage.Name);
             }
             else
             {
-                // Not a root, so reachable only if a report-reachable report measure references it.
+                // Not a root, so reachable only if a report-reachable report measure of the same report
+                // references it.
                 var reachedThroughAnother = inventory.SemanticDependencies.Any(edge =>
                     edge.ToObjectType == SemanticObjectTypes.ReportMeasure &&
-                    edge.ToTable == usage.Entity && edge.ToObjectName == usage.Name &&
-                    inventory.SemanticNodeReachability.Any(source => source.ReachableFromReport &&
-                        source.Table == edge.FromTable && source.ObjectName == edge.FromObjectName &&
-                        source.ObjectType == edge.FromObjectType));
+                    edge.ToReport == usage.ReportPath && edge.ToTable == usage.Entity && edge.ToObjectName == usage.Name &&
+                    inventory.ReportScopedNodeReachability.Any(source => source.ReachableFromReport &&
+                        source.Report == edge.FromReport && source.Table == edge.FromTable &&
+                        source.ObjectName == edge.FromObjectName && source.ObjectType == edge.FromObjectType));
                 Assert.Equal(reachedThroughAnother, node.ReachableFromReport);
             }
         }
@@ -79,10 +77,18 @@ public sealed class ReportMeasureUsageTests
         Assert.All(inA.DirectReportReferences, evidence => Assert.Equal("A", evidence.Report));
         Assert.True(inA.IsDirectlyReferencedByReport);
         Assert.False(inB.IsDirectlyReferencedByReport);
+        Assert.Equal(("A.Report", "B.Report"), (inA.ReportPath, inB.ReportPath));
 
-        // The graph still keys both as one node; that is the limitation presentation must state.
-        Assert.Single(inventory.SemanticNodeReachability, node =>
-            node.ObjectType == SemanticObjectTypes.ReportMeasure && node.ObjectName == "Local");
+        // Each is its own report's graph node. The published schema-0.26 row cannot say which report a
+        // report measure belongs to, so the name has one row there, reached because A's is.
+        Assert.Equal(
+            [("A.Report", true), ("B.Report", false)],
+            inventory.ReportScopedNodeReachability
+                .Where(node => node.ObjectType == SemanticObjectTypes.ReportMeasure && node.ObjectName == "Local")
+                .Select(node => (node.Report!, node.ReachableFromReport))
+                .ToArray());
+        Assert.True(Assert.Single(inventory.SemanticNodeReachability, node =>
+            node.ObjectType == SemanticObjectTypes.ReportMeasure && node.ObjectName == "Local").ReachableFromReport);
     }
 
     [Fact]
@@ -91,6 +97,7 @@ public sealed class ReportMeasureUsageTests
         var json = JsonSerializer.Serialize(ScanFixture("pbi-assure-coverage"));
 
         Assert.DoesNotContain("ReportMeasureUsages", json, StringComparison.Ordinal);
+        Assert.DoesNotContain("ReportScopedNodeReachability", json, StringComparison.Ordinal);
         Assert.Contains("\"SchemaVersion\":\"0.26\"", json, StringComparison.Ordinal);
     }
 

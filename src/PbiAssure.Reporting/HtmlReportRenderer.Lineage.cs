@@ -172,21 +172,15 @@ public static partial class HtmlReportRenderer
             return;
         }
 
-        if (card.Kind is LineageFocusKind.Function or LineageFocusKind.ReportMeasure)
+        // Functions and report measures have no usage state of their own; the scanner's reachability for
+        // the node is the fact, and a report measure's node is its own report's. Where none was published
+        // nothing is claimed.
+        if (card.Kind is LineageFocusKind.Function or LineageFocusKind.ReportMeasure &&
+            card.ReachedFromReport is { } reached)
         {
-            // Functions and report measures have no usage state of their own. A function's reachability is
-            // the scanner's; a report measure's is its own report's, not a same-named one's elsewhere.
-            var reached = card.ReachedFromReport ?? false;
             html.Append("<p class=\"lineage-status\"><span class=\"lineage-reach\">")
                 .Append(reached ? "Reached from a report" : "Not reached from a report")
                 .AppendLine("</span></p>");
-        }
-
-        if (card.SharedWithReports.Count > 0)
-        {
-            html.Append("<p class=\"lineage-shared\">")
-                .Append(Encode($"{JoinNames(card.SharedWithReports, "and")} also {(card.SharedWithReports.Count == 1 ? "defines" : "define")} a report measure named {card.Title} for this model. This card shows only this report's own relationships, uses and reachability. PBI Assure's usage results for the model objects these report measures use still count them as one item."))
-                .AppendLine("</p>");
         }
     }
 
@@ -306,8 +300,8 @@ public static partial class HtmlReportRenderer
     }
 
     /// <summary>
-    /// For a report measure whose name several reports share: the report it belongs to here, or where
-    /// no report could be identified, that the name is shared.
+    /// For a report measure whose name other reports bound to the model also define: the report it
+    /// belongs to, or where no report could be identified, that the name alone is ambiguous.
     /// </summary>
     private static void AppendLineageSharedName(StringBuilder html, bool isShared, int reportCount, string? report)
     {
@@ -344,13 +338,6 @@ public static partial class HtmlReportRenderer
         if (path.Status == LineagePathStatus.NotFound)
         {
             html.Append("<p class=\"lineage-path-none\">No report path found in this project.</p>");
-            if (path.SharedReportMeasures.Count > 0)
-            {
-                html.Append("<p class=\"lineage-path-note\">")
-                    .Append(Encode($"Its usage result is shared: PBI Assure counts same-named report measures as one item ({string.Join("; ", path.SharedReportMeasures)}), and none of them reaches a report location through this item."))
-                    .Append("</p>");
-            }
-
             if (path.OnlyReachedFrom.TotalCount > 0)
             {
                 html.Append("<p class=\"lineage-path-note\">Only reached from: ");

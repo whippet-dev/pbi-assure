@@ -29,13 +29,26 @@ public sealed record ProjectInventory(
     /// Which dependency-graph nodes are reachable from a report root and from a model-structure root.
     /// Published so an explanation can name a predecessor that actually supports an object's usage
     /// state, rather than any predecessor that happens to reference it.
+    ///
+    /// This is the schema-0.26 projection of <see cref="ReportScopedNodeReachability"/>, which is the
+    /// source of truth. Report-measure ownership does not round-trip through it: see that property.
     /// </summary>
     public IReadOnlyList<SemanticNodeReachability> SemanticNodeReachability { get; init; } = [];
 
     /// <summary>
+    /// The scanner's reachability for every node of the dependency graph, one row per node, with each
+    /// report measure scoped to the report that owns it (<see cref="Inventory.SemanticNodeReachability.Report"/>).
+    /// Every report measure has a row, including one nothing uses and one with no dependencies. This is
+    /// what presentation reads for report-measure reachability, lineage and usage reasons. Not part of
+    /// the public JSON contract.
+    /// </summary>
+    [System.Text.Json.Serialization.JsonIgnore]
+    public IReadOnlyList<SemanticNodeReachability> ReportScopedNodeReachability { get; init; } = [];
+
+    /// <summary>
     /// In-process evidence of where each report measure is used directly in its own report. It is the
-    /// evidence that made the report measure a report root, kept per report because the dependency graph
-    /// keys report measures by model. Not part of the public JSON contract.
+    /// evidence that made the report measure a report root, kept per report as the report measure itself
+    /// is. Not part of the public JSON contract.
     /// </summary>
     [System.Text.Json.Serialization.JsonIgnore]
     public IReadOnlyList<ReportMeasureUsage> ReportMeasureUsages { get; init; } = [];

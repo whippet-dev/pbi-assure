@@ -13,7 +13,7 @@ internal static class SemanticDependencyAnalyzer
         var unresolved = new List<UnresolvedSemanticDependency>();
         var structuralRoots = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         var systemGeneratedStructuralRoots = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-        var reportMeasureNodes = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var reportMeasureNodes = new Dictionary<string, (string Model, SemanticNode Node)>(StringComparer.OrdinalIgnoreCase);
         var reportMeasureRoots = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         var userRelationshipCalls = new List<UserRelationshipCallCandidate>();
 
@@ -52,10 +52,10 @@ internal static class SemanticDependencyAnalyzer
             initialUsages, distinctDependencies, structuralRoots, systemGeneratedStructuralRoots,
             structuralClassificationPins,
             reportMeasureNodes, reportMeasureRoots,
-            functionNodes, out var reachability);
+            functionNodes, out var reachability, out var scopedReachability);
         var tableUsages = ClassifyTables(
             semanticModels, classifiedUsages, distinctDependencies, structuralRoots,
-            reportMeasureNodes, reportMeasureRoots, functionNodes);
+            reportMeasureNodes.Keys, reportMeasureRoots, functionNodes);
         var semanticModelsWithRelationshipActivation = ApplyUserRelationshipActivation(
             semanticModels,
             initialUsages,
@@ -78,6 +78,7 @@ internal static class SemanticDependencyAnalyzer
             NodeReachability: reachability)
         {
             ReportMeasureUsages = reportMeasureUsages,
+            ReportScopedNodeReachability = scopedReachability,
         };
     }
 
@@ -102,12 +103,12 @@ internal static class SemanticDependencyAnalyzer
     }
 
     /// <summary>
-    /// Report measures become graph nodes keyed by model, entity and name, and a report reference that
-    /// the direct-usage policy accepts makes one a report root. The same loop that roots a report
-    /// measure records where the reference was found, per report, so the published evidence is exactly
-    /// the evidence that rooted it. The graph node is not report scoped: same-named report measures in
-    /// two reports bound to one model share it, which the per-report evidence lets presentation state
-    /// rather than hide.
+    /// Report measures become graph nodes keyed by model, entity, name and the report that owns them
+    /// (<see cref="SemanticNodeIdentity"/>), and a report reference that the direct-usage policy accepts
+    /// makes one a report root. The same loop that roots a report measure records where the reference
+    /// was found, so the published evidence is exactly the evidence that rooted it. Same-named report
+    /// measures in two reports bound to one model are separate nodes: each has its own edges, its own
+    /// roots and its own reachability, and a report measure resolves another only within its report.
     /// </summary>
     private static ReportMeasureUsage[] AnalyzeReportMeasures(
         IReadOnlyList<SemanticModelInventory> semanticModels,
@@ -115,7 +116,7 @@ internal static class SemanticDependencyAnalyzer
         IReadOnlyList<ReportInventory> reports,
         List<SemanticDependencyEdge> dependencies,
         List<UnresolvedSemanticDependency> unresolved,
-        HashSet<string> reportMeasureNodes,
+        Dictionary<string, (string Model, SemanticNode Node)> reportMeasureNodes,
         HashSet<string> reportMeasureRoots)
     {
         var reportMeasureUsages = new List<ReportMeasureUsage>();
@@ -140,14 +141,15 @@ internal static class SemanticDependencyAnalyzer
                 modelMeasures.TryAdd(QualifiedKey(owner.Table, componentName), owner);
             }
 
+            var reportOwner = SemanticNodeIdentity.ReportOwner(report.RelativePath);
             var reportMeasures = report.ReportMeasures.ToDictionary(
                 measure => QualifiedKey(measure.Entity, measure.Name),
-                measure => Target(measure.Entity, measure.Name, SemanticObjectTypes.ReportMeasure),
+                measure => Target(measure.Entity, measure.Name, SemanticObjectTypes.ReportMeasure, report: reportOwner),
                 StringComparer.OrdinalIgnoreCase);
 
             foreach (var source in reportMeasures.Values)
             {
-                reportMeasureNodes.Add(NodeKey(model.Name, source));
+                reportMeasureNodes.TryAdd(NodeKey(model.Name, source), (model.Name, source));
             }
 
             var evidence = new Dictionary<string, List<SemanticUsageEvidence>>(StringComparer.OrdinalIgnoreCase);
@@ -184,6 +186,7 @@ internal static class SemanticDependencyAnalyzer
             {
                 reportMeasureUsages.Add(new ReportMeasureUsage(
                     report.Name,
+                    reportOwner,
                     model.Name,
                     measure.Entity,
                     measure.Name,
@@ -235,6 +238,7 @@ internal static class SemanticDependencyAnalyzer
         return reportMeasureUsages
             .OrderBy(usage => usage.SemanticModel, StringComparer.OrdinalIgnoreCase)
             .ThenBy(usage => usage.Report, StringComparer.OrdinalIgnoreCase)
+            .ThenBy(usage => usage.ReportPath, StringComparer.OrdinalIgnoreCase)
             .ThenBy(usage => usage.Entity, StringComparer.OrdinalIgnoreCase)
             .ThenBy(usage => usage.Name, StringComparer.OrdinalIgnoreCase)
             .ToArray();
@@ -343,6 +347,8 @@ internal static class SemanticDependencyAnalyzer
         string.Equals(first.ToObjectName, second.ToObjectName, StringComparison.OrdinalIgnoreCase) &&
         string.Equals(first.ToObjectType, second.ToObjectType, StringComparison.Ordinal) &&
         string.Equals(first.ToHierarchyName, second.ToHierarchyName, StringComparison.OrdinalIgnoreCase) &&
+        string.Equals(first.FromReport, second.FromReport, StringComparison.OrdinalIgnoreCase) &&
+        string.Equals(first.ToReport, second.ToReport, StringComparison.OrdinalIgnoreCase) &&
         string.Equals(first.DependencyKind, second.DependencyKind, StringComparison.Ordinal);
 
     private static void AnalyzeModel(
@@ -1507,10 +1513,11 @@ internal static class SemanticDependencyAnalyzer
         IReadOnlySet<string> structuralRoots,
         IReadOnlySet<string> systemGeneratedStructuralRoots,
         IReadOnlySet<string> structuralClassificationPins,
-        IReadOnlySet<string> reportMeasureNodes,
+        IReadOnlyDictionary<string, (string Model, SemanticNode Node)> reportMeasureNodes,
         IReadOnlySet<string> reportMeasureRoots,
         IReadOnlySet<string> functionNodes,
-        out SemanticNodeReachability[] reachability)
+        out SemanticNodeReachability[] reachability,
+        out SemanticNodeReachability[] scopedReachability)
     {
         var knownNodes = usages
             .Select(usage => NodeKey(usage.SemanticModel, Source(usage)))
@@ -1521,7 +1528,7 @@ internal static class SemanticDependencyAnalyzer
                 usage.SemanticModel,
                 Target(usage.Table, usage.Table, SemanticObjectTypes.Table)));
         }
-        knownNodes.UnionWith(reportMeasureNodes);
+        knownNodes.UnionWith(reportMeasureNodes.Keys);
         knownNodes.UnionWith(functionNodes);
 
         var adjacency = BuildAdjacency(dependencies, knownNodes);
@@ -1547,7 +1554,8 @@ internal static class SemanticDependencyAnalyzer
 
         // The two reachable sets are what separates "something references this" from "this is reached
         // by something live", so they are published rather than discarded once the states are assigned.
-        reachability = DescribeReachability(usages, dependencies, directlyReachable, structurallyReachable);
+        (scopedReachability, reachability) = DescribeReachability(
+            usages, dependencies, reportMeasureNodes.Values, directlyReachable, structurallyReachable);
 
         return usages
             .Select(usage =>
@@ -1629,31 +1637,61 @@ internal static class SemanticDependencyAnalyzer
     }
 
     /// <summary>
-    /// States, for every node the graph touches, whether it is reachable from a report root or from a
-    /// model-structure root. Both endpoints of every edge are included, which is how nodes without a
-    /// usage row of their own — report measures and DAX user-defined functions — get an entry.
+    /// States, for every node of the graph, whether it is reachable from a report root or from a
+    /// model-structure root, as two views of one result.
+    ///
+    /// The report-scoped view has one row per node: every usage node, both endpoints of every edge — which
+    /// is how a DAX user-defined function gets an entry — and every report measure, each scoped to the
+    /// report that owns it, including one nothing uses and one with no dependencies. It is the source of
+    /// truth for report-measure reachability.
+    ///
+    /// The published view is its schema-0.26 projection, and is deliberately lossy. Schema 0.26 has no
+    /// owner field and keys a row by model, table, object, type and hierarchy, so same-named report
+    /// measures in different reports bound to one model must share one row: it says a report reaches
+    /// that name when a report reaches any of them, and that model structure does when it reaches any.
+    /// Ownership does not round-trip; a consumer that needs to know which report's measure is reached
+    /// must use the report-scoped view. Which rows exist is unchanged from before report measures were
+    /// scoped: usage nodes and edge endpoints only, so a report measure without edges has no published
+    /// row. Every other row equals its report-scoped row.
     /// </summary>
-    private static SemanticNodeReachability[] DescribeReachability(
+    private static (SemanticNodeReachability[] Scoped, SemanticNodeReachability[] Published) DescribeReachability(
         IReadOnlyList<SemanticObjectUsage> usages,
         IReadOnlyList<SemanticDependencyEdge> dependencies,
+        IEnumerable<(string Model, SemanticNode Node)> reportMeasureNodes,
         HashSet<string> directlyReachable,
         HashSet<string> structurallyReachable)
     {
-        var nodes = new Dictionary<string, (string Model, SemanticNode Node)>(StringComparer.OrdinalIgnoreCase);
-        void Record(string model, SemanticNode node) => nodes.TryAdd(NodeKey(model, node), (model, node));
+        var scopedNodes = new Dictionary<string, (string Model, SemanticNode Node)>(StringComparer.OrdinalIgnoreCase);
+        var publishedNodes = new Dictionary<string, (string Model, SemanticNode Node)>(StringComparer.OrdinalIgnoreCase);
+        void Record(string model, SemanticNode node, bool published)
+        {
+            scopedNodes.TryAdd(NodeKey(model, node), (model, node));
+            if (published)
+            {
+                var visible = node with { Report = null };
+                publishedNodes.TryAdd(NodeKey(model, visible), (model, visible));
+            }
+        }
 
         foreach (var usage in usages)
         {
-            Record(usage.SemanticModel, Source(usage));
+            Record(usage.SemanticModel, Source(usage), published: true);
         }
 
         foreach (var edge in dependencies)
         {
-            Record(edge.SemanticModel, Source(edge));
-            Record(edge.SemanticModel, Target(edge));
+            Record(edge.SemanticModel, Source(edge), published: true);
+            Record(edge.SemanticModel, Target(edge), published: true);
         }
 
-        return nodes
+        foreach (var (model, node) in reportMeasureNodes)
+        {
+            Record(model, node, published: false);
+        }
+
+        // Ordered as the published rows are, with a report measure's owner last, so an ordinary node has
+        // the same position in both views.
+        var scoped = scopedNodes
             .Select(entry => new SemanticNodeReachability(
                 SemanticModel: entry.Value.Model,
                 Table: entry.Value.Node.Table,
@@ -1661,12 +1699,38 @@ internal static class SemanticDependencyAnalyzer
                 ObjectType: entry.Value.Node.ObjectType,
                 HierarchyName: entry.Value.Node.HierarchyName,
                 ReachableFromReport: directlyReachable.Contains(entry.Key),
-                ReachableFromModelStructure: structurallyReachable.Contains(entry.Key)))
+                ReachableFromModelStructure: structurallyReachable.Contains(entry.Key))
+            {
+                Report = entry.Value.Node.Report,
+            })
+            .OrderBy(node => node.SemanticModel, StringComparer.OrdinalIgnoreCase)
+            .ThenBy(node => node.Table, StringComparer.OrdinalIgnoreCase)
+            .ThenBy(node => node.ObjectName, StringComparer.OrdinalIgnoreCase)
+            .ThenBy(node => node.ObjectType, StringComparer.Ordinal)
+            .ThenBy(node => node.Report ?? string.Empty, StringComparer.OrdinalIgnoreCase)
+            .ToArray();
+
+        var owners = scoped
+            .GroupBy(
+                node => SemanticNodeIdentity.Create(
+                    node.SemanticModel, node.Table, node.ObjectName, node.ObjectType, node.HierarchyName),
+                StringComparer.OrdinalIgnoreCase)
+            .ToDictionary(group => group.Key, group => group.ToArray(), StringComparer.OrdinalIgnoreCase);
+        var published = publishedNodes
+            .Select(entry => new SemanticNodeReachability(
+                SemanticModel: entry.Value.Model,
+                Table: entry.Value.Node.Table,
+                ObjectName: entry.Value.Node.ObjectName,
+                ObjectType: entry.Value.Node.ObjectType,
+                HierarchyName: entry.Value.Node.HierarchyName,
+                ReachableFromReport: owners[entry.Key].Any(node => node.ReachableFromReport),
+                ReachableFromModelStructure: owners[entry.Key].Any(node => node.ReachableFromModelStructure)))
             .OrderBy(node => node.SemanticModel, StringComparer.OrdinalIgnoreCase)
             .ThenBy(node => node.Table, StringComparer.OrdinalIgnoreCase)
             .ThenBy(node => node.ObjectName, StringComparer.OrdinalIgnoreCase)
             .ThenBy(node => node.ObjectType, StringComparer.Ordinal)
             .ToArray();
+        return (scoped, published);
     }
 
     private static SemanticTableUsage[] ClassifyTables(
@@ -1674,7 +1738,7 @@ internal static class SemanticDependencyAnalyzer
         IReadOnlyList<SemanticObjectUsage> usages,
         IReadOnlyList<SemanticDependencyEdge> dependencies,
         IReadOnlySet<string> structuralRoots,
-        IReadOnlySet<string> reportMeasureNodes,
+        IEnumerable<string> reportMeasureNodes,
         IReadOnlySet<string> reportMeasureRoots,
         IReadOnlySet<string> functionNodes)
     {
@@ -1794,7 +1858,11 @@ internal static class SemanticDependencyAnalyzer
             target.HierarchyName,
             kind,
             evidencePath,
-            evidenceText);
+            evidenceText)
+        {
+            FromReport = source.Report,
+            ToReport = target.Report,
+        };
     }
 
     private static UnresolvedSemanticDependency CreateUnresolved(
@@ -1823,16 +1891,19 @@ internal static class SemanticDependencyAnalyzer
                 .Select(candidate => FieldIdentity.Create(
                     candidate.Table, candidate.ObjectName, candidate.ObjectType, candidate.HierarchyName))
                 .ToHashSet(StringComparer.OrdinalIgnoreCase),
+            FromReport = source.Report,
         };
     }
 
     private static string NodeKey(string model, SemanticNode node)
     {
-        return string.Join('\u001e', model, FieldIdentity.Create(
+        return SemanticNodeIdentity.Create(
+            model,
             node.Table,
             node.ObjectName,
             node.ObjectType,
-            node.HierarchyName));
+            node.HierarchyName,
+            node.Report);
     }
 
     private static SemanticNode Source(SemanticObjectUsage usage)
@@ -1842,21 +1913,22 @@ internal static class SemanticDependencyAnalyzer
 
     private static SemanticNode Source(SemanticDependencyEdge edge)
     {
-        return Target(edge.FromTable, edge.FromObjectName, edge.FromObjectType, edge.FromHierarchyName);
+        return Target(edge.FromTable, edge.FromObjectName, edge.FromObjectType, edge.FromHierarchyName, edge.FromReport);
     }
 
     private static SemanticNode Target(SemanticDependencyEdge edge)
     {
-        return Target(edge.ToTable, edge.ToObjectName, edge.ToObjectType, edge.ToHierarchyName);
+        return Target(edge.ToTable, edge.ToObjectName, edge.ToObjectType, edge.ToHierarchyName, edge.ToReport);
     }
 
     private static SemanticNode Target(
         string table,
         string objectName,
         string objectType,
-        string? hierarchyName = null)
+        string? hierarchyName = null,
+        string? report = null)
     {
-        return new SemanticNode(table, objectName, objectType, hierarchyName);
+        return new SemanticNode(table, objectName, objectType, hierarchyName, report);
     }
 
     private static string QualifiedKey(string table, string objectName) =>
@@ -2089,11 +2161,16 @@ internal static class SemanticDependencyAnalyzer
 
     }
 
+    /// <summary>
+    /// One node of the graph. <see cref="Report"/> is the owning report of a report measure and null for
+    /// every other node; see <see cref="SemanticNodeIdentity"/>.
+    /// </summary>
     private sealed record SemanticNode(
         string Table,
         string ObjectName,
         string ObjectType,
-        string? HierarchyName);
+        string? HierarchyName,
+        string? Report = null);
 
     private sealed record UserRelationshipCallCandidate(
         string SemanticModel,
@@ -2111,4 +2188,10 @@ internal sealed record SemanticDependencyAnalysis(
 {
     /// <summary>Every report measure of a report bound to a local model, with its own direct-usage evidence.</summary>
     public ReportMeasureUsage[] ReportMeasureUsages { get; init; } = [];
+
+    /// <summary>
+    /// One row per graph node, report measures scoped to their report. <see cref="NodeReachability"/> is
+    /// its published schema-0.26 projection.
+    /// </summary>
+    public SemanticNodeReachability[] ReportScopedNodeReachability { get; init; } = [];
 }

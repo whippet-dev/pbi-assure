@@ -16,6 +16,11 @@ namespace PbiAssure.Core.Inventory;
 /// cannot follow such a path.
 ///
 /// Additive and presentation-neutral: it states reachability and draws no conclusion from it.
+///
+/// The record is used for two views. <see cref="ProjectInventory.ReportScopedNodeReachability"/> has
+/// one row per graph node, with a report measure scoped to its report by <see cref="Report"/>.
+/// <see cref="ProjectInventory.SemanticNodeReachability"/> is the published schema-0.26 projection of
+/// it, in which <see cref="Report"/> is always null and same-named report measures share one row.
 /// </summary>
 public sealed record SemanticNodeReachability(
     string SemanticModel,
@@ -24,4 +29,12 @@ public sealed record SemanticNodeReachability(
     string ObjectType,
     string? HierarchyName,
     bool ReachableFromReport,
-    bool ReachableFromModelStructure);
+    bool ReachableFromModelStructure)
+{
+    /// <summary>
+    /// On a report-scoped row for a report measure, the project-relative path of the report that owns
+    /// it; otherwise null. In process only: the published row has no owner.
+    /// </summary>
+    [System.Text.Json.Serialization.JsonIgnore]
+    public string? Report { get; init; }
+}

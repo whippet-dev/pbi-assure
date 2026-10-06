@@ -30,4 +30,11 @@ public sealed record UnresolvedSemanticDependency(
     /// </summary>
     [JsonIgnore]
     public IReadOnlySet<string>? CandidateTargets { get; init; }
+
+    /// <summary>
+    /// The project-relative path of the report that owns the source, when the source is a report
+    /// measure; otherwise null. In process only. See <see cref="SemanticNodeIdentity"/>.
+    /// </summary>
+    [JsonIgnore]
+    public string? FromReport { get; init; }
 }

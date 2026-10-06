@@ -12,6 +12,10 @@ internal static class SemanticDependencyReach
     /// <summary>
     /// Every object reachable from <paramref name="seeds"/> over the model's edges, as
     /// <see cref="FieldIdentity"/> keys. A seed is included only if some path leads back to it.
+    ///
+    /// The keys leave out a report measure's owning report. That is safe for the seeds this is used
+    /// with — functions and model objects — because no model object or function has an edge to a report
+    /// measure, so no closure from them reaches one.
     /// </summary>
     public static HashSet<string> Closure(
         IReadOnlyList<SemanticDependencyEdge> dependencies,

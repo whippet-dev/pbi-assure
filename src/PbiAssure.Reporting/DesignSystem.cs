@@ -1524,7 +1524,6 @@ public static class DesignSystem
         .lineage-more { margin-top: 0.375rem; }
         .lineage-evidence li { overflow-wrap: anywhere; }
         .lineage-shared { color: var(--pa-text-2); font-size: var(--pa-t-2xs); }
-        p.lineage-shared { max-width: 78ch; margin: 0; }
 
         /* Path to report: plain steps for now; a later layout draws them as the card's spine. */
         .lineage-path { min-width: 0; }

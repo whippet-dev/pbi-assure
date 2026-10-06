@@ -1123,7 +1123,7 @@ public static partial class HtmlReportRenderer
                 .Any(reference => reference.ObjectType == SemanticObjectTypes.Measure &&
                     string.Equals(reference.Table, measure.Entity, StringComparison.OrdinalIgnoreCase) &&
                     string.Equals(reference.ObjectName, measure.Name, StringComparison.OrdinalIgnoreCase));
-            var card = lineage.CardForReportMeasure(report.Name, measure.Entity, measure.Name);
+            var card = lineage.CardForReportMeasure(report, measure.Entity, measure.Name);
             html.Append("            <details class=\"semantic-table\"");
             if (card?.DetailsAnchor is not null)
             {

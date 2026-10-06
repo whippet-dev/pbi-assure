@@ -212,7 +212,8 @@ internal static class SemanticUsagePresentation
 
     /// <summary>
     /// The eligible incoming dependency of the given kinds, chosen by qualified name so the explanation
-    /// never depends on the order dependencies were parsed in.
+    /// never depends on the order dependencies were parsed in. Same-named report measures in different
+    /// reports are told apart by their owning report.
     /// </summary>
     private static SemanticDependencyEdge? FirstSupporting(
         SemanticGraphIndex index,
@@ -225,6 +226,7 @@ internal static class SemanticUsagePresentation
             .OrderBy(dependency => dependency.FromTable, StringComparer.OrdinalIgnoreCase)
             .ThenBy(dependency => dependency.FromObjectName, StringComparer.OrdinalIgnoreCase)
             .ThenBy(dependency => dependency.FromObjectType, StringComparer.Ordinal)
+            .ThenBy(dependency => dependency.FromReport ?? string.Empty, StringComparer.OrdinalIgnoreCase)
             .FirstOrDefault();
 
     /// <summary>
@@ -233,15 +235,20 @@ internal static class SemanticUsagePresentation
     /// The reachability comes from the scanner, which computed it while assigning the state; nothing is
     /// traversed or re-derived here. That matters for a path running through a node with no usage row of
     /// its own — a report measure or a DAX user-defined function — which a rule based on the states of
-    /// public objects could not follow.
+    /// public objects could not follow. A report measure's reachability is its own report's: a same-named
+    /// report measure in another report never supports the state, and nor does an edge whose owning
+    /// report is missing or contradicts its own evidence.
     /// </summary>
     private static bool SupportsClassification(
         SemanticGraphIndex index,
         SemanticObjectUsage usage,
         SemanticDependencyEdge dependency)
     {
-        var source = index.ReachabilityOfObject(
-            dependency.SemanticModel, dependency.FromTable, dependency.FromObjectName, dependency.FromObjectType);
+        var source = SemanticGraphIndex.HasConsistentOwnership(dependency)
+            ? index.ReachabilityOfObject(
+                dependency.SemanticModel, dependency.FromTable, dependency.FromObjectName, dependency.FromObjectType,
+                dependency.FromReport)
+            : null;
         if (source is null)
         {
             return false;

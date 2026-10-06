@@ -85,6 +85,7 @@ public static class ProjectScanner
         {
             AnalysisLimitations = analysisLimitations,
             SemanticNodeReachability = dependencyAnalysis.NodeReachability,
+            ReportScopedNodeReachability = dependencyAnalysis.ReportScopedNodeReachability,
             ReportMeasureUsages = dependencyAnalysis.ReportMeasureUsages,
         };
 
