@@ -73,7 +73,7 @@ public sealed class ReportOverviewInteractionTests(PrivacyE2EFixture fixture)
             await page.Locator("#summary").GetByRole(AriaRole.Link, new() { Name = label, Exact = true }).FocusAsync();
             await page.Keyboard.PressAsync("Enter");
             Assert.True(await page.Locator($"#{section}").IsVisibleAsync());
-            Assert.Equal(section, await page.EvaluateAsync<string>("document.activeElement.id"));
+            Assert.Equal(section + "-heading", await page.EvaluateAsync<string>("document.activeElement.id"));
         }
     }
 

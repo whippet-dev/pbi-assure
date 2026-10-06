@@ -556,7 +556,7 @@ public sealed partial class SemanticLineageTests
         Assert.Contains("<section id=\"lineage\" class=\"report-section lineage-section\" data-report-section=\"lineage\"", html, StringComparison.Ordinal);
         Assert.DoesNotContain("data-section-target=\"lineage\"", html, StringComparison.Ordinal);
         Assert.DoesNotContain("href=\"#lineage\"", html, StringComparison.Ordinal);
-        Assert.Contains("<a href=\"#semantic-usage\">Back to Semantic model</a>", html, StringComparison.Ordinal);
+        Assert.Contains("<a href=\"#semantic-usage\">Open Semantic model</a>", html, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -571,7 +571,7 @@ public sealed partial class SemanticLineageTests
         Assert.Contains("? target.querySelector('h2')", html, StringComparison.Ordinal);
         Assert.Contains("activateSection('summary', { focus: true });", html, StringComparison.Ordinal);
         Assert.Contains("if (mainContent) mainContent.dataset.activeSection = sectionName;", html, StringComparison.Ordinal);
-        Assert.Contains("document.getElementById(`${filteredItem.dataset.investigationItem}-clear-filters`)?.click();", html, StringComparison.Ordinal);
+        Assert.DoesNotContain("document.getElementById(`${filteredItem.dataset.investigationItem}-clear-filters`)?.click();", html, StringComparison.Ordinal);
     }
 
     [Fact]

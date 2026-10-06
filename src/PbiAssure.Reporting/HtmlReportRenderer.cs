@@ -104,6 +104,8 @@ public static partial class HtmlReportRenderer
         html.AppendLine("        </ul>");
         html.AppendLine("      </nav>");
         html.AppendLine("  <main id=\"main-content\" class=\"report-content\" tabindex=\"-1\">");
+        html.AppendLine("    <p id=\"investigation-return-row\" class=\"investigation-return\" hidden><a id=\"investigation-return\">Return</a></p>");
+        html.AppendLine("    <p id=\"investigation-selection-note\" class=\"group-explanation\" hidden>This item is outside the current collection filters. Your search and filters are unchanged.</p>");
     }
 
     /// <summary>
@@ -3482,16 +3484,15 @@ public static partial class HtmlReportRenderer
       showLineageCard(null);
 
       const activateSection = (sectionName, options = {}) => {
-        const { focus = false, updateFragment = false } = options;
+        const { focus = false, parentSection = sectionName } = options;
         if (!reportSections.some(section => section.dataset.reportSection === sectionName)) return false;
         reportSections.forEach(section => { section.hidden = section.dataset.reportSection !== sectionName; });
         if (mainContent) mainContent.dataset.activeSection = sectionName;
         sectionLinks.forEach(link => {
-          const selected = link.dataset.sectionTarget === sectionName;
+          const selected = link.dataset.sectionTarget === parentSection;
           if (selected) link.setAttribute('aria-current', 'page');
           else link.removeAttribute('aria-current');
         });
-        if (updateFragment) history.pushState(null, '', `#${sectionName}`);
         if (focus) {
           const heading = document.querySelector(`[data-report-section="${sectionName}"] h2`);
           heading?.focus({ preventScroll: true });
@@ -3505,6 +3506,7 @@ public static partial class HtmlReportRenderer
         // keep their current behaviour; a zero-count state is still a valid filtered destination.
         const usageState = usageShortcuts.get(fragment);
         if (usageState) {
+          if (options.restore) return activateSection('semantic-usage', { focus: Boolean(options.focus) });
           const search = document.getElementById('usage-search');
           const state = document.getElementById('usage-usage-state');
           if (search && state) {
@@ -3520,14 +3522,15 @@ public static partial class HtmlReportRenderer
         }
         const target = document.getElementById(fragment);
         if (!target) return false;
-        // A link can point at a row the current search or filters hide, including system-generated
-        // objects, which the Semantic model hides by default. Clear that list's filters so the
-        // destination is actually shown.
-        const filteredItem = target.closest('[data-investigation-item]');
-        if (filteredItem?.hidden) document.getElementById(`${filteredItem.dataset.investigationItem}-clear-filters`)?.click();
+        // Reveal only the selected destination and its containers; collection controls and counts
+        // retain their existing semantics. The history helper removes this temporary exception.
+        revealSelectedDestination(target);
         const sectionName = sectionForTarget(target);
-        if (sectionName) activateSection(sectionName);
         const lineageCard = target.closest('[data-lineage-card]');
+        const parentSection = sectionName === 'lineage'
+          ? ['visual', 'report-measure'].includes(lineageCard?.dataset.lineageCard) ? 'reports' : 'semantic-usage'
+          : sectionName;
+        if (sectionName) activateSection(sectionName, { parentSection });
         if (sectionName === 'lineage') showLineageCard(lineageCard);
         revealDetails(target);
         if (options.focus) {
@@ -3538,7 +3541,8 @@ public static partial class HtmlReportRenderer
             focusTarget.setAttribute('tabindex', '-1');
             focusTarget.focus({ preventScroll: true });
           }
-          requestAnimationFrame(() => target.scrollIntoView({ block: 'start' }));
+          const revision = routeRevision;
+          requestAnimationFrame(() => { if (revision === routeRevision) target.scrollIntoView({ block: 'start' }); });
         }
         return true;
       };
@@ -3621,11 +3625,13 @@ public static partial class HtmlReportRenderer
       document.querySelectorAll('[data-clear-finding-filters]').forEach(button => button.addEventListener('click', clearFindingFilters));
       document.querySelectorAll('[data-filter-findings-by-rule]').forEach(button => button.addEventListener('click', () => {
         if (!findingRule) return;
+        navigate('findings', button);
         if (findingSearch) findingSearch.value = '';
         findingFacets.forEach(control => { control.value = ''; });
         findingRule.value = button.dataset.filterFindingsByRule;
         filterFindings();
         activateSection('findings');
+        saveEntry();
         requestAnimationFrame(() => {
           findingStatus?.scrollIntoView({ block: 'start' });
           findingStatus?.focus({ preventScroll: true });
@@ -3641,6 +3647,7 @@ public static partial class HtmlReportRenderer
         { prefix: 'theme', singular: 'visual', plural: 'visuals' },
         { prefix: 'theme-governance', singular: 'review item', plural: 'review items' }
       ];
+      const investigationRunners = [];
 
       const setupInvestigation = ({ prefix, singular, plural }) => {
         const search = document.getElementById(`${prefix}-search`);
@@ -3698,6 +3705,7 @@ public static partial class HtmlReportRenderer
         facets.forEach(control => control.addEventListener('change', run));
         clear.addEventListener('click', clearAll);
         document.querySelector(`[data-clear-investigation="${prefix}"]`)?.addEventListener('click', clearAll);
+        investigationRunners.push(run);
         run();
       };
       investigationConfigs.forEach(setupInvestigation);
@@ -3713,35 +3721,7 @@ public static partial class HtmlReportRenderer
         });
       });
 
-      sectionLinks.forEach(link => {
-        link.addEventListener('click', event => {
-          event.preventDefault();
-          activateSection(link.dataset.sectionTarget, { focus: true, updateFragment: true });
-        });
-      });
-
-      document.querySelectorAll('a[href^="#"]').forEach(link => {
-        if (link.classList.contains('skip-link') || link.dataset.sectionTarget) return;
-        link.addEventListener('click', event => {
-          const fragment = link.getAttribute('href').slice(1);
-          if (!revealFragmentTarget(fragment, { focus: true })) return;
-          event.preventDefault();
-          history.pushState(null, '', `#${fragment}`);
-        });
-      });
-
-      const initialFragment = decodeURIComponent(window.location.hash.slice(1));
-      if (!initialFragment || !revealFragmentTarget(initialFragment)) activateSection('summary');
-      window.addEventListener('hashchange', () => {
-        const fragment = decodeURIComponent(window.location.hash.slice(1));
-        // Back to the report's first, hash-less entry returns to where the report opens.
-        if (!fragment) {
-          activateSection('summary', { focus: true });
-          return;
-        }
-
-        revealFragmentTarget(fragment, { focus: true });
-      });
+    """ + InvestigationHistoryScript + """
     })();
     """;
 

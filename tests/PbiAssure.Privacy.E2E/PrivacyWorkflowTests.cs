@@ -387,7 +387,7 @@ public sealed class PrivacyWorkflowTests(PrivacyE2EFixture fixture)
 
     private static async Task ExerciseReportContentAsync(IPage report)
     {
-        await report.Locator("a[href='#summary']").ClickAsync();
+        await report.Locator(".section-nav a[href='#summary']").ClickAsync();
         await report.GetByRole(AriaRole.Heading, new() { Name = "Summary", Exact = true })
             .WaitForAsync(new LocatorWaitForOptions { State = WaitForSelectorState.Visible });
         var limits = report.Locator("#summary details.scope");

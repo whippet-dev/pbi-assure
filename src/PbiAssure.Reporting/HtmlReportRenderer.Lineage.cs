@@ -209,7 +209,7 @@ public static partial class HtmlReportRenderer
                     .Append(card.Kind == LineageFocusKind.Visual ? "Visual details" : "Object details").Append("</a>");
             }
 
-            html.AppendLine("<a href=\"#reports\">Back to Report pages</a></p>");
+            html.AppendLine("<a href=\"#reports\">Open Report pages</a></p>");
             return;
         }
 
@@ -218,7 +218,7 @@ public static partial class HtmlReportRenderer
             html.Append("<a href=\"#").Append(Encode(card.DetailsAnchor)).Append("\">Object details</a>");
         }
 
-        html.AppendLine("<a href=\"#semantic-usage\">Back to Semantic model</a></p>");
+        html.AppendLine("<a href=\"#semantic-usage\">Open Semantic model</a></p>");
     }
 
     /// <summary>

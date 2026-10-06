@@ -732,6 +732,9 @@ public static class DesignSystem
         main > section > h2 { scroll-margin-top: 1rem; }
         .section-intro { max-width: 78ch; margin: 0 0 1rem; color: var(--pa-text-2); }
         .group-explanation { max-width: 74ch; margin: 0 0 0.5rem; color: var(--pa-text-2); font-size: var(--pa-t-xs); }
+        .investigation-return { position: sticky; top: 0.5rem; z-index: 3; width: fit-content; max-width: 100%; margin: 1rem 0 0; padding: 0.375rem 0.625rem; border: 1px solid var(--pa-line-strong); border-radius: var(--pa-r2); background: var(--pa-surface); font-weight: 600; }
+        .investigation-return a { overflow-wrap: anywhere; }
+        #investigation-selection-note { margin-top: 0.5rem; }
 
         #summary { margin-top: 1rem; }
         #summary > .section-intro { margin-bottom: 0.625rem; }
@@ -1693,7 +1696,7 @@ public static class DesignSystem
         @media print {
           body { background: #fff; color: #000; }
           .report-workspace { display: block; }
-          .skip-link, .section-navigator, .filters, .filter-status, .details-controls, .finding-investigation, .finding-results-row, .filter-chips, .finding-empty-state, .info-tooltip, .appearance-control { display: none; }
+          .skip-link, .section-navigator, .filters, .filter-status, .details-controls, .finding-investigation, .finding-results-row, .filter-chips, .finding-empty-state, .info-tooltip, .appearance-control, .investigation-return, #investigation-selection-note { display: none; }
           .report-section[hidden] { display: block !important; }
           /* Lineage prints only when it is what the reader is looking at, and then only the card on screen. */
           .report-section[data-report-section="lineage"][hidden] { display: none !important; }

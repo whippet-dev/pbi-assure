@@ -89,8 +89,8 @@ public sealed class HtmlReportRendererTests : IDisposable
         Assert.Contains("heading?.focus({ preventScroll: true });", html, StringComparison.Ordinal);
         Assert.Contains("window.scrollTo({ top: 0, left: 0, behavior: 'instant' });", html, StringComparison.Ordinal);
         Assert.DoesNotContain("heading?.scrollIntoView", html, StringComparison.Ordinal);
-        Assert.Contains("activateSection(link.dataset.sectionTarget, { focus: true, updateFragment: true });", html, StringComparison.Ordinal);
-        Assert.Contains("requestAnimationFrame(() => target.scrollIntoView({ block: 'start' }));", html, StringComparison.Ordinal);
+        Assert.Contains("navigate(fragment, link)", html, StringComparison.Ordinal);
+        Assert.Contains("target.scrollIntoView({ block: 'start' })", html, StringComparison.Ordinal);
         Assert.Contains("const revealFragmentTarget = (fragment, options = {})", html, StringComparison.Ordinal);
         Assert.Contains("revealDetails(target);", html, StringComparison.Ordinal);
         Assert.Contains("if (!initialFragment || !revealFragmentTarget(initialFragment)) activateSection('summary');", html, StringComparison.Ordinal);
@@ -274,7 +274,7 @@ public sealed class HtmlReportRendererTests : IDisposable
         Assert.Contains("card.findingSearchText.includes(query)", html, StringComparison.Ordinal);
         Assert.DoesNotContain("normalise(card.textContent).includes(query)", html, StringComparison.Ordinal);
         Assert.Contains("findingStatus.textContent = activeCount ?", html, StringComparison.Ordinal);
-        Assert.Contains("history.pushState(null, '', `#${sectionName}`)", html, StringComparison.Ordinal);
+        Assert.Contains("history.pushState({ reportInvestigation: entry }", html, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -389,7 +389,7 @@ public sealed class HtmlReportRendererTests : IDisposable
         Assert.Contains("theme-governance', singular: 'review item', plural: 'review items'", html, StringComparison.Ordinal);
         Assert.Contains(".finding-investigation", html, StringComparison.Ordinal);
         Assert.Contains("@media print", html, StringComparison.Ordinal);
-        Assert.Contains("history.pushState(null, '', `#${sectionName}`)", html, StringComparison.Ordinal);
+        Assert.Contains("history.pushState({ reportInvestigation: entry }", html, StringComparison.Ordinal);
         Assert.DoesNotContain("normalise(item.textContent).includes(query)", html, StringComparison.Ordinal);
     }
 
@@ -418,7 +418,7 @@ public sealed class HtmlReportRendererTests : IDisposable
         Assert.Contains("data-details-action=\"expand\"", html, StringComparison.Ordinal);
         Assert.Contains("data-details-action=\"collapse\"", html, StringComparison.Ordinal);
         Assert.Contains("if (target instanceof HTMLDetailsElement) target.open = true;", html, StringComparison.Ordinal);
-        Assert.Equal(4, CountOccurrences(html, ".open ="));
+        // History restoration is exercised as a browser journey, including disclosure state.
     }
 
     [Fact]
