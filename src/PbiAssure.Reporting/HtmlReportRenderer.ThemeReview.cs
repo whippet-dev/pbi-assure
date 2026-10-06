@@ -183,6 +183,19 @@ public static partial class HtmlReportRenderer
         html.AppendLine("        <h3 id=\"theme-accessibility-heading\">Theme accessibility coverage</h3>");
         if (observations == 0)
             html.AppendLine("        <p class=\"theme-empty-state\">Automated theme accessibility checks are not available yet. Contrast will be reported only when PBI Assure can determine the colours used by Power BI reliably.</p>");
+        foreach (var report in inventory.Reports)
+        foreach (var observation in report.ThemeReview.AccessibilityObservations)
+        {
+            html.Append("<p>").Append(Encode(observation.Property + ": " + observation.Observation));
+            var page = report.Pages.FirstOrDefault(item => item.Name == observation.PageName);
+            var visual = page?.Visuals.FirstOrDefault(item => item.Name == observation.VisualName);
+            if (page is not null && visual is not null)
+            {
+                html.Append(" · ");
+                ContextLink(html, VisualViewId(report, page, visual, "reviews"), "Open visual Reviews");
+            }
+            html.AppendLine("</p>");
+        }
         html.AppendLine("      </section>");
     }
 
@@ -204,7 +217,7 @@ public static partial class HtmlReportRenderer
         foreach (var context in examples.Take(20))
         {
             html.Append("              <li><strong>Page:</strong> ").Append(Encode(context.Page.DisplayName)).Append(" · ")
-                .Append(Encode(VisualDisplayName(context.Visual))).Append(" · ").Append(Encode(HumanizeVisualType(context.Visual.VisualType))).AppendLine("</li>");
+                .Append("<a href=\"#").Append(Encode(VisualViewId(context.Report, context.Page, context.Visual, "reviews"))).Append("\">").Append(Encode(VisualDisplayName(context.Visual))).Append("</a> · ").Append(Encode(HumanizeVisualType(context.Visual.VisualType))).AppendLine("</li>");
         }
         if (examples.Length > 20) html.Append("              <li>").Append((examples.Length - 20).ToString("N0", CultureInfo.InvariantCulture)).AppendLine(" more affected visuals</li>");
         html.AppendLine("            </ul></details>");
@@ -458,12 +471,15 @@ public static partial class HtmlReportRenderer
         var comparisons = string.Join('\u001f', observations.Where(item => item.ThemeComparison is not null).Select(item => item.ThemeComparison!.State).Distinct(StringComparer.Ordinal));
         var search = string.Join(' ', context.Report.Name, context.Page.DisplayName, VisualDisplayName(context.Visual), context.Visual.VisualType,
             string.Join(' ', observations.Select(item => $"{item.PropertyLabel} {item.NormalizedValue} {item.SelectorScope} {item.ExpressionSource} {item.ThemeComparison?.State} {item.ThemeComparison?.ThemeRuleValue}")));
-        html.Append("          <details class=\"theme-visual-card\" data-investigation-item=\"theme\" data-search-text=\"").Append(Encode(search))
+        html.Append("          <details id=\"").Append(Encode(VisualViewId(context.Report, context.Page, context.Visual, "formatting"))).Append("\" class=\"theme-visual-card\" data-investigation-item=\"theme\" data-search-text=\"").Append(Encode(search))
             .Append("\" data-filter-page=\"").Append(Encode(context.Page.DisplayName)).Append("\" data-filter-visual-type=\"").Append(Encode(context.Visual.VisualType ?? "Unknown"))
             .Append("\" data-filter-classification=\"").Append(Encode(classifications)).Append("\" data-filter-scope=\"").Append(Encode(scopes)).Append("\" data-filter-property=\"").Append(Encode(properties)).Append("\" data-filter-comparison=\"").Append(Encode(comparisons)).AppendLine("\">");
         html.Append("            <summary><span class=\"summary-copy\"><strong>").Append(Encode(VisualDisplayName(context.Visual))).Append("</strong><span><strong>Page:</strong> ")
             .Append(Encode(context.Page.DisplayName)).Append(" · ").Append(Encode(HumanizeVisualType(context.Visual.VisualType))).Append(" · ")
             .Append(observations.Length).Append(' ').Append(Pluralize(observations.Length, "formatting property", "formatting properties")).AppendLine("</span></span></summary>");
+        html.Append("<p>");
+        ContextLink(html, VisualViewId(context.Report, context.Page, context.Visual, "reviews"), "Open visual Reviews");
+        html.AppendLine("</p>");
         html.AppendLine("            <div class=\"theme-visual-body\"><div class=\"theme-observation-list\">");
         foreach (var observation in observations) AppendThemeObservation(html, context, observation);
         html.AppendLine("            </div></div></details>");

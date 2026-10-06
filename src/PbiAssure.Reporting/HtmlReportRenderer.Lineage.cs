@@ -38,7 +38,7 @@ public static partial class HtmlReportRenderer
         html.AppendLine("        <p class=\"section-intro\">Lineage shows what a model object depends on, what uses it and where the report uses it. Open an object in Semantic model and choose its Lineage view, or follow an object listed on a visual in Report pages.</p>");
         html.AppendLine("        <p><a href=\"#semantic-usage\">Go to Semantic model</a></p>");
         html.AppendLine("      </div>");
-        foreach (var card in lineage.Cards)
+        foreach (var card in lineage.Cards.Where(card => card.Kind != LineageFocusKind.Visual))
         {
             AppendLineageCard(html, inventory, card, coverage);
         }
@@ -625,7 +625,7 @@ public static partial class HtmlReportRenderer
             label = "Report-level use";
         }
 
-        AppendLineageNode(html, location.VisualCardId, label);
+        AppendLineageNode(html, location.VisualCardId is { } visualId ? VisualViewId(visualId, "summary") : null, label);
         var facts = new List<string>();
         if (location.Visual is not null && !compact)
         {
@@ -662,7 +662,7 @@ public static partial class HtmlReportRenderer
 
     private static void AppendLineageVisualUse(StringBuilder html, LineageVisualUse use)
     {
-        AppendLineageNode(html, use.Object.CardId, use.Object.Name);
+        AppendLineageNode(html, use.Object.CardId is { } objectId ? "sum-" + objectId[4..] : null, use.Object.Name);
         html.Append("<span class=\"lineage-meta\">").Append(Encode(SemanticLineageProjection.ObjectTypeLabel(use.Object.ObjectType)));
         var role = UsageRoleLabel(use.Location.OwnerReferences, use.Location.Location, hasVisual: true);
         if (!string.IsNullOrWhiteSpace(role))

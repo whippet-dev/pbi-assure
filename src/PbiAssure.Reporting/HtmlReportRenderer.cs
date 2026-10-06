@@ -28,6 +28,7 @@ public static partial class HtmlReportRenderer
         AppendRelationships(html, inventory);
         AppendRowLevelSecurity(html, inventory, coverage);
         AppendReportInventory(html, inventory, lineage);
+        AppendReportContexts(html, inventory, lineage);
         AppendFindings(html, inventory, mainFindings);
         AppendAnalysisCoverage(html, coverage);
         AppendThemeReview(html, inventory);
@@ -937,7 +938,7 @@ public static partial class HtmlReportRenderer
     {
         html.AppendLine("    <section id=\"reports\" class=\"report-section\" data-report-section=\"reports\" aria-labelledby=\"reports-heading\">");
         html.AppendLine("      <h2 id=\"reports-heading\" tabindex=\"-1\">Report pages</h2>");
-        html.AppendLine("      <p class=\"section-intro\">Browse the report page by page and visual by visual. Expand a visual to see the columns and measures it uses.</p>");
+        html.AppendLine("      <p class=\"section-intro\">Find a report, page or visual, then open its investigation context.</p>");
         if (inventory.Reports.Count == 0)
         {
             AppendSectionEmptyState(html, "No report pages available", "No supported Power BI report definition was found in the selected project.", "unavailable");
@@ -959,14 +960,9 @@ public static partial class HtmlReportRenderer
         html.AppendLine("      <div id=\"page-list\" class=\"page-list\">");
         foreach (var report in inventory.Reports)
         {
-            if (inventory.ReportCount > 1)
-            {
-                html.Append("        <h3>").Append(Encode(report.Name)).AppendLine("</h3>");
-            }
-
-            AppendModelConnection(html, report);
-            AppendReportMeasures(html, lineage, report);
-
+            html.Append("<h3>");
+            ContextLink(html, ReportContextId(report) + "-summary", report.Name);
+            html.AppendLine("</h3>");
             foreach (var page in report.Pages)
             {
                 AppendPageCard(html, inventory, lineage, report, page);
@@ -1002,39 +998,19 @@ public static partial class HtmlReportRenderer
             return;
         }
 
-        html.Append("        <details class=\"page-card\"><summary><span class=\"summary-copy\"><span class=\"kicker\">Report calculations</span><strong>")
-            .Append(report.ReportMeasureCount.ToString(CultureInfo.InvariantCulture))
-            .AppendLine(" measures defined only in this report</strong><span>Expand to review their formulas and dependencies.</span></span></summary>");
-        html.AppendLine("          <div class=\"semantic-table-list\">");
+        html.AppendLine("<h4>Report calculations</h4><p>These measures are authored in this report, not in its semantic model.</p><ul class=\"plain-list\">");
         foreach (var measure in report.ReportMeasures.OrderBy(item => item.Name, StringComparer.OrdinalIgnoreCase))
         {
-            var isUsed = report.FieldReferences
-                .Concat(report.Pages.SelectMany(page => page.FieldReferences))
-                .Concat(report.Pages.SelectMany(page => page.Visuals.SelectMany(visual => visual.FieldReferences)))
-                .Any(reference => reference.ObjectType == SemanticObjectTypes.Measure &&
-                    string.Equals(reference.Table, measure.Entity, StringComparison.OrdinalIgnoreCase) &&
-                    string.Equals(reference.ObjectName, measure.Name, StringComparison.OrdinalIgnoreCase));
             var card = lineage.CardForReportMeasure(report, measure.Entity, measure.Name);
-            html.Append("            <details class=\"semantic-table\"");
+            html.Append("<li");
             if (card?.DetailsAnchor is not null)
-            {
                 html.Append(" id=\"").Append(Encode(card.DetailsAnchor)).Append("\" data-object-summary=\"").Append(Encode(ObjectSummaryId(card))).Append('"');
-            }
-
-            html.Append("><summary><span class=\"summary-copy\"><strong>")
-                .Append(Encode(measure.Name)).Append("</strong><span>")
-                .Append(Encode(measure.Entity)).Append(" · ")
-                .Append(isUsed ? "used on the report" : "not placed directly on the report")
-                .AppendLine("</span></span></summary>");
-            if (card is not null)
-            {
-                html.Append("              <p><a href=\"#").Append(Encode(ObjectSummaryId(card)))
-                    .Append("\">Open ").Append(Encode(card.Title)).AppendLine("</a></p>");
-            }
-            html.AppendLine("            </details>");
+            html.Append('>');
+            if (card is not null) ContextLink(html, ObjectSummaryId(card), card.Title);
+            else html.Append(Encode(measure.Name));
+            html.AppendLine("</li>");
         }
-        html.AppendLine("          </div>");
-        html.AppendLine("        </details>");
+        html.AppendLine("</ul>");
     }
 
     private static void AppendRelationships(StringBuilder html, ProjectInventory inventory)
@@ -1392,7 +1368,7 @@ public static partial class HtmlReportRenderer
         html.AppendLine(">");
         html.Append("          <summary><span class=\"summary-copy\"><span class=\"kicker\">")
             .Append(pageNumber is null ? "Report page" : $"Page {pageNumber}").Append("</span><strong>")
-            .Append(Encode(page.DisplayName)).Append("</strong>");
+            .Append("<a href=\"#").Append(Encode(PageContextId(report, page) + "-summary")).Append("\">").Append(Encode(page.DisplayName)).Append("</a></strong>");
         AppendSummaryMetadata(
             html,
             ("Page type", PageRole(page)),
@@ -1404,127 +1380,21 @@ public static partial class HtmlReportRenderer
             html.AppendLine("            <span class=\"badge badge-neutral\">Landing page</span>");
         }
 
+        var accessibilityCount = inventory.Findings.Count(finding => finding.Category == AssuranceCategories.Accessibility &&
+            string.Equals(finding.Report, report.Name, StringComparison.OrdinalIgnoreCase) &&
+            (string.Equals(finding.Page, page.Name, StringComparison.OrdinalIgnoreCase) ||
+             string.Equals(finding.PageDisplayName, page.DisplayName, StringComparison.OrdinalIgnoreCase)));
         if (pageFindings > 0)
-        {
-            html.Append("            <span class=\"count-pill\">").Append(pageFindings.ToString(CultureInfo.InvariantCulture))
-                .Append(pageFindings == 1 ? " issue" : " issues").AppendLine("</span>");
-        }
+            html.Append("<span class=\"secondary\">").Append(pageFindings - accessibilityCount).Append(" findings · ")
+                .Append(accessibilityCount).AppendLine(" accessibility observations</span>");
 
         html.AppendLine("          </summary>");
         html.AppendLine("          <div class=\"page-body\">");
-        html.AppendLine("            <dl class=\"fact-strip\">");
-        AppendFact(html, "Visuals", page.VisualCount.ToString(CultureInfo.InvariantCulture));
-        AppendFact(html, "Page filters", page.FilterCount.ToString(CultureInfo.InvariantCulture));
-        AppendFact(html, "Configured visual interactions", page.VisualInteractionCount.ToString(CultureInfo.InvariantCulture));
-        AppendFact(html, "Model object references", page.FieldReferenceCount.ToString(CultureInfo.InvariantCulture));
-        html.AppendLine("            </dl>");
-
-        if (page.FieldReferences.Count > 0)
-        {
-            html.AppendLine("            <h3>Objects used at page level</h3>");
-            html.AppendLine("            <p class=\"secondary\">These are used by page filters, drillthrough or other page-level settings.</p>");
-            AppendGroupedFieldReferenceList(html, lineage, report, page.FieldReferences, visualScope: false);
-        }
-
-        html.AppendLine("            <h3>Visuals on this page</h3>");
-        if (page.Visuals.Count == 0)
-        {
-            html.AppendLine("            <p>No visuals were found on this page.</p>");
-        }
-        else
-        {
-            html.AppendLine("            <div class=\"visual-list\">");
-            foreach (var visual in page.Visuals)
-            {
-                AppendVisualCard(html, inventory, lineage, report, page, visual, hierarchyContexts[visual.RelativePath]);
-            }
-
-            html.AppendLine("            </div>");
-        }
-
-        html.AppendLine("          </div>");
-        html.AppendLine("        </details>");
-    }
-
-    private static void AppendVisualCard(
-        StringBuilder html,
-        ProjectInventory inventory,
-        SemanticLineageProjection lineage,
-        ReportInventory report,
-        PageInventory page,
-        VisualInventory visual,
-        VisualHierarchyContext hierarchyContext)
-    {
-        var relatedFindings = inventory.Findings
-            .Select((finding, index) => (Finding: finding, Index: index))
-            .Where(item =>
-                string.Equals(item.Finding.Report, report.Name, StringComparison.OrdinalIgnoreCase) &&
-                string.Equals(item.Finding.Page, page.Name, StringComparison.OrdinalIgnoreCase) &&
-                string.Equals(item.Finding.Visual, visual.Name, StringComparison.OrdinalIgnoreCase))
-            .ToArray();
-
-        html.Append("              <details id=\"").Append(Encode(VisualAnchor(report, page, visual)))
-            .AppendLine("\" class=\"visual-card\">");
-        html.AppendLine("                <summary><span class=\"summary-copy\">");
-        html.Append("                  <span class=\"visual-name\">");
-        AppendVisualIdentity(html, visual);
-        html.Append("</span><span>").Append(Encode(DescribePosition(page, visual))).Append(" · ")
-            .Append(visual.DistinctFieldCount.ToString(CultureInfo.InvariantCulture))
-            .Append(visual.DistinctFieldCount == 1 ? " object used" : " objects used").AppendLine("</span></span>");
-        if (relatedFindings.Length > 0)
-        {
-            html.Append("                  <span class=\"count-pill\">").Append(relatedFindings.Length.ToString(CultureInfo.InvariantCulture))
-                .Append(relatedFindings.Length == 1 ? " issue" : " issues").AppendLine("</span>");
-        }
-
-        html.AppendLine("                </summary>");
-        html.AppendLine("                <div class=\"visual-body\">");
-        html.AppendLine("                  <h4>Objects used by this visual</h4>");
-        if (visual.FieldReferences.Count == 0)
-        {
-            html.AppendLine("                  <p>No model columns or measures were detected for this visual.</p>");
-        }
-        else
-        {
-            AppendGroupedFieldReferenceList(html, lineage, report, visual.FieldReferences, visualScope: true);
-        }
-
-        AppendVisualBehaviour(html, report, visual);
-        AppendAccessibilitySummary(
-            html,
-            visual,
-            hierarchyContext,
-            $"tab-order-help-{VisualAnchor(report, page, visual)}");
-
-        if (relatedFindings.Length > 0)
-        {
-            html.AppendLine("                  <h4>Issues for this visual</h4>");
-            html.AppendLine("                  <ul class=\"related-findings\">");
-            foreach (var item in relatedFindings)
-            {
-                html.Append("                    <li><span class=\"badge ").Append(SeverityClass(item.Finding.Severity))
-                    .Append("\">").Append(Encode(item.Finding.Severity)).Append("</span> <a href=\"#")
-                    .Append(FindingAnchor(inventory, item.Finding, item.Index)).Append("\">")
-                    .Append(Encode(FriendlyFindingMessage(item.Finding, new VisualContext(report, page, visual))))
-                    .AppendLine("</a></li>");
-            }
-
-            html.AppendLine("                  </ul>");
-        }
-
-        html.AppendLine("                  <details class=\"technical-details\"><summary>Technical details</summary>");
-        html.AppendLine("                    <dl class=\"technical-list\">");
-        AppendFact(html, "Visual ID", visual.Name, code: true);
-        AppendFact(html, "Source file", DisplayPath(visual.RelativePath), code: true);
-        AppendFact(html, "Position", FormatCoordinates(visual.Position));
-        AppendFact(
-            html,
-            "PBIR position.tabOrder value",
-            visual.Position.TabOrder?.ToString(CultureInfo.InvariantCulture) ?? "Not present");
-        html.AppendLine("                    </dl>");
-        html.AppendLine("                  </details>");
-        html.AppendLine("                </div>");
-        html.AppendLine("              </details>");
+        html.Append("<p>");
+        ContextLink(html, PageContextId(report, page) + "-summary", page.DisplayName);
+        html.AppendLine("</p>");
+        AppendContextVisualList(html, lineage, report, page);
+        html.AppendLine("</div></details>");
     }
 
     private static void AppendFieldReferenceList(StringBuilder html, IReadOnlyList<VisualFieldReference> references)
@@ -1556,7 +1426,8 @@ public static partial class HtmlReportRenderer
         SemanticLineageProjection lineage,
         ReportInventory report,
         IReadOnlyList<VisualFieldReference> references,
-        bool visualScope)
+        bool visualScope,
+        bool? pageScope = null)
     {
         var objects = references
             .GroupBy(reference => $"{reference.Table}\u001f{reference.ObjectName}\u001f{reference.ObjectType}", StringComparer.OrdinalIgnoreCase)
@@ -1579,7 +1450,7 @@ public static partial class HtmlReportRenderer
                     candidate.Role,
                     candidate.EvidencePath)),
                 visualScope,
-                pageScope: !visualScope);
+                pageScope: pageScope ?? !visualScope);
             // The object links to its lineage where it has a card. The list itself stays the visual's raw
             // references, exactly as before; lineage shows only those the direct-usage policy accepts.
             var card = lineage.CardForReference(report, reference);
@@ -2878,8 +2749,8 @@ public static partial class HtmlReportRenderer
 
             html.AppendLine("                </dl>");
             html.Append("                <a class=\"inventory-link\" href=\"#")
-                .Append(Encode(VisualAnchor(visualContext.Report, visualContext.Page, visualContext.Visual)))
-                .AppendLine("\">Open this visual under its report page</a>");
+                .Append(Encode(VisualViewId(visualContext.Report, visualContext.Page, visualContext.Visual, "reviews")))
+                .AppendLine("\">Open visual Reviews</a>");
             return;
         }
 
@@ -3442,8 +3313,35 @@ public static partial class HtmlReportRenderer
         if (!target) return false;
         // Collection object ids are kept as aliases. Never expose a second object destination.
         if (target.dataset.objectSummary) return revealFragmentTarget(target.dataset.objectSummary, options);
+        if (target.dataset.contextRoute) return revealFragmentTarget(target.dataset.contextRoute, options);
+        const reportContext = target.closest('[data-report-context]');
+        if (reportContext) {
+          const selectedView = target.closest('[data-context-view]')?.dataset.contextView
+            || (target === reportContext && reportContext.dataset.reportContext === 'Visual' ? 'objects'
+              : reportContext.dataset.activeContextView || 'summary');
+          reportContext.dataset.activeContextView = selectedView;
+          document.querySelectorAll('[data-report-context]').forEach(context => { context.hidden = context !== reportContext; });
+          reportContext.querySelectorAll('[data-context-view]').forEach(view => { view.hidden = view.dataset.contextView !== selectedView; });
+          reportContext.querySelectorAll('[data-context-view-link]').forEach(link => {
+            if (link.dataset.contextViewLink === selectedView) link.setAttribute('aria-current', 'page');
+            else link.removeAttribute('aria-current');
+          });
+          showLineageCard(null);
+          activateSection('report-contexts', { parentSection: 'reports' });
+          document.getElementById('report-contexts').setAttribute('aria-labelledby', reportContext.id + '-title');
+          revealDetails(target);
+          if (options.focus) {
+            const heading = target.matches('[data-context-view]') ? target.querySelector('h3')
+              : target instanceof HTMLDetailsElement ? target.querySelector('summary') : reportContext.querySelector('h2');
+            heading?.focus({ preventScroll: true });
+            const revision = routeRevision;
+            requestAnimationFrame(() => { if (revision === routeRevision) reportContext.scrollIntoView({ block: 'start' }); });
+          }
+          return true;
+        }
         const objectCard = target.closest('[data-lineage-card]:not([data-lineage-card="visual"])');
         if (objectCard) {
+          document.querySelectorAll('[data-report-context]').forEach(context => { context.hidden = true; });
           const selectedView = target.closest('[data-object-view]')?.dataset.objectView
             || (target === objectCard ? 'lineage' : objectCard.dataset.activeObjectView || 'summary');
           objectCard.dataset.activeObjectView = selectedView;

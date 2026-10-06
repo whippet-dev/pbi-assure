@@ -1752,6 +1752,19 @@ public static class DesignSystem
           --pa-icon-theme: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M8 1.5c3.6 0 6.5 2.6 6.5 5.9 0 1.9-1.6 3.4-3.5 3.4h-1.2c-.6 0-1.1.5-1.1 1.1 0 .3.1.5.3.7.2.2.3.5.3.8 0 .6-.5 1.1-1.3 1.1-3.6 0-6.5-2.9-6.5-6.5S4.4 1.5 8 1.5Zm0 1.5a5 5 0 0 0 0 10c0-.2 0-.3-.1-.4a2.6 2.6 0 0 1 1.9-4.3H11c1.1 0 2-.8 2-1.9C13 4.7 10.8 3 8 3Z'/%3E%3Ccircle cx='5.3' cy='6.2' r='1.1'/%3E%3Ccircle cx='8' cy='4.7' r='1.1'/%3E%3Ccircle cx='10.7' cy='6.2' r='1.1'/%3E%3C/svg%3E");
           --pa-icon-accessibility: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Ccircle cx='8' cy='3' r='1.6'/%3E%3Cpath d='M2.6 5.1a.8.8 0 0 1 .95-.6c1.3.3 2.8.5 4.45.5s3.15-.2 4.45-.5a.8.8 0 1 1 .35 1.55c-1.1.25-2.3.4-3.6.47v1.6l1.9 4.9a.8.8 0 1 1-1.5.57L8 9.9l-1.6 3.7a.8.8 0 0 1-1.5-.58l1.9-4.9v-1.6c-1.3-.07-2.5-.22-3.6-.47a.8.8 0 0 1-.6-.95Z'/%3E%3C/svg%3E");
         }
+
+        /* Report contexts reuse the established object-context pattern. */
+        .report-context { min-width: 0; overflow-wrap: anywhere; }
+        .report-context .visual-list { display: block; }
+        .report-context .lineage-diagram { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+        .report-context .lineage-side { grid-column: 1; }
+        .report-context .lineage-focus { grid-column: 2; }
+        @media (max-width: 40rem) { .report-context .lineage-diagram { display: block; } }
+        @media print {
+          #report-contexts[hidden], [data-report-context][hidden] { display: none !important; }
+          main[data-active-section="report-contexts"] > .report-section:not(#report-contexts) { display: none !important; }
+          .report-context .lineage-diagram { display: block; }
+        }
         """;
 
     /// <summary>Presentation for the "Apparently unused" review list, layered on top of <see cref="Core"/> only.</summary>

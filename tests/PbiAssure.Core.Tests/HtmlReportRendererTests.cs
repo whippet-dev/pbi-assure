@@ -53,14 +53,14 @@ public sealed class HtmlReportRendererTests : IDisposable
         Assert.Contains("id=\"finding-list\" class=\"card-list\"", html, StringComparison.Ordinal);
         Assert.Contains("class=\"finding-card\"", html, StringComparison.Ordinal);
         Assert.Contains("class=\"page-card\"", html, StringComparison.Ordinal);
-        Assert.Contains("class=\"visual-card\"", html, StringComparison.Ordinal);
+        Assert.Contains("data-report-context=\"Visual\"", html, StringComparison.Ordinal);
         Assert.Contains("class=\"semantic-table\"", html, StringComparison.Ordinal);
         Assert.Contains("<label for=\"finding-search\">", html, StringComparison.Ordinal);
         Assert.Contains("<label for=\"page-search\">", html, StringComparison.Ordinal);
         Assert.Contains("id=\"finding-filter-status\"", html, StringComparison.Ordinal);
         Assert.Contains("id=\"usage-filter-status\"", html, StringComparison.Ordinal);
         Assert.Contains("Expand all pages", html, StringComparison.Ordinal);
-        Assert.Contains("Objects used by this visual", html, StringComparison.Ordinal);
+        Assert.Contains("Saved bindings and retained references", html, StringComparison.Ordinal);
         Assert.Contains("<dt>Page</dt>", html, StringComparison.Ordinal);
         Assert.Contains("(page 1)", html, StringComparison.Ordinal);
         Assert.Contains("“Quarterly revenue”", html, StringComparison.Ordinal);
@@ -75,7 +75,7 @@ public sealed class HtmlReportRendererTests : IDisposable
         Assert.Contains("<strong>Visuals:</strong> 2", html, StringComparison.Ordinal);
         Assert.Contains("Hidden in saved report state", html, StringComparison.Ordinal);
         Assert.Contains("This visual links to a bookmark that no longer exists.", html, StringComparison.Ordinal);
-        Assert.Contains("Open this visual under its report page", html, StringComparison.Ordinal);
+        Assert.Contains("Open visual Reviews", html, StringComparison.Ordinal);
         Assert.DoesNotContain("<strong>sales-card</strong>", html, StringComparison.Ordinal);
         Assert.Contains("<summary>Technical details</summary>", html, StringComparison.Ordinal);
         Assert.Contains("<dt><span>Tab order</span>", html, StringComparison.Ordinal);
@@ -469,7 +469,7 @@ public sealed class HtmlReportRendererTests : IDisposable
         Assert.Contains("Supporting analysis of the existing automated accessibility checks", html, StringComparison.Ordinal);
         Assert.Contains("How to use findings", html, StringComparison.Ordinal);
         Assert.Contains("Suggested action gives a practical next step", html, StringComparison.Ordinal);
-        Assert.Contains("Browse the report page by page and visual by visual", html, StringComparison.Ordinal);
+        Assert.Contains("Find a report, page or visual", html, StringComparison.Ordinal);
         Assert.Contains("See which theme is applied", html, StringComparison.Ordinal);
         Assert.Contains("See how tables are connected", html, StringComparison.Ordinal);
         Assert.Contains("Review tables, columns, measures and other model objects", html, StringComparison.Ordinal);
@@ -510,7 +510,7 @@ public sealed class HtmlReportRendererTests : IDisposable
         Assert.Contains("Uses semantic model Assurance; its definition is available in this project.", html, StringComparison.Ordinal);
         Assert.Contains("Report calculations", html, StringComparison.Ordinal);
         Assert.Contains("Local forecast", html, StringComparison.Ordinal);
-        Assert.Contains("not placed directly on the report", html, StringComparison.Ordinal);
+        Assert.Contains("These measures are authored in this report", html, StringComparison.Ordinal);
         Assert.Contains("Sales[Total Sales] (model measure)", html, StringComparison.Ordinal);
         Assert.Contains("Semantic model", html, StringComparison.Ordinal);
         Assert.Contains("Power Query", html, StringComparison.Ordinal);

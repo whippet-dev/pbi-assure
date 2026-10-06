@@ -171,7 +171,7 @@ public sealed class LineagePathTests
         var article = Article(inventory, amount);
         Assert.Contains("<section class=\"lineage-path\" data-lineage-path=\"model\"><h3>Path to report</h3>", article, StringComparison.Ordinal);
         Assert.Contains($"<li class=\"lineage-path-step\" data-lineage-path-step=\"model\" data-lineage-state=\"DirectlyUsed\"><a class=\"lineage-node\" href=\"#{amount.Path.Steps[1].CardId}\">Sales[Total Amount]</a>", article, StringComparison.Ordinal);
-        Assert.Contains($"<li class=\"lineage-path-step lineage-endpoint\" data-lineage-path-step=\"report\"><a class=\"lineage-node\" href=\"#{amount.Path.Endpoint.VisualCardId}\">", article, StringComparison.Ordinal);
+        Assert.Contains($"<li class=\"lineage-path-step lineage-endpoint\" data-lineage-path-step=\"report\"><a class=\"lineage-node\" href=\"#visual-{amount.Path.Endpoint.VisualCardId![4..]}-summary\">", article, StringComparison.Ordinal);
         // The focus is the card's centre: in the path it is only the start mark, named for assistive technology.
         Assert.Contains("data-lineage-path-step=\"focus\"><span class=\"visually-hidden\">Sales[Amount]</span></li>", article, StringComparison.Ordinal);
     }
@@ -299,7 +299,7 @@ public sealed class LineagePathTests
         Assert.DoesNotContain("badge-used", article, StringComparison.Ordinal);
         // Report pages lists the report measure with an id and a way into its lineage.
         Assert.Contains($"id=\"{active.DetailsAnchor}\"", html, StringComparison.Ordinal);
-        Assert.Contains($"<a href=\"#sum-{active.Id[4..]}\">Open Fact[ActiveReportMeasure]</a>", html, StringComparison.Ordinal);
+        Assert.Contains($"<a href=\"#sum-{active.Id[4..]}\">Fact[ActiveReportMeasure]</a>", html, StringComparison.Ordinal);
 
         var unused = lineage.CardForReportMeasure("PbiAssureCoverage", "Fact", "UnusedReportMeasure")!;
         Assert.Equal(LineagePathStatus.NotFound, unused.Path!.Status);

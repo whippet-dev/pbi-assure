@@ -159,9 +159,9 @@ public sealed class LandingPageSupportTests
         files.AddRange(ReportFiles("Second", "page-2", "page-1", ("page-1", "Second landing"), ("page-2", "Second active")));
         var html = HtmlReportRenderer.Render(ProjectScanner.Scan(new InMemoryProjectFileSource("Two reports", files)));
 
-        Assert.Contains(">First landing</strong>", PageCardMarkup(html, "First landing"), StringComparison.Ordinal);
+        Assert.Contains(">First landing</a></strong>", PageCardMarkup(html, "First landing"), StringComparison.Ordinal);
         Assert.Contains(">Landing page</span>", PageCardMarkup(html, "First landing"), StringComparison.Ordinal);
-        Assert.Contains(">Second landing</strong>", PageCardMarkup(html, "Second landing"), StringComparison.Ordinal);
+        Assert.Contains(">Second landing</a></strong>", PageCardMarkup(html, "Second landing"), StringComparison.Ordinal);
         Assert.Contains(">Landing page</span>", PageCardMarkup(html, "Second landing"), StringComparison.Ordinal);
         Assert.DoesNotContain(">Landing page</span>", PageCardMarkup(html, "First active"), StringComparison.Ordinal);
         Assert.DoesNotContain(">Landing page</span>", PageCardMarkup(html, "Second active"), StringComparison.Ordinal);

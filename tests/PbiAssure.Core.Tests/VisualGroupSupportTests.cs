@@ -366,11 +366,11 @@ public sealed class VisualGroupSupportTests
         Assert.All(page.VisualGroups, group => Assert.Equal("ScaleMode", group.GroupMode));
         Assert.DoesNotContain(inventory.Findings, finding => finding.RuleId == "PBI-ACCESS-002");
         Assert.DoesNotContain("Unknown visual type", html, StringComparison.Ordinal);
-        Assert.Equal(7, html.Split("class=\"visual-card\"", StringSplitOptions.None).Length - 1);
+        Assert.Equal(7, html.Split("data-report-context=\"Visual\"", StringSplitOptions.None).Length - 1);
         Assert.DoesNotContain("How grouped tab order works", html, StringComparison.Ordinal);
         Assert.DoesNotContain("visual-group-context", html, StringComparison.Ordinal);
         Assert.DoesNotContain("<dt>Group</dt>", html, StringComparison.Ordinal);
-        Assert.DoesNotContain("<dt>Parent group</dt>", html, StringComparison.Ordinal);
+        Assert.Contains("<dt>Parent group</dt>", html, StringComparison.Ordinal);
         Assert.Equal(7, html.Split("<button type=\"button\" class=\"info-tooltip\"", StringSplitOptions.None).Length - 1);
         Assert.Contains(".info-tooltip {", html, StringComparison.Ordinal);
         Assert.Contains("flex: 0 0 1rem;", html, StringComparison.Ordinal);
@@ -428,10 +428,10 @@ public sealed class VisualGroupSupportTests
         string rawRank,
         string tooltip)
     {
-        var titleIndex = html.IndexOf($"<span class=\"visual-name\"><strong>“{title}”</strong>", StringComparison.Ordinal);
+        var titleIndex = html.IndexOf(System.Text.Encodings.Web.HtmlEncoder.Default.Encode($"“{title}”") + "</h2>", StringComparison.Ordinal);
         Assert.True(titleIndex >= 0, $"Visual title {title} was not rendered.");
-        var start = html.LastIndexOf("<details id=\"", titleIndex, StringComparison.Ordinal);
-        var end = html.IndexOf("</details>", titleIndex, StringComparison.Ordinal);
+        var start = html.LastIndexOf("<article id=\"", titleIndex, StringComparison.Ordinal);
+        var end = html.IndexOf("</article>", titleIndex, StringComparison.Ordinal);
         Assert.True(start >= 0 && end > start, $"Visual card for {title} could not be isolated.");
         var card = html[start..end];
 
@@ -440,7 +440,7 @@ public sealed class VisualGroupSupportTests
         Assert.Contains($"role=\"tooltip\">{tooltip}</span>", card, StringComparison.Ordinal);
         Assert.Contains($"<dt>PBIR position.tabOrder value</dt><dd>{rawRank}</dd>", card, StringComparison.Ordinal);
         Assert.DoesNotContain("<dt>Group</dt>", card, StringComparison.Ordinal);
-        Assert.DoesNotContain("<dt>Parent group</dt>", card, StringComparison.Ordinal);
+        Assert.DoesNotContain("<dt>Parent group</dt>", card[..card.IndexOf("<details class=\"object-context-details\"", StringComparison.Ordinal)], StringComparison.Ordinal);
     }
 
     private static string FindRepositoryRoot()

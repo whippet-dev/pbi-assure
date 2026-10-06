@@ -463,6 +463,11 @@ public sealed partial class SemanticLineageTests
         var html = HtmlReportRenderer.Render(inventory);
         var categoryCard = Card(lineage, inventory, "TestData", "Category");
         Assert.Contains($"<a class=\"lineage-object-link\" href=\"#{categoryCard.Id}\"><code>TestData[Category]</code>", html, StringComparison.Ordinal);
+        var article = Article(html, card.Id);
+        var objects = article[article.IndexOf("data-context-view=\"objects\"", StringComparison.Ordinal)..article.IndexOf("data-context-view=\"reviews\"", StringComparison.Ordinal)];
+        Assert.DoesNotContain("TestData[Category]", System.Net.WebUtility.HtmlDecode(objects), StringComparison.Ordinal);
+        Assert.Contains("<dt>Direct semantic objects</dt><dd>2</dd>", article, StringComparison.Ordinal);
+
     }
 
     [Fact]
@@ -473,14 +478,14 @@ public sealed partial class SemanticLineageTests
         var card = lineage.Cards.First(item => item.Kind == LineageFocusKind.Visual && item.Uses.TotalCount > 1);
 
         Assert.Equal(0, card.UsedBy.TotalCount + card.DependsOn.TotalCount + card.UsedInReport.TotalCount);
-        var article = Article(ReportHtml.LineageSection(HtmlReportRenderer.Render(inventory)), card.Id);
-        Assert.Contains("data-lineage-card=\"visual\"", article, StringComparison.Ordinal);
-        Assert.Contains($"<a href=\"#{card.DetailsAnchor}\">Visual details</a>", article, StringComparison.Ordinal);
+        var article = Article(HtmlReportRenderer.Render(inventory), card.Id);
+        Assert.Contains("data-report-context=\"Visual\"", article, StringComparison.Ordinal);
+        Assert.Contains($"id=\"{card.DetailsAnchor}\" data-context-route=\"visual-{card.Id[4..]}-summary\"", article, StringComparison.Ordinal);
         var upstream = article.IndexOf("<div class=\"lineage-side\" data-lineage-side=\"upstream\">", StringComparison.Ordinal);
         Assert.InRange(article.IndexOf("data-lineage-group=\"uses\"", StringComparison.Ordinal), upstream + 1, article.IndexOf("<section class=\"lineage-path\"", StringComparison.Ordinal) is var end and >= 0 ? end : article.Length);
         Assert.True(upstream > article.IndexOf("<header class=\"lineage-focus\">", StringComparison.Ordinal));
         Assert.DoesNotContain("data-lineage-side=\"downstream\"", article, StringComparison.Ordinal);
-        Assert.All(card.Uses.Items, use => Assert.Contains($"href=\"#{use.Object.CardId}\"", article, StringComparison.Ordinal));
+        Assert.All(card.Uses.Items, use => Assert.Contains($"href=\"#sum-{use.Object.CardId![4..]}\"", article, StringComparison.Ordinal));
     }
 
     // ---- 4. Identity -----------------------------------------------------------------------------
@@ -648,10 +653,11 @@ public sealed partial class SemanticLineageTests
         var cards = Occurrences(section, "<article ");
         var hub = Article(section, Card(SemanticLineageProjection.Build(inventory), inventory, "Sales", "Hub").Id);
 
-        Assert.Equal(columns + 1 + measures + 150, cards);
-        // Object contexts now include Summary, Definition and the relocated row evidence. The 6 KB budget leaves room without letting a
+        Assert.Equal(columns + 1 + measures, cards);
+        Assert.Equal(150, Occurrences(html, "data-report-context=\"Visual\""));
+        // This now measures semantic cards alone, without visual cards diluting their average. The 7 KB budget leaves room without letting a
         // per-card regression go unnoticed. A hub's card is bounded by the group cap, not by the model.
-        Assert.True(section.Length / cards < 6_000, $"Average lineage card was {section.Length / cards} bytes.");
+        Assert.True(section.Length / cards < 7_000, $"Average lineage card was {section.Length / cards} bytes.");
         Assert.True(hub.Length < 40_000, $"Hub lineage card was {hub.Length} bytes.");
         Assert.True(section.Length < html.Length * 9 / 10, "Object contexts must remain bounded within the report.");
     }

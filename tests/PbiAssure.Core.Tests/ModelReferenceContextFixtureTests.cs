@@ -119,7 +119,7 @@ public sealed class ModelReferenceContextFixtureTests
         const string visualObjectRow =
             "<code>ReferenceTest[VisualFilter]</code><span class=\"visually-hidden\"> (view lineage)</span></a><span>Column — <span class=\"usage-label\">Used as:</span> Visual filter &#xB7; Tooltips</span></li>";
         Assert.Equal(1, CountOccurrences(html, visualObjectRow));
-        Assert.Equal(1, CountOccurrences(ReportHtml.WithoutLineage(html), "Visual filter &#xB7; Tooltips")); // Full object evidence now lives in its context.
+        Assert.Equal(2, CountOccurrences(ReportHtml.WithoutLineage(html), "Visual filter &#xB7; Tooltips")); // Full object evidence now lives in its context.
         Assert.Contains(
             "<span class=\"usage-role\"><span class=\"usage-label\">Used as:</span> Visual filter &#xB7; Tooltips</span>",
             html,

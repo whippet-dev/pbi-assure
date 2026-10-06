@@ -41,7 +41,7 @@ public static partial class HtmlReportRenderer
       const revealSelectedDestination = target => {
         const section = target.closest('[data-report-section]');
         for (let element = target; element && element !== section; element = element.parentElement) {
-          if (element.hidden && !element.matches('[data-lineage-card]')) {
+          if (element.hidden && !element.matches('[data-lineage-card], [data-report-context]')) {
             selectedReveal.set(element, true);
             element.hidden = false;
           }
@@ -71,7 +71,7 @@ public static partial class HtmlReportRenderer
         section: mainContent.dataset.activeSection,
         parent: sectionLinks.find(link => link.getAttribute('aria-current') === 'page')?.dataset.sectionTarget,
         context: mainContent.dataset.activeSection === 'lineage'
-          ? lineageCards.find(card => !card.hidden)?.querySelector('h2')?.textContent : null,
+          ? lineageCards.find(card => !card.hidden)?.querySelector('h2')?.textContent : mainContent.dataset.activeSection === 'report-contexts' ? document.querySelector('[data-report-context]:not([hidden]) h2')?.textContent : null,
         controls: Object.fromEntries(controls.map(control => [control.id, control.value])),
         open: [...disclosures].filter(([, detail]) => detail.open).map(([key]) => key),
         focus: focusReference(focus),
@@ -134,7 +134,8 @@ public static partial class HtmlReportRenderer
         const contextFor = value => {
           let target = document.getElementById(value);
           if (target?.dataset.objectSummary) target = document.getElementById(target.dataset.objectSummary);
-          return target?.closest('[data-lineage-card]:not([data-lineage-card="visual"])');
+          if (target?.dataset.contextRoute) target = document.getElementById(target.dataset.contextRoute);
+          return target?.closest('[data-lineage-card]:not([data-lineage-card="visual"]), [data-report-context]');
         };
         const localSwitch = contextFor(fragment) && contextFor(fragment) === contextFor(entry?.fragment);
         const origin = isCollection ? null : entry?.origin

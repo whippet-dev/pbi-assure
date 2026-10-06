@@ -29,7 +29,7 @@ public sealed class ReportInvestigationHistoryTests(PrivacyE2EFixture fixture) :
     }
 
     private static async Task SettleAsync(IPage page) => await page.EvaluateAsync("() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)))");
-    private static ILocator Card(IPage page) => page.Locator("[data-lineage-card]:not([hidden])");
+    private static ILocator Card(IPage page) => page.Locator("[data-lineage-card]:not([hidden]), [data-report-context]:not([hidden])");
     private static async Task<string[]> ExpansionsAsync(IPage page) => await page.EvaluateAsync<string[]>("() => [...document.querySelectorAll('main details')].map((detail, index) => `${index}:${detail.open}`)");
     private static async Task<string> FocusAsync(IPage page) => await page.EvaluateAsync<string>("document.activeElement.outerHTML");
     private static Task GoModelAsync(IPage page) => page.Locator(".section-nav a[href='#semantic-usage']").ClickAsync();
@@ -102,17 +102,17 @@ public sealed class ReportInvestigationHistoryTests(PrivacyE2EFixture fixture) :
         var lineageA = page.Url;
         await Card(page).GetByRole(AriaRole.Link, new() { Name = "Fact[DirectlyUsedMeasure]", Exact = true }).First.ClickAsync();
         var lineageB = page.Url;
-        await Card(page).Locator("[data-object-view='lineage'] a[href^='#lin-visual-']").First.ClickAsync();
+        await Card(page).Locator("[data-object-view='lineage'] a[href^='#visual-']").First.ClickAsync();
         var visual = page.Url;
         Assert.Equal("page", await page.Locator(".section-nav a[href='#reports']").GetAttributeAsync("aria-current"));
-        await Card(page).GetByRole(AriaRole.Link, new() { Name = "Visual details", Exact = true }).ClickAsync();
+        await Card(page).GetByRole(AriaRole.Link, new() { Name = "Reviews", Exact = true }).ClickAsync();
         var details = page.Url;
         foreach (var url in new[] { visual, lineageB, lineageA })
         {
             await page.GoBackAsync();
             await SettleAsync(page);
             Assert.Equal(url, page.Url);
-            Assert.True(await page.Locator("[data-lineage-card]:not([hidden])").IsVisibleAsync());
+            Assert.True(await page.Locator("[data-lineage-card]:not([hidden]), [data-report-context]:not([hidden])").IsVisibleAsync());
             await AssertModelFiltersAsync(page);
         }
         Assert.Equal("page", await page.Locator(".section-nav a[href='#semantic-usage']").GetAttributeAsync("aria-current"));
@@ -190,12 +190,10 @@ public sealed class ReportInvestigationHistoryTests(PrivacyE2EFixture fixture) :
         await page.Locator("#page-visibility").SelectOptionAsync("Visible");
         var source = page.Locator(".page-card:not([hidden])").Filter(new() { HasText = "Core coverage" }).First;
         await source.Locator("summary").First.ClickAsync();
-        var visual = source.Locator(".visual-card").First;
-        await visual.Locator(":scope > summary").ClickAsync();
-        var link = visual.Locator("a[href^='#lin-']").First;
+        var link = source.Locator("a[href^='#visual-']").First;
         var initiatingLink = await link.EvaluateAsync<string>("element => element.outerHTML");
         await link.ClickAsync();
-        var otherVisual = page.Locator("[data-lineage-card='visual'][hidden] .lineage-actions a[href^='#visual-']").Last;
+        var otherVisual = page.Locator("[data-report-context='Visual'][hidden] a[data-context-view-link='summary']").Last;
         var destination = await otherVisual.GetAttributeAsync("href");
         // An external fragment change is still an in-report route, without clearing page filters.
         await page.EvaluateAsync("fragment => { location.hash = fragment; }", destination);
@@ -217,14 +215,14 @@ public sealed class ReportInvestigationHistoryTests(PrivacyE2EFixture fixture) :
     {
         await using var context = await fixture.Browser.NewContextAsync();
         var page = await OpenAsync(context);
-        var id = await page.Locator($"[data-lineage-card='{kind}']").First.GetAttributeAsync("id");
+        var id = await page.Locator(kind == "visual" ? "[data-report-context='Visual']" : "[data-lineage-card='semantic']").First.GetAttributeAsync("id");
         var direct = await OpenAsync(context, "#" + id);
         Assert.True(await Card(direct).IsVisibleAsync());
         Assert.Equal(id + "-title", await direct.EvaluateAsync<string>("document.activeElement.id"));
         Assert.False(await direct.Locator("#investigation-return-row").IsVisibleAsync());
         var parent = kind == "visual" ? "reports" : "semantic-usage";
         Assert.Equal("page", await direct.Locator($".section-nav a[href='#{parent}']").GetAttributeAsync("aria-current"));
-        Assert.True(await Card(direct).GetByRole(AriaRole.Link, new() { Name = kind == "visual" ? "Open Report pages" : "Summary", Exact = true }).IsVisibleAsync());
+        Assert.True(await Card(direct).GetByRole(AriaRole.Link, new() { Name = "Summary", Exact = true }).IsVisibleAsync());
     }
 
     [Fact]

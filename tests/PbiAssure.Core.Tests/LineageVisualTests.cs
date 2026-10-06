@@ -100,10 +100,10 @@ public sealed partial class LineageVisualTests
         var first = card.UsedInReport.Items[0];
         Assert.Same(first, card.Path!.Endpoint);
         var compact = report[..overflow];
-        Assert.Contains($"href=\"#{first.VisualCardId}\"", compact, StringComparison.Ordinal);
+        Assert.Contains($"href=\"#visual-{first.VisualCardId![4..]}-summary\"", compact, StringComparison.Ordinal);
         Assert.Contains("<span class=\"lineage-meta\">Page Overview</span>", compact, StringComparison.Ordinal);
-        Assert.DoesNotContain($"href=\"#{first.VisualCardId}\"", report[overflow..], StringComparison.Ordinal);
-        Assert.Contains($"href=\"#{first.VisualCardId}\"", path, StringComparison.Ordinal);
+        Assert.DoesNotContain($"href=\"#visual-{first.VisualCardId![4..]}-summary\"", report[overflow..], StringComparison.Ordinal);
+        Assert.Contains($"href=\"#visual-{first.VisualCardId![4..]}-summary\"", path, StringComparison.Ordinal);
         Assert.Contains("Card · Page Overview", System.Net.WebUtility.HtmlDecode(path), StringComparison.Ordinal);
         Assert.Contains("Used directly in 13 report locations.", path, StringComparison.Ordinal);
         Assert.DoesNotContain("other report location", path, StringComparison.Ordinal);
@@ -162,7 +162,7 @@ public sealed partial class LineageVisualTests
             Assert.Contains($"<a class=\"lineage-node\" href=\"#{step.CardId}\">{step.Name}</a>", section, StringComparison.Ordinal);
         }
 
-        Assert.Contains($"href=\"#{path.Endpoint!.VisualCardId}\"", section, StringComparison.Ordinal);
+        Assert.Contains($"href=\"#visual-{path.Endpoint!.VisualCardId![4..]}-summary\"", section, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -190,7 +190,7 @@ public sealed partial class LineageVisualTests
                 ["Table2"] = "table Table2\n" + Column("Amount") + Column("Unrelated"),
             },
             [("p1", "Overview", [Visual("v1", 0, 0, "Table1", "Probe")])]);
-        var html = ReportHtml.LineageSection(HtmlReportRenderer.Render(inventory));
+        var html = HtmlReportRenderer.Render(inventory);
         var probe = Article(html, Card(inventory, "Table1", "Probe").Id);
         var amount = Article(html, Card(inventory, "Table1", "Amount").Id);
 
@@ -222,7 +222,7 @@ public sealed partial class LineageVisualTests
     {
         var inventory = ScanFixture("pbi-assure-coverage");
         var lineage = SemanticLineageProjection.Build(inventory);
-        var html = ReportHtml.LineageSection(HtmlReportRenderer.Render(inventory));
+        var html = HtmlReportRenderer.Render(inventory);
         var card = lineage.Cards.First(item => item.Usage?.UsageState == SemanticUsageStates.StructurallyRequired && item.RequiredByModel.TotalCount > 0);
         var article = Article(html, card.Id);
 
@@ -242,7 +242,7 @@ public sealed partial class LineageVisualTests
     {
         var inventory = ScanFixture("pbi-assure-coverage");
         var lineage = SemanticLineageProjection.Build(inventory);
-        var html = ReportHtml.LineageSection(HtmlReportRenderer.Render(inventory));
+        var html = HtmlReportRenderer.Render(inventory);
         var cards = lineage.Cards.Where(card => card.PowerQuery is not null).ToArray();
 
         Assert.NotEmpty(cards);
@@ -351,7 +351,7 @@ public sealed partial class LineageVisualTests
     {
         foreach (var html in new[] { Hub(consumers: 7, locations: 13).Html, Chain(14).Html })
         {
-            var text = System.Net.WebUtility.HtmlDecode(TagRegex().Replace(html, " "));
+            var text = System.Net.WebUtility.HtmlDecode(TagRegex().Replace(html[..html.IndexOf("</main>", StringComparison.Ordinal)], " "));
             foreach (var phrase in new[] { "complete lineage", "all dependencies", "every dependency", "full lineage", "safe to delete", "safe to remove", "can be deleted", "can be removed", "delete", "orphan", "dead code" })
             {
                 Assert.DoesNotContain(phrase, text, StringComparison.OrdinalIgnoreCase);
@@ -380,7 +380,7 @@ public sealed partial class LineageVisualTests
             .Select(index => Visual($"v{index:00}", index % 3 * 420, index / 3 * 250, "Sales", "Net Sales", title: index == 0 ? "Net Sales" : null))
             .ToArray();
         var inventory = Scan(new() { ["Sales"] = sales.ToString() }, [("p1", "Overview", visuals)]);
-        return (inventory, ReportHtml.LineageSection(HtmlReportRenderer.Render(inventory)));
+        return (inventory, HtmlReportRenderer.Render(inventory));
     }
 
     /// <summary>C01 = SUM(Amount), each Cn = [Cn-1] + 1, and the last one placed: a path of the given length.</summary>
@@ -394,7 +394,7 @@ public sealed partial class LineageVisualTests
 
         var inventory = Scan(new() { ["Sales"] = sales.ToString() },
             [("p1", "Overview", [Visual("v1", 0, 0, "Sales", $"C{length:00}", title: "Chain end")])]);
-        return (inventory, ReportHtml.LineageSection(HtmlReportRenderer.Render(inventory)));
+        return (inventory, HtmlReportRenderer.Render(inventory));
     }
 
     private static (string Name, string Json) Visual(string name, double x, double y, string table, string measure, string? title = null)

@@ -201,9 +201,9 @@ public sealed class ThemeReviewTests
         Assert.Contains("<strong>Affected visuals:</strong><ul>", consistency, StringComparison.Ordinal);
         Assert.Contains("Clustered Column Chart &#xB7; Overview &#xB7; Upper-left of page", consistency, StringComparison.Ordinal);
         Assert.Contains("Clustered Column Chart &#xB7; Overview &#xB7; Upper-right of page", consistency, StringComparison.Ordinal);
-        Assert.DoesNotContain("internal-titled", consistency, StringComparison.Ordinal);
-        Assert.DoesNotContain("internal-left", consistency, StringComparison.Ordinal);
-        Assert.DoesNotContain("internal-right", consistency, StringComparison.Ordinal);
+        Assert.DoesNotContain("internal-titled", System.Text.RegularExpressions.Regex.Replace(consistency, "<[^>]+>", ""), StringComparison.Ordinal);
+        Assert.DoesNotContain("internal-left", System.Text.RegularExpressions.Regex.Replace(consistency, "<[^>]+>", ""), StringComparison.Ordinal);
+        Assert.DoesNotContain("internal-right", System.Text.RegularExpressions.Regex.Replace(consistency, "<[^>]+>", ""), StringComparison.Ordinal);
         Assert.Contains("<summary>Show affected visual</summary>", consistency, StringComparison.Ordinal);
         Assert.Contains("<summary>Show affected visuals</summary>", consistency, StringComparison.Ordinal);
     }

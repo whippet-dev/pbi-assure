@@ -83,10 +83,10 @@ public sealed class TabOrderStatesFixtureTests
 
     private static string ExtractVisualCard(string html, string title)
     {
-        var titleIndex = html.IndexOf($"<span class=\"visual-name\"><strong>“{title}”</strong>", StringComparison.Ordinal);
+        var titleIndex = html.IndexOf(System.Text.Encodings.Web.HtmlEncoder.Default.Encode($"“{title}”") + "</h2>", StringComparison.Ordinal);
         Assert.True(titleIndex >= 0, $"Visual title {title} was not rendered.");
-        var start = html.LastIndexOf("<details id=\"", titleIndex, StringComparison.Ordinal);
-        var end = html.IndexOf("</details>", titleIndex, StringComparison.Ordinal);
+        var start = html.LastIndexOf("<article id=\"", titleIndex, StringComparison.Ordinal);
+        var end = html.IndexOf("</article>", titleIndex, StringComparison.Ordinal);
         Assert.True(start >= 0 && end > start, $"Visual card for {title} could not be isolated.");
         return html[start..end];
     }
