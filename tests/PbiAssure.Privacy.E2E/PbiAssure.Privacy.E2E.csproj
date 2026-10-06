@@ -11,6 +11,8 @@
     <PackageReference Include="xunit.runner.visualstudio" Version="3.1.4" />
   </ItemGroup>
   <ItemGroup>
+    <ProjectReference Include="../../src/PbiAssure.Core/PbiAssure.Core.csproj" />
+    <ProjectReference Include="../../src/PbiAssure.Reporting/PbiAssure.Reporting.csproj" />
     <FrameworkReference Include="Microsoft.AspNetCore.App" />
     <Using Include="Xunit" />
   </ItemGroup>

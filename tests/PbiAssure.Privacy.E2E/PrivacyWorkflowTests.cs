@@ -394,12 +394,12 @@ public sealed class PrivacyWorkflowTests(PrivacyE2EFixture fixture)
         Assert.Null(await limits.GetAttributeAsync("open"));
         await limits.Locator("summary").PressAsync("Enter");
         Assert.NotNull(await limits.GetAttributeAsync("open"));
-        Assert.Contains("It does not mean the object is safe to delete.", await limits.InnerTextAsync(), StringComparison.Ordinal);
+        Assert.Contains("It requires review before any removal.", await limits.InnerTextAsync(), StringComparison.Ordinal);
         await limits.Locator("summary").PressAsync("Enter");
         Assert.Null(await limits.GetAttributeAsync("open"));
         var fontFamily = await report.EvaluateAsync<string>("() => getComputedStyle(document.body).fontFamily");
         Assert.Contains("Segoe UI", fontFamily, StringComparison.OrdinalIgnoreCase);
-        await report.Locator("a[href='#findings']").ClickAsync();
+        await report.Locator(".section-nav a[href='#findings']").ClickAsync();
         var findingSearch = report.Locator("#finding-search");
         if (await findingSearch.CountAsync() > 0)
         {
@@ -410,7 +410,7 @@ public sealed class PrivacyWorkflowTests(PrivacyE2EFixture fixture)
             return;
         }
 
-        await report.Locator("a[href='#accessibility-review']").ClickAsync();
+        await report.Locator(".section-nav a[href='#accessibility-review']").ClickAsync();
         await report.Locator("#accessibility-review-heading")
             .WaitForAsync(new LocatorWaitForOptions { State = WaitForSelectorState.Visible });
         Assert.True(await report.Locator(

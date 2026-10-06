@@ -106,117 +106,6 @@ public static partial class HtmlReportRenderer
         html.AppendLine("  <main id=\"main-content\" class=\"report-content\" tabindex=\"-1\">");
     }
 
-    private static void AppendSummary(
-        StringBuilder html,
-        ProjectInventory inventory,
-        AnalysisCoverage coverage,
-        AssuranceFinding[] mainFindings)
-    {
-        html.AppendLine("    <section id=\"summary\" class=\"report-section\" data-report-section=\"summary\" aria-labelledby=\"summary-heading\">");
-        html.AppendLine("      <h2 id=\"summary-heading\" tabindex=\"-1\">Summary</h2>");
-        html.AppendLine("      <p class=\"section-intro\">Start here for model usage, project structure, Power Query context and assurance observations.</p>");
-        html.AppendLine("      <div class=\"summary-groups\">");
-        html.AppendLine("        <section class=\"summary-group summary-group-semantic\" aria-labelledby=\"summary-semantic-heading\" aria-describedby=\"summary-semantic-help\">");
-        html.AppendLine("          <h3 id=\"summary-semantic-heading\">Semantic usage</h3>");
-        html.AppendLine("          <p id=\"summary-semantic-help\" class=\"group-explanation\">How columns, measures and other objects in your model are used by the report and by one another.</p>");
-        html.AppendLine("      <dl class=\"metrics\">");
-        AppendMetric(html, "Directly used", inventory.DeveloperSemanticObjectCountForState(SemanticUsageStates.DirectlyUsed), "metric-used");
-        AppendMetric(html, "Indirectly used", inventory.DeveloperSemanticObjectCountForState(SemanticUsageStates.IndirectlyUsed), "metric-indirect");
-        AppendMetric(html, "Structurally required", inventory.DeveloperSemanticObjectCountForState(SemanticUsageStates.StructurallyRequired), "metric-structural");
-        AppendMetric(html, "Only used by unused items", inventory.DeveloperSemanticObjectCountForState(SemanticUsageStates.UsedOnlyByUnusedBranch), "metric-branch");
-        AppendMetric(html, "Apparently unused", inventory.DeveloperApparentlyUnusedSemanticObjectCount, "metric-unused");
-        html.AppendLine("      </dl>");
-        html.AppendLine("          <p class=\"summary-caution\"><strong>Check apparently unused objects before removing them:</strong> PBI Assure could not find anything in this project that uses them. External reports, other models or dynamic behaviour may still depend on them.</p>");
-        if (coverage.QualifiedObjectCount > 0)
-        {
-            html.Append("          <p class=\"summary-coverage-note\">PBI Assure could not check every source of usage in this project, so ")
-                .Append(coverage.QualifiedObjectCount.ToString(CultureInfo.InvariantCulture)).Append(' ')
-                .Append(Pluralize(coverage.QualifiedObjectCount, "of these results is", "of these results are"))
-                .Append(" marked <span class=\"confidence-flag confidence-flag-sample\">")
-                .Append(CoverageMarkerLabel)
-                .AppendLine("</span>. <a href=\"#analysis-coverage\">Review analysis coverage</a>.</p>");
-        }
-        AppendSummaryDefinitions(html, "What these usage states mean", [
-            ("Directly used", "Used somewhere in the report, such as a visual, filter, tooltip or drillthrough setting."),
-            ("Indirectly used", "Not used directly in the report, but needed by something that is."),
-            ("Structurally required", "Needed for the model to work, for example in a relationship, hierarchy or sort-by setting."),
-            ("Only used by unused items", "Only used by other model items that themselves have no detected report usage."),
-            ("Apparently unused", "PBI Assure could not find anything in this project that uses it. Check before removing it because external reports and dynamic behaviour may not be visible here.")]);
-        html.AppendLine("        </section>");
-        html.AppendLine("        <section class=\"summary-group summary-group-project\" aria-labelledby=\"summary-project-heading\" aria-describedby=\"summary-project-help\">");
-        html.AppendLine("          <h3 id=\"summary-project-heading\">Project</h3>");
-        html.AppendLine("          <p id=\"summary-project-help\" class=\"group-explanation\">A count of the main report and semantic-model content found in the analysed project.</p>");
-        html.AppendLine("      <dl class=\"metrics\">");
-        AppendMetric(html, "Reports", inventory.ReportCount);
-        AppendMetric(html, "Pages", inventory.PageCount);
-        AppendMetric(html, "Visuals", inventory.VisualCount);
-        if (inventory.ReportMeasureCount > 0)
-        {
-            AppendMetric(html, "Report measures", inventory.ReportMeasureCount);
-        }
-        AppendMetric(html, "Your model objects", inventory.DeveloperSemanticObjectCount);
-        if (inventory.SystemGeneratedSemanticObjectCount > 0)
-        {
-            AppendMetric(html, "System-generated model objects", inventory.SystemGeneratedSemanticObjectCount);
-        }
-        html.AppendLine("      </dl>");
-        AppendSummaryDefinitions(html, "What these project numbers count", [
-            ("Reports", "Power BI reports found in the project."),
-            ("Pages", "Report pages found across those reports."),
-            ("Visuals", "Visuals placed across all report pages."),
-            ("Report measures", "DAX measures defined in the report itself, rather than in its semantic model."),
-            ("Your model objects", "Columns, measures, hierarchy levels and calculation items created as part of the model."),
-            ("System-generated model objects", "Model objects created automatically by Power BI, such as objects in local date tables.")]);
-        html.AppendLine("        </section>");
-        if (inventory.PowerQueryCount > 0 || inventory.DataSourceCount > 0)
-        {
-            html.AppendLine("        <section class=\"summary-group summary-group-power-query\" aria-labelledby=\"summary-power-query-heading\" aria-describedby=\"summary-power-query-help\">");
-            html.AppendLine("          <h3 id=\"summary-power-query-heading\">Power Query</h3>");
-            html.AppendLine("          <p id=\"summary-power-query-help\" class=\"group-explanation\">Power Query queries, data source types and dependencies found in this project.</p>");
-            html.AppendLine("      <dl class=\"metrics\">");
-            if (inventory.PowerQueryCount > 0)
-            {
-                AppendMetric(html, "Power Query queries", inventory.PowerQueryCount);
-            }
-            if (inventory.DataSourceCount > 0)
-            {
-                AppendMetric(html, "Data source types", inventory.DistinctConnectorFamilyCount);
-            }
-            html.AppendLine("      </dl>");
-            AppendSummaryDefinitions(html, "What these Power Query numbers count", [
-                ("Power Query queries", "Power Query queries found in this project."),
-                ("Data source types", "Different types of recognised data sources used by those queries. This is not the number of individual connections.")]);
-            html.AppendLine("        </section>");
-        }
-        html.AppendLine("        <section class=\"summary-group summary-group-assurance\" aria-labelledby=\"summary-assurance-heading\" aria-describedby=\"summary-assurance-help\">");
-        html.AppendLine("          <h3 id=\"summary-assurance-heading\">Assurance</h3>");
-        html.AppendLine("          <p id=\"summary-assurance-help\" class=\"group-explanation\">Findings from non-accessibility automated checks across the report, semantic model and Power Query. Start with errors, then warnings and items that need a person to review them.</p>");
-        html.AppendLine("      <dl class=\"metrics\">");
-        AppendMetric(html, "Errors", mainFindings.Count(finding => finding.Severity == FindingSeverities.Error), "metric-error");
-        AppendMetric(html, "Warnings", mainFindings.Count(finding => finding.Severity == FindingSeverities.Warning), "metric-warning");
-        AppendMetric(html, "Review required", mainFindings.Count(finding => finding.AssessmentType == AssessmentTypes.ReviewRequired), "metric-review");
-        AppendMetric(html, "Total findings", mainFindings.Length);
-        html.AppendLine("      </dl>");
-        AppendSummaryDefinitions(html, "What these finding numbers mean", [
-            ("Errors", "Higher-confidence issues that would normally merit attention."),
-            ("Warnings", "Potential problems, good-practice concerns or lower-confidence issues worth reviewing."),
-            ("Review required", "Situations that need human judgement or contextual review; they are not necessarily defects."),
-            ("Total findings", "All non-accessibility issues and review items found by the automated checks.")]);
-        html.AppendLine("          <p class=\"group-explanation\">Accessibility observations are counted separately in Accessibility review so that they remain available without dominating the main assurance summary.</p>");
-        html.AppendLine("        </section>");
-        html.AppendLine("      </div>");
-        html.Append("      <p class=\"summary-note\"><strong>").Append(inventory.DeveloperApparentlyUnusedSemanticObjectCount.ToString(CultureInfo.InvariantCulture))
-            .Append(" model objects created as part of this model have no usage detected in this project. Review them before removing anything.</strong>");
-        if (inventory.SystemGeneratedSemanticObjectCount > 0)
-        {
-            html.Append(" Power BI-generated objects remain analysed and are available in the semantic-model filter.");
-        }
-        html.AppendLine("</p>");
-        html.AppendLine("      <p><a href=\"#semantic-usage\">Review semantic-model candidates</a></p>");
-        AppendScope(html);
-        html.AppendLine("    </section>");
-    }
-
     /// <summary>
     /// What PBI Assure read in this project's semantic models, and what it did not.
     ///
@@ -487,7 +376,7 @@ public static partial class HtmlReportRenderer
         html.AppendLine("      <summary id=\"scope-heading\">Important limits before acting on this report</summary>");
         html.AppendLine("      <p class=\"section-intro\">Keep these limits in mind before changing or removing anything.</p>");
         html.AppendLine("      <ul>");
-        html.AppendLine("        <li><strong>Apparently unused</strong> means PBI Assure found no use within this project. It does not mean the object is safe to delete.</li>");
+        html.AppendLine("        <li><strong>Apparently unused</strong> means PBI Assure found no use within this project. It requires review before any removal.</li>");
         html.AppendLine("        <li>A model table can look unused in the report while its Power Query is still needed by another query.</li>");
         html.AppendLine("        <li>Power Query dependencies built dynamically may not be detected, including column lists or query names created while the query runs.</li>");
         html.AppendLine("        <li>Uses outside this project, some bookmark state and details hidden inside a data source may not be visible to PBI Assure.</li>");
@@ -1472,7 +1361,7 @@ public static partial class HtmlReportRenderer
         AppendInvestigationStart(html, "usage", "Search model objects", "Search tables, columns, measures or usage reasons");
         AppendInvestigationFacet(html, "usage", "table", "Table", "All tables", inventory.SemanticObjectUsages.Select(usage => usage.Table).Distinct(StringComparer.OrdinalIgnoreCase).OrderBy(value => value).Select(value => new FindingFacetOption(value, value)));
         AppendInvestigationFacet(html, "usage", "object-type", "Object type", "All object types", inventory.SemanticObjectUsages.Select(usage => usage.ObjectType).Distinct(StringComparer.OrdinalIgnoreCase).OrderBy(value => value).Select(value => new FindingFacetOption(value, HumanizeIdentifier(value))));
-        AppendInvestigationFacet(html, "usage", "usage-state", "Usage state", "All usage states", inventory.SemanticObjectUsages.Select(usage => usage.UsageState).Distinct(StringComparer.OrdinalIgnoreCase).OrderBy(UsageOrder).Select(value => new FindingFacetOption(value, UsageLabel(value))));
+        AppendInvestigationFacet(html, "usage", "usage-state", "Usage state", "All usage states", OverviewUsageStates.Select(value => new FindingFacetOption(value, UsageLabel(value))));
         AppendInvestigationFacet(html, "usage", "origin", "Created by", "All objects", [new("developer", "Created in this model"), new("system", "Created by Power BI")], "developer");
         AppendInvestigationEnd(html, "usage", inventory.DeveloperSemanticObjectCount, "model object", "model objects");
         AppendDetailsControls(html, "semantic-table-list", "tables");
@@ -3579,6 +3468,8 @@ public static partial class HtmlReportRenderer
 
       const sectionForTarget = target => target?.closest?.('[data-report-section]')?.dataset.reportSection;
       const mainContent = document.getElementById('main-content');
+      const usageShortcuts = new Map([...document.querySelectorAll('[data-usage-shortcut]')]
+        .map(link => [link.getAttribute('href').slice(1), link.dataset.usageShortcut]));
 
       // Lineage cards are rendered visible so the report still reads without script; with script, one
       // card is shown at a time and the section's own introduction stands in when none is chosen.
@@ -3610,6 +3501,23 @@ public static partial class HtmlReportRenderer
       };
 
       const revealFragmentTarget = (fragment, options = {}) => {
+        // Overview shortcuts only apply the existing collection filters. Other entity/history routes
+        // keep their current behaviour; a zero-count state is still a valid filtered destination.
+        const usageState = usageShortcuts.get(fragment);
+        if (usageState) {
+          const search = document.getElementById('usage-search');
+          const state = document.getElementById('usage-usage-state');
+          if (search && state) {
+            search.value = '';
+            document.querySelectorAll('[data-investigation="usage"] [data-investigation-facet]')
+              .forEach(control => { control.value = control.dataset.filterKey === 'origin' ? 'developer' : ''; });
+            state.value = usageState;
+            state.dispatchEvent(new Event('change'));
+            document.querySelectorAll('#semantic-table-list .semantic-table:not([hidden])')
+              .forEach(table => { table.open = true; });
+          }
+          return activateSection('semantic-usage', { focus: Boolean(options.focus) });
+        }
         const target = document.getElementById(fragment);
         if (!target) return false;
         // A link can point at a row the current search or filters hide, including system-generated
