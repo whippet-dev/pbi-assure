@@ -522,6 +522,14 @@ internal static class SemanticDependencyAnalyzer
         IReadOnlyList<UserRelationshipCallCandidate> calls,
         IReadOnlyList<SemanticNodeReachability> reachability)
     {
+        // A call's source is a node of its own model. Two models may each have an object of the same
+        // name, so whether the source is reached is looked up by the full node identity, model included.
+        var reachedFromReport = reachability
+            .Where(node => node.ReachableFromReport)
+            .Select(node => SemanticNodeIdentity.Create(
+                node.SemanticModel, node.Table, node.ObjectName, node.ObjectType, node.HierarchyName, node.Report))
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
         return semanticModels.Select(model =>
         {
             var lookup = new ModelLookup(
@@ -540,7 +548,12 @@ internal static class SemanticDependencyAnalyzer
                 .GroupBy(item => item.Relationship.Name, StringComparer.OrdinalIgnoreCase)
                 .ToDictionary(
                     group => group.Key,
-                    group => group.Select(item => CreateActivationSource(item.Call.Source, reachability)).Distinct().ToArray(),
+                    group => group
+                        .Select(item => CreateActivationSource(
+                            item.Call.Source,
+                            reachedFromReport.Contains(NodeKey(item.Call.SemanticModel, item.Call.Source))))
+                        .Distinct()
+                        .ToArray(),
                     StringComparer.OrdinalIgnoreCase);
 
             return model with
@@ -602,18 +615,13 @@ internal static class SemanticDependencyAnalyzer
 
     private static SemanticRelationshipActivationSourceInventory CreateActivationSource(
         SemanticNode source,
-        IReadOnlyList<SemanticNodeReachability> reachability)
+        bool reachableFromReport)
     {
-        var sourceReachability = reachability.FirstOrDefault(item =>
-            string.Equals(item.Table, source.Table, StringComparison.OrdinalIgnoreCase) &&
-            string.Equals(item.ObjectName, source.ObjectName, StringComparison.OrdinalIgnoreCase) &&
-            string.Equals(item.ObjectType, source.ObjectType, StringComparison.Ordinal) &&
-            string.Equals(item.HierarchyName, source.HierarchyName, StringComparison.OrdinalIgnoreCase));
         return new SemanticRelationshipActivationSourceInventory(
             source.Table,
             source.ObjectName,
             source.ObjectType,
-            sourceReachability?.ReachableFromReport ?? false);
+            reachableFromReport);
     }
 
     private static void AddFieldParameterMetadataRoots(
