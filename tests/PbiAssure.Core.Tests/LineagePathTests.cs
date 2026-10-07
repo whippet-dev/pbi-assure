@@ -358,8 +358,8 @@ public sealed class LineagePathTests
         Assert.Contains("<span class=\"lineage-reach\">Not reached from a report</span>", articleB, StringComparison.Ordinal);
         var qtyArticle = Article(html, qty.Id);
         var qtyPath = PathSection(qtyArticle);
-        Assert.Contains("No report path found in this project.", qtyPath, StringComparison.Ordinal);
-        Assert.Contains("Only reached from: ", qtyPath, StringComparison.Ordinal);
+        Assert.Contains("No path to the report found in this project.", qtyPath, StringComparison.Ordinal);
+        Assert.Contains("Only used through: ", qtyPath, StringComparison.Ordinal);
         Assert.Contains("Report B</span>", qtyArticle, StringComparison.Ordinal);
 
         // The caveats that explained a shared usage result are gone: there is no shared result.
@@ -463,8 +463,8 @@ public sealed class LineagePathTests
         var head = Assert.Single(cost.Path.OnlyReachedFrom.Items);
         Assert.Equal(("Sales[Unused Control]", SemanticUsageStates.ApparentlyUnused), (head.Name, head.UsageState));
         var text = System.Net.WebUtility.HtmlDecode(PathSection(Article(inventory, cost)));
-        Assert.Contains("No report path found in this project.", text, StringComparison.Ordinal);
-        Assert.Contains("Only reached from: ", text, StringComparison.Ordinal);
+        Assert.Contains("No path to the report found in this project.", text, StringComparison.Ordinal);
+        Assert.Contains("Only used through: ", text, StringComparison.Ordinal);
         Assert.Contains(">Sales[Unused Control]</a> (Apparently unused)", text, StringComparison.Ordinal);
     }
 
@@ -480,7 +480,7 @@ public sealed class LineagePathTests
         Assert.False(notes.Path.RequiredByModelStructure);
         Assert.False(notes.Path.ChecksLimited);
         Assert.Equal(
-            "<section class=\"lineage-path\" data-lineage-path=\"none\"><h3>Path to report</h3><p class=\"lineage-path-none\">No report path found in this project.</p></section>",
+            "<section class=\"lineage-path\" data-lineage-path=\"none\"><h3>Path to report</h3><p class=\"lineage-path-none\">No path to the report found in this project.</p></section>",
             PathSection(Article(inventory, notes)));
     }
 
@@ -494,13 +494,13 @@ public sealed class LineagePathTests
         Assert.Equal(LineagePathStatus.NotFound, key.Status);
         Assert.True(key.RequiredByModelStructure);
         Assert.Equal(2, key.StructuralSources.TotalCount);
-        Assert.Contains("Required by model structure: ",
+        Assert.Contains("Required by the model structure: ",
             PathSection(Article(inventory, Card(lineage, inventory, "Fact", "RelationshipKey"))), StringComparison.Ordinal);
 
         // A pinned structural object with no structural edge or reason still says what it is.
         var calculationGroup = ScanFixture("desktop-calculation-group-selection-evidence");
         var defaultRate = Card(SemanticLineageProjection.Build(calculationGroup), calculationGroup, "Rates", "DefaultRate");
-        Assert.Contains("<p class=\"lineage-path-note\">Required by model structure.</p>", PathSection(Article(calculationGroup, defaultRate)), StringComparison.Ordinal);
+        Assert.Contains("<p class=\"lineage-path-note\">Required by the model structure.</p>", PathSection(Article(calculationGroup, defaultRate)), StringComparison.Ordinal);
     }
 
     [Fact]
@@ -515,7 +515,7 @@ public sealed class LineagePathTests
 
         Assert.True(card.Path!.ChecksLimited);
         var section = PathSection(Article(inventory, card));
-        Assert.Contains("No report path found in this project.", section, StringComparison.Ordinal);
+        Assert.Contains("No path to the report found in this project.", section, StringComparison.Ordinal);
         Assert.Contains("<span class=\"confidence-flag\">Checks limited", section, StringComparison.Ordinal);
     }
 

@@ -64,14 +64,14 @@ public sealed class ReportObjectContextTests
             var card = projection.CardFor(usage)!;
             var article = Article(html, card.Id);
             Assert.Contains("<dt>Used by</dt>", article, StringComparison.Ordinal);
-            Assert.Contains("<dt>Used in report</dt>", article, StringComparison.Ordinal);
-            Assert.Contains("<dt>Required by model</dt>", article, StringComparison.Ordinal);
-            Assert.Contains("Evidence and provenance", article, StringComparison.Ordinal);
+            Assert.Contains("<dt>Used in the report</dt>", article, StringComparison.Ordinal);
+            Assert.Contains("<dt>Required by the model</dt>", article, StringComparison.Ordinal);
+            Assert.Contains("Evidence", article, StringComparison.Ordinal);
             if (card.Reason is not null) Assert.Contains(HtmlEncoder.Default.Encode(card.Reason), article, StringComparison.Ordinal);
             if (usage.DirectReportLocationCount > 0) Assert.Contains("<h4>Report usage</h4>", article, StringComparison.Ordinal);
             if (state == SemanticUsageStates.ApparentlyUnused) Assert.Contains("Check before removing it", article, StringComparison.Ordinal);
             if (state == SemanticUsageStates.StructurallyRequired) Assert.DoesNotContain("No structural requirement identified", article, StringComparison.Ordinal);
-            if (usage.ClassificationConfidence == ClassificationConfidences.QualifiedByLimitation) Assert.Contains("Applicable limitations", article, StringComparison.Ordinal);
+            if (usage.ClassificationConfidence == ClassificationConfidences.QualifiedByLimitation) Assert.Contains("Checks limited", article, StringComparison.Ordinal);
             foreach (var phrase in new[] { "safe to delete", "safe to remove", "complete lineage", "every dependency" })
                 Assert.DoesNotContain(phrase, article, StringComparison.OrdinalIgnoreCase);
         }
@@ -104,9 +104,9 @@ public sealed class ReportObjectContextTests
         }
         var ordinaryColumn = inventory.SemanticObjectUsages.First(usage => usage.Table == "Fact" && usage.ObjectName == "IndirectlyUsedColumn");
         var ordinaryArticle = Article(html, projection.CardFor(ordinaryColumn)!.Id);
-        Assert.Contains("No DAX definition is stored for this object.", ordinaryArticle, StringComparison.Ordinal);
+        Assert.Contains("This column has no DAX expression of its own.", ordinaryArticle, StringComparison.Ordinal);
         Assert.DoesNotContain("<pre><code></code></pre>", html, StringComparison.Ordinal);
-        Assert.Contains("Power Query preparation evidence", ordinaryArticle, StringComparison.Ordinal);
-        Assert.Contains("Queries load the table.", ordinaryArticle, StringComparison.Ordinal);
+        Assert.Contains("Power Query", ordinaryArticle, StringComparison.Ordinal);
+        Assert.Contains("This shows which query loads the table.", ordinaryArticle, StringComparison.Ordinal);
     }
 }

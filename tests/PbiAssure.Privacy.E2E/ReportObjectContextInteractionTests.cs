@@ -99,7 +99,7 @@ public sealed class ReportObjectContextInteractionTests(PrivacyE2EFixture fixtur
         Assert.Equal("summary", await Context(page).GetAttributeAsync("data-active-object-view"));
         Assert.True(await Context(page).Locator(".object-context-header .badge").IsVisibleAsync());
         await Context(page).Locator(".object-context-details > summary").PressAsync("Enter");
-        Assert.True(await Context(page).GetByRole(AriaRole.Heading, new() { Name = "Evidence and provenance", Exact = true }).IsVisibleAsync());
+        Assert.True(await Context(page).GetByRole(AriaRole.Heading, new() { Name = "Evidence", Exact = true }).IsVisibleAsync());
         if (state == "ApparentlyUnused") Assert.Contains("Check before removing it", await Context(page).InnerTextAsync(), StringComparison.Ordinal);
         await LocalLink(page, "Definition").PressAsync("Enter");
         Assert.True(await Context(page).Locator("[data-object-view='definition']").IsVisibleAsync());

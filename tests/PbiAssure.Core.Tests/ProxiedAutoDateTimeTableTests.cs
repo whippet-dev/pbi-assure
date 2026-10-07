@@ -53,7 +53,7 @@ public sealed class ProxiedAutoDateTimeTableTests
         Assert.DoesNotContain(DirectUsageProvenanceAnalyzer.Analyze(inventory).ObjectSummaries, summary => summary.Table == ProxyTable);
 
         var html = HtmlReportRenderer.Render(inventory);
-        Assert.Contains("System-generated tables", html, StringComparison.Ordinal);
+        Assert.Contains("Power BI-generated tables", html, StringComparison.Ordinal);
         Assert.Contains("Power BI-generated Auto Date/Time table", html, StringComparison.Ordinal);
         Assert.Contains(GeneratedReason, html, StringComparison.Ordinal);
         Assert.Matches("class=\"semantic-table system-generated-table\" data-object-origin=\"system\"[\\s\\S]{0,600}?" + ProxyTable, html);

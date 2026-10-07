@@ -85,7 +85,7 @@ public static partial class HtmlReportRenderer
       };
       const originLabel = origin => {
         const parent = origin.view.parent || origin.view.section;
-        const name = parent === 'semantic-usage' ? 'Model' : parent === 'reports' ? 'Reports'
+        const name = parent === 'semantic-usage' ? 'Model' : parent === 'reports' ? 'Report pages'
           : sectionLinks.find(link => link.dataset.sectionTarget === parent)?.querySelector('span')?.textContent || 'previous context';
         const search = Object.entries(origin.view.controls).find(([id, value]) => id.endsWith('-search') && value &&
           document.getElementById(id)?.closest('[data-report-section]')?.id === origin.view.section)?.[1];

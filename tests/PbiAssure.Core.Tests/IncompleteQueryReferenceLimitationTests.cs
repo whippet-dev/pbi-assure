@@ -171,7 +171,7 @@ public sealed class IncompleteQueryReferenceLimitationTests
         Assert.Contains("Partially checked", html, StringComparison.Ordinal);
         // No semantic object is marked, because none can be affected.
         Assert.DoesNotContain("class=\"confidence-flag\"", html, StringComparison.Ordinal);
-        Assert.Contains("None of them can change a used or unused result.", html, StringComparison.Ordinal);
+        Assert.Contains("This cannot change a used or unused result.", html, StringComparison.Ordinal);
     }
 
     // ---- Helpers ----------------------------------------------------------------------------

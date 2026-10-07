@@ -126,8 +126,8 @@ public sealed class ThemeReviewTests
         Assert.Contains("data-workspace-target=\"theme-review\"", html, StringComparison.Ordinal);
         Assert.Contains("id=\"theme-review\"", html, StringComparison.Ordinal);
         Assert.Contains("Theme status", html, StringComparison.Ordinal);
-        Assert.Contains("Significant theme deviations", html, StringComparison.Ordinal);
-        Assert.Contains("Consistency review", html, StringComparison.Ordinal);
+        Assert.Contains("Formatting that differs from the theme", html, StringComparison.Ordinal);
+        Assert.Contains("Inconsistent formatting", html, StringComparison.Ordinal);
         Assert.Contains("Theme accessibility coverage", html, StringComparison.Ordinal);
         Assert.Contains("Theme contents", html, StringComparison.Ordinal);
         Assert.Contains("Formatting details", html, StringComparison.Ordinal);

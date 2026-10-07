@@ -15,10 +15,10 @@ public static partial class HtmlReportRenderer
         var headline = all.Where(item => item.IncludeInHeadline).ToArray();
 
         html.AppendLine("    <section id=\"theme-review\" class=\"report-section\" data-report-section=\"theme-review\" aria-labelledby=\"theme-review-heading\">");
-        html.AppendLine("      <h2 id=\"theme-review-heading\" tabindex=\"-1\">Theme Review</h2>");
+        html.AppendLine("      <h2 id=\"theme-review-heading\" tabindex=\"-1\">Theme review</h2>");
         html.AppendLine("      <p class=\"section-intro\">See which theme is applied, which formatting differs from it and whether similar visuals use noticeably different formatting.</p>");
-        html.AppendLine("      <div class=\"theme-early-access\" role=\"note\"><strong>Beta coverage</strong><p>PBI Assure compares only the theme settings it can assess confidently. A report with no flagged differences may still contain properties that were not checked. Coverage will expand over time; use Theme Review to support, not replace, human design and governance review.</p></div>");
-        html.AppendLine("      <div class=\"theme-boundary\"><strong>Interpret differences in context</strong><p>Intentional design exceptions can be valid. Theme Review does not grade the report or reproduce Power BI’s full formatting engine.</p></div>");
+        html.AppendLine("      <div class=\"theme-early-access\" role=\"note\"><strong>Beta coverage</strong><p>PBI Assure compares only the theme settings it can assess confidently. A report with no flagged differences may still contain properties that were not checked. Coverage will expand over time; use Theme review to support, not replace, human design and governance review.</p></div>");
+        html.AppendLine("      <div class=\"theme-boundary\"><strong>Interpret differences in context</strong><p>Intentional design exceptions can be valid. Theme review does not grade the report or reproduce Power BI’s full formatting engine.</p></div>");
         AppendThemeSummary(html, inventory);
         AppendThemeReviewFilters(html, inventory);
         AppendThemeDeviations(html, inventory, contexts);
@@ -77,7 +77,7 @@ public static partial class HtmlReportRenderer
     {
         var deviations = inventory.Reports.SelectMany(report => report.ThemeReview.Deviations.Select(item => (report, item))).ToArray();
         html.AppendLine("      <section class=\"theme-review-group\" aria-labelledby=\"theme-deviations-heading\">");
-        html.AppendLine("        <h3 id=\"theme-deviations-heading\">Significant theme deviations</h3>");
+        html.AppendLine("        <h3 id=\"theme-deviations-heading\">Formatting that differs from the theme</h3>");
         html.AppendLine("        <p class=\"group-explanation\">Formatting that differs from the report's theme and may need review. A difference is not automatically a problem; check whether it is intentional.</p>");
         var checkedCount = inventory.Reports.SelectMany(report => report.Pages).SelectMany(page => page.Visuals)
             .SelectMany(visual => visual.PersistedFormatting).Count(item => item.ThemeComparison is not null);
@@ -131,7 +131,7 @@ public static partial class HtmlReportRenderer
     {
         var observations = inventory.Reports.SelectMany(report => report.ThemeReview.ConsistencyObservations.Select(item => (report, item))).ToArray();
         html.AppendLine("      <section class=\"theme-review-group\" aria-labelledby=\"theme-consistency-heading\">");
-        html.AppendLine("        <h3 id=\"theme-consistency-heading\">Consistency review</h3>");
+        html.AppendLine("        <h3 id=\"theme-consistency-heading\">Inconsistent formatting</h3>");
         html.AppendLine("        <p class=\"group-explanation\">Looks for visuals whose saved title formatting is noticeably different from similar visuals elsewhere in the report. Only strong, like-for-like patterns are shown.</p>");
         if (observations.Length == 0)
         {
@@ -155,7 +155,7 @@ public static partial class HtmlReportRenderer
             {
                 var examples = group.ToArray();
                 var first = examples[0].item;
-                AppendGovernanceCardStart(html, "Consistency review", first.PageDisplayName, first.VisualType,
+                AppendGovernanceCardStart(html, "Inconsistent formatting", first.PageDisplayName, first.VisualType,
                     first.PropertyKey, first.PropertyLabel, $"{first.ObservedValue} {first.DominantValue}");
                 html.Append("            <h4>").Append(Encode(first.PropertyLabel)).AppendLine(" differs from comparable visuals</h4>");
                 var affectedVisuals = examples.Select(value => new AffectedVisual(
@@ -281,7 +281,7 @@ public static partial class HtmlReportRenderer
             report.ThemeReview.Deviations.Select(item => new ThemeReviewItem(
                 "Theme deviation", item.PageDisplayName, item.VisualType, item.PropertyKey, item.PropertyLabel))
             .Concat(report.ThemeReview.ConsistencyObservations.Select(item => new ThemeReviewItem(
-                "Consistency review", item.PageDisplayName, item.VisualType, item.PropertyKey, item.PropertyLabel))));
+                "Inconsistent formatting", item.PageDisplayName, item.VisualType, item.PropertyKey, item.PropertyLabel))));
 
     private static string FormattingValue(string propertyKey, string value) =>
         propertyKey.EndsWith("fontSize", StringComparison.Ordinal) ? $"{value} pt" : value;
@@ -422,7 +422,7 @@ public static partial class HtmlReportRenderer
         {
             html.Append("        <p class=\"secondary\">").Append(staleCount.ToString("N0", CultureInfo.InvariantCulture))
                 .Append(" saved formatting ").Append(Pluralize(staleCount, "entry was", "entries were"))
-                .AppendLine(" linked to items no longer used by the visual. These are excluded from the summary and retained in technical details.</p>");
+                .AppendLine(" linked to items no longer used by the visual. These are excluded from the summary and shown in technical details.</p>");
         }
 
         var details = contexts.Where(context => DisplayedFormattingValues(context).Any()).ToArray();

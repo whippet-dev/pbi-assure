@@ -67,13 +67,13 @@ public static partial class HtmlReportRenderer
             foreach (var page in report.Pages)
             {
                 html.Append("<li>"); ContextLink(html, PageContextId(report, page) + "-summary", page.DisplayName);
-                html.Append(" · ").Append(page.VisualCount).AppendLine(" visuals</li>");
+                html.Append(" · ").Append(page.VisualCount).Append(' ').Append(Pluralize(page.VisualCount, "visual", "visuals")).AppendLine("</li>");
             }
             html.AppendLine("</ul></section>");
             ContextDetails(html, id);
-            AppendFact(html, "Report identity", report.RelativePath, true);
-            AppendFact(html, "Definition", report.DefinitionPath ?? "Not present", true);
-            AppendFact(html, "Schema", report.SchemaUri ?? "Not present", true);
+            AppendFact(html, "Report folder", report.RelativePath, true);
+            AppendFact(html, "Definition", report.DefinitionPath ?? "Not set", true);
+            AppendFact(html, "Schema", report.SchemaUri ?? "Not set", true);
             html.AppendLine("</dl></details></article>");
             foreach (var page in report.Pages)
             {
@@ -99,7 +99,7 @@ public static partial class HtmlReportRenderer
                 ContextDetails(html, pageId);
                 AppendFact(html, "Model object references", page.FieldReferenceCount.ToString(CultureInfo.InvariantCulture));
                 AppendFact(html, "Page ID", page.Name, true); AppendFact(html, "Source file", page.RelativePath, true);
-                AppendFact(html, "Schema", page.SchemaUri ?? "Not present", true); AppendFact(html, "Display option", page.DisplayOption ?? "Not present");
+                AppendFact(html, "Schema", page.SchemaUri ?? "Not set", true); AppendFact(html, "Display option", page.DisplayOption ?? "Not set");
                 html.AppendLine("</dl></details></article>");
                 var hierarchy = BuildVisualHierarchyContexts(page);
                 foreach (var visual in page.Visuals)
@@ -116,8 +116,15 @@ public static partial class HtmlReportRenderer
     {
         var findings = inventory.Findings.Where(finding => finding.Report == report.Name && finding.Visual is null &&
             (page is null ? finding.Page is null : finding.Page == page.Name)).ToArray();
-        html.Append("<p>").Append(findings.Count(item => item.Category != AssuranceCategories.Accessibility)).Append(" owner-level findings · ")
-            .Append(findings.Count(item => item.Category == AssuranceCategories.Accessibility)).AppendLine(" owner-level accessibility observations. <a href=\"#findings\">Review findings</a> · <a href=\"#theme-review\">Review report theme</a></p>");
+        var count = findings.Count(item => item.Category != AssuranceCategories.Accessibility);
+        var accessibility = findings.Count(item => item.Category == AssuranceCategories.Accessibility);
+        var scope = page is null ? "report itself" : "page";
+        html.Append("<p>");
+        if (count == 0 && accessibility == 0)
+            html.Append(CultureInfo.InvariantCulture, $"No findings or accessibility observations for this {scope}.");
+        else
+            html.Append(CultureInfo.InvariantCulture, $"{count} {Pluralize(count, "finding", "findings")} · {accessibility} {Pluralize(accessibility, "accessibility observation", "accessibility observations")} for this {scope}.");
+        html.AppendLine(" <a href=\"#findings\">Review findings</a> · <a href=\"#theme-review\">Review report theme</a></p>");
     }
 
     private static void AppendContextVisualList(StringBuilder html, SemanticLineageProjection lineage, ReportInventory report, PageInventory page)
@@ -157,21 +164,24 @@ public static partial class HtmlReportRenderer
         html.Append("<span id=\"").Append(Encode(VisualAnchor(report, page, visual))).Append("\" data-context-route=\"").Append(Encode(VisualViewId(card.Id, "summary"))).AppendLine("\"></span>");
         ContextView(html, card.Id, "Visual", "Summary");
         html.AppendLine("<dl class=\"object-summary-facts\">");
-        AppendFact(html, "Direct semantic objects", card.Uses.TotalCount.ToString(CultureInfo.InvariantCulture));
+        AppendFact(html, "Model objects used", card.Uses.TotalCount.ToString(CultureInfo.InvariantCulture));
         AppendFact(html, "Findings", findings.Count(item => item.Finding.Category != AssuranceCategories.Accessibility).ToString(CultureInfo.InvariantCulture));
         AppendFact(html, "Accessibility observations", findings.Count(item => item.Finding.Category == AssuranceCategories.Accessibility).ToString(CultureInfo.InvariantCulture));
         AppendFact(html, "Theme review items", themeItems.Length.ToString(CultureInfo.InvariantCulture)); html.AppendLine("</dl>");
         AppendVisualBehaviour(html, report, visual);
-        if (card.UnresolvedReportReferences.TotalCount > 0) html.Append("<p>").Append(card.UnresolvedReportReferences.TotalCount).AppendLine(" unresolved references. Supporting evidence is in Details.</p>");
+        if (card.UnresolvedReportReferences.TotalCount > 0) html.Append("<p>").Append(card.UnresolvedReportReferences.TotalCount).Append(' ').Append(Pluralize(card.UnresolvedReportReferences.TotalCount, "field reference not found in the model", "field references not found in the model")).AppendLine(". See Details.</p>");
         if (card.UnresolvedReportReferences.TotalCount == 0 && retainedUnresolved.Length > 0)
-            html.Append("<p>").Append(retainedUnresolved.Length).AppendLine(" retained unresolved reference records. Review saved evidence in Details.</p>");
+            html.Append("<p>").Append(retainedUnresolved.Length).Append(' ').Append(Pluralize(retainedUnresolved.Length, "field reference not found in the model", "field references not found in the model")).AppendLine(". See Details.</p>");
         var limitations = inventory.AnalysisLimitations.Where(item => (string.Equals(item.ArtifactPath, visual.RelativePath, StringComparison.OrdinalIgnoreCase) || string.Equals(item.ArtifactPath, page.DefinitionPath, StringComparison.OrdinalIgnoreCase) || string.Equals(item.ArtifactPath, report.DefinitionPath, StringComparison.OrdinalIgnoreCase))).ToArray();
-        foreach (var limitation in limitations) html.Append("<p class=\"group-explanation\">Checks limited: ").Append(Encode(limitation.Reason)).AppendLine("</p>");
+        foreach (var limitation in limitations) html.Append("<p class=\"group-explanation\">Checks limited: ").Append(Encode(AnalysisCoveragePresentation.DisplayReason(limitation))).AppendLine("</p>");
         html.AppendLine("<p class=\"group-explanation\">Saved project evidence; runtime behaviour and external usage are outside this view.</p></section>");
         ContextView(html, card.Id, "Visual", "Objects");
-        html.AppendLine("<div class=\"lineage-diagram\"><header class=\"lineage-focus\"><p class=\"kicker\">Selected visual</p><p>Direct uses into this visual</p></header><div class=\"lineage-side\" data-lineage-side=\"upstream\">");
-        AppendLineageGroup(html, "uses", "Uses", card.Uses, "No direct semantic-object use identified for this visual.", use => AppendLineageVisualUse(html, use));
-        html.AppendLine("</div></div><p class=\"group-explanation\">Objects follow the existing direct-use evidence policy. Saved bindings, including retained non-headline references, are in Details.</p></section>");
+        html.Append("<div class=\"lineage-diagram\"><header class=\"lineage-focus\"><p class=\"lineage-focus-reference\">")
+            .Append(Encode(VisualDisplayName(visual))).Append("</p><p>")
+            .Append(Encode(HumanizeVisualType(visual.VisualType) + " · " + page.DisplayName + " · " + DescribePosition(page, visual)))
+            .AppendLine("</p></header><div class=\"lineage-side\" data-lineage-side=\"upstream\">");
+        AppendLineageGroup(html, "uses", "Uses", card.Uses, "No model objects found for this visual.", use => AppendLineageVisualUse(html, use));
+        html.AppendLine("</div></div><p class=\"group-explanation\">The model objects this visual uses. Other saved field references are in Details.</p></section>");
         ContextView(html, card.Id, "Visual", "Reviews");
         foreach (var (label, accessibility) in new[] { ("Findings", false), ("Accessibility", true) })
         {
@@ -182,7 +192,7 @@ public static partial class HtmlReportRenderer
                 html.Append("<li>"); ContextLink(html, FindingAnchor(inventory, item.Finding, item.Index), item.Finding.Severity + " · " + ReviewCue(FriendlyFindingMessage(item.Finding, new VisualContext(report, page, visual)))); html.AppendLine("</li>");
             }
             html.AppendLine("</ul>");
-            if (family.Length == 0) html.Append("<p>No visual-specific ").Append(accessibility ? "accessibility observations" : "findings").AppendLine(" identified.</p>");
+            if (family.Length == 0) html.Append("<p>No ").Append(accessibility ? "accessibility observations" : "findings").AppendLine(" for this visual.</p>");
         }
         html.AppendLine("<h4>Theme</h4><ul class=\"plain-list\">");
         foreach (var item in themeItems) { html.Append("<li>"); ContextLink(html, item.Item2, item.Item1); html.AppendLine("</li>"); }
@@ -191,25 +201,25 @@ public static partial class HtmlReportRenderer
         {
             html.Append("<p>");
             ContextLink(html, VisualViewId(card.Id, "formatting"), "Review saved formatting evidence");
-            html.AppendLine(" (retained settings, not a count of issues).</p>");
+            html.AppendLine(" (saved settings, not a count of issues).</p>");
         }
-        if (themeItems.Length == 0) html.AppendLine("<p>No visual-specific theme review items identified.</p>");
+        if (themeItems.Length == 0) html.AppendLine("<p>No theme review items for this visual.</p>");
         html.AppendLine("</section>");
         ContextDetails(html, card.Id);
         AppendFact(html, "Visual ID", visual.Name, true);
-        AppendFact(html, "Saved title", visual.Accessibility.TitleText ?? "Not present");
-        AppendFact(html, "Saved alternative text", visual.Accessibility.AltText ?? "Not present");
-        AppendFact(html, "On-canvas text", visual.OnCanvasText ?? "Not present");
-        AppendFact(html, "Hidden", visual.IsHidden.ToString());
-        AppendFact(html, "Parent group", visual.ParentGroupName ?? "Not present");
-        AppendFact(html, "Schema", visual.SchemaUri ?? "Not present", true); AppendFact(html, "Source file", DisplayPath(visual.RelativePath), true);
-        AppendFact(html, "Position", FormatCoordinates(visual.Position)); AppendFact(html, "PBIR position.tabOrder value", visual.Position.TabOrder?.ToString(CultureInfo.InvariantCulture) ?? "Not present");
-        html.AppendLine("</dl><h4>Saved bindings and retained references</h4><p class=\"secondary\">Raw saved references are technical evidence, not the policy-filtered direct object count.</p>");
+        AppendFact(html, "Saved title", visual.Accessibility.TitleText ?? "Not set");
+        AppendFact(html, "Saved alternative text", visual.Accessibility.AltText ?? "Not set");
+        AppendFact(html, "On-canvas text", visual.OnCanvasText ?? "Not set");
+        AppendFact(html, "Hidden", visual.IsHidden ? "Yes" : "No");
+        AppendFact(html, "Parent group", visual.ParentGroupName ?? "Not set");
+        AppendFact(html, "Schema", visual.SchemaUri ?? "Not set", true); AppendFact(html, "Source file", DisplayPath(visual.RelativePath), true);
+        AppendFact(html, "Position", FormatCoordinates(visual.Position)); AppendFact(html, "Saved tab order", visual.Position.TabOrder?.ToString(CultureInfo.InvariantCulture) ?? "Not set");
+        html.AppendLine("</dl><h4>All saved field references</h4><p class=\"secondary\">Includes references PBI Assure doesn't count as use.</p>");
         AppendGroupedFieldReferenceList(html, lineage, report, visual.FieldReferences, true);
         AppendAccessibilitySummary(html, visual, hierarchy, "tab-order-help-" + card.Id);
-        AppendLineageGroup(html, "not-resolved", "Not resolved", card.UnresolvedReportReferences, null, reference => AppendLineageReportReferenceNote(html, reference), unresolved: true);
+        AppendLineageGroup(html, "not-resolved", "Couldn't be matched", card.UnresolvedReportReferences, null, reference => AppendLineageReportReferenceNote(html, reference), unresolved: true);
         if (card.UnresolvedReportReferences.TotalCount == 0 && retainedUnresolved.Length > 0)
-            AppendLineageGroup(html, "retained-unresolved", "Retained unresolved references",
+            AppendLineageGroup(html, "retained-unresolved", "Field references not found in the model",
                 new LineageGroup<UnresolvedSemanticReference>(retainedUnresolved.Take(SemanticLineageProjection.GroupLimit).ToArray(), retainedUnresolved.Length),
                 null, reference => AppendLineageReportReferenceNote(html, reference), unresolved: true);
         AppendLineageEvidence(html, card);

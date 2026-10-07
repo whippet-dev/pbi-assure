@@ -152,7 +152,7 @@ public sealed class ObjectLevelSecurityTests
         Assert.Contains("Table protected</span>Confidential", html, StringComparison.Ordinal);
         Assert.Contains("Column protected</span>Employee[Salary]", html, StringComparison.Ordinal);
         Assert.Contains("Metadata access: None", html, StringComparison.Ordinal);
-        Assert.Contains("cannot see who is assigned to roles in Power BI Service", html, StringComparison.Ordinal);
+        Assert.Contains("can't see who is assigned to roles in the Power BI Service", html, StringComparison.Ordinal);
         Assert.DoesNotContain("security passed", html, StringComparison.OrdinalIgnoreCase);
         Assert.DoesNotContain("compliant", html, StringComparison.OrdinalIgnoreCase);
     }

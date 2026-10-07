@@ -39,10 +39,10 @@ public sealed partial class LineageVisualTests
         Assert.Equal(1, Occurrences(article, "<h2 "));
         Assert.Contains($"<h2 id=\"{card.Id}-title\" tabindex=\"-1\" class=\"object-context-title\">Sales[Net Sales]</h2>", article, StringComparison.Ordinal);
         Assert.Equal(1, Occurrences(article, $"href=\"#{card.Id}\"")); // The local Lineage link.
-        // The focus is named once on screen: the path's start mark names it for assistive technology only,
+        // The heading and diagram centre both name the focus: the path's start mark names it for assistive technology only,
         // and the collapsed evidence below is the files behind the edges, not another view of the focus.
         var view = article[..article.IndexOf("<details class=\"technical-details lineage-evidence\">", StringComparison.Ordinal)];
-        Assert.Equal(1, Occurrences(TagRegex().Replace(view.Replace("<span class=\"visually-hidden\">Sales[Net Sales]</span>", string.Empty, StringComparison.Ordinal), " "), "Sales[Net Sales]"));
+        Assert.Equal(2, Occurrences(TagRegex().Replace(view.Replace("<span class=\"visually-hidden\">Sales[Net Sales]</span>", string.Empty, StringComparison.Ordinal), " "), "Sales[Net Sales]"));
     }
 
     // ---- B. Overflow -----------------------------------------------------------------------------------
@@ -202,7 +202,7 @@ public sealed partial class LineageVisualTests
 
         var possible = Group(amount, "possible");
         Assert.Contains("lineage-item lineage-item-unresolved", possible, StringComparison.Ordinal);
-        Assert.Contains("Not resolved: [Amount] may mean this", possible, StringComparison.Ordinal);
+        Assert.Contains("Couldn&#x27;t be matched: [Amount] may mean this", possible, StringComparison.Ordinal);
         Assert.Contains("<p class=\"lineage-empty\">None found</p>", Group(amount, "used-by"), StringComparison.Ordinal);
         Assert.True(amount.IndexOf("data-lineage-group=\"possible\"", StringComparison.Ordinal) >
                     amount.IndexOf("data-lineage-side=\"downstream\"", StringComparison.Ordinal));
@@ -226,10 +226,10 @@ public sealed partial class LineageVisualTests
         var card = lineage.Cards.First(item => item.Usage?.UsageState == SemanticUsageStates.StructurallyRequired && item.RequiredByModel.TotalCount > 0);
         var article = Article(html, card.Id);
 
-        Assert.Contains("<h3>Required by model (", Group(article, "required"), StringComparison.Ordinal);
+        Assert.Contains("<h3>Required by the model (", Group(article, "required"), StringComparison.Ordinal);
         Assert.DoesNotContain(card.RequiredByModel.Items[0].Name, Group(article, "used-by"), StringComparison.Ordinal);
         Assert.Equal(LineagePathStatus.NotFound, card.Path!.Status);
-        Assert.Contains("No report path found in this project.", PathSection(article), StringComparison.Ordinal);
+        Assert.Contains("No path to the report found in this project.", PathSection(article), StringComparison.Ordinal);
         Assert.Contains(
             ".lineage-group[data-lineage-group=\"required\"] .lineage-item::before, .lineage-group[data-lineage-group=\"required\"] .lineage-item::after { content: none; }",
             LineageCss(), StringComparison.Ordinal);

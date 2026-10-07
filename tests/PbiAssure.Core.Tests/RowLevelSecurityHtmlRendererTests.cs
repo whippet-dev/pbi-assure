@@ -97,9 +97,9 @@ public sealed class RowLevelSecurityHtmlRendererTests
         var html = HtmlReportRenderer.Render(inventory);
 
         Assert.Contains("<strong>Project definitions only</strong>", html, StringComparison.Ordinal);
-        Assert.Contains("cannot see who is assigned to roles in Power BI Service", html, StringComparison.Ordinal);
-        Assert.Contains("assess effective runtime identity", html, StringComparison.Ordinal);
-        Assert.Contains("confirm the overall security design", html, StringComparison.Ordinal);
+        Assert.Contains("can't see who is assigned to roles in the Power BI Service", html, StringComparison.Ordinal);
+        Assert.Contains("whether data can be reached another way", html, StringComparison.Ordinal);
+        Assert.Contains("Only the role definitions saved in this project", html, StringComparison.Ordinal);
         Assert.Contains("table-level metadata permissions and explicitly named column permissions", html, StringComparison.Ordinal);
         Assert.DoesNotContain("security passed", html, StringComparison.OrdinalIgnoreCase);
         Assert.DoesNotContain("RLS validated", html, StringComparison.OrdinalIgnoreCase);
@@ -130,7 +130,7 @@ public sealed class RowLevelSecurityHtmlRendererTests
         var html = HtmlReportRenderer.Render(inventory);
 
         Assert.Contains("Some metadata in this role was not fully checked.", html, StringComparison.Ordinal);
-        Assert.Contains("href=\"#analysis-coverage-model-1\">Review analysis coverage</a>", html, StringComparison.Ordinal);
+        Assert.Contains("href=\"#analysis-coverage-model-1\">See what was checked</a>", html, StringComparison.Ordinal);
         Assert.Contains("<h2 id=\"analysis-coverage-heading\"", html, StringComparison.Ordinal);
     }
 
@@ -147,8 +147,8 @@ public sealed class RowLevelSecurityHtmlRendererTests
 
         Assert.Contains("data-workspace-target=\"row-level-security\"", html, StringComparison.Ordinal);
         Assert.Contains("id=\"row-level-security\"", html, StringComparison.Ordinal);
-        Assert.Contains("No security roles recorded", html, StringComparison.Ordinal);
-        Assert.Contains("This does not assess Power BI Service assignments or effective runtime access.", html, StringComparison.Ordinal);
+        Assert.Contains("No security roles in this project", html, StringComparison.Ordinal);
+        Assert.Contains("Role assignments in the Power BI Service", html, StringComparison.Ordinal);
     }
 
     [Fact]

@@ -343,9 +343,9 @@ public sealed class VisualGroupSupportTests
         Assert.Contains("<dd><span class=\"fact-primary\">Included</span><span class=\"fact-supporting\">Position 1</span></dd>", html, StringComparison.Ordinal);
         Assert.Contains("<dd><span class=\"fact-primary\">Excluded</span></dd>", html, StringComparison.Ordinal);
         Assert.Contains("<dd><span class=\"fact-primary\">Included</span><span class=\"fact-supporting\">Power BI default order</span></dd>", html, StringComparison.Ordinal);
-        Assert.Contains("<dt>PBIR position.tabOrder value</dt><dd>10</dd>", html, StringComparison.Ordinal);
-        Assert.Contains("<dt>PBIR position.tabOrder value</dt><dd>-1</dd>", html, StringComparison.Ordinal);
-        Assert.Contains("<dt>PBIR position.tabOrder value</dt><dd>Not present</dd>", html, StringComparison.Ordinal);
+        Assert.Contains("<dt>Saved tab order</dt><dd>10</dd>", html, StringComparison.Ordinal);
+        Assert.Contains("<dt>Saved tab order</dt><dd>-1</dd>", html, StringComparison.Ordinal);
+        Assert.Contains("<dt>Saved tab order</dt><dd>Not set</dd>", html, StringComparison.Ordinal);
         Assert.Contains("Included in tab order at position 1.", html, StringComparison.Ordinal);
         Assert.Contains("Excluded from tab order.", html, StringComparison.Ordinal);
         Assert.Contains("Included in tab order using Power BI&#x27;s default order. No explicit tab-order position is stored in PBIR.", html, StringComparison.Ordinal);
@@ -438,7 +438,7 @@ public sealed class VisualGroupSupportTests
         Assert.Contains("<span class=\"fact-primary\">Included</span>", card, StringComparison.Ordinal);
         Assert.Contains($"<span class=\"fact-supporting\">Position {friendlyRank}</span>", card, StringComparison.Ordinal);
         Assert.Contains($"role=\"tooltip\">{tooltip}</span>", card, StringComparison.Ordinal);
-        Assert.Contains($"<dt>PBIR position.tabOrder value</dt><dd>{rawRank}</dd>", card, StringComparison.Ordinal);
+        Assert.Contains($"<dt>Saved tab order</dt><dd>{rawRank}</dd>", card, StringComparison.Ordinal);
         Assert.DoesNotContain("<dt>Group</dt>", card, StringComparison.Ordinal);
         Assert.DoesNotContain("<dt>Parent group</dt>", card[..card.IndexOf("<details class=\"object-context-details\"", StringComparison.Ordinal)], StringComparison.Ordinal);
     }

@@ -77,13 +77,13 @@ public sealed class DesktopUserRelationshipEvidenceFixtureTests
         var inventory = ScanFixture();
         var html = HtmlReportRenderer.Render(inventory);
 
-        Assert.Contains("Activated by report-used DAX", html, StringComparison.Ordinal);
+        Assert.Contains("Used via USERELATIONSHIP in DAX the report uses", html, StringComparison.Ordinal);
         Assert.Contains("Activated by</dt><dd>Sales[Sales by Shipping Customer]", html, StringComparison.Ordinal);
-        Assert.Contains("Referenced only by unused DAX", html, StringComparison.Ordinal);
-        Assert.Contains("Referenced only by unused DAX</dt><dd>Sales[Sales by Referral Customer]", html, StringComparison.Ordinal);
+        Assert.Contains("Only used via USERELATIONSHIP in unused DAX", html, StringComparison.Ordinal);
+        Assert.Contains("Only used via USERELATIONSHIP in unused DAX</dt><dd>Sales[Sales by Referral Customer]", html, StringComparison.Ordinal);
         Assert.Contains("No USERELATIONSHIP call found in analysed DAX", html, StringComparison.Ordinal);
         Assert.Contains("No <code>USERELATIONSHIP</code> call found in the analysed DAX.", html, StringComparison.Ordinal);
-        Assert.DoesNotContain("Activated by report-used DAX</dt><dd>Sales[Total Sales]", html, StringComparison.Ordinal);
+        Assert.DoesNotContain("Used via USERELATIONSHIP in DAX the report uses</dt><dd>Sales[Total Sales]", html, StringComparison.Ordinal);
         Assert.DoesNotContain(inventory.Findings, finding => finding.RuleId.Contains("RELATIONSHIP", StringComparison.OrdinalIgnoreCase));
     }
 

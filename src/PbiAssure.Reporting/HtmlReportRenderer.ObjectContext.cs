@@ -26,7 +26,7 @@ public static partial class HtmlReportRenderer
             html.Append("<article id=\"").Append(Encode(card.Id)).Append("\" class=\"lineage-card\" data-lineage-card=\"semantic\" aria-labelledby=\"")
                 .Append(Encode(card.Id + "-title")).AppendLine("\">");
             AppendObjectContextStart(html, inventory, card, coverage);
-            html.AppendLine("<p class=\"group-explanation\">No object-level lineage is stored for this table. Explore the dependencies of its columns, measures and calculation items in <a href=\"#semantic-usage\">Semantic model</a>.</p></section>");
+            html.AppendLine("<p class=\"group-explanation\">Lineage is shown for this table's columns and measures. Explore them in <a href=\"#semantic-usage\">Model</a>.</p></section>");
             AppendObjectDefinition(html, inventory, card);
             AppendObjectDetails(html, inventory, card, coverage);
             html.AppendLine("</article>");
@@ -53,17 +53,22 @@ public static partial class HtmlReportRenderer
         html.AppendLine("<h3 tabindex=\"-1\">Summary</h3><dl class=\"object-summary-facts\">");
         if (card.ObjectType != SemanticObjectTypes.Table)
         {
-            AppendFact(html, "Used by", card.UsedBy.TotalCount == 0 ? "No identified consumers" : $"{card.UsedBy.TotalCount} model {(card.UsedBy.TotalCount == 1 ? "object" : "objects")}");
-            AppendFact(html, "Used in report", card.UsedInReport.TotalCount == 0 ? "No direct locations identified" : $"{card.UsedInReport.TotalCount} {(card.UsedInReport.TotalCount == 1 ? "location" : "locations")}");
-            AppendFact(html, "Required by model", card.RequiredByModel.TotalCount > 0 ? $"{card.RequiredByModel.TotalCount} structural sources"
-                : card.Usage?.UsageState == SemanticUsageStates.StructurallyRequired ? "Required by model structure" : "No structural requirement identified");
-            AppendFact(html, "Power Query evidence", card.PowerQuery is null ? "No preparation evidence stored here" : "Available in Details");
+            AppendFact(html, "Used by", card.UsedBy.TotalCount == 0 ? "None found in the model" : $"{card.UsedBy.TotalCount} {Pluralize(card.UsedBy.TotalCount, "object", "objects")} in the model");
+            AppendFact(html, "Used in the report", card.UsedInReport.TotalCount == 0 ? "Not used directly" : $"{card.UsedInReport.TotalCount} {Pluralize(card.UsedInReport.TotalCount, "place", "places")}");
+            AppendFact(html, "Required by the model", StructuralSummary(card));
+            AppendFact(html, "Power Query", card.PowerQuery is null ? "None found" : "See Details");
         }
         html.AppendLine("</dl>");
         if (card.ObjectType == SemanticObjectTypes.Table)
-            html.AppendLine("<p>This context contains the table's saved definition and specialised metadata. Table-level usage is not classified here; review the usage of its individual objects in Semantic model.</p>");
+            html.AppendLine("<p>Usage is shown for this table's columns and measures, not the table itself.</p>");
         if (card.Usage?.UsageState == SemanticUsageStates.ApparentlyUnused)
-            html.AppendLine("<p>No identified semantic or report use in this project. Check before removing it: external reports and dynamic behaviour may not be visible here.</p>");
+        {
+            var hasQueryUse = card.PowerQuery?.ColumnEvidence.Count > 0;
+            html.Append("<p>").Append(hasQueryUse
+                ? "PBI Assure didn't find any model or report use for this object in the project. Power Query use is shown in Details."
+                : "PBI Assure didn't find any use for this object in the project.")
+                .AppendLine(" Check before removing it: other reports and dynamic behaviour can't be seen here.</p>");
+        }
         if (card.UsedInReport.Items.Count > 0)
         {
             html.AppendLine("<section class=\"object-summary-group\"><h4>Report usage</h4><ul class=\"plain-list\">");
@@ -75,15 +80,31 @@ public static partial class HtmlReportRenderer
             }
             html.AppendLine("</ul></section>");
         }
-        AppendObjectSummaryNeighbours(html, "Main consumers", card.UsedBy);
-        AppendObjectSummaryNeighbours(html, "Structural requirement", card.RequiredByModel);
+        AppendObjectSummaryNeighbours(html, "Used by", card.UsedBy);
+        AppendObjectSummaryNeighbours(html, "Required by the model", card.RequiredByModel);
         if (card.PossibleUse.TotalCount > 0 || card.NotResolved.TotalCount > 0)
             html.AppendLine("<p class=\"group-explanation\">Possible use or unresolved references are recorded. Review the distinctions in Lineage and the evidence in Details.</p>");
         if (card.Usage is { ClassificationConfidence: ClassificationConfidences.QualifiedByLimitation })
-            html.AppendLine("<p class=\"group-explanation\">Checks limited: this classification is qualified. Applicable limitations are in Details.</p>");
+            html.AppendLine("<p class=\"group-explanation\">Some checks were limited for this model, so this result could miss some usage. See Details.</p>");
         html.AppendLine("<p class=\"group-explanation\">Explore dependencies and all listed locations in Lineage. Supporting evidence is in Details.</p></section>");
         html.Append("<section class=\"object-local-view\" data-object-view=\"lineage\" aria-labelledby=\"").Append(Encode(card.Id + "-view-heading")).AppendLine("\">");
         html.Append("<h3 id=\"").Append(Encode(card.Id + "-view-heading")).AppendLine("\" tabindex=\"-1\">Lineage</h3>");
+    }
+
+    private static string StructuralSummary(LineageCard card)
+    {
+        if (card.RequiredByModel.TotalCount == 0)
+            return card.Usage?.UsageState == SemanticUsageStates.StructurallyRequired ? "Yes – model structure" : "No";
+        if (card.RequiredByModel.HiddenCount > 0)
+            return $"Yes – see Lineage ({card.RequiredByModel.TotalCount} items)";
+        var kinds = card.RequiredByModel.Items.GroupBy(item => item.ObjectType)
+            .Select(group =>
+            {
+                var singular = SemanticLineageProjection.ObjectTypeLabel(group.Key).ToLowerInvariant();
+                var plural = group.Key == SemanticObjectTypes.RefreshPolicy ? singular[..^1] + "ies" : singular + "s";
+                return $"{group.Count()} {Pluralize(group.Count(), singular, plural)}";
+            });
+        return "Yes – " + string.Join(", ", kinds);
     }
 
     private static void AppendObjectSummaryNeighbours(StringBuilder html, string label, LineageGroup<LineageNeighbour> group)
@@ -143,7 +164,8 @@ public static partial class HtmlReportRenderer
                 break;
         }
         var saved = definitions.Where(definition => !string.IsNullOrWhiteSpace(definition.Expression)).ToArray();
-        if (saved.Length == 0) html.AppendLine("<p class=\"group-explanation\">No DAX definition is stored for this object.</p>");
+        if (saved.Length == 0) html.Append("<p class=\"group-explanation\">").Append(card.ObjectType == SemanticObjectTypes.Column
+            ? "This column has no DAX expression of its own." : "No DAX expression.").AppendLine("</p>");
         foreach (var (label, expression) in saved)
             html.Append("<h4>").Append(Encode(label)).Append("</h4><pre><code>").Append(Encode(expression!)).AppendLine("</code></pre>");
         html.AppendLine("</section>");
@@ -152,41 +174,40 @@ public static partial class HtmlReportRenderer
     private static void AppendObjectDetails(StringBuilder html, ProjectInventory inventory, LineageCard card, AnalysisCoverage coverage)
     {
         html.Append("<details id=\"").Append(Encode(card.Id + "-details")).AppendLine("\" class=\"object-context-details\"><summary>Details</summary>");
-        html.AppendLine("<section><h3>Evidence and provenance</h3>");
+        html.AppendLine("<section><h3>Evidence</h3>");
         var sourcePath = ObjectTable(inventory, card)?.RelativePath ?? ObjectReportMeasure(card)?.RelativePath;
         if (sourcePath is null && card.ObjectType == SemanticObjectTypes.Function)
             sourcePath = inventory.SemanticModels.FirstOrDefault(model => model.Name == card.SemanticModel)?.Functions
                 .FirstOrDefault(function => function.Name == card.Reachability?.ObjectName)?.RelativePath;
         if (sourcePath is not null)
-            html.Append("<p>Saved source file: <code>").Append(Encode(DisplayPath(sourcePath))).AppendLine("</code></p>");
+            html.Append("<p>Defined in: <code>").Append(Encode(DisplayPath(sourcePath))).AppendLine("</code></p>");
         AppendLineageEvidence(html, card);
         if (card.Usage is { } usage) AppendUsageDetails(html, inventory, usage);
         html.AppendLine("</section>");
-        if (card.Usage is { ClassificationConfidence: ClassificationConfidences.QualifiedByLimitation } qualified)
+        if (card.Usage is { ClassificationConfidence: ClassificationConfidences.QualifiedByLimitation })
         {
-            html.AppendLine("<section><h3>Applicable limitations</h3>");
+            html.AppendLine("<section><h3>Checks limited</h3>");
             var modelCoverage = coverage.Models.FirstOrDefault(model => string.Equals(model.ModelName, card.SemanticModel, StringComparison.OrdinalIgnoreCase));
-            AppendClassificationConfidence(html, qualified, modelCoverage?.AnchorId);
             if (modelCoverage is not null)
-                html.Append("<p><a href=\"#").Append(Encode(modelCoverage.AnchorId)).AppendLine("\">Review the model's recorded limitations</a></p>");
+                html.Append("<p><a href=\"#").Append(Encode(modelCoverage.AnchorId)).AppendLine("\">See what PBI Assure couldn't fully check</a></p>");
             html.AppendLine("</section>");
         }
         if (card.PowerQuery is not null)
         {
-            html.AppendLine("<section><h3>Power Query preparation evidence</h3>");
+            html.AppendLine("<section><h3>Power Query</h3>");
             AppendLineagePowerQuery(html, inventory, card);
             if (card.Usage is { } column) AppendPowerQueryColumnUsage(html, inventory, column);
-            html.AppendLine("<p class=\"group-explanation\">Queries load the table. This bounded saved evidence does not establish end-to-end column lineage; absence of evidence here does not establish absence of a Power Query dependency.</p></section>");
+            html.AppendLine("<p class=\"group-explanation\">This shows which query loads the table. It doesn't follow the column through every query step, and a query could depend on it without appearing here.</p></section>");
         }
         if (card.ObjectType == SemanticObjectTypes.Table && ObjectTable(inventory, card) is { } table)
         {
-            html.AppendLine("<section><h3>Structural and specialised metadata</h3>");
+            html.AppendLine("<section><h3>Table settings</h3>");
             AppendSemanticFeatures(html, table);
             html.AppendLine("</section>");
         }
         if (ObjectReportMeasure(card) is { } reportMeasure)
         {
-            html.AppendLine("<section><h3>Report calculation metadata</h3><dl class=\"facts\">");
+            html.AppendLine("<section><h3>Report measure details</h3><dl class=\"facts\">");
             AppendFact(html, "Data type", reportMeasure.DataType);
             if (!string.IsNullOrWhiteSpace(reportMeasure.Description)) AppendFact(html, "Description", reportMeasure.Description);
             if (!string.IsNullOrWhiteSpace(reportMeasure.FormatString)) AppendFact(html, "Display format", reportMeasure.FormatString, code: true);

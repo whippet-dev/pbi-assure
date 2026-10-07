@@ -27,16 +27,16 @@ public static partial class HtmlReportRenderer
         AppendReportInventory(html, inventory, lineage);
         AppendReportContexts(html, inventory, lineage);
         AppendWorkspaceStart(html, "reviews", "Reviews", "findings",
-            "Three review families, each with its own scope and evidence.",
+            "Findings, theme and accessibility are checked separately.",
             [("findings", "Findings"), ("theme-review", "Theme"), ("accessibility-review", "Accessibility")]);
         AppendFindings(html, inventory, mainFindings);
         AppendThemeReview(html, inventory);
         AppendAccessibilityReview(html, inventory, accessibilityFindings);
         html.AppendLine("    </div>");
         AppendWorkspaceStart(html, "technical", "Technical", "power-query",
-            "Sources, model structure, security and analysis boundaries.",
+            "Power Query, relationships, security roles and what PBI Assure could check.",
             [("power-query", "Power Query"), ("relationships", "Relationships"),
-             ("row-level-security", "Security"), ("analysis-coverage", "Analysis coverage")]);
+             ("row-level-security", "Security"), ("analysis-coverage", "What was checked")]);
         AppendPowerQueryLineage(html, inventory);
         AppendRelationships(html, inventory);
         AppendRowLevelSecurity(html, inventory, coverage);
@@ -84,7 +84,7 @@ public static partial class HtmlReportRenderer
         html.AppendLine("      <details class=\"project-details\"><summary>Project details</summary>");
         html.AppendLine("      <dl class=\"report-meta\">");
         AppendScanTimestamp(html, inventory.ScannedAtUtc);
-        AppendDefinition(html, "Inventory schema", inventory.SchemaVersion);
+        AppendDefinition(html, "Output format", inventory.SchemaVersion);
         AppendDefinition(html, "Source project", DisplayPath(inventory.RootPath));
         html.AppendLine("      </dl>");
         html.AppendLine("      </details>");
@@ -98,7 +98,7 @@ public static partial class HtmlReportRenderer
         html.AppendLine("        <ul class=\"section-nav\">");
         AppendSectionNavigationItem(html, "summary", "Overview", null);
         AppendSectionNavigationItem(html, "semantic-usage", "Model", null);
-        AppendSectionNavigationItem(html, "reports", "Reports", null);
+        AppendSectionNavigationItem(html, "reports", "Report pages", null);
         AppendSectionNavigationItem(html, "findings", "Reviews", null, "reviews");
         html.AppendLine("        </ul>");
         html.AppendLine("        <ul class=\"section-nav technical-nav\">");
@@ -108,7 +108,7 @@ public static partial class HtmlReportRenderer
         html.AppendLine("      </nav>");
         html.AppendLine("  <main id=\"main-content\" class=\"report-content\" tabindex=\"-1\">");
         html.AppendLine("    <p id=\"investigation-return-row\" class=\"investigation-return\" hidden><a id=\"investigation-return\">Return</a></p>");
-        html.AppendLine("    <p id=\"investigation-selection-note\" class=\"group-explanation\" hidden>This item is outside the current collection filters. Your search and filters are unchanged.</p>");
+        html.AppendLine("    <p id=\"investigation-selection-note\" class=\"group-explanation\" hidden>Hidden by your current search or filters. They haven't been changed.</p>");
     }
 
     /// <summary>
@@ -125,16 +125,16 @@ public static partial class HtmlReportRenderer
         if (!coverage.HasCoverage)
         {
             html.AppendLine("    <section id=\"analysis-coverage\" class=\"report-section\" data-report-section=\"analysis-coverage\" aria-labelledby=\"analysis-coverage-heading\">");
-            html.AppendLine("      <h2 id=\"analysis-coverage-heading\" tabindex=\"-1\">Analysis coverage</h2>");
-            html.AppendLine("      <p class=\"section-intro\">No project-specific analysis limitations were recorded. The standing scope boundaries still apply; this is not a completeness claim.</p>");
-            html.AppendLine("      <p><a href=\"#scope-heading\">Standing scope boundaries</a></p>");
+            html.AppendLine("      <h2 id=\"analysis-coverage-heading\" tabindex=\"-1\">What was checked</h2>");
+            html.AppendLine("      <p class=\"section-intro\">No results have Checks limited. Use outside this project still can't be seen.</p>");
+            html.AppendLine("      <p><a href=\"#scope-heading\">Important limits before acting</a></p>");
             html.AppendLine("    </section>");
             return;
         }
 
         html.AppendLine("    <section id=\"analysis-coverage\" class=\"report-section\" data-report-section=\"analysis-coverage\" aria-labelledby=\"analysis-coverage-heading\">");
-        html.AppendLine("      <h2 id=\"analysis-coverage-heading\" tabindex=\"-1\">Analysis coverage</h2>");
-        html.AppendLine("      <p class=\"section-intro\">This shows report-format metadata that PBI Assure has not verified exactly, alongside anything it could not fully check in the semantic model. These notes describe PBI Assure's coverage, not a problem with your project.</p>");
+        html.AppendLine("      <h2 id=\"analysis-coverage-heading\" tabindex=\"-1\">What was checked</h2>");
+        html.AppendLine("      <p class=\"section-intro\">What PBI Assure couldn't fully check here, and whether it could change any results. These are limits of the analysis, not problems with your project.</p>");
 
         foreach (var report in coverage.Reports)
         {
@@ -204,7 +204,7 @@ public static partial class HtmlReportRenderer
             html.AppendLine("      </section>");
         }
 
-        html.AppendLine("      <p class=\"coverage-footnote\">PBI Assure covers more Power BI metadata with each release. Anything listed here describes what this version can read — it is not a problem with your project.</p>");
+        html.AppendLine("      <p class=\"coverage-footnote\">Use outside this project still can't be seen.</p>");
         html.AppendLine("    </section>");
     }
 
@@ -220,7 +220,7 @@ public static partial class HtmlReportRenderer
             html.Append("PBI Assure could not fully check ")
                 .Append(model.ArtifactCount.ToString(CultureInfo.InvariantCulture)).Append(' ')
                 .Append(Pluralize(model.ArtifactCount, "file", "files"))
-                .Append(" in this model. <strong>None of them can change a used or unused result.</strong>");
+                .Append(" in this model. <strong>This cannot change a used or unused result.</strong>");
             html.AppendLine("</p>");
             return;
         }
@@ -345,7 +345,7 @@ public static partial class HtmlReportRenderer
     private const string CoverageMarkerLabel = "Checks limited";
 
     private const string CoverageMarkerDescription =
-        " — PBI Assure could not check every source of usage in this model.";
+        " — see what was checked.";
 
     private static void AppendClassificationConfidence(
         StringBuilder html,
@@ -371,7 +371,7 @@ public static partial class HtmlReportRenderer
         html.Append("<a class=\"confidence-flag\" href=\"#").Append(Encode(coverageAnchor))
             .Append("\">").Append(CoverageMarkerLabel)
             .Append("<span class=\"visually-hidden\">").Append(CoverageMarkerDescription)
-            .Append(" See analysis coverage.</span></a>");
+            .Append("</span></a>");
     }
 
     private static string ConfidenceSearchText(SemanticObjectUsage usage) =>
@@ -410,7 +410,7 @@ public static partial class HtmlReportRenderer
         AppendDataSourceSummary(html, inventory);
 
         AppendInvestigationStart(html, "query", "Search queries", "Search query names, connectors, dependencies or model tables");
-        AppendInvestigationFacet(html, "query", "load-state", "Load state", "All load states", inventory.PowerQueryUsages.Select(usage => usage.UsageState).Distinct(StringComparer.OrdinalIgnoreCase).OrderBy(value => value).Select(value => new FindingFacetOption(value, value == PowerQueryUsageStates.LoadedToModel ? "Loaded to model" : value == PowerQueryUsageStates.SupportingQuery ? "Supporting query" : "Apparently unused")));
+        AppendInvestigationFacet(html, "query", "load-state", "Load state", "All load states", inventory.PowerQueryUsages.Select(usage => usage.UsageState).Distinct(StringComparer.OrdinalIgnoreCase).OrderBy(value => value).Select(value => new FindingFacetOption(value, value == PowerQueryUsageStates.LoadedToModel ? "Loaded to the model" : value == PowerQueryUsageStates.SupportingQuery ? "Supporting query" : "Apparently unused")));
         AppendInvestigationFacet(html, "query", "connector", "Connector type", "All connector types", inventory.DataSources.Select(source => source.ConnectorFamily).Where(value => !string.IsNullOrWhiteSpace(value)).Distinct(StringComparer.OrdinalIgnoreCase).OrderBy(value => value).Select(value => new FindingFacetOption(value!, value!)));
         AppendInvestigationFacet(html, "query", "role", "How query is used", "All uses", inventory.PowerQueryUsages.Select(PowerQueryPresentationRole).Where(value => !string.IsNullOrWhiteSpace(value)).Distinct(StringComparer.OrdinalIgnoreCase).OrderBy(value => value).Select(value => new FindingFacetOption(value!, PowerQueryRoleLabel(inventory.PowerQueryUsages.First(usage => PowerQueryPresentationRole(usage) == value)))));
         AppendInvestigationEnd(html, "query", inventory.PowerQueryUsages.Count, "query", "queries");
@@ -517,7 +517,7 @@ public static partial class HtmlReportRenderer
     {
         html.AppendLine("    <section id=\"accessibility-review\" class=\"report-section\" data-report-section=\"accessibility-review\" aria-labelledby=\"accessibility-review-heading\">");
         html.AppendLine("      <h2 id=\"accessibility-review-heading\" tabindex=\"-1\">Accessibility review</h2>");
-        html.AppendLine("      <p class=\"section-intro\">Supporting analysis of the existing automated accessibility checks. Review the affected visuals and pages alongside manual WCAG and assistive-technology testing.</p>");
+        html.AppendLine("      <p class=\"section-intro\">Saved accessibility settings PBI Assure can check, such as alt text and tab order. Use alongside manual testing.</p>");
         html.AppendLine("      <div class=\"accessibility-boundary\" role=\"note\"><strong>Review support, not a compliance verdict</strong><p>PBI Assure identifies selected metadata concerns; it does not prove WCAG conformance or replace testing with assistive technology.</p></div>");
 
         if (findings.Length == 0)
@@ -530,7 +530,7 @@ public static partial class HtmlReportRenderer
         var findingItems = findings.Select(finding => CreateFindingRenderItem(inventory, finding)).ToArray();
         html.AppendLine("      <section class=\"accessibility-summary\" aria-labelledby=\"accessibility-summary-heading\">");
         html.AppendLine("        <h3 id=\"accessibility-summary-heading\">Issue summary</h3>");
-        html.AppendLine("        <p class=\"group-explanation\">Observations are grouped by the existing check before their individual evidence. The counts describe affected visuals, items or pages where that is known from the rule's retained evidence.</p>");
+        html.AppendLine("        <p class=\"group-explanation\">Grouped by check. Counts show the visuals or pages affected.</p>");
         html.AppendLine("        <div class=\"accessibility-summary-list\">");
         foreach (var group in findingItems
                      .Select((item, index) => new IndexedFinding(item, index))
@@ -552,7 +552,7 @@ public static partial class HtmlReportRenderer
         html.AppendLine("      </section>");
         html.AppendLine("      <section aria-labelledby=\"accessibility-details-heading\">");
         html.AppendLine("        <h3 id=\"accessibility-details-heading\">Affected items</h3>");
-        html.AppendLine("        <p class=\"group-explanation\">Expand an observation for its location, suggested action and retained technical evidence.</p>");
+        html.AppendLine("        <p class=\"group-explanation\">Expand one to see where it is and what to do.</p>");
         AppendDetailsControls(html, "accessibility-finding-list", "accessibility observations");
         html.AppendLine("        <div id=\"accessibility-finding-list\" class=\"card-list\">");
         for (var index = 0; index < findingItems.Length; index++)
@@ -698,8 +698,8 @@ public static partial class HtmlReportRenderer
         ? "Power Query parameter"
         : usage.QueryRole switch
     {
-        PowerQueryRoles.LoadedAndSupporting => "Loaded into model and used by other queries",
-        PowerQueryRoles.LoadedOnly => "Loaded into model only",
+        PowerQueryRoles.LoadedAndSupporting => "Loaded to the model and used by other queries",
+        PowerQueryRoles.LoadedOnly => "Loaded to the model only",
         PowerQueryRoles.HelperOrStaging => "Helper / staging query",
         PowerQueryRoles.ApparentlyOrphaned => "No known use found",
         _ => "How this query is used needs review",
@@ -709,10 +709,10 @@ public static partial class HtmlReportRenderer
         ? "Parameter"
         : usage.QueryRole switch
     {
-        PowerQueryRoles.LoadedAndSupporting => "Loaded to model + used by other queries",
-        PowerQueryRoles.LoadedOnly => "Loaded to model",
+        PowerQueryRoles.LoadedAndSupporting => "Loaded to the model and used by other queries",
+        PowerQueryRoles.LoadedOnly => "Loaded to the model",
         PowerQueryRoles.HelperOrStaging => "Helper / staging",
-        PowerQueryRoles.ApparentlyOrphaned => "No known consumers",
+        PowerQueryRoles.ApparentlyOrphaned => "No use by another query found",
         _ => "Review",
     };
 
@@ -727,18 +727,18 @@ public static partial class HtmlReportRenderer
                 return $"Parameter · used by incremental refresh for {string.Join(", ", usage.RefreshPolicyTables)}";
             }
 
-            return usedByCount > 0 ? $"Parameter · {usedByText}" : "Parameter · no static consumers found";
+            return usedByCount > 0 ? $"Parameter · {usedByText}" : "Parameter · no use by another query found";
         }
 
         return usage.QueryRole switch
         {
-            PowerQueryRoles.LoadedAndSupporting => $"Loads into the model · {usedByText}",
-            PowerQueryRoles.LoadedOnly when usesCount > 0 => $"Loads into the model · {usesText}",
-            PowerQueryRoles.LoadedOnly => "Loads into the model",
+            PowerQueryRoles.LoadedAndSupporting => $"Loaded to the model · {usedByText}",
+            PowerQueryRoles.LoadedOnly when usesCount > 0 => $"Loaded to the model · {usesText}",
+            PowerQueryRoles.LoadedOnly => "Loaded to the model",
             PowerQueryRoles.HelperOrStaging when usedByCount > 0 => $"Reusable query · {usedByText}",
             PowerQueryRoles.HelperOrStaging => "Reusable query",
-            PowerQueryRoles.ApparentlyOrphaned => "Reusable query · no consumers found",
-            _ when usage.UsageState == PowerQueryUsageStates.LoadedToModel => "Loads into the model · dependency review needed",
+            PowerQueryRoles.ApparentlyOrphaned => "Reusable query · no use by another query found",
+            _ when usage.UsageState == PowerQueryUsageStates.LoadedToModel => "Loaded to the model · dependency review needed",
             _ => "Reusable query · dependency review needed",
         };
     }
@@ -757,12 +757,12 @@ public static partial class HtmlReportRenderer
     {
         html.AppendLine("    <section id=\"findings\" class=\"report-section\" data-report-section=\"findings\" aria-labelledby=\"findings-heading\">");
         html.AppendLine("      <h2 id=\"findings-heading\" tabindex=\"-1\">Findings</h2>");
-        html.AppendLine("      <p class=\"section-intro\">Non-accessibility issues and review points found by automated checks. Expand one to see where it occurs and what to do next.</p>");
+        html.AppendLine("      <p class=\"section-intro\">Issues and review points from PBI Assure's automated checks. Accessibility is reviewed separately. Expand one to see where it is and what to do.</p>");
         html.AppendLine("      <details class=\"section-help\"><summary>How to use findings</summary><p>A finding is an automated observation, not a verdict on the whole report. Its location shows where PBI Assure found it and Suggested action gives a practical next step. Items marked Review required can be intentional, depending on your report's context.</p></details>");
         AppendRuleCatalogue(html, findings, includeAccessibility: false);
         if (findings.Length == 0)
         {
-            AppendSectionEmptyState(html, "No primary assurance findings", "PBI Assure did not identify non-accessibility issues or review items in its current checks. Accessibility observations, if any, are shown separately in Accessibility review. Manual review is still recommended.", "success");
+            AppendSectionEmptyState(html, "No findings", "Use alongside manual review.", "success");
             html.AppendLine("    </section>");
             return;
         }
@@ -789,7 +789,7 @@ public static partial class HtmlReportRenderer
         html.AppendLine("      </div>");
         html.AppendLine("      <div class=\"finding-results-row\">");
         html.Append("        <p id=\"finding-filter-status\" class=\"filter-status\" role=\"status\" aria-live=\"polite\" aria-atomic=\"true\" tabindex=\"-1\">")
-            .Append(findings.Length.ToString("N0", CultureInfo.InvariantCulture)).AppendLine(" findings</p>");
+            .Append(findings.Length.ToString("N0", CultureInfo.InvariantCulture)).Append(' ').Append(Pluralize(findings.Length, "finding", "findings")).AppendLine("</p>");
         html.AppendLine("        <button id=\"finding-clear-filters\" type=\"button\" hidden>Clear search and filters</button>");
         html.AppendLine("      </div>");
         html.AppendLine("      <div id=\"finding-active-filters\" class=\"filter-chips\" aria-label=\"Active finding filters\" hidden></div>");
@@ -985,7 +985,7 @@ public static partial class HtmlReportRenderer
         var message = connection.ConnectionKind switch
         {
             ReportModelConnectionKinds.ByPath when connection.IsTargetAvailableLocally =>
-                $"Uses semantic model {connection.TargetSemanticModelName}; its definition is available in this project.",
+                $"{connection.TargetSemanticModelName} (in this project)",
             ReportModelConnectionKinds.ByPath =>
                 $"Uses semantic model {connection.TargetSemanticModelName ?? "at the configured path"}, but its definition was not found in this project.",
             ReportModelConnectionKinds.ByConnection =>
@@ -993,7 +993,7 @@ public static partial class HtmlReportRenderer
             _ =>
                 "No explicit semantic-model connection was found. Local analysis uses the report name as a compatibility fallback.",
         };
-        html.Append("        <p class=\"summary-note\"><strong>Data model:</strong> ")
+        html.Append("        <p class=\"summary-note\"><strong>Semantic model:</strong> ")
             .Append(Encode(message)).AppendLine("</p>");
     }
 
@@ -1004,7 +1004,7 @@ public static partial class HtmlReportRenderer
             return;
         }
 
-        html.AppendLine("<h4>Report calculations</h4><p>These measures are authored in this report, not in its semantic model.</p><ul class=\"plain-list\">");
+        html.AppendLine("<h4>Report measures</h4><p>Created in this report, not in its semantic model.</p><ul class=\"plain-list\">");
         foreach (var measure in report.ReportMeasures.OrderBy(item => item.Name, StringComparer.OrdinalIgnoreCase))
         {
             var card = lineage.CardForReportMeasure(report, measure.Entity, measure.Name);
@@ -1022,11 +1022,11 @@ public static partial class HtmlReportRenderer
     private static void AppendRelationships(StringBuilder html, ProjectInventory inventory)
     {
         html.AppendLine("    <section id=\"relationships\" class=\"report-section\" data-report-section=\"relationships\" aria-labelledby=\"relationships-heading\">");
-        html.AppendLine("      <h2 id=\"relationships-heading\" tabindex=\"-1\">Model relationships</h2>");
+        html.AppendLine("      <h2 id=\"relationships-heading\" tabindex=\"-1\">Relationships</h2>");
         html.AppendLine("      <p class=\"section-intro\">See how tables are connected, whether each connection is active and which way filtering can flow.</p>");
         if (inventory.SemanticRelationshipCount == 0)
         {
-            AppendSectionEmptyState(html, "No model relationships found", "The analysed semantic model does not contain any relationships to review.", "neutral");
+            AppendSectionEmptyState(html, "No relationships", inventory.SemanticModels.Count == 1 ? "This model has no relationships." : "No relationships were found in this project's models.", "neutral");
             html.AppendLine("    </section>");
             return;
         }
@@ -1085,7 +1085,7 @@ public static partial class HtmlReportRenderer
                     }
                     else if (relationship.Activation.State == SemanticRelationshipActivationStates.ReferencedOnlyByUnusedDax)
                     {
-                        AppendFact(html, "Referenced only by unused DAX", FormatRelationshipActivationSources(relationship.Activation.Sources));
+                        AppendFact(html, "Only used via USERELATIONSHIP in unused DAX", FormatRelationshipActivationSources(relationship.Activation.Sources));
                     }
                 }
                 html.AppendLine("            </dl>");
@@ -1130,8 +1130,8 @@ public static partial class HtmlReportRenderer
         {
             html.AppendLine("    <section id=\"row-level-security\" class=\"report-section\" data-report-section=\"row-level-security\" aria-labelledby=\"row-level-security-heading\">");
             html.AppendLine("      <h2 id=\"row-level-security-heading\" tabindex=\"-1\">Security roles</h2>");
-            AppendSectionEmptyState(html, "No security roles recorded",
-                "No role definitions were found in the scanned project. This does not assess Power BI Service assignments or effective runtime access.", "security");
+            AppendSectionEmptyState(html, "No security roles in this project",
+                "Role assignments in the Power BI Service can't be seen here.", "security");
             html.AppendLine("    </section>");
             return;
         }
@@ -1139,7 +1139,7 @@ public static partial class HtmlReportRenderer
         html.AppendLine("    <section id=\"row-level-security\" class=\"report-section\" data-report-section=\"row-level-security\" aria-labelledby=\"row-level-security-heading\">");
         html.AppendLine("      <h2 id=\"row-level-security-heading\" tabindex=\"-1\">Security roles</h2>");
         html.AppendLine("      <p class=\"section-intro\">Review the security role definitions, row-level filters and object-level permissions saved in each semantic model.</p>");
-        html.AppendLine("      <div class=\"rls-boundary\" role=\"note\"><strong>Project definitions only</strong><p>PBI Assure shows role definitions stored in this project. It cannot see who is assigned to roles in Power BI Service, assess effective runtime identity, confirm the overall security design, or determine whether data can be accessed through another path. It reads row-level filters, table-level metadata permissions and explicitly named column permissions; other role metadata may not be fully checked.</p></div>");
+        html.AppendLine("      <div class=\"rls-boundary\" role=\"note\"><strong>Project definitions only</strong><p>Only the role definitions saved in this project are shown here. PBI Assure can't see who is assigned to roles in the Power BI Service, or whether data can be reached another way. It reads row-level filters, table-level metadata permissions and explicitly named column permissions; other role settings may not be fully checked.</p></div>");
         html.AppendLine("      <div class=\"rls-model-list\">");
         foreach (var model in models)
         {
@@ -1248,7 +1248,7 @@ public static partial class HtmlReportRenderer
                     if (coverageAnchor is not null)
                     {
                         html.Append("                  <a href=\"#").Append(Encode(coverageAnchor))
-                            .AppendLine("\">Review analysis coverage</a>.");
+                            .AppendLine("\">See what was checked</a>.");
                     }
 
                     html.AppendLine("                </p>");
@@ -1281,8 +1281,8 @@ public static partial class HtmlReportRenderer
 
         return relationship.Activation.State switch
         {
-            SemanticRelationshipActivationStates.ActivatedByReportUsedDax => "Inactive · Activated by report-used DAX",
-            SemanticRelationshipActivationStates.ReferencedOnlyByUnusedDax => "Inactive · Referenced only by unused DAX",
+            SemanticRelationshipActivationStates.ActivatedByReportUsedDax => "Inactive · Used via USERELATIONSHIP in DAX the report uses",
+            SemanticRelationshipActivationStates.ReferencedOnlyByUnusedDax => "Inactive · Only used via USERELATIONSHIP in unused DAX",
             _ => "Inactive · No USERELATIONSHIP call found in analysed DAX",
         };
     }
@@ -1396,8 +1396,8 @@ public static partial class HtmlReportRenderer
             (string.Equals(finding.Page, page.Name, StringComparison.OrdinalIgnoreCase) ||
              string.Equals(finding.PageDisplayName, page.DisplayName, StringComparison.OrdinalIgnoreCase)));
         if (pageFindings > 0)
-            html.Append("<span class=\"secondary\">").Append(pageFindings - accessibilityCount).Append(" findings · ")
-                .Append(accessibilityCount).AppendLine(" accessibility observations</span>");
+            html.Append("<span class=\"secondary\">").Append(pageFindings - accessibilityCount).Append(' ').Append(Pluralize(pageFindings - accessibilityCount, "finding", "findings")).Append(" · ")
+                .Append(accessibilityCount).Append(' ').Append(Pluralize(accessibilityCount, "accessibility observation", "accessibility observations")).AppendLine("</span>");
 
         html.AppendLine("          </summary>");
         html.AppendLine("          <div class=\"page-body\">");
@@ -1555,17 +1555,17 @@ public static partial class HtmlReportRenderer
         var modelUsages = inventory.SemanticObjectUsages.Where(usage =>
             string.Equals(usage.SemanticModel, model.Name, StringComparison.OrdinalIgnoreCase)).ToArray();
         var generatedObjects = modelUsages.Count(inventory.IsSystemGeneratedSemanticObject);
-        AppendFact(html, "Developer tables", (model.TableCount - generatedTables).ToString(CultureInfo.InvariantCulture));
+        AppendFact(html, "Your tables", (model.TableCount - generatedTables).ToString(CultureInfo.InvariantCulture));
         if (generatedTables > 0)
         {
-            AppendFact(html, "System-generated tables", generatedTables.ToString(CultureInfo.InvariantCulture));
+            AppendFact(html, "Power BI-generated tables", generatedTables.ToString(CultureInfo.InvariantCulture));
         }
         AppendFact(html, "Columns", model.ColumnCount.ToString(CultureInfo.InvariantCulture));
         AppendFact(html, "Measures", model.MeasureCount.ToString(CultureInfo.InvariantCulture));
         AppendFact(html, "Your model objects", (modelUsages.Length - generatedObjects).ToString(CultureInfo.InvariantCulture));
         if (generatedObjects > 0)
         {
-            AppendFact(html, "System-generated model objects", generatedObjects.ToString(CultureInfo.InvariantCulture));
+            AppendFact(html, "Power BI-generated model objects", generatedObjects.ToString(CultureInfo.InvariantCulture));
         }
         AppendFact(html, "Relationships", model.RelationshipCount.ToString(CultureInfo.InvariantCulture));
         if (model.FieldParameterCount > 0)
@@ -1602,7 +1602,7 @@ public static partial class HtmlReportRenderer
                 .Append("\"><summary><span class=\"summary-copy\"><span class=\"kicker\">")
                 .Append(Encode(SemanticTableKicker(table))).Append("</span><strong>")
                 .Append(Encode(table.Name)).Append("</strong><span>")
-                .Append(usages.Length.ToString(CultureInfo.InvariantCulture)).Append(" objects");
+                .Append(usages.Length.ToString(CultureInfo.InvariantCulture)).Append(' ').Append(Pluralize(usages.Length, "object", "objects"));
             if (table.IsHidden)
             {
                 html.Append(" · hidden table");
@@ -1708,13 +1708,13 @@ public static partial class HtmlReportRenderer
         AppendUsageGuideItem(html, "Indirectly used", "Not used directly in the report, but needed by something that is.", SemanticUsageStates.IndirectlyUsed);
         AppendUsageGuideItem(html, "Structurally required", "Needed for the model to work, for example in a relationship, hierarchy or sort-by setting.", SemanticUsageStates.StructurallyRequired);
         AppendUsageGuideItem(html, "Only used by unused items", "Only used by other model items that themselves have no detected report usage.", SemanticUsageStates.UsedOnlyByUnusedBranch);
-        AppendUsageGuideItem(html, "Apparently unused", "PBI Assure could not find anything in this project that uses it. Check before removing it because external reports and dynamic behaviour may not be visible here.", SemanticUsageStates.ApparentlyUnused);
+        AppendUsageGuideItem(html, "Apparently unused", "PBI Assure didn't find any model or report use in this project. Check before removing it: other reports and dynamic behaviour can't be seen here.", SemanticUsageStates.ApparentlyUnused);
         html.AppendLine("        </dl>");
         if (coverage.QualifiedObjectCount > 0)
         {
             html.Append("        <p class=\"usage-guide-note\">A result can also be marked <span class=\"confidence-flag confidence-flag-sample\">")
                 .Append(CoverageMarkerLabel)
-                .AppendLine("</span>. <strong>That is not another status.</strong> The status above is unchanged and remains the best answer available; the marker means PBI Assure could not check every possible source of usage in this model. See <a href=\"#analysis-coverage\">Analysis coverage</a>.</p>");
+                .AppendLine("</span>. <strong>That is not another status.</strong> The status above is unchanged and remains the best answer available; the marker means PBI Assure could not check every possible source of usage in this model. See <a href=\"#analysis-coverage\">What was checked</a>.</p>");
         }
 
         html.AppendLine("        </div>");
@@ -2309,7 +2309,10 @@ public static partial class HtmlReportRenderer
             "PBI-NAV-001" when finding.AssessmentType != AssessmentTypes.ReviewRequired => "This visual links to a bookmark that no longer exists.",
             "PBI-NAV-004" => "A bookmark contains a reference to a visual that is no longer on this page.",
             "PBI-NAV-013" => "This visual's header tooltip links to a report page that no longer exists.",
-            _ => finding.Message,
+            _ => finding.Message
+                .Replace("cannot be fully reconciled from static PBIR metadata", "PBI Assure can't fully check from the saved report files", StringComparison.Ordinal)
+                .Replace("This Power Query expression constructs references dynamically, so its complete query lineage cannot be determined from static metadata.",
+                    "PBI Assure can't see every query this expression uses because it builds references dynamically.", StringComparison.Ordinal),
         };
 
         if (context?.Visual.VisualType is not { Length: > 0 } visualType)
@@ -2564,8 +2567,8 @@ public static partial class HtmlReportRenderer
         html.AppendLine("  </main>");
         html.AppendLine("  </div>");
         html.AppendLine("  <footer class=\"site-footer\"><div class=\"content\">");
-        html.Append("    <p>PBI Assure inventory schema ").Append(Encode(inventory.SchemaVersion))
-            .AppendLine(". Generated locally from Power BI project metadata.</p>");
+        html.Append("    <p>Generated locally by PBI Assure (output format ").Append(Encode(inventory.SchemaVersion))
+            .AppendLine(").</p>");
         html.AppendLine("  </div></footer>");
         html.AppendLine("  <script>");
         html.AppendLine(AppearanceControlScript);

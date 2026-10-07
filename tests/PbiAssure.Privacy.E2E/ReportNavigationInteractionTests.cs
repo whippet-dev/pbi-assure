@@ -76,13 +76,13 @@ public sealed class ReportNavigationInteractionTests(PrivacyE2EFixture fixture) 
     {
         await using var context = await fixture.Browser.NewContextAsync(new() { ViewportSize = new() { Width = 1280, Height = 900 } });
         var page = await Open(context);
-        Assert.Equal(["Overview", "Model", "Reports", "Reviews"], await page.Locator(".section-nav:not(.technical-nav) a").AllTextContentsAsync());
+        Assert.Equal(["Overview", "Model", "Report pages", "Reviews"], await page.Locator(".section-nav:not(.technical-nav) a").AllTextContentsAsync());
         Assert.Equal("Technical", await page.Locator(".technical-nav a").InnerTextAsync());
         Assert.Equal(1, await page.GetByRole(AriaRole.Navigation, new() { Name = "Report navigation", Exact = true }).CountAsync());
         Assert.False(await page.Locator(".project-details .report-meta").IsVisibleAsync());
         await page.Locator(".project-details > summary").PressAsync("Enter");
         Assert.Contains("Source project", await page.Locator(".project-details").InnerTextAsync());
-        Assert.Contains("Inventory schema", await page.Locator(".project-details").InnerTextAsync());
+        Assert.Contains("Output format", await page.Locator(".project-details").InnerTextAsync());
         Assert.True(await page.Locator(".project-details #scan-timestamp").IsVisibleAsync());
         Assert.DoesNotContain("Model intelligence", await page.Locator(".site-header").InnerTextAsync());
         Assert.Equal(0, await page.Locator(".site-header .brand-qualifier").CountAsync());
@@ -127,7 +127,7 @@ public sealed class ReportNavigationInteractionTests(PrivacyE2EFixture fixture) 
         await page.Locator("#reviews [data-workspace-target='theme-review']").ClickAsync();
         await page.Locator("#reviews [data-workspace-target='accessibility-review']").ClickAsync();
         await page.Locator("#reviews [data-workspace-target='findings']").ClickAsync();
-        Assert.Contains("Return to Reports", await page.Locator("#investigation-return").InnerTextAsync());
+        Assert.Contains("Return to Report pages", await page.Locator("#investigation-return").InnerTextAsync());
         await page.GoBackAsync(); await Settle(page);
         Assert.Equal("accessibility-review", await page.Locator("main").GetAttributeAsync("data-active-section"));
         await page.GoForwardAsync(); await Settle(page);

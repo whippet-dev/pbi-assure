@@ -310,7 +310,7 @@ public sealed partial class SemanticLineageTests
         Assert.Equal(UnresolvedSemanticDependencyResolutionOutcomes.NotFound, note.Dependency.ResolutionOutcome);
         Assert.Equal("sort by", note.RelationshipLabel);
         Assert.Equal(0, card.DependsOn.TotalCount);
-        Assert.Contains("Not resolved: not found in this model", ReportHtml.LineageSection(HtmlReportRenderer.Render(inventory)), StringComparison.Ordinal);
+        Assert.Contains("Couldn't be matched: not found in this model", ReportHtml.LineageSection(HtmlReportRenderer.Render(inventory)), StringComparison.Ordinal);
     }
 
     [Fact]
@@ -344,9 +344,9 @@ public sealed partial class SemanticLineageTests
         var html = ReportHtml.LineageSection(HtmlReportRenderer.Render(inventory));
         var probeArticle = Article(html, probe.Id);
         var notResolved = Group(probeArticle, "not-resolved");
-        Assert.Contains("Not resolved: may be Table1[Amount] or Table2[Amount]", notResolved, StringComparison.Ordinal);
+        Assert.Contains("Couldn&#x27;t be matched: may be Table1[Amount] or Table2[Amount]", notResolved, StringComparison.Ordinal);
         Assert.DoesNotContain("href=", notResolved, StringComparison.Ordinal);
-        Assert.Contains("Not resolved: [Amount] may mean this or Table2[Amount]", Group(Article(html, amount1.Id), "possible"), StringComparison.Ordinal);
+        Assert.Contains("Couldn&#x27;t be matched: [Amount] may mean this or Table2[Amount]", Group(Article(html, amount1.Id), "possible"), StringComparison.Ordinal);
     }
 
     [Fact]
@@ -377,15 +377,15 @@ public sealed partial class SemanticLineageTests
         var evidence = keyed.PowerQuery!.ColumnEvidence[0];
 
         var article = Article(ReportHtml.LineageSection(HtmlReportRenderer.Render(inventory)), keyed.Id);
-        Assert.Contains("<h3>Power Query context</h3>", article, StringComparison.Ordinal);
-        Assert.Contains("Power Query evidence: ", article, StringComparison.Ordinal);
+        Assert.Contains("<h3>Power Query</h3>", article, StringComparison.Ordinal);
+        Assert.Contains("Power Query usage", article, StringComparison.Ordinal);
         Assert.Contains(System.Net.WebUtility.HtmlEncode(evidence.ConsumerQuery), article, StringComparison.Ordinal);
     }
 
     /// <summary>
     /// A source column is partition metadata, not Power Query evidence. Calculation groups, calculated
     /// tables such as field parameters, and entity partitions all have one with no query involved, so on
-    /// its own it must not produce a Power Query context.
+    /// its own it must not produce a Power Query.
     /// </summary>
     [Theory]
     [InlineData("desktop-calculation-group-selection-evidence")]
@@ -413,7 +413,7 @@ public sealed partial class SemanticLineageTests
             Assert.Null(card.PowerQuery);
             var article = Article(html, card.Id);
             Assert.DoesNotContain("data-lineage-group=\"power-query\"", article, StringComparison.Ordinal);
-            Assert.Contains("No preparation evidence stored here", article, StringComparison.Ordinal);
+            Assert.Contains("None found", article, StringComparison.Ordinal);
             Assert.DoesNotContain("Source column:", article, StringComparison.Ordinal);
         }
     }
@@ -433,7 +433,7 @@ public sealed partial class SemanticLineageTests
         {
             Assert.True(
                 group.Value.Contains("Power Query: ", StringComparison.Ordinal) ||
-                group.Value.Contains("Power Query evidence: ", StringComparison.Ordinal),
+                group.Value.Contains("Power Query usage", StringComparison.Ordinal),
                 group.Value);
         }
     }
@@ -466,7 +466,7 @@ public sealed partial class SemanticLineageTests
         var article = Article(html, card.Id);
         var objects = article[article.IndexOf("data-context-view=\"objects\"", StringComparison.Ordinal)..article.IndexOf("data-context-view=\"reviews\"", StringComparison.Ordinal)];
         Assert.DoesNotContain("TestData[Category]", System.Net.WebUtility.HtmlDecode(objects), StringComparison.Ordinal);
-        Assert.Contains("<dt>Direct semantic objects</dt><dd>2</dd>", article, StringComparison.Ordinal);
+        Assert.Contains("<dt>Model objects used</dt><dd>2</dd>", article, StringComparison.Ordinal);
 
     }
 

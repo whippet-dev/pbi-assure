@@ -44,8 +44,8 @@ public sealed class ReportEntityContextTests
         foreach (Match link in Regex.Matches(html, "href=\"#([^\"]+)\"")) Assert.Contains(WebUtility.HtmlDecode(link.Groups[1].Value).Split('?')[0], ids);
         Assert.DoesNotContain("class=\"visual-card\"", html, StringComparison.Ordinal);
         Assert.DoesNotContain("role=\"tab\"", html, StringComparison.Ordinal);
-        Assert.Contains("These measures are authored in this report", html, StringComparison.Ordinal);
-        Assert.Contains("Uses semantic model", html, StringComparison.Ordinal);
+        Assert.Contains("Created in this report", html, StringComparison.Ordinal);
+        Assert.Contains("Semantic model:", html, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -62,8 +62,8 @@ public sealed class ReportEntityContextTests
             foreach (var use in card.Uses.Items)
                 Assert.Contains($"href=\"#sum-{use.Object.CardId![4..]}\"", objects, StringComparison.Ordinal);
             Assert.DoesNotContain("page-level", objects, StringComparison.OrdinalIgnoreCase);
-            Assert.Contains("Raw saved references are technical evidence", article, StringComparison.Ordinal);
-            Assert.Contains($"<dt>Direct semantic objects</dt><dd>{card.Uses.TotalCount}</dd>", article, StringComparison.Ordinal);
+            Assert.Contains("Includes references PBI Assure doesn't count as use", article, StringComparison.Ordinal);
+            Assert.Contains($"<dt>Model objects used</dt><dd>{card.Uses.TotalCount}</dd>", article, StringComparison.Ordinal);
         }
         Assert.Contains("Objects used at page level", html, StringComparison.Ordinal);
     }
@@ -79,7 +79,7 @@ public sealed class ReportEntityContextTests
         var html = HtmlReportRenderer.Render(changed);
         const string pattern = "<article id=\"([^\"]+)\"[^>]+data-report-context=\"Visual\"";
         Assert.Equal(Regex.Matches(original, pattern).Select(match => match.Groups[1].Value), Regex.Matches(html, pattern).Select(match => match.Groups[1].Value));
-        Assert.Contains("No direct semantic-object use identified for this visual.", html, StringComparison.Ordinal);
+        Assert.Contains("No model objects found for this visual.", html, StringComparison.Ordinal);
     }
 
     [Fact]

@@ -76,7 +76,7 @@ public sealed class DesktopIteratorNoHomeColumnFixtureTests
 
         var html = HtmlReportRenderer.Render(inventory);
         Assert.DoesNotContain("class=\"confidence-flag\"", html, StringComparison.Ordinal);
-        Assert.Contains("None of them can change a used or unused result.", html, StringComparison.Ordinal);
+        Assert.Contains("This cannot change a used or unused result.", html, StringComparison.Ordinal);
     }
 
     // ---- Helpers ----------------------------------------------------------------------------

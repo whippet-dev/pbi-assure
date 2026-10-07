@@ -60,19 +60,19 @@ public sealed class TabOrderStatesFixtureTests
         var cardD = ExtractVisualCard(html, "Card D");
 
         Assert.Contains("<span class=\"fact-primary\">Included</span><span class=\"fact-supporting\">Position 1</span>", cardA, StringComparison.Ordinal);
-        Assert.Contains("<dt>PBIR position.tabOrder value</dt><dd>3000</dd>", cardA, StringComparison.Ordinal);
+        Assert.Contains("<dt>Saved tab order</dt><dd>3000</dd>", cardA, StringComparison.Ordinal);
 
         Assert.Contains("<span class=\"fact-primary\">Excluded</span>", cardB, StringComparison.Ordinal);
         Assert.DoesNotContain("fact-supporting", cardB, StringComparison.Ordinal);
-        Assert.Contains("<dt>PBIR position.tabOrder value</dt><dd>-9999000</dd>", cardB, StringComparison.Ordinal);
+        Assert.Contains("<dt>Saved tab order</dt><dd>-9999000</dd>", cardB, StringComparison.Ordinal);
 
         Assert.Contains("<span class=\"fact-primary\">Included</span><span class=\"fact-supporting\">Power BI default order</span>", cardC, StringComparison.Ordinal);
         Assert.DoesNotContain("Position ", cardC, StringComparison.Ordinal);
         Assert.Contains("Included in tab order using Power BI&#x27;s default order. No explicit tab-order position is stored in PBIR.", cardC, StringComparison.Ordinal);
-        Assert.Contains("<dt>PBIR position.tabOrder value</dt><dd>Not present</dd>", cardC, StringComparison.Ordinal);
+        Assert.Contains("<dt>Saved tab order</dt><dd>Not set</dd>", cardC, StringComparison.Ordinal);
 
         Assert.Contains("<span class=\"fact-primary\">Included</span><span class=\"fact-supporting\">Position 2</span>", cardD, StringComparison.Ordinal);
-        Assert.Contains("<dt>PBIR position.tabOrder value</dt><dd>0</dd>", cardD, StringComparison.Ordinal);
+        Assert.Contains("<dt>Saved tab order</dt><dd>0</dd>", cardD, StringComparison.Ordinal);
     }
 
     private static string FixturePath() => Path.Combine(

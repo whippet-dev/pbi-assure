@@ -34,7 +34,7 @@ public sealed class ReportOverviewTests
         Assert.Contains("<dt>Errors</dt><dd>11</dd>", overview, StringComparison.Ordinal);
         Assert.Contains("<dt>Warnings</dt><dd>10</dd>", overview, StringComparison.Ordinal);
         Assert.Contains("<dt>Review required</dt><dd>7</dd>", overview, StringComparison.Ordinal);
-        Assert.Contains("Open 28 primary assurance findings", overview, StringComparison.Ordinal);
+        Assert.Contains("Review 28 findings", overview, StringComparison.Ordinal);
         var links = Regex.Matches(overview, "href=\"#finding-(\\d+)\"");
         Assert.Equal(2, links.Count);
         Assert.All(links.Cast<Match>(), link => Assert.Equal(FindingSeverities.Error, primary[int.Parse(link.Groups[1].Value, System.Globalization.CultureInfo.InvariantCulture) - 1].Severity));
@@ -50,15 +50,15 @@ public sealed class ReportOverviewTests
         }));
         Assert.Contains("<dt>Warnings</dt><dd>1</dd>", overview, StringComparison.Ordinal);
         Assert.Contains("<dt>Review required</dt><dd>1</dd>", overview, StringComparison.Ordinal);
-        Assert.Contains("Open 1 primary assurance finding", overview, StringComparison.Ordinal);
-        Assert.Contains("assessments may overlap", overview, StringComparison.Ordinal);
+        Assert.Contains("Review 1 finding", overview, StringComparison.Ordinal);
+        Assert.Contains("these counts can overlap", overview, StringComparison.Ordinal);
     }
 
     [Fact]
     public void SimpleOverviewShowsAccessibilityEvenWithoutPrimaryFindings()
     {
         var overview = Overview(HtmlReportRenderer.Render(Simple.Value));
-        Assert.Contains("No primary assurance findings identified.", overview, StringComparison.Ordinal);
+        Assert.Contains("No findings.", overview, StringComparison.Ordinal);
         Assert.Contains("5 accessibility observations", overview, StringComparison.Ordinal);
         Assert.Contains("href=\"#accessibility-review\"", overview, StringComparison.Ordinal);
         Assert.DoesNotContain("overview-attention-metrics", overview, StringComparison.Ordinal);
@@ -72,7 +72,7 @@ public sealed class ReportOverviewTests
     {
         var overview = Overview(HtmlReportRenderer.Render(fixture == "pbi-assure-coverage" ? Rich.Value : Simple.Value));
         Assert.Equal(hasCandidates, overview.Contains("class=\"summary-caution\"", StringComparison.Ordinal));
-        Assert.Equal(!hasCandidates, overview.Contains("No apparently unused authored objects identified", StringComparison.Ordinal));
+        Assert.Equal(!hasCandidates, overview.Contains("No apparently unused model objects found", StringComparison.Ordinal));
     }
 
     [Theory]
@@ -98,8 +98,8 @@ public sealed class ReportOverviewTests
         Assert.Contains("href=\"#analysis-coverage\"", rich, StringComparison.Ordinal);
         var simple = Overview(HtmlReportRenderer.Render(Simple.Value));
         Assert.Contains("No identified limitations", simple, StringComparison.Ordinal);
-        Assert.DoesNotContain("Checks limited", simple, StringComparison.Ordinal);
-        Assert.Contains("No object results have a qualifying limitation", simple, StringComparison.Ordinal);
+        Assert.Contains("No results have Checks limited", simple, StringComparison.Ordinal);
+        Assert.Contains("Use outside this project still can't be seen", simple, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -117,13 +117,13 @@ public sealed class ReportOverviewTests
     public void SnapshotRetainsHighValueCountsWithoutRepeatingEveryInventoryMetric()
     {
         var overview = Overview(HtmlReportRenderer.Render(Rich.Value));
-        foreach (var (label, count) in new[] { ("Semantic models", 5), ("Reports", 5), ("Pages", 19), ("Visuals", 30), ("Authored semantic objects", 87) })
+        foreach (var (label, count) in new[] { ("Semantic models", 5), ("Reports", 5), ("Pages", 19), ("Visuals", 30), ("Your model objects", 87) })
         {
             Assert.Contains($"<dt>{label}</dt><dd>{count}</dd>", overview, StringComparison.Ordinal);
         }
         Assert.Contains("Power Query: 27 queries · 5 recognised data source types", overview, StringComparison.Ordinal);
         Assert.DoesNotContain("<dt>Report measures</dt>", overview, StringComparison.Ordinal);
-        Assert.DoesNotContain("<dt>System-generated model objects</dt>", overview, StringComparison.Ordinal);
+        Assert.DoesNotContain("<dt>Power BI-generated model objects</dt>", overview, StringComparison.Ordinal);
     }
 
     [Theory]

@@ -71,7 +71,10 @@ public static partial class HtmlReportRenderer
         html.AppendLine("<header class=\"lineage-focus\">");
         if (objectContext)
         {
-            html.AppendLine("<p class=\"kicker\">Selected object</p><p class=\"lineage-focus-reference\">Dependencies into this object · consumers out</p>");
+            html.Append("<p class=\"lineage-focus-reference\">").Append(Encode(card.Title)).AppendLine("</p>");
+            html.Append("<p>").Append(Encode(SemanticLineageProjection.ObjectTypeLabel(card.ObjectType)));
+            if (card.Usage is { } usage) html.Append(" · ").Append(Encode(UsageLabel(usage.UsageState)));
+            html.AppendLine("</p>");
         }
         else
         {
@@ -93,15 +96,15 @@ public static partial class HtmlReportRenderer
         {
             AppendLineageGroup(html, "uses", "Uses", card.Uses, "None found",
                 use => AppendLineageVisualUse(html, use));
-            AppendLineageGroup(html, "not-resolved", "Not resolved", card.UnresolvedReportReferences, emptyText: null,
+            AppendLineageGroup(html, "not-resolved", "Couldn't be matched", card.UnresolvedReportReferences, emptyText: null,
                 reference => AppendLineageReportReferenceNote(html, reference), unresolved: true);
             html.AppendLine("</div>");
         }
         else
         {
-            AppendLineageGroup(html, "depends-on", "Depends on", card.DependsOn, "None found",
+            AppendLineageGroup(html, "depends-on", "Uses", card.DependsOn, "None found",
                 neighbour => AppendLineageNeighbour(html, neighbour));
-            AppendLineageGroup(html, "not-resolved", "Not resolved", card.NotResolved, emptyText: null,
+            AppendLineageGroup(html, "not-resolved", "Couldn't be matched", card.NotResolved, emptyText: null,
                 reference => AppendLineageUnresolved(html, reference), unresolved: true);
             html.AppendLine("</div>");
             html.AppendLine("<div class=\"lineage-side\" data-lineage-side=\"downstream\">");
@@ -112,9 +115,9 @@ public static partial class HtmlReportRenderer
                 AppendLineageReportUse(html, inventory, card.UsedInReport);
             }
 
-            AppendLineageGroup(html, "required", "Required by model", card.RequiredByModel, emptyText: null,
+            AppendLineageGroup(html, "required", "Required by the model", card.RequiredByModel, emptyText: null,
                 neighbour => AppendLineageNeighbour(html, neighbour));
-            AppendLineageGroup(html, "possible", "Possible use", card.PossibleUse, emptyText: null,
+            AppendLineageGroup(html, "possible", "May be used by", card.PossibleUse, emptyText: null,
                 possible => AppendLineagePossibleUse(html, possible), unresolved: true);
             html.AppendLine("</div>");
         }
@@ -432,10 +435,10 @@ public static partial class HtmlReportRenderer
             .Append("\"><h3>Path to report</h3>");
         if (path.Status == LineagePathStatus.NotFound)
         {
-            html.Append("<p class=\"lineage-path-none\">No report path found in this project.</p>");
+            html.Append("<p class=\"lineage-path-none\">No path to the report found in this project.</p>");
             if (path.OnlyReachedFrom.TotalCount > 0)
             {
-                html.Append("<p class=\"lineage-path-note\">Only reached from: ");
+                html.Append("<p class=\"lineage-path-note\">Only used through: ");
                 AppendLineagePathNames(html, path.OnlyReachedFrom, neighbour => neighbour.UsageState is not null
                     ? UsageLabel(neighbour.UsageState)
                     : neighbour.IsSharedReportMeasure && neighbour.Report is not null
@@ -446,17 +449,17 @@ public static partial class HtmlReportRenderer
 
             if (path.StructuralSources.TotalCount > 0)
             {
-                html.Append("<p class=\"lineage-path-note\">Required by model structure: ");
+                html.Append("<p class=\"lineage-path-note\">Required by the model structure: ");
                 AppendLineagePathNames(html, path.StructuralSources, neighbour => string.Join(" · ", neighbour.RelationshipLabels));
                 html.Append("</p>");
             }
             else if (!string.IsNullOrWhiteSpace(path.StructuralReason))
             {
-                html.Append("<p class=\"lineage-path-note\">Required by model structure: ").Append(Encode(path.StructuralReason)).Append("</p>");
+                html.Append("<p class=\"lineage-path-note\">Required by the model structure: ").Append(Encode(path.StructuralReason)).Append("</p>");
             }
             else if (path.RequiredByModelStructure)
             {
-                html.Append("<p class=\"lineage-path-note\">Required by model structure.</p>");
+                html.Append("<p class=\"lineage-path-note\">Required by the model structure.</p>");
             }
 
             if (path.ChecksLimited)
@@ -686,12 +689,12 @@ public static partial class HtmlReportRenderer
         if (reference.Dependency.ResolutionOutcome == UnresolvedSemanticDependencyResolutionOutcomes.Ambiguous)
         {
             html.Append(reference.CandidateNames.Count > 0
-                ? Encode($"Not resolved: may be {JoinAlternatives(reference.CandidateNames)}")
-                : "Not resolved: could match more than one object");
+                ? Encode($"Couldn't be matched: may be {JoinAlternatives(reference.CandidateNames)}")
+                : "Couldn't be matched: could match more than one object");
         }
         else
         {
-            html.Append("Not resolved: not found in this model");
+            html.Append("Couldn't be matched: not found in this model");
         }
 
         html.Append("</span>");
@@ -701,7 +704,7 @@ public static partial class HtmlReportRenderer
     {
         AppendLineageNode(html, possible.Source.CardId, possible.Source.Name);
         html.Append("<span class=\"lineage-meta\">").Append(Encode(SemanticLineageProjection.ObjectTypeLabel(possible.Source.ObjectType)))
-            .Append(" · ").Append(Encode($"Not resolved: {possible.Dependency.ReferenceText} may mean this"));
+            .Append(" · ").Append(Encode($"Couldn't be matched: {possible.Dependency.ReferenceText} may mean this"));
         if (possible.OtherCandidateNames.Count > 0)
         {
             html.Append(Encode($" or {JoinAlternatives(possible.OtherCandidateNames)}"));
@@ -715,7 +718,7 @@ public static partial class HtmlReportRenderer
     {
         html.Append("<span class=\"lineage-node lineage-unresolved\">").Append(Encode($"{reference.Table}[{reference.ObjectName}]")).Append("</span>");
         html.Append("<span class=\"lineage-meta\">").Append(Encode(SemanticLineageProjection.ObjectTypeLabel(reference.ObjectType)))
-            .Append(" · Not resolved: not found in the model</span>");
+            .Append(" · Couldn't be matched: not found in the model</span>");
     }
 
     /// <summary>
@@ -726,7 +729,7 @@ public static partial class HtmlReportRenderer
     private static void AppendLineagePowerQuery(StringBuilder html, ProjectInventory inventory, LineageCard card)
     {
         var context = card.PowerQuery!;
-        html.AppendLine("<section class=\"lineage-context\" data-lineage-group=\"power-query\"><h3>Power Query context</h3><ul class=\"lineage-context-list\">");
+        html.AppendLine("<section class=\"lineage-context\" data-lineage-group=\"power-query\"><ul class=\"lineage-context-list\">");
         foreach (var query in context.TableQueries)
         {
             html.Append("<li>");
@@ -756,12 +759,6 @@ public static partial class HtmlReportRenderer
         {
             html.Append("<li><span class=\"lineage-meta\">")
                 .Append(Encode($"Source column: {context.SourceColumn}")).AppendLine("</span></li>");
-        }
-
-        foreach (var evidence in context.ColumnEvidence)
-        {
-            html.Append("<li><span class=\"lineage-meta\">")
-                .Append(Encode($"Power Query evidence: {PowerQueryColumnUsageLabel(evidence)}")).AppendLine("</span></li>");
         }
 
         html.AppendLine("</ul></section>");

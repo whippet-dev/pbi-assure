@@ -158,12 +158,39 @@ internal static class AnalysisCoveragePresentation
             SupportStateLabel: SupportStateLabel(group.Key.SupportState),
             ImpactLabel: impact.Label,
             MayAffectClassification: impact.MayAffectClassification,
-            Reason: group.Key.Reason,
+            Reason: DisplayReason(group.First()),
             ArtifactPaths: group
                 .Select(limitation => limitation.ArtifactPath)
                 .Distinct(StringComparer.OrdinalIgnoreCase)
                 .OrderBy(path => path, StringComparer.OrdinalIgnoreCase)
                 .ToArray());
+    }
+
+    // Display only. Grouping and the inventory/JSON retain the original reason and impact.
+    internal static string DisplayReason(AnalysisLimitation limitation)
+    {
+        if (limitation.ConstructType == "semanticReference")
+        {
+            var match = System.Text.RegularExpressions.Regex.Match(limitation.Reason,
+                "^'(?<object>.*)' references '(?<reference>.*)', which could not be resolved to a model object \\((?<outcome>NotFound|Ambiguous)\\)\\.");
+            if (match.Success)
+                return $"{match.Groups["object"].Value} refers to {match.Groups["reference"].Value}, " +
+                    (match.Groups["outcome"].Value == "NotFound" ? "which wasn't found in the model." : "which could match more than one object in the model.") +
+                    " Some objects here could look less used than they are.";
+        }
+
+        return limitation.Reason
+            .Replace("dependencies it creates are absent from the graph", "some model object use could be missed", StringComparison.Ordinal)
+            .Replace("analysis, so absence conclusions may be incomplete", "checks, so some object use could be missed", StringComparison.Ordinal)
+            .Replace("Its semantic references may be absent from the graph.", "Some model object use could be missed.", StringComparison.Ordinal)
+            .Replace("rather than consuming them", "rather than using them", StringComparison.Ordinal)
+            .Replace("persisted", "saved", StringComparison.Ordinal)
+            .Replace("semantic references that are absent from the usage graph", "model object references whose use could be missed", StringComparison.Ordinal)
+            .Replace("owning PBIR query/filter scope", "report query or filter", StringComparison.Ordinal)
+            .Replace("not analysed", "not checked", StringComparison.Ordinal)
+            .Replace("are analysed", "are checked", StringComparison.Ordinal)
+            .Replace("is analysed", "is checked", StringComparison.Ordinal)
+            .Replace("analysed evidence", "available evidence", StringComparison.Ordinal);
     }
 
     /// <summary>

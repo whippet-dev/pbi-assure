@@ -33,8 +33,8 @@ public static partial class HtmlReportRenderer
         html.AppendLine("          <h3 id=\"summary-attention-heading\">Needs attention</h3>");
         if (findings.Length == 0)
         {
-            html.AppendLine("          <p class=\"overview-conclusion\">No primary assurance findings identified.</p>");
-            html.AppendLine("          <p class=\"group-explanation\">No non-accessibility issues or review items were identified by the current automated checks. Manual review is still recommended.</p>");
+            html.AppendLine("          <p class=\"overview-conclusion\">No findings.</p>");
+            html.AppendLine("          <p class=\"group-explanation\">Manual review is still recommended.</p>");
         }
         else
         {
@@ -43,10 +43,10 @@ public static partial class HtmlReportRenderer
             AppendMetric(html, "Warnings", findings.Count(finding => finding.Severity == FindingSeverities.Warning), "metric-warning");
             AppendMetric(html, "Review required", findings.Count(finding => finding.AssessmentType == AssessmentTypes.ReviewRequired), "metric-review");
             html.AppendLine("          </dl>");
-            html.Append("          <p class=\"overview-attention-scope\"><a href=\"#findings\">Open ")
+            html.Append("          <p class=\"overview-attention-scope\"><a href=\"#findings\">Review ")
                 .Append(findings.Length.ToString("N0", CultureInfo.InvariantCulture)).Append(' ')
-                .Append(Pluralize(findings.Length, "primary assurance finding", "primary assurance findings")).AppendLine("</a></p>");
-            html.AppendLine("          <p class=\"group-explanation\">Severity counts and human-review assessments may overlap. Accessibility is counted separately.</p>");
+                .Append(Pluralize(findings.Length, "finding", "findings")).AppendLine("</a></p>");
+            html.AppendLine("          <p class=\"group-explanation\">A finding can both be a warning and require review, so these counts can overlap. Accessibility is counted separately.</p>");
             html.AppendLine("          <ul class=\"overview-findings\">");
             // Retain the original ordinal so the short list opens the existing finding, not a new copy.
             foreach (var item in findings.Select((finding, index) => (Finding: finding, Index: index))
@@ -89,7 +89,7 @@ public static partial class HtmlReportRenderer
         }
         else
         {
-            html.AppendLine("              <p>No theme review items identified.</p>");
+            html.AppendLine("              <p>No theme review items found.</p>");
         }
         html.Append("              <p class=\"group-explanation\">");
         if (compared == 0)
@@ -104,7 +104,7 @@ public static partial class HtmlReportRenderer
         }
         html.AppendLine("</p></div>");
         html.AppendLine("            <div><a href=\"#accessibility-review\">Accessibility review</a>");
-        html.Append("              <p>").Append(accessibilityCount == 0 ? "No accessibility observations identified." :
+        html.Append("              <p>").Append(accessibilityCount == 0 ? "No accessibility observations found." :
             $"{accessibilityCount.ToString("N0", CultureInfo.InvariantCulture)} accessibility {Pluralize(accessibilityCount, "observation", "observations")}").AppendLine("</p>");
         html.AppendLine("              <p class=\"group-explanation\">Accessibility observations are counted separately; manual review is still needed.</p></div>");
         html.AppendLine("          </div>");
@@ -116,7 +116,7 @@ public static partial class HtmlReportRenderer
         html.AppendLine("        <section class=\"summary-group summary-group-semantic\" aria-labelledby=\"summary-usage-heading\">");
         html.AppendLine("          <h3 id=\"summary-usage-heading\">Model usage</h3>");
         html.Append("          <p class=\"group-explanation\">Usage of ").Append(inventory.DeveloperSemanticObjectCount.ToString("N0", CultureInfo.InvariantCulture))
-            .AppendLine(" authored semantic objects in this project. Open a count to review that state.</p>");
+            .AppendLine(" model objects you created. Open a count to review that state.</p>");
         html.AppendLine("          <ul class=\"overview-usage\">");
         foreach (var state in OverviewUsageStates)
         {
@@ -138,7 +138,7 @@ public static partial class HtmlReportRenderer
         }
         else
         {
-            html.AppendLine("          <p class=\"overview-zero\">No apparently unused authored objects identified in this project.</p>");
+            html.AppendLine("          <p class=\"overview-zero\">No apparently unused model objects found in this project.</p>");
         }
         html.AppendLine("        </section>");
     }
@@ -150,7 +150,7 @@ public static partial class HtmlReportRenderer
     private static void AppendOverviewConfidence(StringBuilder html, AnalysisCoverage coverage)
     {
         html.AppendLine("        <section class=\"summary-group summary-group-confidence\" aria-labelledby=\"summary-confidence-heading\">");
-        html.AppendLine("          <h3 id=\"summary-confidence-heading\">Analysis confidence</h3>");
+        html.AppendLine("          <h3 id=\"summary-confidence-heading\">Checks</h3>");
         if (coverage.QualifiedObjectCount > 0)
         {
             html.Append("          <p class=\"overview-confidence\"><strong>").Append(coverage.QualifiedObjectCount.ToString("N0", CultureInfo.InvariantCulture))
@@ -161,11 +161,11 @@ public static partial class HtmlReportRenderer
         else
         {
             html.AppendLine("          <p class=\"overview-confidence\"><strong>No identified limitations</strong></p>");
-            html.AppendLine("          <p class=\"group-explanation\">No object results have a qualifying limitation in this scan. This does not cover usage outside the analysed project.</p>");
+            html.AppendLine("          <p class=\"group-explanation\">No results have Checks limited. Use outside this project still can't be seen.</p>");
         }
         if (coverage.HasCoverage)
         {
-            html.AppendLine("          <p class=\"overview-route\"><a href=\"#analysis-coverage\">Review analysis coverage</a></p>");
+            html.AppendLine("          <p class=\"overview-route\"><a href=\"#analysis-coverage\">See what was checked</a></p>");
         }
         html.AppendLine("        </section>");
     }
@@ -179,7 +179,7 @@ public static partial class HtmlReportRenderer
         AppendMetric(html, "Reports", inventory.ReportCount);
         AppendMetric(html, "Pages", inventory.PageCount);
         AppendMetric(html, "Visuals", inventory.VisualCount);
-        AppendMetric(html, "Authored semantic objects", inventory.DeveloperSemanticObjectCount);
+        AppendMetric(html, "Your model objects", inventory.DeveloperSemanticObjectCount);
         html.AppendLine("          </dl>");
         if (inventory.PowerQueryCount > 0)
         {

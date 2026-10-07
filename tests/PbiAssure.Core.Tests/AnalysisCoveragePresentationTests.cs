@@ -114,7 +114,7 @@ public sealed class AnalysisCoveragePresentationTests
             limitations: [QualifyingLimitation()]);
 
         Assert.Contains("id=\"analysis-coverage\"", html, StringComparison.Ordinal);
-        Assert.Contains("Analysis coverage", html, StringComparison.Ordinal);
+        Assert.Contains("What was checked", html, StringComparison.Ordinal);
         // Support state and dependency implication in product language, not enum names.
         Assert.Contains("Partially checked", html, StringComparison.Ordinal);
         Assert.Contains("Could hide extra usage", html, StringComparison.Ordinal);
@@ -141,7 +141,7 @@ public sealed class AnalysisCoveragePresentationTests
 
         // One marker per object row; each object's lineage card repeats its own marker.
         Assert.Equal(12, Occurrences(ReportHtml.WithoutLineage(html), "class=\"confidence-flag\""));
-        Assert.Equal(1, Occurrences(html, limitation.Reason));
+        Assert.Equal(1, Occurrences(html, AnalysisCoveragePresentation.DisplayReason(limitation)));
     }
 
     // ---- 8. Multiple limitations ---------------------------------------------------------------
@@ -179,8 +179,8 @@ public sealed class AnalysisCoveragePresentationTests
 
         Assert.Contains("id=\"analysis-coverage\"", html, StringComparison.Ordinal);
         Assert.DoesNotContain("data-section-target=\"analysis-coverage\"", html, StringComparison.Ordinal);
-        Assert.Contains("No project-specific analysis limitations were recorded.", html, StringComparison.Ordinal);
-        Assert.Contains("this is not a completeness claim", html, StringComparison.Ordinal);
+        Assert.Contains("No results have Checks limited.", html, StringComparison.Ordinal);
+        Assert.Contains("Use outside this project still can't be seen.", html, StringComparison.Ordinal);
         Assert.DoesNotContain("Checks complete", html, StringComparison.Ordinal);
     }
 
@@ -203,7 +203,7 @@ public sealed class AnalysisCoveragePresentationTests
             ]);
 
         Assert.Contains("id=\"analysis-coverage\"", html, StringComparison.Ordinal);
-        Assert.Contains("None of them can change a used or unused result", html, StringComparison.Ordinal);
+        Assert.Contains("This cannot change a used or unused result", html, StringComparison.Ordinal);
         // Distinct from "fully checked": the construct is still only partly read, and only its effect on
         // used/unused results is established.
         Assert.Contains("Does not change any used or unused result", html, StringComparison.Ordinal);
@@ -285,7 +285,7 @@ public sealed class AnalysisCoveragePresentationTests
                 ConstructDependencyImpacts.NoKnownDependencyEffect, "definition/cultures/en-US.tmdl", "Cultures are not analysed.")]);
 
         Assert.Contains("aria-labelledby=\"analysis-coverage-heading\"", html, StringComparison.Ordinal);
-        Assert.Contains("<h2 id=\"analysis-coverage-heading\" tabindex=\"-1\">Analysis coverage</h2>", html, StringComparison.Ordinal);
+        Assert.Contains("<h2 id=\"analysis-coverage-heading\" tabindex=\"-1\">What was checked</h2>", html, StringComparison.Ordinal);
         // The disclosure for harmless limitations is a native details element, so it is keyboard operable.
         Assert.Contains("<details class=\"coverage-other\"><summary>", html, StringComparison.Ordinal);
         // …and it carries the report's disclosure affordance — a chevron that rotates on open —
@@ -295,7 +295,7 @@ public sealed class AnalysisCoveragePresentationTests
         Assert.Contains(".coverage-other[open] > summary::after { transform: rotate(90deg); }", html, StringComparison.Ordinal);
         // The marker's meaning does not depend on colour or on hovering.
         Assert.Contains("<span class=\"visually-hidden\">", html, StringComparison.Ordinal);
-        Assert.Contains("PBI Assure could not check every source of usage in this model", html, StringComparison.Ordinal);
+        Assert.Contains("see what was checked", html, StringComparison.Ordinal);
     }
 
     /// <summary>
@@ -459,7 +459,7 @@ public sealed class AnalysisCoveragePresentationTests
     // ---- Real Desktop fixtures ---------------------------------------------------------------------
 
     /// <summary>
-    /// The fixture that once made the noise problem real: its only qualifying limitation is the function
+    /// The fixture that once made the noise problem real: its only Checks limited is the function
     /// file, and its only function (AddTax) references nothing, so an unseen call to it can reach no
     /// model object. The cause is still disclosed as a source of usage the scan could not fully check,
     /// but it now qualifies nothing. Counts are measured from the inventory rather than hardcoded.
@@ -488,7 +488,7 @@ public sealed class AnalysisCoveragePresentationTests
         Assert.Contains("Partially checked", html, StringComparison.Ordinal);
         Assert.Equal(0, Occurrences(html, "class=\"confidence-flag\""));
         // The explanation appears once, not once per affected object.
-        Assert.Equal(1, Occurrences(html, soleCause.Reason));
+        Assert.Equal(1, Occurrences(html, AnalysisCoveragePresentation.DisplayReason(soleCause)));
         // The six harmless limitations are disclosed without competing for attention.
         Assert.Contains("<details class=\"coverage-other\"><summary>", html, StringComparison.Ordinal);
     }
@@ -531,7 +531,7 @@ public sealed class AnalysisCoveragePresentationTests
             usage.ClassificationConfidence == ClassificationConfidences.QualifiedByLimitation);
 
         Assert.Contains("id=\"analysis-coverage\"", html, StringComparison.Ordinal);
-        Assert.Contains("None of them can change a used or unused result", html, StringComparison.Ordinal);
+        Assert.Contains("This cannot change a used or unused result", html, StringComparison.Ordinal);
         Assert.DoesNotContain("class=\"confidence-flag\"", html, StringComparison.Ordinal);
         Assert.DoesNotContain("class=\"usage-guide-note\"", html, StringComparison.Ordinal);
     }
