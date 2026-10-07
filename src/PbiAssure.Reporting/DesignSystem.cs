@@ -734,6 +734,9 @@ public static class DesignSystem
         .group-explanation { max-width: 74ch; margin: 0 0 0.5rem; color: var(--pa-text-2); font-size: var(--pa-t-xs); }
         .investigation-return { position: sticky; top: 0.5rem; z-index: 3; width: fit-content; max-width: 100%; margin: 1rem 0 0; padding: 0.375rem 0.625rem; border: 1px solid var(--pa-line-strong); border-radius: var(--pa-r2); background: var(--pa-surface); font-weight: 600; }
         .investigation-return a { overflow-wrap: anywhere; }
+        /* Leave room for a wrapped sticky Return when a context is brought into view. */
+        .investigation-return:not([hidden]) ~ .report-section .lineage-card,
+        .investigation-return:not([hidden]) ~ .report-section .lineage-card [tabindex="-1"] { scroll-margin-block-start: 6rem; }
         #investigation-selection-note { margin-top: 0.5rem; }
 
         #summary { margin-top: 1rem; }
@@ -1566,7 +1569,7 @@ public static class DesignSystem
         .object-context-details > section { margin-top: 1.25rem; }
         .object-context-details h3 { font-size: var(--pa-t-md); }
         .object-definition pre { max-width: 100%; white-space: pre-wrap; overflow-wrap: anywhere; }
-        .lineage-focus-reference { margin: 0; color: var(--pa-text-2); font-size: var(--pa-t-xs); }
+        .lineage-focus-reference { min-width: 0; margin: 0; color: var(--pa-text-2); font-size: var(--pa-t-xs); overflow-wrap: anywhere; }
 
         /* One card at a time. A card is the focus, one titled list per relationship group in a container for
            each side of the focus, then the path to report and its context. On a wide card the same elements

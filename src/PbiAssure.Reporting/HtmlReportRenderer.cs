@@ -944,7 +944,7 @@ public static partial class HtmlReportRenderer
     {
         html.AppendLine("    <section id=\"reports\" class=\"report-section\" data-report-section=\"reports\" aria-labelledby=\"reports-heading\">");
         html.AppendLine("      <h2 id=\"reports-heading\" tabindex=\"-1\">Report pages</h2>");
-        html.AppendLine("      <p class=\"section-intro\">Find a report, page or visual, then open its investigation context.</p>");
+        html.AppendLine("      <p class=\"section-intro\">Find a report, page or visual, then open it to investigate.</p>");
         if (inventory.Reports.Count == 0)
         {
             AppendSectionEmptyState(html, "No report pages available", "No supported Power BI report definition was found in the selected project.", "unavailable");
@@ -3341,6 +3341,13 @@ public static partial class HtmlReportRenderer
         return true;
       };
 
+      const scrollContextIntoView = (context, focusTarget) => {
+        context.scrollIntoView({ block: 'start' });
+        // Keep the shared identity visible when it fits; short reflow viewports must also show
+        // the focused local heading. CSS reserves clearance for the sticky Return in both cases.
+        if (focusTarget?.getBoundingClientRect().bottom > innerHeight)
+          focusTarget.scrollIntoView({ block: 'start' });
+      };
       const revealFragmentTarget = (fragment, options = {}) => {
         // Overview shortcuts only apply the existing collection filters. Other entity/history routes
         // keep their current behaviour; a zero-count state is still a valid filtered destination.
@@ -3386,7 +3393,7 @@ public static partial class HtmlReportRenderer
               : target instanceof HTMLDetailsElement ? target.querySelector('summary') : reportContext.querySelector('h2');
             heading?.focus({ preventScroll: true });
             const revision = routeRevision;
-            requestAnimationFrame(() => { if (revision === routeRevision) reportContext.scrollIntoView({ block: 'start' }); });
+            requestAnimationFrame(() => { if (revision === routeRevision) scrollContextIntoView(reportContext, heading); });
           }
           return true;
         }
@@ -3423,7 +3430,7 @@ public static partial class HtmlReportRenderer
             focusTarget.focus({ preventScroll: true });
           }
           const revision = routeRevision;
-          requestAnimationFrame(() => { if (revision === routeRevision) (objectCard || target).scrollIntoView({ block: 'start' }); });
+          requestAnimationFrame(() => { if (revision === routeRevision) scrollContextIntoView(objectCard || target, focusTarget); });
         }
         return true;
       };

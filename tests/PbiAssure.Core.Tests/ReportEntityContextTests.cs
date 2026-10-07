@@ -106,6 +106,7 @@ public sealed class ReportEntityContextTests
         Assert.Contains("Specific deviation", article, StringComparison.Ordinal);
         Assert.Contains("Specific consistency", article, StringComparison.Ordinal);
         Assert.Contains("Specific contrast", article, StringComparison.Ordinal);
+        Assert.Equal(3, Regex.Count(WebUtility.HtmlDecode(article), "· Open theme review</a>"));
         Assert.Contains("<dt>Theme review items</dt><dd>3</dd>", article, StringComparison.Ordinal);
         Assert.Contains("Visual assurance cue", article, StringComparison.Ordinal);
         Assert.Contains("Visual accessibility cue", article, StringComparison.Ordinal);
@@ -114,5 +115,38 @@ public sealed class ReportEntityContextTests
         Assert.Contains("<dt>Findings</dt><dd>1</dd>", article, StringComparison.Ordinal);
         Assert.Contains("<dt>Accessibility observations</dt><dd>1</dd>", article, StringComparison.Ordinal);
         Assert.Contains($"href=\"#visual-{card.Id[4..]}-reviews\"", HtmlReportRenderer.Render(inventory), StringComparison.Ordinal);
+    }
+
+    [Theory]
+    [InlineData("Report", 0)]
+    [InlineData("Report", 1)]
+    [InlineData("Report", 2)]
+    [InlineData("Page", 0)]
+    [InlineData("Page", 1)]
+    [InlineData("Page", 2)]
+    public void SummaryReviewCountsNameTheEntityItselfAndExcludeChildVisuals(string kind, int count)
+    {
+        var inventory = Inventory();
+        var report = inventory.Reports.First(item => item.Pages.Any(page => page.Visuals.Count > 0));
+        var page = report.Pages.First(item => item.Visuals.Count > 0);
+        var template = inventory.Findings[0] with { Report = report.Name, Page = page.Name, PageDisplayName = page.DisplayName, Visual = page.Visuals[0].Name };
+        var own = template with { Visual = null, Page = kind == "Report" ? null : page.Name, PageDisplayName = kind == "Report" ? null : page.DisplayName };
+        inventory = inventory with { Findings = new[] { template with { Message = "Child visual finding", Category = "Navigation" },
+            template with { Message = "Child visual accessibility", Category = AssuranceCategories.Accessibility } }
+            .Concat(Enumerable.Range(0, count).Select(index => own with { Message = $"Own finding {index}", Category = "Navigation" }))
+            .Concat(Enumerable.Range(0, count).Select(index => own with { Message = $"Own accessibility {index}", Category = AssuranceCategories.Accessibility })).ToArray() };
+        var html = HtmlReportRenderer.Render(inventory);
+        // Select the tested report/page by name rather than assuming its collection position.
+        var article = Regex.Matches(html, $"<article id=\"([^\"]+)\"[^>]+data-report-context=\"{kind}\"")
+            .Select(match => Article(html, match.Groups[1].Value))
+            .Single(item => item.Contains($">{WebUtility.HtmlEncode(kind == "Report" ? report.Name : page.DisplayName)}</h2>", StringComparison.Ordinal));
+        var scope = kind.ToLowerInvariant() + " itself";
+        var expected = count == 0 ? $"No findings or accessibility observations for the {scope}."
+            : $"{count} {(count == 1 ? "finding" : "findings")} · {count} {(count == 1 ? "accessibility observation" : "accessibility observations")} for the {scope}.";
+        Assert.Contains(expected, article, StringComparison.Ordinal);
+        Assert.Contains("href=\"#findings\">Open all findings</a>", article, StringComparison.Ordinal);
+        Assert.Contains("href=\"#theme-review\">Open theme review</a>", article, StringComparison.Ordinal);
+        Assert.DoesNotContain(">Review findings</a>", article, StringComparison.Ordinal);
+        Assert.Equal(2 + count * 2, inventory.Findings.Count);
     }
 }

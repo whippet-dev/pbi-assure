@@ -83,7 +83,7 @@ public sealed class HtmlReportRendererTests : IDisposable
         Assert.Contains("window.scrollTo({ top: 0, left: 0, behavior: 'instant' });", html, StringComparison.Ordinal);
         Assert.DoesNotContain("heading?.scrollIntoView", html, StringComparison.Ordinal);
         Assert.Contains("navigate(fragment, link)", html, StringComparison.Ordinal);
-        Assert.Contains("(objectCard || target).scrollIntoView({ block: 'start' })", html, StringComparison.Ordinal);
+        Assert.Contains("scrollContextIntoView(objectCard || target, focusTarget)", html, StringComparison.Ordinal);
         Assert.Contains("const revealFragmentTarget = (fragment, options = {})", html, StringComparison.Ordinal);
         Assert.Contains("revealDetails(target);", html, StringComparison.Ordinal);
         Assert.Contains("if (!initialFragment || !revealFragmentTarget(initialFragment)) activateSection('summary');", html, StringComparison.Ordinal);

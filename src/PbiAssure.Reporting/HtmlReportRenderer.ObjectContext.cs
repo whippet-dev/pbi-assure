@@ -36,7 +36,7 @@ public static partial class HtmlReportRenderer
     private static void AppendObjectContextStart(StringBuilder html, ProjectInventory inventory, LineageCard card, AnalysisCoverage coverage)
     {
         html.AppendLine("<header class=\"object-context-header\" data-object-context-header>");
-        html.AppendLine("<p class=\"kicker\">Semantic model · Object</p>");
+        html.Append("<p class=\"kicker\">").Append(card.Kind == LineageFocusKind.ReportMeasure ? "Report · Measure" : "Semantic model · Object").AppendLine("</p>");
         html.Append("<h2 id=\"").Append(Encode(card.Id + "-title")).Append("\" tabindex=\"-1\" class=\"object-context-title\">")
             .Append(Encode(card.Title)).AppendLine("</h2>");
         AppendLineageFacts(html, inventory, card);

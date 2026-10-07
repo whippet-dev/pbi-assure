@@ -33,6 +33,7 @@ public sealed class ReportObjectContextTests
         foreach (var card in projection.Cards.Where(card => card.Kind != LineageFocusKind.Visual))
         {
             var article = Article(html, card.Id);
+            Assert.Contains(card.Kind == LineageFocusKind.ReportMeasure ? ">Report · Measure</p>" : ">Semantic model · Object</p>", article, StringComparison.Ordinal);
             Assert.Single(Regex.Matches(article, "<h2 "));
             Assert.Contains(HtmlEncoder.Default.Encode(card.Title), article, StringComparison.Ordinal);
             foreach (var view in new[] { "summary", "lineage", "definition" })

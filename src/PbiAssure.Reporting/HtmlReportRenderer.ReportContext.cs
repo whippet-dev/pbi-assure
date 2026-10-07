@@ -118,13 +118,13 @@ public static partial class HtmlReportRenderer
             (page is null ? finding.Page is null : finding.Page == page.Name)).ToArray();
         var count = findings.Count(item => item.Category != AssuranceCategories.Accessibility);
         var accessibility = findings.Count(item => item.Category == AssuranceCategories.Accessibility);
-        var scope = page is null ? "report itself" : "page";
+        var scope = page is null ? "report itself" : "page itself";
         html.Append("<p>");
         if (count == 0 && accessibility == 0)
-            html.Append(CultureInfo.InvariantCulture, $"No findings or accessibility observations for this {scope}.");
+            html.Append(CultureInfo.InvariantCulture, $"No findings or accessibility observations for the {scope}.");
         else
-            html.Append(CultureInfo.InvariantCulture, $"{count} {Pluralize(count, "finding", "findings")} · {accessibility} {Pluralize(accessibility, "accessibility observation", "accessibility observations")} for this {scope}.");
-        html.AppendLine(" <a href=\"#findings\">Review findings</a> · <a href=\"#theme-review\">Review report theme</a></p>");
+            html.Append(CultureInfo.InvariantCulture, $"{count} {Pluralize(count, "finding", "findings")} · {accessibility} {Pluralize(accessibility, "accessibility observation", "accessibility observations")} for the {scope}.");
+        html.AppendLine(" <a href=\"#findings\">Open all findings</a> · <a href=\"#theme-review\">Open theme review</a></p>");
     }
 
     private static void AppendContextVisualList(StringBuilder html, SemanticLineageProjection lineage, ReportInventory report, PageInventory page)
@@ -195,7 +195,7 @@ public static partial class HtmlReportRenderer
             if (family.Length == 0) html.Append("<p>No ").Append(accessibility ? "accessibility observations" : "findings").AppendLine(" for this visual.</p>");
         }
         html.AppendLine("<h4>Theme</h4><ul class=\"plain-list\">");
-        foreach (var item in themeItems) { html.Append("<li>"); ContextLink(html, item.Item2, item.Item1); html.AppendLine("</li>"); }
+        foreach (var item in themeItems) { html.Append("<li>"); ContextLink(html, item.Item2, item.Item1 + " · Open theme review"); html.AppendLine("</li>"); }
         html.AppendLine("</ul>");
         if (DisplayedFormattingValues(new ThemeVisualContext(report, page, visual)).Any())
         {
