@@ -65,7 +65,7 @@ public sealed class HtmlReportRendererTests : IDisposable
         Assert.Contains("<strong>Position:</strong> Upper-left of page", html, StringComparison.Ordinal);
         Assert.Contains("<strong>Page type:</strong> Standard", html, StringComparison.Ordinal);
         Assert.Contains("<strong>Visibility:</strong> Visible", html, StringComparison.Ordinal);
-        Assert.Contains("<strong>Visuals:</strong> 2", html, StringComparison.Ordinal);
+        Assert.Contains("2 visuals · ", html, StringComparison.Ordinal);
         Assert.Contains("Hidden in saved report state", html, StringComparison.Ordinal);
         Assert.Contains("This visual links to a bookmark that no longer exists.", html, StringComparison.Ordinal);
         Assert.Contains("Open visual Reviews", html, StringComparison.Ordinal);
@@ -567,7 +567,7 @@ public sealed class HtmlReportRendererTests : IDisposable
         var page = inventory.Reports.Single().Pages.Single();
         Assert.Contains($"<dt>Configured visual interactions</dt><dd>{page.VisualInteractionCount}</dd>", html, StringComparison.Ordinal);
         Assert.Contains($"<dt>Model object references</dt><dd>{page.FieldReferenceCount}</dd>", html, StringComparison.Ordinal);
-        Assert.Contains("Repeated uses of the same object are counted separately.", html, StringComparison.Ordinal);
+        Assert.Contains("Distinct objects in the existing direct visual-use evidence, counted once across the page", html, StringComparison.Ordinal);
         Assert.DoesNotContain("<dt>Object uses</dt>", html, StringComparison.Ordinal);
         Assert.Contains("Apparently unused", html, StringComparison.Ordinal);
         Assert.Contains("data-severity=\"Warning\"", html, StringComparison.Ordinal);

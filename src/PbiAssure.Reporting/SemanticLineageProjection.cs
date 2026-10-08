@@ -56,6 +56,7 @@ internal sealed class SemanticLineageProjection
     private readonly Dictionary<string, SemanticUsageReason?> reasons;
     private readonly Dictionary<string, string?> reportModels;
     private readonly Dictionary<string, string> reportPaths;
+    private readonly Dictionary<string, int> directVisualObjectCountsByPage;
 
     private SemanticLineageProjection(
         IReadOnlyList<LineageCard> cards,
@@ -65,7 +66,8 @@ internal sealed class SemanticLineageProjection
         Dictionary<string, string> objectRowIds,
         Dictionary<string, SemanticUsageReason?> reasons,
         Dictionary<string, string?> reportModels,
-        Dictionary<string, string> reportPaths)
+        Dictionary<string, string> reportPaths,
+        Dictionary<string, int> directVisualObjectCountsByPage)
     {
         Cards = cards;
         this.cardsByNode = cardsByNode;
@@ -75,6 +77,7 @@ internal sealed class SemanticLineageProjection
         this.reasons = reasons;
         this.reportModels = reportModels;
         this.reportPaths = reportPaths;
+        this.directVisualObjectCountsByPage = directVisualObjectCountsByPage;
     }
 
     public IReadOnlyList<LineageCard> Cards { get; }
@@ -94,6 +97,10 @@ internal sealed class SemanticLineageProjection
 
     public LineageCard? CardForVisual(string report, string page, string visual) =>
         cardsByVisual.GetValueOrDefault(VisualKey(report, page, visual));
+
+    // Count the very same visual-use relation before presentation caps, not raw saved references.
+    public int DirectVisualObjectCountForPage(string report, string page) =>
+        directVisualObjectCountsByPage.GetValueOrDefault(string.Join('\u001f', report, page));
 
     /// <summary>The id of an object's row in the Semantic model section.</summary>
     public string ObjectRowId(SemanticObjectUsage usage) => objectRowIds[NodeKey(usage)];
@@ -399,8 +406,13 @@ internal sealed class SemanticLineageProjection
                 cardsByVisual.Add(visualKey, card);
             }
 
+            var pageCounts = visualUses
+                .GroupBy(entry => string.Join('\u001f', visuals[entry.Key].Report.Name, visuals[entry.Key].Page.Name), StringComparer.OrdinalIgnoreCase)
+                .ToDictionary(group => group.Key,
+                    group => group.SelectMany(entry => entry.Value).Select(use => use.Owner.NodeKey).Distinct(StringComparer.OrdinalIgnoreCase).Count(),
+                    StringComparer.OrdinalIgnoreCase);
             return new SemanticLineageProjection(
-                cards, cardsByNode, cardsByVisual, cardsByReportMeasure, objectRowIds, reasons, reportModels, reportPaths);
+                cards, cardsByNode, cardsByVisual, cardsByReportMeasure, objectRowIds, reasons, reportModels, reportPaths, pageCounts);
         }
 
         private static string ReportMeasureNameKey(string model, string entity, string name) =>

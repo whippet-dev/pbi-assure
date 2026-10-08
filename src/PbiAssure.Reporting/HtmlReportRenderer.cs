@@ -953,8 +953,8 @@ public static partial class HtmlReportRenderer
         }
 
         AppendSummaryDefinitions(html, "What these page metrics count", [
-            ("Configured visual interactions", "Saved edit-interaction settings between source and target visuals, such as filtering, highlighting or no interaction."),
-            ("Model object references", "References from visuals and page-level settings to semantic-model objects. Repeated uses of the same object are counted separately.")]);
+            ("Visuals", "Saved visuals on the page, including static and hidden visuals."),
+            ("Model objects used by visuals", "Distinct objects in the existing direct visual-use evidence, counted once across the page's visuals. Page-level references are shown separately and are not included.")]);
 
         var pages = inventory.Reports.SelectMany(report => report.Pages).ToArray();
         AppendInvestigationStart(html, "page", "Search pages and visuals", "Search page names, visual titles, types or model objects");
@@ -966,7 +966,7 @@ public static partial class HtmlReportRenderer
         html.AppendLine("      <div id=\"page-list\" class=\"page-list\">");
         foreach (var report in inventory.Reports)
         {
-            html.Append("<h3>");
+            html.Append(inventory.Reports.Count == 1 ? "<h3 class=\"single-report-name\">" : "<h3>");
             ContextLink(html, ReportContextId(report) + "-summary", report.Name);
             html.AppendLine("</h3>");
             foreach (var page in report.Pages)
@@ -1359,7 +1359,6 @@ public static partial class HtmlReportRenderer
         ReportInventory report,
         PageInventory page)
     {
-        var hierarchyContexts = BuildVisualHierarchyContexts(page);
         int? pageNumber = page.Order is null ? null : page.Order.Value + 1;
         var pageFindings = inventory.Findings.Count(finding =>
             string.Equals(finding.Report, report.Name, StringComparison.OrdinalIgnoreCase) &&
@@ -1372,6 +1371,7 @@ public static partial class HtmlReportRenderer
         var pageSearchText = string.Join(' ', new[] { page.DisplayName, page.Name, PageRole(page), PageVisibility(page) }
             .Append(isLandingPage ? "Landing page" : string.Empty)
             .Concat(page.Visuals.SelectMany(visual => new[] { VisualDisplayName(visual), HumanizeVisualType(visual.VisualType), visual.VisualType }))
+            .Concat(page.Visuals.SelectMany(visual => VisualContextCard(lineage, report, page, visual).Uses.Items.Select(use => use.Object.Name)))
             .Concat(page.FieldReferences.Select(reference => $"{reference.Table} {reference.ObjectName} {reference.ObjectType}")));
         html.Append("        <details class=\"page-card\" data-investigation-item=\"page\" data-search-text=\"").Append(Encode(pageSearchText))
             .Append("\" data-filter-page-type=\"").Append(Encode(PageRole(page))).Append("\" data-filter-visibility=\"")
@@ -1383,8 +1383,10 @@ public static partial class HtmlReportRenderer
         AppendSummaryMetadata(
             html,
             ("Page type", PageRole(page)),
-            ("Visibility", PageVisibility(page)),
-            ("Visuals", page.VisualCount.ToString(CultureInfo.InvariantCulture)));
+            ("Visibility", PageVisibility(page)));
+        var visualObjects = lineage.DirectVisualObjectCountForPage(report.Name, page.Name);
+        html.Append("<span class=\"page-visual-counts\">").Append(page.VisualCount).Append(' ').Append(Pluralize(page.VisualCount, "visual", "visuals"))
+            .Append(" · ").Append(visualObjects).Append(' ').Append(Pluralize(visualObjects, "model object", "model objects")).AppendLine(" used by visuals</span>");
         html.AppendLine("</span>");
         if (isLandingPage)
         {
@@ -1397,14 +1399,12 @@ public static partial class HtmlReportRenderer
              string.Equals(finding.PageDisplayName, page.DisplayName, StringComparison.OrdinalIgnoreCase)));
         if (pageFindings > 0)
             html.Append("<span class=\"secondary\">").Append(pageFindings - accessibilityCount).Append(' ').Append(Pluralize(pageFindings - accessibilityCount, "finding", "findings")).Append(" · ")
-                .Append(accessibilityCount).Append(' ').Append(Pluralize(accessibilityCount, "accessibility observation", "accessibility observations")).AppendLine("</span>");
+                .Append(accessibilityCount).Append(' ').Append(Pluralize(accessibilityCount, "accessibility observation", "accessibility observations")).AppendLine(" on this page, including visuals</span>");
 
         html.AppendLine("          </summary>");
         html.AppendLine("          <div class=\"page-body\">");
-        html.Append("<p>");
-        ContextLink(html, PageContextId(report, page) + "-summary", page.DisplayName);
-        html.AppendLine("</p>");
-        AppendContextVisualList(html, lineage, report, page);
+        AppendCollectionPageReferences(html, lineage, report, page);
+        AppendCollectionVisualList(html, inventory, lineage, report, page);
         html.AppendLine("</div></details>");
     }
 
