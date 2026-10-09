@@ -10,7 +10,7 @@ namespace PbiAssure.Privacy.E2E;
 public sealed class VisualInlineInspectInteractionTests(PrivacyE2EFixture fixture) : IAsyncLifetime
 {
     private readonly List<string> errors = [];
-    private string Output => Path.Combine(fixture.RepositoryRoot, "artifacts", "ux-hybrid-inspect");
+    private string Output => Path.Combine(fixture.RepositoryRoot, "artifacts", "ux-visual-polish");
     public Task InitializeAsync() => Task.CompletedTask;
     public Task DisposeAsync() { Assert.Empty(errors); return Task.CompletedTask; }
     private static Task<JsonElement?> Settle(IPage page) => page.EvaluateAsync("() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)))");
@@ -37,7 +37,10 @@ public sealed class VisualInlineInspectInteractionTests(PrivacyE2EFixture fixtur
         await using var context = await fixture.Browser.NewContextAsync(); var page = await Open(context);
         var projection = Row(page, "projection-visual"); var actions = Row(page, "valid-actions");
         var inspect = projection.Locator(".visual-inspect"); var summary = inspect.Locator("summary");
-        Assert.Equal("Inspect " + await projection.Locator("h4").InnerTextAsync(), await summary.InnerTextAsync());
+        Assert.Equal("More about this visual", await summary.InnerTextAsync());
+        Assert.Contains(await projection.Locator("h4").InnerTextAsync(), await summary.GetAttributeAsync("aria-label") ?? "", StringComparison.Ordinal);
+        Assert.DoesNotContain("Saved configuration; runtime behaviour has not been tested.", await inspect.TextContentAsync() ?? "", StringComparison.Ordinal);
+        Assert.Contains("Saved project evidence; runtime behaviour and external usage are outside this view.", await page.Locator("#report-contexts").TextContentAsync() ?? "", StringComparison.Ordinal);
         Assert.Equal(0, await summary.Locator("a, button, input").CountAsync());
         var route = page.Url; var length = await page.EvaluateAsync<int>("history.length");
         await summary.FocusAsync(); await summary.PressAsync("Enter"); await Settle(page);

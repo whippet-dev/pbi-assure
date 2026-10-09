@@ -14,7 +14,7 @@ public sealed class ReportCollectionInteractionTests(PrivacyE2EFixture fixture) 
     private static readonly string[] StaticTypes = ["image", "shape", "textbox", "actionButton"];
     private static readonly string[] PreviewNames = ["Sales[M0]", "Sales[M1]", "Sales[M2]"];
     private static readonly string[] PreviewRoles = ["Values", "Values", "Values"];
-    private string Output => Path.Combine(fixture.RepositoryRoot, "artifacts", "ux-scanability");
+    private string Output => Path.Combine(fixture.RepositoryRoot, "artifacts", "ux-visual-polish");
     public Task InitializeAsync() => Task.CompletedTask;
     public Task DisposeAsync() { Assert.Empty(errors); return Task.CompletedTask; }
     private static Task<JsonElement?> Settle(IPage page) => page.EvaluateAsync("() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)))");
@@ -53,7 +53,13 @@ public sealed class ReportCollectionInteractionTests(PrivacyE2EFixture fixture) 
     private async Task<IPage> Open(IBrowserContext context, string name = "collection-example", ProjectInventory? inventory = null, bool longName = false)
     {
         Directory.CreateDirectory(Output);
-        var html = HtmlReportRenderer.Render(inventory ?? Example());
+        var source = inventory ?? Example();
+        if (longName)
+            source = source with { SemanticObjectUsages = source.SemanticObjectUsages.Select(usage => usage with {
+                DirectReportReferences = usage.DirectReportReferences.Select(reference => reference with {
+                    Role = "Conditional formatting", UsageContext = UsageContexts.Formatting
+                }).ToArray() }).ToArray() };
+        var html = HtmlReportRenderer.Render(source);
         if (longName) html = html.Replace("Sales[M0]", "Sales[A long identifier with spaces and_" + new string('x', 90) + "]", StringComparison.Ordinal);
         var path = Path.Combine(Output, name + (longName ? "-long" : "") + ".html");
         await System.IO.File.WriteAllTextAsync(path, html);
@@ -76,6 +82,8 @@ public sealed class ReportCollectionInteractionTests(PrivacyE2EFixture fixture) 
         Assert.Equal(3, await wide.Locator(".visual-use-preview li").CountAsync());
         Assert.Equal(PreviewNames, await wide.Locator(".visual-use-preview a").AllTextContentsAsync());
         Assert.Equal(PreviewRoles, await wide.Locator(".visual-use-role").AllTextContentsAsync());
+        Assert.All(await wide.Locator(".visual-use-meta").AllTextContentsAsync(), text => Assert.Equal("Measure — Used as: Values", text));
+        Assert.Equal("Objects used by this visual", await wide.Locator(".visual-preview-label").InnerTextAsync());
         Assert.Contains("Table", await wide.Locator(".visual-preview-meta").InnerTextAsync(), StringComparison.Ordinal);
         Assert.Equal("+4 more", await wide.Locator(".visual-preview-more").InnerTextAsync());
         Assert.DoesNotContain("PageOnly", await wide.InnerTextAsync(), StringComparison.Ordinal);
@@ -186,7 +194,15 @@ public sealed class ReportCollectionInteractionTests(PrivacyE2EFixture fixture) 
         Assert.True(await row.Locator(".visual-use-preview a").First.EvaluateAsync<bool>("element => element === document.activeElement"));
         Assert.True(await page.EvaluateAsync<bool>("document.activeElement.matches(':focus-visible')"));
         Assert.True(await page.EvaluateAsync<bool>("document.documentElement.scrollWidth <= innerWidth"));
-        Assert.All(await row.Locator(".visual-use-preview a, .visual-use-role").EvaluateAllAsync<double[]>("elements => elements.map(e => e.getBoundingClientRect().right)"), right => Assert.True(right <= width));
+        Assert.All(await row.Locator(".visual-use-preview li, .visual-use-preview a, .visual-use-meta, .visual-use-role").EvaluateAllAsync<double[]>("elements => elements.map(e => e.getBoundingClientRect().right)"), right => Assert.True(right <= width));
+        Assert.All(await row.Locator(".visual-use-meta").AllTextContentsAsync(), text => Assert.Equal("Measure — Used as: Conditional formatting", text));
+        if (width == 320)
+        {
+            var cards = await row.Locator(".visual-use-preview li").EvaluateAllAsync<double[]>("elements => elements.map(e => e.getBoundingClientRect().x)");
+            Assert.Single(cards.Distinct());
+        }
+        if (forced == ForcedColors.Active)
+            Assert.All(await row.Locator(".visual-use-preview li").EvaluateAllAsync<string[]>("elements => elements.map(e => getComputedStyle(e).borderTopStyle)"), style => Assert.Equal("solid", style));
         await page.ScreenshotAsync(new() { Path = Path.Combine(Output, $"collection-{width}-{height}-{colors}-{forced}.png") });
         await row.Locator(".visual-preview-more").PressAsync("Enter"); await Settle(page);
         Assert.Equal("objects", await Entity(page).GetAttributeAsync("data-active-context-view"));

@@ -38,7 +38,7 @@ public sealed class VisualInlineInspectTests
         Assert.Contains("opens report page “Action destination”", actions.Value, StringComparison.Ordinal);
         Assert.Contains("applies bookmark “Coverage bookmark”", actions.Value, StringComparison.Ordinal);
         Assert.Contains("opens a web link", actions.Value, StringComparison.Ordinal);
-        Assert.Contains("runtime behaviour has not been tested", actions.Value, StringComparison.Ordinal);
+        Assert.DoesNotContain("runtime behaviour has not been tested", actions.Value, StringComparison.Ordinal);
         var broken = Inspect(Row(inventory, "diagnostic-actions"));
         Assert.Contains("bookmark that is no longer present", broken.Value, StringComparison.Ordinal);
         Assert.Contains("missing page", broken.Value, StringComparison.Ordinal);
@@ -102,8 +102,9 @@ public sealed class VisualInlineInspectTests
         foreach (var row in rows)
         {
             var inspect = Inspect(row); var summary = inspect.Element("summary")!;
-            Assert.Equal("Inspect " + row.Element("h4")!.Value, summary.Value);
-            Assert.StartsWith(summary.Value + " · ", summary.Attribute("aria-label")!.Value, StringComparison.Ordinal);
+            Assert.Equal("More about this visual", summary.Value);
+            Assert.StartsWith(summary.Value + ": " + row.Element("h4")!.Value + " · ", summary.Attribute("aria-label")!.Value, StringComparison.Ordinal);
+            Assert.DoesNotContain("Saved configuration; runtime behaviour has not been tested.", inspect.Value, StringComparison.Ordinal);
             Assert.Empty(summary.Elements());
             Assert.Null(inspect.Attribute("name")); Assert.Null(inspect.Attribute("open"));
             Assert.EndsWith("-summary", row.Element("h4")!.Element("a")!.Attribute("href")!.Value, StringComparison.Ordinal);

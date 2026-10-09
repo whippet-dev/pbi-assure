@@ -39,16 +39,19 @@ public static partial class HtmlReportRenderer
                 html.AppendLine("<p class=\"visual-preview-empty\">No model objects used</p>");
             else
             {
-                html.AppendLine("<p class=\"visual-preview-label\">Uses</p><ul class=\"visual-use-preview\">");
+                html.AppendLine("<p class=\"visual-preview-label\">Objects used by this visual</p><ul class=\"visual-use-preview\">");
                 foreach (var use in card.Uses.Items.Take(VisualCollectionPreviewLimit))
                 {
                     html.Append("<li><span>");
                     if (use.Object.CardId is { } objectId) ContextLink(html, "sum-" + objectId[4..], use.Object.Name);
                     else html.Append(Encode(use.Object.Name));
                     html.Append("</span>");
+                    var objectType = SemanticLineageProjection.ObjectTypeLabel(use.Object.ObjectType);
+                    html.Append("<span class=\"visual-use-meta\">").Append(Encode(objectType));
                     var role = CollectionUsageRole(use);
-                    if (role.Length > 0) html.Append("<span class=\"visual-use-role\">").Append(Encode(role)).Append("</span>");
-                    html.AppendLine("</li>");
+                    if (role.Length > 0)
+                        html.Append(string.IsNullOrWhiteSpace(objectType) ? "" : " — ").Append("Used as: <span class=\"visual-use-role\">").Append(Encode(role)).Append("</span>");
+                    html.AppendLine("</span></li>");
                 }
                 html.AppendLine("</ul>");
                 var remaining = card.Uses.TotalCount - Math.Min(card.Uses.Items.Count, VisualCollectionPreviewLimit);
@@ -75,10 +78,8 @@ public static partial class HtmlReportRenderer
             {
                 html.Append("<p class=\"visual-review-preview\">"); ContextLink(html, VisualViewId(card.Id, "reviews"), string.Join(" · ", cues)); html.AppendLine("</p>");
             }
-            html.Append("<details class=\"visual-inspect\" id=\"inspect-").Append(Encode(card.Id)).Append("\"><summary class=\"disclosure-marker\" aria-label=\"Inspect ")
-                .Append(Encode(name + " · " + DescribePosition(page, visual))).Append("\">Inspect ")
-                .Append(Encode(name)).AppendLine("</summary>");
-            html.AppendLine("<p class=\"secondary\">Saved configuration; runtime behaviour has not been tested.</p>");
+            html.Append("<details class=\"visual-inspect\" id=\"inspect-").Append(Encode(card.Id)).Append("\"><summary class=\"disclosure-marker\" aria-label=\"More about this visual: ")
+                .Append(Encode(name + " · " + DescribePosition(page, visual))).AppendLine("\">More about this visual</summary>");
             AppendVisualBehaviour(html, report, visual, inline: true);
             AppendAccessibilitySummary(html, visual, hierarchy[visual.RelativePath], "inspect-tab-order-" + card.Id, inline: true);
             html.AppendLine("</details>");

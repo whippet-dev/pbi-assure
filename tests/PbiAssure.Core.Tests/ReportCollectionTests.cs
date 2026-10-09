@@ -18,7 +18,7 @@ public sealed class ReportCollectionTests
     }
     internal static XElement[] Pages(string html)
     {
-        // Page cards now contain native Inspect disclosures; match their balanced outer boundary.
+        // Page cards contain native visual disclosures; match their balanced outer boundary.
         return Regex.Matches(html, "<details class=\"page-card\"").Select(start =>
         {
             var depth = 0;
@@ -57,6 +57,9 @@ public sealed class ReportCollectionTests
             Assert.Equal(expected.Select(use => "#sum-" + use.Object.CardId![4..]), ObjectLinks(row));
             Assert.Equal(expected.Select(use => use.Object.Name), Uses(row).Select(item => item.Element("span")!.Value));
             Assert.Equal(Math.Min(card?.Uses.TotalCount ?? 0, 3), Uses(row).Length);
+            foreach (var (item, index) in Uses(row).Select((item, index) => (item, index)))
+                Assert.StartsWith(SemanticLineageProjection.ObjectTypeLabel(expected[index].Object.ObjectType),
+                    item.Elements("span").Single(span => (string?)span.Attribute("class") == "visual-use-meta").Value, StringComparison.Ordinal);
             if ((card?.Uses.TotalCount ?? 0) > 3)
             {
                 var more = row.Elements("a").Single();
@@ -173,6 +176,20 @@ public sealed class ReportCollectionTests
         Assert.DoesNotContain("Implementation", row.Value, StringComparison.OrdinalIgnoreCase);
         Assert.DoesNotContain("$.visual", row.Value, StringComparison.Ordinal);
         Assert.Equal(before, JsonSerializer.Serialize(inventory));
+    }
+
+    [Theory]
+    [InlineData("projection-visual", "Measure — Used as: Values")]
+    [InlineData("formatting-only-visual", "Column — Used as: Formatting")]
+    [InlineData("filter-only-visual", "Column — Used as: Visual filter")]
+    public void UsageTilesShowThePublishedObjectTypeAndPlainPowerBIRole(string visualName, string expected)
+    {
+        var inventory = Scan(); var visual = inventory.Reports.SelectMany(report => report.Pages).SelectMany(page => page.Visuals).Single(visual => visual.Name == visualName);
+        var html = HtmlReportRenderer.Render(inventory); var route = VisualSummaryRoute(html, visual.RelativePath);
+        var row = Rows(html).Single(row => row.Element("h4")!.Element("a")!.Attribute("href")!.Value == route);
+        Assert.Contains("Objects used by this visual", row.Value, StringComparison.Ordinal);
+        Assert.Contains(Uses(row), tile => tile.Elements("span").Any(span => span.Value == expected));
+        Assert.All(Uses(row), tile => Assert.Single(tile.Descendants("a")));
     }
 
     [Theory]
