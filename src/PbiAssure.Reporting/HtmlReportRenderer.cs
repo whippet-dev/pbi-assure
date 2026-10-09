@@ -1679,6 +1679,7 @@ public static partial class HtmlReportRenderer
                 {
                     html.Append("                <p class=\"usage-reason\">").Append(Encode(usageReason)).AppendLine("</p>");
                 }
+                AppendModelInspect(html, lineage.CardFor(usage)!, table, inventory.ReportCount > 1);
                 html.AppendLine("              </li>");
             }
 

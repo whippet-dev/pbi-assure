@@ -58,14 +58,19 @@ public static partial class HtmlReportRenderer
         const container = element.closest('[id]');
         if (!container || !mainContent.contains(container)) return null;
         const tag = element.tagName.toLowerCase();
-        return { id: container.id, tag, index: [...container.querySelectorAll(tag)].indexOf(element) };
+        return { id: container.id, tag, index: [...container.querySelectorAll(tag)].indexOf(element),
+          href: element instanceof HTMLAnchorElement ? element.getAttribute('href') : null };
       };
       const resolveFocus = reference => {
         const container = reference && document.getElementById(reference.id);
         if (!container) return null;
         if (!reference.tag) return container;
         if (!['a', 'button', 'input', 'select', 'summary', 'h2', 'h3'].includes(reference.tag)) return null;
-        return container.querySelectorAll(reference.tag)[reference.index] || null;
+        const candidate = container.querySelectorAll(reference.tag)[reference.index];
+        // An inline preview may contain more links. If the initiating link disappears, another
+        // link at its old position is not the same focus target; use the existing heading fallback.
+        if (reference.href && candidate?.getAttribute('href') !== reference.href) return null;
+        return candidate || null;
       };
       const snapshot = (focus = document.activeElement) => ({
         section: mainContent.dataset.activeSection,

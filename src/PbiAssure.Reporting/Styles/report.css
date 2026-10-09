@@ -743,6 +743,19 @@ label { display: block; margin-bottom: 0.25rem; color: var(--pa-text-2); font-si
 .semantic-object[data-usage-state="StructurallyRequired"] .object-name { flex-basis: 8rem; }
 .usage-reason { min-width: 0; max-width: 100%; margin: 0.375rem 0 0; color: var(--pa-text-2); font-size: var(--pa-t-2xs); overflow-wrap: anywhere; }
 
+.model-inspect { min-width: 0; margin-top: 0.5rem; }
+.model-inspect > summary { display: flex; width: fit-content; max-width: 100%; gap: 0.4375rem; align-items: center; color: var(--pa-accent); font-weight: 600; }
+.model-inspect > section { min-width: 0; margin-top: 0.75rem; }
+.model-inspect h4 { margin: 0 0 0.25rem; font-size: var(--pa-t-xs); }
+.model-inspect small, .model-inspect p { color: var(--pa-text-2); font-size: var(--pa-t-2xs); }
+.model-inspect p { margin: 0.25rem 0; }
+.model-inspect ul { display: grid; gap: 0.375rem; margin: 0.25rem 0; padding: 0; list-style: none; }
+.model-inspect li { display: grid; min-width: 0; gap: 0.125rem; padding: 0.375rem 0.5rem; border: 1px solid var(--pa-line); border-radius: var(--pa-r1); background: var(--pa-surface-2); overflow-wrap: anywhere; }
+.model-inspect li > * { min-width: 0; }
+.model-inspect li a { font-weight: 600; }
+.model-inspect pre { min-width: 0; max-width: 100%; margin: 0.25rem 0; white-space: pre-wrap; overflow-wrap: anywhere; }
+.model-inspect pre code { white-space: inherit; }
+
 .semantic-feature {
   min-width: 0;
   max-width: 100%;

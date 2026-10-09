@@ -42,7 +42,7 @@ public sealed class ReportInvestigationHistoryTests(PrivacyE2EFixture fixture) :
         await page.Locator("#usage-usage-state").SelectOptionAsync("IndirectlyUsed");
         await page.Locator("#usage-table").SelectOptionAsync("Fact");
         await page.GetByRole(AriaRole.Button, new() { Name = "Expand all tables", Exact = true }).ClickAsync();
-        var link = page.Locator(".semantic-object:not([hidden]) a[href^='#sum-']");
+        var link = page.Locator(".semantic-object:not([hidden]) .object-name a[href^='#sum-']");
         await link.ScrollIntoViewIfNeededAsync();
         await link.FocusAsync();
         await SettleAsync(page);
@@ -144,7 +144,7 @@ public sealed class ReportInvestigationHistoryTests(PrivacyE2EFixture fixture) :
         var name = await row.Locator(".object-name strong").InnerTextAsync();
         await page.Locator("#usage-search").FillAsync(name);
         await page.GetByRole(AriaRole.Button, new() { Name = "Expand all tables", Exact = true }).ClickAsync();
-        await row.Locator("a[href^='#sum-']").ClickAsync();
+        await row.Locator(".object-name a[href^='#sum-']").ClickAsync();
         await Card(page).GetByRole(AriaRole.Link, new() { Name = "Definition", Exact = true }).ClickAsync();
         await page.Locator("#investigation-return").ClickAsync();
         await page.WaitForURLAsync("**#semantic-usage");
