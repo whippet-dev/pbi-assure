@@ -371,7 +371,7 @@ public sealed class VisualGroupSupportTests
         Assert.DoesNotContain("visual-group-context", html, StringComparison.Ordinal);
         Assert.DoesNotContain("<dt>Group</dt>", html, StringComparison.Ordinal);
         Assert.Contains("<dt>Parent group</dt>", html, StringComparison.Ordinal);
-        Assert.Equal(7, html.Split("<button type=\"button\" class=\"info-tooltip\"", StringSplitOptions.None).Length - 1);
+        Assert.Equal(7, html.Split("aria-describedby=\"tab-order-help-", StringSplitOptions.None).Length - 1);
         Assert.Contains(".info-tooltip {", html, StringComparison.Ordinal);
         Assert.Contains("flex: 0 0 1rem;", html, StringComparison.Ordinal);
         Assert.Contains(".info-tooltip:hover [role=\"tooltip\"], .info-tooltip:focus [role=\"tooltip\"], .info-tooltip:focus-visible [role=\"tooltip\"] { opacity: 1; }", html, StringComparison.Ordinal);

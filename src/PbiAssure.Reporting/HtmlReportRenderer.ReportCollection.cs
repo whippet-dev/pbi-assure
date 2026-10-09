@@ -23,6 +23,7 @@ public static partial class HtmlReportRenderer
         ReportInventory report, PageInventory page)
     {
         if (page.Visuals.Count == 0) { html.AppendLine("<p>No visuals on this page.</p>"); return; }
+        var hierarchy = BuildVisualHierarchyContexts(page);
         html.AppendLine("<ul class=\"visual-preview-list\">");
         foreach (var visual in page.Visuals)
         {
@@ -74,6 +75,13 @@ public static partial class HtmlReportRenderer
             {
                 html.Append("<p class=\"visual-review-preview\">"); ContextLink(html, VisualViewId(card.Id, "reviews"), string.Join(" · ", cues)); html.AppendLine("</p>");
             }
+            html.Append("<details class=\"visual-inspect\" id=\"inspect-").Append(Encode(card.Id)).Append("\"><summary class=\"disclosure-marker\" aria-label=\"Inspect ")
+                .Append(Encode(name + " · " + DescribePosition(page, visual))).Append("\">Inspect ")
+                .Append(Encode(name)).AppendLine("</summary>");
+            html.AppendLine("<p class=\"secondary\">Saved configuration; runtime behaviour has not been tested.</p>");
+            AppendVisualBehaviour(html, report, visual, inline: true);
+            AppendAccessibilitySummary(html, visual, hierarchy[visual.RelativePath], "inspect-tab-order-" + card.Id, inline: true);
+            html.AppendLine("</details>");
             html.AppendLine("</li>");
         }
         html.AppendLine("</ul>");

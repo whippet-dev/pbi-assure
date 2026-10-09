@@ -69,8 +69,8 @@ public sealed class ReportCollectionInteractionTests(PrivacyE2EFixture fixture) 
     public async Task CollectionShowsUsefulUsagePageReferencesStaticRowsAndLocalReviewCues()
     {
         await using var context = await fixture.Browser.NewContextAsync(); var page = await Open(context);
-        Assert.Contains("6 visuals · 7 model objects used by visuals", await Collection(page).Locator("summary").InnerTextAsync(), StringComparison.Ordinal);
-        Assert.Contains("on this page, including visuals", await Collection(page).Locator("summary").InnerTextAsync(), StringComparison.Ordinal);
+        Assert.Contains("6 visuals · 7 model objects used by visuals", await Collection(page).Locator(":scope > summary").InnerTextAsync(), StringComparison.Ordinal);
+        Assert.Contains("on this page, including visuals", await Collection(page).Locator(":scope > summary").InnerTextAsync(), StringComparison.Ordinal);
         Assert.Equal(6, await Collection(page).Locator(".visual-preview").CountAsync());
         var wide = Collection(page).Locator(".visual-preview:has(.visual-preview-more)");
         Assert.Equal(3, await wide.Locator(".visual-use-preview li").CountAsync());
@@ -105,7 +105,7 @@ public sealed class ReportCollectionInteractionTests(PrivacyE2EFixture fixture) 
         var inventory = ProjectScanner.Scan(Path.Combine(fixture.RepositoryRoot, "tests", "fixtures", "pbi-assure-coverage"));
         await using var context = await fixture.Browser.NewContextAsync(); var page = await Open(context, "collection-coverage", inventory);
         await page.Locator("#page-search").FillAsync("Core coverage");
-        Assert.Contains("8 visuals · 16 model objects used by visuals", await Collection(page).Locator("summary").InnerTextAsync(), StringComparison.Ordinal);
+        Assert.Contains("8 visuals · 16 model objects used by visuals", await Collection(page).Locator(":scope > summary").InnerTextAsync(), StringComparison.Ordinal);
         Assert.Equal(5, await Collection(page).Locator(".visual-use-preview").CountAsync());
         Assert.Contains("Visual filter", await Collection(page).InnerTextAsync(), StringComparison.Ordinal);
         Assert.Contains("Formatting", await Collection(page).InnerTextAsync(), StringComparison.Ordinal);

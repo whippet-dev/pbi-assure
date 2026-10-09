@@ -16,8 +16,21 @@ public sealed class ReportCollectionTests
         while (root is not null && !File.Exists(Path.Combine(root.FullName, "PbiAssure.slnx"))) root = root.Parent;
         return ProjectScanner.Scan(Path.Combine(root!.FullName, "tests", "fixtures", name));
     }
-    private static XElement[] Pages(string html) => Regex.Matches(html, "<details class=\"page-card\".*?</details>", RegexOptions.Singleline)
-        .Select(match => XElement.Parse(match.Value.Replace("&#x1F;", "", StringComparison.Ordinal))).ToArray();
+    internal static XElement[] Pages(string html)
+    {
+        // Page cards now contain native Inspect disclosures; match their balanced outer boundary.
+        return Regex.Matches(html, "<details class=\"page-card\"").Select(start =>
+        {
+            var depth = 0;
+            foreach (Match tag in Regex.Matches(html[start.Index..], "</?details\\b[^>]*>"))
+            {
+                depth += tag.Value.StartsWith("</", StringComparison.Ordinal) ? -1 : 1;
+                if (depth == 0)
+                    return XElement.Parse(html.Substring(start.Index, tag.Index + tag.Length).Replace("&#x1F;", "", StringComparison.Ordinal));
+            }
+            throw new InvalidOperationException("Unclosed page card.");
+        }).ToArray();
+    }
     private static XElement[] Rows(string html) => Pages(html).SelectMany(page => page.Descendants("li")
         .Where(row => (string?)row.Attribute("class") == "visual-preview")).ToArray();
     private static XElement[] Uses(XElement row) => row.Elements("ul").Where(list => (string?)list.Attribute("class") == "visual-use-preview").Elements("li").ToArray();
@@ -54,7 +67,7 @@ public sealed class ReportCollectionTests
         }
         Assert.Equal(before, JsonSerializer.Serialize(inventory));
     }
-    private static string VisualSummaryRoute(string html, string path)
+    internal static string VisualSummaryRoute(string html, string path)
     {
         var article = Regex.Matches(html, "<article [^>]*data-report-context=\"Visual\".*?</article>", RegexOptions.Singleline)
             .Single(match => match.Value.Contains(System.Text.Encodings.Web.HtmlEncoder.Default.Encode(path), StringComparison.Ordinal)).Value;
@@ -102,7 +115,7 @@ public sealed class ReportCollectionTests
         var row = Rows(html).Single(row => (string?)row.Attribute("data-preview-visual") == card.Id);
         Assert.Equal(3, Uses(row).Length); Assert.Contains("+62 more", row.Value, StringComparison.Ordinal);
         Assert.DoesNotContain("PageOnly", row.Value, StringComparison.Ordinal); Assert.DoesNotContain("Stale", row.Value, StringComparison.Ordinal);
-        Assert.DoesNotContain("Missing", row.Value, StringComparison.Ordinal); Assert.DoesNotContain("M03", row.Value, StringComparison.Ordinal);
+        Assert.DoesNotContain("Missing", string.Join(' ', Uses(row).Select(use => use.Value)), StringComparison.Ordinal); Assert.DoesNotContain("M03", row.Value, StringComparison.Ordinal);
         Assert.Contains("Sales[PageOnly]", collection.Elements("div").Descendants("div").Single(element => (string?)element.Attribute("class") == "page-reference-preview").Value, StringComparison.Ordinal);
         Assert.Contains("No model objects used", Rows(html).Single(item => item.Element("h4")!.Value == "Image").Value, StringComparison.Ordinal);
     }

@@ -1490,14 +1490,15 @@ public static partial class HtmlReportRenderer
         html.AppendLine("                  </ul>");
     }
 
-    private static void AppendVisualBehaviour(StringBuilder html, ReportInventory report, VisualInventory visual)
+    private static void AppendVisualBehaviour(StringBuilder html, ReportInventory report, VisualInventory visual, bool inline = false)
     {
         if (visual.Actions.Count == 0 && visual.TooltipBindings.Count == 0)
         {
+            if (inline) html.AppendLine("<h5>Behaviour</h5><p>No configured action or tooltip.</p>");
             return;
         }
 
-        html.AppendLine("                  <h4>Behaviour</h4>");
+        html.AppendLine(inline ? "<h5>Behaviour</h5>" : "                  <h4>Behaviour</h4>");
         html.AppendLine("                  <ul class=\"plain-list\">");
         foreach (var action in visual.Actions)
         {
@@ -1507,7 +1508,8 @@ public static partial class HtmlReportRenderer
         foreach (var tooltip in visual.TooltipBindings)
         {
             var state = tooltip.IsEnabled == false ? "Disabled" : "Report-page tooltip";
-            var target = string.IsNullOrWhiteSpace(tooltip.TargetPage)
+            var target = tooltip.HasDynamicConfiguration ? "destination is set dynamically"
+                : string.IsNullOrWhiteSpace(tooltip.TargetPage)
                 ? "dynamic or unspecified page"
                 : $"page “{FriendlyPageName(report, tooltip.TargetPage)}”";
             html.Append("                    <li>").Append(Encode($"{state}: {target}")).AppendLine("</li>");
@@ -1520,21 +1522,28 @@ public static partial class HtmlReportRenderer
         StringBuilder html,
         VisualInventory visual,
         VisualHierarchyContext hierarchyContext,
-        string tooltipId)
+        string tooltipId,
+        bool inline = false)
     {
-        html.AppendLine("                  <h4>Accessibility snapshot</h4>");
+        html.AppendLine(inline ? "<h5>Accessibility</h5>" : "                  <h4>Accessibility snapshot</h4>");
         html.AppendLine("                  <dl class=\"fact-strip compact\">");
         var altText = visual.Accessibility.AltTextIsDynamic
             ? "Dynamic alt text"
             : visual.Accessibility.HasAltText
                 ? visual.Accessibility.AltText ?? "Configured"
-                : "Not configured";
+                : inline ? "Missing" : "Not configured";
         AppendFact(html, "Alt text", altText);
         AppendTabOrderFact(html, DescribeTabOrder(visual, hierarchyContext), tooltipId);
         AppendFact(
             html,
             "Title",
-            visual.Accessibility.TitleIsVisible == false ? "Hidden" : "Visible or default");
+            visual.Accessibility.TitleIsVisible == false ? "Hidden"
+                : inline && visual.Accessibility.TitleIsVisible == true ? "Visible" : "Visible or default");
+        if (inline)
+        {
+            if (visual.Accessibility.TitleTextIsDynamic) AppendFact(html, "Title text", "Dynamic title");
+            else if (!string.IsNullOrWhiteSpace(visual.Accessibility.TitleText)) AppendFact(html, "Title text", visual.Accessibility.TitleText);
+        }
         html.AppendLine("                  </dl>");
     }
 

@@ -1018,6 +1018,13 @@ public static class DesignSystem
         .visual-use-role { color: var(--pa-text-2); }
         .visual-preview-more { display: inline-block; margin-top: 0.25rem; font-size: var(--pa-t-xs); }
         .visual-review-preview { margin: 0.5rem 0 0; font-size: var(--pa-t-xs); }
+        .visual-inspect { min-width: 0; margin-top: 0.625rem; font-size: var(--pa-t-xs); }
+        .visual-inspect > summary { display: flex; align-items: center; gap: 0.4375rem; width: fit-content; max-width: 100%; cursor: pointer; overflow-wrap: anywhere; }
+        .visual-inspect h5 { margin: 0.75rem 0 0.25rem; font-size: var(--pa-t-xs); }
+        .visual-inspect p, .visual-inspect .plain-list { margin: 0.25rem 0; }
+        .visual-inspect .fact-strip.compact { grid-template-columns: minmax(0, 1fr); margin: 0; border: 0; border-radius: 0; background: transparent; overflow: visible; }
+        .visual-inspect .fact-strip > div { display: grid; grid-template-columns: minmax(0, 6rem) minmax(0, 1fr); gap: 0.125rem 0.75rem; min-width: 0; padding: 0.25rem 0; border: 0; }
+        .visual-inspect .fact-strip dd { margin: 0; font-weight: 400; }
         .page-reference-preview { min-width: 0; padding: 0 0 0.75rem; border-bottom: 1px solid var(--pa-line); overflow-wrap: anywhere; }
         .page-reference-preview .visual-preview-label { margin-top: 0; }
         .rls-role-card > summary, .power-query-card > summary { align-items: center; }
