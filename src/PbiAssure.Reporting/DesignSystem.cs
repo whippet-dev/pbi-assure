@@ -1600,6 +1600,13 @@ public static class DesignSystem
         .object-summary-group { margin: 1rem 0; }
         .object-summary-group h4 { margin: 0 0 0.375rem; }
         .object-summary-group .lineage-meta { display: block; }
+        .object-summary-preview { display: grid; gap: 0.5rem; padding: 0; margin: 0.375rem 0; list-style: none; }
+        .object-summary-preview li { display: grid; min-width: 0; gap: 0.125rem; padding: 0.5rem 0.625rem; border: 1px solid var(--pa-line); border-radius: var(--pa-r1); background: var(--pa-surface-2); overflow-wrap: anywhere; }
+        .object-summary-preview li > * { min-width: 0; }
+        .object-summary-preview li > a, .object-summary-preview li > span { font-weight: 600; }
+        .object-summary-preview small { color: var(--pa-text-2); font-size: var(--pa-t-xs); }
+        .object-summary-group pre { min-width: 0; max-width: 100%; white-space: pre-wrap; overflow-wrap: anywhere; }
+        .object-summary-group pre code { white-space: inherit; }
         .object-context-details { border-top: 1px solid var(--pa-line); padding: 1rem 0; }
         .object-context-details > summary { width: fit-content; font-weight: 650; cursor: pointer; list-style: disclosure-closed inside; }
         .object-context-details[open] > summary { list-style-type: disclosure-open; }

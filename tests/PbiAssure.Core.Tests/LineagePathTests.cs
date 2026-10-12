@@ -124,8 +124,8 @@ public sealed class LineagePathTests
         Assert.Single(metric.Path.Steps);
         Assert.Equal(2, metric.Path.EndpointLocationCount);
         var article = Article(inventory, metric);
-        Assert.Contains("data-lineage-path=\"direct\"", article, StringComparison.Ordinal);
-        Assert.Contains("Used directly in 2 report locations.", article, StringComparison.Ordinal);
+        Assert.DoesNotContain("data-lineage-path=", article, StringComparison.Ordinal);
+        Assert.Contains("<h4>Used in the report</h4>", article, StringComparison.Ordinal);
         Assert.DoesNotContain("other report location", article, StringComparison.Ordinal);
     }
 
@@ -169,7 +169,7 @@ public sealed class LineagePathTests
         Assert.NotNull(amount.Path.Endpoint!.Visual);
 
         var article = Article(inventory, amount);
-        Assert.Contains("<section class=\"lineage-path\" data-lineage-path=\"model\"><h3>Path to report</h3>", article, StringComparison.Ordinal);
+        Assert.Contains("<section class=\"lineage-path\" data-lineage-path=\"model\"><h3>How this reaches the report</h3>", article, StringComparison.Ordinal);
         Assert.Contains($"<li class=\"lineage-path-step\" data-lineage-path-step=\"model\" data-lineage-state=\"DirectlyUsed\"><a class=\"lineage-node\" href=\"#{amount.Path.Steps[1].CardId}\">Sales[Total Amount]</a>", article, StringComparison.Ordinal);
         Assert.Contains($"<li class=\"lineage-path-step lineage-endpoint\" data-lineage-path-step=\"report\"><a class=\"lineage-node\" href=\"#visual-{amount.Path.Endpoint.VisualCardId![4..]}-summary\">", article, StringComparison.Ordinal);
         // The focus is the card's centre: in the path it is only the start mark, named for assistive technology.
@@ -358,7 +358,7 @@ public sealed class LineagePathTests
         Assert.Contains("<span class=\"lineage-reach\">Not reached from a report</span>", articleB, StringComparison.Ordinal);
         var qtyArticle = Article(html, qty.Id);
         var qtyPath = PathSection(qtyArticle);
-        Assert.Contains("No path to the report found in this project.", qtyPath, StringComparison.Ordinal);
+        Assert.DoesNotContain("data-lineage-path=", qtyArticle, StringComparison.Ordinal);
         Assert.Contains("Only used through: ", qtyPath, StringComparison.Ordinal);
         Assert.Contains("Report B</span>", qtyArticle, StringComparison.Ordinal);
 
@@ -463,7 +463,7 @@ public sealed class LineagePathTests
         var head = Assert.Single(cost.Path.OnlyReachedFrom.Items);
         Assert.Equal(("Sales[Unused Control]", SemanticUsageStates.ApparentlyUnused), (head.Name, head.UsageState));
         var text = System.Net.WebUtility.HtmlDecode(PathSection(Article(inventory, cost)));
-        Assert.Contains("No path to the report found in this project.", text, StringComparison.Ordinal);
+        Assert.DoesNotContain("How this reaches the report", text, StringComparison.Ordinal);
         Assert.Contains("Only used through: ", text, StringComparison.Ordinal);
         Assert.Contains(">Sales[Unused Control]</a> (Apparently unused)", text, StringComparison.Ordinal);
     }
@@ -479,9 +479,10 @@ public sealed class LineagePathTests
         Assert.Equal(0, notes.Path.OnlyReachedFrom.TotalCount);
         Assert.False(notes.Path.RequiredByModelStructure);
         Assert.False(notes.Path.ChecksLimited);
-        Assert.Equal(
-            "<section class=\"lineage-path\" data-lineage-path=\"none\"><h3>Path to report</h3><p class=\"lineage-path-none\">No path to the report found in this project.</p></section>",
-            PathSection(Article(inventory, notes)));
+        var article = Article(inventory, notes);
+        Assert.DoesNotContain("data-lineage-path=", article, StringComparison.Ordinal);
+        Assert.DoesNotContain("data-lineage-path-context", article, StringComparison.Ordinal);
+
     }
 
     [Fact]
@@ -514,9 +515,10 @@ public sealed class LineagePathTests
         var card = lineage.CardFor(qualified)!;
 
         Assert.True(card.Path!.ChecksLimited);
-        var section = PathSection(Article(inventory, card));
-        Assert.Contains("No path to the report found in this project.", section, StringComparison.Ordinal);
-        Assert.Contains("<span class=\"confidence-flag\">Checks limited", section, StringComparison.Ordinal);
+        var section = Article(inventory, card);
+        Assert.DoesNotContain("data-lineage-path=", section, StringComparison.Ordinal);
+        Assert.Contains("class=\"confidence-flag\"", section, StringComparison.Ordinal);
+        Assert.Contains(">Checks limited", section, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -610,6 +612,7 @@ public sealed class LineagePathTests
     private static string PathSection(string article)
     {
         var start = article.IndexOf("<section class=\"lineage-path\"", StringComparison.Ordinal);
+        if (start < 0) start = article.IndexOf("<section class=\"lineage-context\" data-lineage-path-context", StringComparison.Ordinal);
         Assert.True(start >= 0, "Expected a path section.");
         var end = article.IndexOf("</section>", start, StringComparison.Ordinal) + "</section>".Length;
         return article[start..end];

@@ -50,15 +50,14 @@ public static partial class HtmlReportRenderer
                 .Append("\">").Append(label).AppendLine("</a>");
         html.AppendLine("</nav>");
         html.Append("<section id=\"").Append(Encode(ObjectSummaryId(card))).AppendLine("\" class=\"object-local-view object-summary\" data-object-view=\"summary\">");
-        html.AppendLine("<h3 tabindex=\"-1\">Summary</h3><dl class=\"object-summary-facts\">");
-        if (card.ObjectType != SemanticObjectTypes.Table)
+        html.AppendLine("<h3 tabindex=\"-1\">Summary</h3>");
+        if (card.ObjectType != SemanticObjectTypes.Table &&
+            (card.RequiredByModel.TotalCount > 0 || card.Usage?.UsageState == SemanticUsageStates.StructurallyRequired))
         {
-            AppendFact(html, "Used by", card.UsedBy.TotalCount == 0 ? "None found in the model" : $"{card.UsedBy.TotalCount} {Pluralize(card.UsedBy.TotalCount, "object", "objects")} in the model");
-            AppendFact(html, "Used in the report", card.UsedInReport.TotalCount == 0 ? "Not used directly" : $"{card.UsedInReport.TotalCount} {Pluralize(card.UsedInReport.TotalCount, "place", "places")}");
+            html.AppendLine("<dl class=\"object-summary-facts\">");
             AppendFact(html, "Required by the model", StructuralSummary(card));
-            AppendFact(html, "Power Query", card.PowerQuery is null ? "None found" : "See Details");
+            html.AppendLine("</dl>");
         }
-        html.AppendLine("</dl>");
         if (card.ObjectType == SemanticObjectTypes.Table)
             html.AppendLine("<p>Usage is shown for this table's columns and measures, not the table itself.</p>");
         if (card.Usage?.UsageState == SemanticUsageStates.ApparentlyUnused)
@@ -69,19 +68,22 @@ public static partial class HtmlReportRenderer
                 : "PBI Assure didn't find any use for this object in the project.")
                 .AppendLine(" Check before removing it: other reports and dynamic behaviour can't be seen here.</p>");
         }
-        if (card.UsedInReport.Items.Count > 0)
-        {
-            html.AppendLine("<section class=\"object-summary-group\"><h4>Report usage</h4><ul class=\"plain-list\">");
-            foreach (var location in card.UsedInReport.Items.Take(2))
-            {
-                html.Append("<li>");
-                AppendLineageLocation(html, inventory, location, compact: true);
-                html.AppendLine("</li>");
-            }
-            html.AppendLine("</ul></section>");
-        }
-        AppendObjectSummaryNeighbours(html, "Used by", card.UsedBy);
+        AppendObjectSummaryPreview(html, inventory, card);
         AppendObjectSummaryNeighbours(html, "Required by the model", card.RequiredByModel);
+        if (card.PowerQuery is { } query && (query.TableQueries.Count > 0 || query.ColumnEvidence.Count > 0))
+        {
+            html.AppendLine("<section class=\"object-summary-group\"><h4>Power Query context</h4>");
+            if (query.TableQueries.Count > 0)
+            {
+                html.Append("<p>Table loaded by: ").Append(Encode(string.Join(", ", query.TableQueries.Take(3).Select(item => item.QueryName))));
+                if (query.TableQueries.Count > 3) html.Append(" and ").Append(query.TableQueries.Count - 3).Append(" more");
+                html.AppendLine(".</p>");
+            }
+            if (query.ColumnEvidence.Count > 0)
+                html.Append("<p>").Append(query.ColumnEvidence.Count).Append(" saved column-usage ")
+                    .Append(Pluralize(query.ColumnEvidence.Count, "observation", "observations")).AppendLine(". See Details.</p>");
+            html.AppendLine("<p class=\"group-explanation\">This is bounded query context; it doesn't follow the column through every query step. See Details.</p></section>");
+        }
         if (card.PossibleUse.TotalCount > 0 || card.NotResolved.TotalCount > 0)
             html.AppendLine("<p class=\"group-explanation\">Possible use or unresolved references are recorded. Review the distinctions in Lineage and the evidence in Details.</p>");
         if (card.Usage is { ClassificationConfidence: ClassificationConfidences.QualifiedByLimitation })

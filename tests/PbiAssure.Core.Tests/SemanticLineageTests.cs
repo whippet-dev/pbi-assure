@@ -413,7 +413,7 @@ public sealed partial class SemanticLineageTests
             Assert.Null(card.PowerQuery);
             var article = Article(html, card.Id);
             Assert.DoesNotContain("data-lineage-group=\"power-query\"", article, StringComparison.Ordinal);
-            Assert.Contains("None found", article, StringComparison.Ordinal);
+            Assert.DoesNotContain("<h4>Power Query context</h4>", article, StringComparison.Ordinal);
             Assert.DoesNotContain("Source column:", article, StringComparison.Ordinal);
         }
     }

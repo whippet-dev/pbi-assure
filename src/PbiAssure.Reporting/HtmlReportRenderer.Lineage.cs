@@ -425,52 +425,14 @@ public static partial class HtmlReportRenderer
     /// </summary>
     private static void AppendLineagePath(StringBuilder html, ProjectInventory inventory, LineagePath path)
     {
-        html.Append("<section class=\"lineage-path\" data-lineage-path=\"")
-            .Append(path.Status switch
-            {
-                LineagePathStatus.DirectlyUsed => "direct",
-                LineagePathStatus.ReachedThroughModel => "model",
-                _ => "none",
-            })
-            .Append("\"><h3>Path to report</h3>");
-        if (path.Status == LineagePathStatus.NotFound)
+        // Presentation only: keep the selected path, including its shortest/direct choice.
+        // A diagram adds information only when a semantic step sits before the endpoint.
+        if (path.Endpoint is null || path.Steps.Count < 2)
         {
-            html.Append("<p class=\"lineage-path-none\">No path to the report found in this project.</p>");
-            if (path.OnlyReachedFrom.TotalCount > 0)
-            {
-                html.Append("<p class=\"lineage-path-note\">Only used through: ");
-                AppendLineagePathNames(html, path.OnlyReachedFrom, neighbour => neighbour.UsageState is not null
-                    ? UsageLabel(neighbour.UsageState)
-                    : neighbour.IsSharedReportMeasure && neighbour.Report is not null
-                        ? $"Report {neighbour.Report}"
-                        : null);
-                html.Append("</p>");
-            }
-
-            if (path.StructuralSources.TotalCount > 0)
-            {
-                html.Append("<p class=\"lineage-path-note\">Required by the model structure: ");
-                AppendLineagePathNames(html, path.StructuralSources, neighbour => string.Join(" · ", neighbour.RelationshipLabels));
-                html.Append("</p>");
-            }
-            else if (!string.IsNullOrWhiteSpace(path.StructuralReason))
-            {
-                html.Append("<p class=\"lineage-path-note\">Required by the model structure: ").Append(Encode(path.StructuralReason)).Append("</p>");
-            }
-            else if (path.RequiredByModelStructure)
-            {
-                html.Append("<p class=\"lineage-path-note\">Required by the model structure.</p>");
-            }
-
-            if (path.ChecksLimited)
-            {
-                html.Append("<p class=\"lineage-path-note\"><span class=\"confidence-flag\">").Append(CoverageMarkerLabel)
-                    .Append("<span class=\"visually-hidden\">").Append(CoverageMarkerDescription).Append("</span></span></p>");
-            }
-
-            html.AppendLine("</section>");
+            AppendLineagePathContext(html, path);
             return;
         }
+        html.Append("<section class=\"lineage-path\" data-lineage-path=\"model\"><h3>How this reaches the report</h3>");
 
         html.Append("<ol class=\"lineage-path-steps\"><li class=\"lineage-path-step lineage-path-start\" data-lineage-path-step=\"focus\"><span class=\"visually-hidden\">")
             .Append(Encode(path.Steps[0].Name)).AppendLine("</span></li>");
@@ -504,13 +466,7 @@ public static partial class HtmlReportRenderer
         html.Append("<li class=\"lineage-path-step lineage-endpoint\" data-lineage-path-step=\"report\">");
         AppendLineageLocation(html, inventory, path.Endpoint!);
         html.AppendLine("</li></ol>");
-        if (path.Status == LineagePathStatus.DirectlyUsed)
-        {
-            html.Append("<p class=\"lineage-path-note\">Used directly in ")
-                .Append(path.EndpointLocationCount.ToString(CultureInfo.InvariantCulture))
-                .Append(path.EndpointLocationCount == 1 ? " report location.</p>" : " report locations.</p>");
-        }
-        else if (path.EndpointLocationCount > 1)
+        if (path.EndpointLocationCount > 1)
         {
             var otherLocations = path.EndpointLocationCount - 1;
             html.Append("<p class=\"lineage-path-note\">").Append(Encode($"{path.Steps[^1].Name} is also used"))
@@ -527,6 +483,42 @@ public static partial class HtmlReportRenderer
                 .Append(path.OtherReportReachingConsumers == 1
                     ? " other item that uses this is also reached from a report.</p>"
                     : " other items that use this are also reached from a report.</p>");
+        }
+
+        html.AppendLine("</section>");
+    }
+
+    // Explanatory evidence survives even when there is no useful path visualization.
+    // Confidence remains in the shared context header and Summary, independent of this section.
+    private static void AppendLineagePathContext(StringBuilder html, LineagePath path)
+    {
+        if (path.OnlyReachedFrom.TotalCount == 0 && path.StructuralSources.TotalCount == 0 &&
+            string.IsNullOrWhiteSpace(path.StructuralReason) && !path.RequiredByModelStructure) return;
+        html.AppendLine("<section class=\"lineage-context\" data-lineage-path-context><h3>Usage context</h3>");
+        if (path.OnlyReachedFrom.TotalCount > 0)
+        {
+            html.Append("<p class=\"lineage-path-note\">Only used through: ");
+            AppendLineagePathNames(html, path.OnlyReachedFrom, neighbour => neighbour.UsageState is not null
+                ? UsageLabel(neighbour.UsageState)
+                : neighbour.IsSharedReportMeasure && neighbour.Report is not null
+                    ? $"Report {neighbour.Report}"
+                    : null);
+            html.Append("</p>");
+        }
+
+        if (path.StructuralSources.TotalCount > 0)
+        {
+            html.Append("<p class=\"lineage-path-note\">Required by the model structure: ");
+            AppendLineagePathNames(html, path.StructuralSources, neighbour => string.Join(" · ", neighbour.RelationshipLabels));
+            html.Append("</p>");
+        }
+        else if (!string.IsNullOrWhiteSpace(path.StructuralReason))
+        {
+            html.Append("<p class=\"lineage-path-note\">Required by the model structure: ").Append(Encode(path.StructuralReason)).Append("</p>");
+        }
+        else if (path.RequiredByModelStructure)
+        {
+            html.Append("<p class=\"lineage-path-note\">Required by the model structure.</p>");
         }
 
         html.AppendLine("</section>");

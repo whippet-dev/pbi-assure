@@ -64,12 +64,12 @@ public sealed class ReportObjectContextTests
         {
             var card = projection.CardFor(usage)!;
             var article = Article(html, card.Id);
-            Assert.Contains("<dt>Used by</dt>", article, StringComparison.Ordinal);
-            Assert.Contains("<dt>Used in the report</dt>", article, StringComparison.Ordinal);
-            Assert.Contains("<dt>Required by the model</dt>", article, StringComparison.Ordinal);
+            if (card.UsedBy.TotalCount > 0) Assert.Contains("<h4>Used by</h4>", article, StringComparison.Ordinal);
+            if (card.RequiredByModel.TotalCount > 0 || state == SemanticUsageStates.StructurallyRequired)
+                Assert.Contains("<dt>Required by the model</dt>", article, StringComparison.Ordinal);
             Assert.Contains("Evidence", article, StringComparison.Ordinal);
             if (card.Reason is not null) Assert.Contains(HtmlEncoder.Default.Encode(card.Reason), article, StringComparison.Ordinal);
-            if (usage.DirectReportLocationCount > 0) Assert.Contains("<h4>Report usage</h4>", article, StringComparison.Ordinal);
+            if (usage.DirectReportLocationCount > 0) Assert.True(article.Contains("<h4>Used in the report</h4>", StringComparison.Ordinal) || article.Contains("<h4>Page and report references</h4>", StringComparison.Ordinal));
             if (state == SemanticUsageStates.ApparentlyUnused) Assert.Contains("Check before removing it", article, StringComparison.Ordinal);
             if (state == SemanticUsageStates.StructurallyRequired) Assert.DoesNotContain("No structural requirement identified", article, StringComparison.Ordinal);
             if (usage.ClassificationConfidence == ClassificationConfidences.QualifiedByLimitation) Assert.Contains("Checks limited", article, StringComparison.Ordinal);

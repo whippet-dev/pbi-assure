@@ -87,7 +87,7 @@ public sealed class ReportTerminologyTests
         foreach (var phrase in new[] { "Some checks were limited for this model", "other reports and dynamic behaviour can't be seen here",
                      "doesn't follow the column through every query step", "a query could depend on it without appearing here",
                      "Defined in:", "Report measure details", "Created in this report", "This column has no DAX expression of its own",
-                     "1 object in the model", "1 place", "Yes – 1 relationship", "Saved tab order", "All saved field references",
+                     "Used by", "Used in the report", "Yes – 1 relationship", "Saved tab order", "All saved field references",
                      "can't see who is assigned to roles", "No use by another query found", "can't fully check from the saved report files",
                      "can't see every query this expression uses" })
             Assert.Contains(phrase, text, StringComparison.Ordinal);

@@ -27,12 +27,12 @@ public sealed partial class LineageVisualTests
         var focus = article.IndexOf("<header class=\"lineage-focus\">", StringComparison.Ordinal);
         var upstream = article.IndexOf("data-lineage-side=\"upstream\"", StringComparison.Ordinal);
         var downstream = article.IndexOf("data-lineage-side=\"downstream\"", StringComparison.Ordinal);
-        var path = article.IndexOf("<section class=\"lineage-path\"", StringComparison.Ordinal);
-        Assert.True(diagram >= 0 && diagram < focus && focus < upstream && upstream < downstream && downstream < path);
+        var lineageEnd = article.IndexOf("data-object-view=\"definition\"", StringComparison.Ordinal);
+        Assert.True(diagram >= 0 && diagram < focus && focus < upstream && upstream < downstream && downstream < lineageEnd);
         Assert.InRange(article.IndexOf("data-lineage-group=\"depends-on\"", StringComparison.Ordinal), upstream, downstream);
         foreach (var group in new[] { "used-by", "report" })
         {
-            Assert.InRange(article.IndexOf($"data-lineage-group=\"{group}\"", StringComparison.Ordinal), downstream, path);
+            Assert.InRange(article.IndexOf($"data-lineage-group=\"{group}\"", StringComparison.Ordinal), downstream, lineageEnd);
         }
 
         // One focus: its heading is the card's only h2, and nothing on the card links to the card itself.
@@ -86,7 +86,7 @@ public sealed partial class LineageVisualTests
         var card = Card(inventory, "Sales", "Net Sales");
         var article = Article(html, card.Id);
         var report = Group(article, "report");
-        var path = PathSection(article);
+        Assert.DoesNotContain("data-lineage-path=", article, StringComparison.Ordinal);
 
         Assert.Equal(13, card.UsedInReport.TotalCount);
         Assert.Contains("<h3>Used in the report (13)</h3>", report, StringComparison.Ordinal);
@@ -103,10 +103,11 @@ public sealed partial class LineageVisualTests
         Assert.Contains($"href=\"#visual-{first.VisualCardId![4..]}-summary\"", compact, StringComparison.Ordinal);
         Assert.Contains("<span class=\"lineage-meta\">Page Overview</span>", compact, StringComparison.Ordinal);
         Assert.DoesNotContain($"href=\"#visual-{first.VisualCardId![4..]}-summary\"", report[overflow..], StringComparison.Ordinal);
-        Assert.Contains($"href=\"#visual-{first.VisualCardId![4..]}-summary\"", path, StringComparison.Ordinal);
-        Assert.Contains("Card · Page Overview", System.Net.WebUtility.HtmlDecode(path), StringComparison.Ordinal);
-        Assert.Contains("Used directly in 13 report locations.", path, StringComparison.Ordinal);
-        Assert.DoesNotContain("other report location", path, StringComparison.Ordinal);
+        var summary = article[..article.IndexOf("data-object-view=\"lineage\"", StringComparison.Ordinal)];
+        Assert.Contains($"href=\"#visual-{first.VisualCardId![4..]}-summary\"", summary, StringComparison.Ordinal);
+        Assert.Contains("<small>Card</small>", summary, StringComparison.Ordinal);
+        Assert.Contains("See all 13 report locations", summary, StringComparison.Ordinal);
+        Assert.DoesNotContain("other report location", article, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -166,16 +167,13 @@ public sealed partial class LineageVisualTests
     }
 
     [Fact]
-    public void ADirectPathIsTheStartMarkAndTheEndpoint()
+    public void ADirectPathIsHiddenWhileItsReportLocationsRemainAvailable()
     {
         var (inventory, html) = Hub(consumers: 1, locations: 2);
-        var section = PathSection(Article(html, Card(inventory, "Sales", "Net Sales").Id));
-
-        Assert.Contains("data-lineage-path=\"direct\"", section, StringComparison.Ordinal);
-        Assert.Equal(1, Occurrences(section, "data-lineage-path-step=\"focus\""));
-        Assert.Equal(0, Occurrences(section, "data-lineage-path-step=\"model\""));
-        Assert.Equal(1, Occurrences(section, "data-lineage-path-step=\"report\""));
-        Assert.Contains("Used directly in 2 report locations.", section, StringComparison.Ordinal);
+        var article = Article(html, Card(inventory, "Sales", "Net Sales").Id);
+        Assert.DoesNotContain("data-lineage-path=", article, StringComparison.Ordinal);
+        Assert.Contains("<h4>Used in the report</h4>", article, StringComparison.Ordinal);
+        Assert.Contains("Used in the report (2)", article, StringComparison.Ordinal);
     }
 
     // ---- E. Unresolved -------------------------------------------------------------------------------
@@ -229,7 +227,8 @@ public sealed partial class LineageVisualTests
         Assert.Contains("<h3>Required by the model (", Group(article, "required"), StringComparison.Ordinal);
         Assert.DoesNotContain(card.RequiredByModel.Items[0].Name, Group(article, "used-by"), StringComparison.Ordinal);
         Assert.Equal(LineagePathStatus.NotFound, card.Path!.Status);
-        Assert.Contains("No path to the report found in this project.", PathSection(article), StringComparison.Ordinal);
+        Assert.DoesNotContain("data-lineage-path=", article, StringComparison.Ordinal);
+        Assert.Contains("Required by the model structure", article, StringComparison.Ordinal);
         Assert.Contains(
             ".lineage-group[data-lineage-group=\"required\"] .lineage-item::before, .lineage-group[data-lineage-group=\"required\"] .lineage-item::after { content: none; }",
             LineageCss(), StringComparison.Ordinal);
@@ -251,7 +250,8 @@ public sealed partial class LineageVisualTests
             var article = Article(html, card.Id);
             var context = article.IndexOf("<section class=\"lineage-context\" data-lineage-group=\"power-query\">", StringComparison.Ordinal);
             Assert.True(context > article.IndexOf("<section class=\"lineage-path\"", StringComparison.Ordinal), card.Title);
-            var diagram = article[article.IndexOf("<div class=\"lineage-diagram\">", StringComparison.Ordinal)..article.IndexOf("<section class=\"lineage-path\"", StringComparison.Ordinal)];
+            var diagramStart = article.IndexOf("<div class=\"lineage-diagram\">", StringComparison.Ordinal);
+            var diagram = article[diagramStart..article.IndexOf("</div>", diagramStart, StringComparison.Ordinal)];
             Assert.DoesNotContain("Power Query", diagram, StringComparison.Ordinal);
             Assert.DoesNotMatch(ColumnLineageClaimRegex(), TagRegex().Replace(article, " "));
         }

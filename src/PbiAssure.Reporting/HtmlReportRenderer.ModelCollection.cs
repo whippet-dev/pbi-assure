@@ -60,16 +60,8 @@ public static partial class HtmlReportRenderer
         }
         if (!string.IsNullOrWhiteSpace(expression))
         {
-            var saved = expression.Replace("\r\n", "\n", StringComparison.Ordinal).Replace('\r', '\n').TrimEnd();
-            var length = Math.Min(600, saved.Length);
-            var lines = 1;
-            for (var index = 0; index < length; index++)
-                if (saved[index] == '\n' && ++lines > 6) { length = index; break; }
-            if (length > 0 && char.IsHighSurrogate(saved[length - 1])) length--;
-            html.Append("<section><h4>DAX</h4><pre><code>")
-                .Append(Encode(saved[..length])).AppendLine("</code></pre>");
-            if (length < saved.Length) html.AppendLine("<p>Preview — expression shortened.</p>");
-            ContextLink(html, ObjectDefinitionId(card), "Full definition");
+            html.Append("<section><h4>DAX</h4>");
+            AppendBoundedDax(html, card, expression);
             html.AppendLine("</section>");
         }
         html.AppendLine("</details>");
@@ -94,10 +86,13 @@ public static partial class HtmlReportRenderer
             DescribePosition(location.Page, visual) is var position && position != "Position unavailable" &&
             location.Page.Visuals.Any(other => other.Name != visual.Name && VisualDisplayName(other) == label &&
                 DescribePosition(location.Page, other) != position)) context.Add(position);
-        var roles = MeaningfulUsageRoleLabels(location.Evidence.Select(evidence => new UsagePresentationReference(
-            evidence.UsageContext, evidence.Role, evidence.EvidencePath)), visualScope: visual is not null, pageScope: location.Location.Page is not null)
-            .Where(role => CollectionRoleLabels.Contains(role) || role is "Page filter" or "Report filter" or "Drillthrough field").ToArray();
+        var roles = ObjectLocationRoles(location);
         if (roles.Length > 0) context.Add("Used as: " + string.Join(" · ", roles));
         html.Append("<small>").Append(Encode(string.Join(" · ", context))).AppendLine("</small></li>");
     }
+
+    private static string[] ObjectLocationRoles(LineageReportLocation location) =>
+        MeaningfulUsageRoleLabels(location.Evidence.Select(evidence => new UsagePresentationReference(
+            evidence.UsageContext, evidence.Role, evidence.EvidencePath)), visualScope: location.Visual is not null, pageScope: location.Location.Page is not null)
+            .Where(role => CollectionRoleLabels.Contains(role) || role is "Page filter" or "Report filter" or "Drillthrough field").ToArray();
 }
