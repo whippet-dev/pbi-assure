@@ -1811,15 +1811,14 @@ public static class DesignSystem
           .report-context .lineage-diagram { display: block; }
         }
 
-        /* One report shell, four primary areas and a quieter forensic workspace. */
+        /* One report shell with local Model and Reviews views. */
         .project-details { margin-top: 0.5rem; font-size: var(--pa-t-xs); color: var(--pa-text-2); }
         .project-details > summary { width: fit-content; cursor: pointer; padding-block: 0.25rem; }
         .project-details .report-meta { margin: 0.25rem 0 0.5rem; }
-        .technical-nav { border-top: 1px solid var(--pa-line); padding-top: 0.75rem; margin-top: 0.75rem; }
-        .technical-nav a { color: var(--pa-text-3); font-weight: 400; }
         .workspace-heading { margin: 1.5rem 0 1rem; padding-bottom: 0.75rem; border-bottom: 1px solid var(--pa-line-strong); }
         .workspace-title { font-size: var(--pa-t-xl); font-weight: 700; color: var(--pa-text); }
         .workspace-heading .object-view-nav { margin-bottom: 0; }
+        #model > .report-section > h2 { font-size: var(--pa-t-lg); scroll-margin-top: 1rem; }
         .review-workspace > .report-section { margin-top: 1rem; min-width: 0; }
         .report-navigation-toggle { width: 100%; display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; margin: 0.75rem 0; }
         .report-navigation-toggle span { color: var(--pa-accent); font-weight: 600; }
@@ -1830,7 +1829,6 @@ public static class DesignSystem
         @media (max-width: 71.999rem) {
           .section-navigator[data-enhanced="true"][data-navigation-open="false"] #report-navigation-links { display: none; }
           .section-navigator #report-navigation-links { margin-bottom: 1rem; }
-          .technical-nav { grid-template-columns: minmax(0, 1fr); }
         }
         @media (forced-colors: active) {
           .section-nav a[aria-current="page"] { border: 2px solid Highlight; }

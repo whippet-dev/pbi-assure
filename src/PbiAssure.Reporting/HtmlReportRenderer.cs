@@ -23,7 +23,13 @@ public static partial class HtmlReportRenderer
         var accessibilityFindings = inventory.Findings.Where(IsAccessibilityFinding).ToArray();
         AppendDocumentStart(html, inventory, coverage);
         AppendSummary(html, inventory, coverage, mainFindings);
+        AppendWorkspaceStart(html, "model", "Model", "semantic-usage", "",
+            [("semantic-usage", "Objects"), ("relationships", "Relationships"), ("row-level-security", "Security")]);
         AppendSemanticUsage(html, inventory, lineage, coverage);
+        AppendRelationships(html, inventory);
+        AppendRowLevelSecurity(html, inventory, coverage);
+        html.AppendLine("    </div>");
+        AppendPowerQueryLineage(html, inventory);
         AppendReportInventory(html, inventory, lineage);
         AppendReportContexts(html, inventory, lineage);
         AppendWorkspaceStart(html, "reviews", "Reviews", "findings",
@@ -33,15 +39,7 @@ public static partial class HtmlReportRenderer
         AppendThemeReview(html, inventory);
         AppendAccessibilityReview(html, inventory, accessibilityFindings);
         html.AppendLine("    </div>");
-        AppendWorkspaceStart(html, "technical", "Technical", "power-query",
-            "Power Query, relationships, security roles and what PBI Assure could check.",
-            [("power-query", "Power Query"), ("relationships", "Relationships"),
-             ("row-level-security", "Security"), ("analysis-coverage", "What was checked")]);
-        AppendPowerQueryLineage(html, inventory);
-        AppendRelationships(html, inventory);
-        AppendRowLevelSecurity(html, inventory, coverage);
         AppendAnalysisCoverage(html, coverage);
-        html.AppendLine("    </div>");
         AppendLineage(html, inventory, lineage, coverage);
         AppendDocumentEnd(html, inventory);
         return html.ToString();
@@ -97,12 +95,10 @@ public static partial class HtmlReportRenderer
         html.AppendLine("        <div id=\"report-navigation-links\">");
         html.AppendLine("        <ul class=\"section-nav\">");
         AppendSectionNavigationItem(html, "summary", "Overview", null);
-        AppendSectionNavigationItem(html, "semantic-usage", "Model", null);
+        AppendSectionNavigationItem(html, "semantic-usage", "Model", null, "model");
+        AppendSectionNavigationItem(html, "power-query", "Power Query", null);
         AppendSectionNavigationItem(html, "reports", "Report pages", null);
         AppendSectionNavigationItem(html, "findings", "Reviews", null, "reviews");
-        html.AppendLine("        </ul>");
-        html.AppendLine("        <ul class=\"section-nav technical-nav\">");
-        AppendSectionNavigationItem(html, "power-query", "Technical", null, "technical");
         html.AppendLine("        </ul>");
         html.AppendLine("        </div>");
         html.AppendLine("      </nav>");
@@ -114,7 +110,7 @@ public static partial class HtmlReportRenderer
     /// <summary>
     /// What PBI Assure read in this project's semantic models, and what it did not.
     ///
-    /// The Technical destination remains available even without recorded limitations, with an explicit
+    /// The contextual destination remains available even without recorded limitations, with an explicit
     /// boundary rather than reassurance. The
     /// limitations that cannot affect a usage conclusion are disclosed but tucked into a details
     /// element, because a real Desktop model records six of those and one that matters — showing all
@@ -398,6 +394,8 @@ public static partial class HtmlReportRenderer
     private static void AppendPowerQueryLineage(StringBuilder html, ProjectInventory inventory)
     {
         html.AppendLine("    <section id=\"power-query\" class=\"report-section\" data-report-section=\"power-query\" aria-labelledby=\"power-query-heading\">");
+        // Compatibility for the former workspace landing fragment; no duplicate section content.
+        html.AppendLine("      <span id=\"technical\" data-context-route=\"power-query\"></span>");
         html.AppendLine("      <h2 id=\"power-query-heading\" tabindex=\"-1\">Power Query</h2>");
         html.AppendLine("      <p class=\"section-intro\">See which queries load data into the model and which queries depend on one another. Expand a query to review its known dependencies.</p>");
         if (inventory.PowerQueryUsages.Count == 0)
@@ -1317,7 +1315,7 @@ public static partial class HtmlReportRenderer
         AnalysisCoverage coverage)
     {
         html.AppendLine("    <section id=\"semantic-usage\" class=\"report-section\" data-report-section=\"semantic-usage\" aria-labelledby=\"semantic-usage-heading\">");
-        html.AppendLine("      <h2 id=\"semantic-usage-heading\" tabindex=\"-1\">Semantic model</h2>");
+        html.AppendLine("      <h2 id=\"semantic-usage-heading\" tabindex=\"-1\">Objects</h2>");
         html.AppendLine("      <p class=\"section-intro\">Review tables, columns, measures and other model objects. Open an object name to explore its Summary, Lineage and Definition. Supporting evidence is in Details.</p>");
         AppendUsageGuide(html, coverage);
         if (inventory.SemanticModels.Count == 0)
@@ -3273,7 +3271,7 @@ public static partial class HtmlReportRenderer
       const workspaceGroups = [...document.querySelectorAll('[data-workspace-group]')];
       const workspaceLinks = [...document.querySelectorAll('[data-workspace-target]')];
       const areaForSection = name => ['findings', 'theme-review', 'accessibility-review'].includes(name) ? 'reviews'
-        : ['power-query', 'relationships', 'row-level-security', 'analysis-coverage'].includes(name) ? 'technical' : name;
+        : ['semantic-usage', 'relationships', 'row-level-security'].includes(name) ? 'model' : name;
       const navigationToggle = document.getElementById('report-navigation-toggle');
       const reportNavigator = document.querySelector('.section-navigator');
       const narrowNavigation = matchMedia('(max-width: 71.999rem)');
@@ -3336,7 +3334,8 @@ public static partial class HtmlReportRenderer
         });
         if (mainContent) { mainContent.dataset.activeSection = sectionName; mainContent.dataset.activeArea = area; }
         const currentLink = sectionLinks.find(link => link.dataset.sectionTarget === area);
-        document.getElementById('current-area-label').textContent = currentLink?.textContent || 'Model';
+        document.getElementById('current-area-label').textContent = currentLink?.textContent
+          || document.querySelector(`[data-report-section="${sectionName}"] h2`)?.textContent || 'Navigation';
         closeNavigation();
         sectionLinks.forEach(link => {
           const selected = link.dataset.sectionTarget === area;
@@ -3347,6 +3346,10 @@ public static partial class HtmlReportRenderer
           const heading = document.querySelector(`[data-report-section="${sectionName}"] h2`);
           heading?.focus({ preventScroll: true });
           window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+          // At high zoom the shared workspace header may fill the viewport. Keep the
+          // focused view heading visible while retaining the normal top-of-page landing.
+          if (heading?.getBoundingClientRect().bottom > innerHeight)
+            heading.scrollIntoView({ block: 'start', behavior: 'instant' });
         }
         return true;
       };

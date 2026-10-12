@@ -12,7 +12,8 @@ public static partial class HtmlReportRenderer
             .Append(Encode(id)).Append("\" data-context-route=\"").Append(Encode(defaultView)).AppendLine("\">");
         html.AppendLine("      <header class=\"workspace-heading\">");
         html.Append("        <p class=\"workspace-title\">").Append(Encode(label)).AppendLine("</p>");
-        html.Append("        <p class=\"secondary\">").Append(Encode(description)).AppendLine("</p>");
+        if (!string.IsNullOrEmpty(description))
+            html.Append("        <p class=\"secondary\">").Append(Encode(description)).AppendLine("</p>");
         html.Append("        <nav class=\"object-view-nav\" aria-label=\"").Append(Encode(label)).AppendLine(" views\">");
         foreach (var (target, viewLabel) in views)
         {

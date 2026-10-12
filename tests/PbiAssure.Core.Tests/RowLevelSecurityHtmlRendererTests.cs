@@ -61,7 +61,7 @@ public sealed class RowLevelSecurityHtmlRendererTests
         var html = HtmlReportRenderer.Render(inventory);
 
         Assert.Contains("data-workspace-target=\"row-level-security\"", html, StringComparison.Ordinal);
-        Assert.Contains("aria-label=\"Technical views\"", html, StringComparison.Ordinal);
+        Assert.Contains("aria-label=\"Model views\"", html, StringComparison.Ordinal);
         Assert.Contains("id=\"row-level-security\"", html, StringComparison.Ordinal);
         Assert.True(
             html.IndexOf("<h3>Alpha</h3>", StringComparison.Ordinal) <

@@ -148,11 +148,11 @@ public sealed class ReportPolishInteractionTests(PrivacyE2EFixture fixture) : IA
     }
 
     [Theory]
-    [InlineData("[data-lineage-card] [data-object-view='summary']", "semantic-usage", "summary", "Summary")]
-    [InlineData("[data-lineage-card='semantic']", "semantic-usage", "lineage", "")]
+    [InlineData("[data-lineage-card] [data-object-view='summary']", "model", "summary", "Summary")]
+    [InlineData("[data-lineage-card='semantic']", "model", "lineage", "")]
     [InlineData("[data-report-context='Visual'] [data-context-view='summary']", "reports", "summary", "Summary")]
     [InlineData("#finding-1", "reviews", "findings", "")]
-    [InlineData("#analysis-coverage", "technical", "analysis-coverage", "")]
+    [InlineData("#analysis-coverage", "analysis-coverage", "analysis-coverage", "")]
     public async Task FreshStandaloneFileLinksRevealTheDestinationParentFocusAndNoInventedReturn(string selector, string area, string view, string focus)
     {
         await using var context = await fixture.Browser.NewContextAsync(); var url = await SaveReport();
@@ -162,11 +162,14 @@ public sealed class ReportPolishInteractionTests(PrivacyE2EFixture fixture) : IA
         Assert.StartsWith("file://", page.Url, StringComparison.Ordinal);
         Assert.True(await page.Locator("#" + id).IsVisibleAsync());
         Assert.Equal(area, await page.Locator("main").GetAttributeAsync("data-active-area"));
-        Assert.Equal(area, await page.Locator(".section-navigator [aria-current='page']").GetAttributeAsync("data-section-target"));
+        if (area == "analysis-coverage")
+            Assert.Equal(0, await page.Locator(".section-navigator [aria-current]").CountAsync());
+        else
+            Assert.Equal(area, await page.Locator(".section-navigator [aria-current='page']").GetAttributeAsync("data-section-target"));
         Assert.False(await page.Locator("#investigation-return-row").IsVisibleAsync());
-        if (area == "semantic-usage") Assert.Equal(view, await Object(page).GetAttributeAsync("data-active-object-view"));
+        if (area == "model") Assert.Equal(view, await Object(page).GetAttributeAsync("data-active-object-view"));
         if (area == "reports") Assert.Equal(view, await Entity(page).GetAttributeAsync("data-active-context-view"));
-        if (area is "reviews" or "technical") Assert.Equal(view, await page.Locator("main").GetAttributeAsync("data-active-section"));
+        if (area is "reviews" or "analysis-coverage") Assert.Equal(view, await page.Locator("main").GetAttributeAsync("data-active-section"));
         if (focus.Length > 0) Assert.Equal(focus, await page.EvaluateAsync<string>("document.activeElement.textContent"));
         else if (view == "lineage") Assert.Equal(await Object(page).Locator("h2").InnerTextAsync(), await page.EvaluateAsync<string>("document.activeElement.textContent"));
         else if (view == "findings") Assert.True(await page.Locator("#" + id + " > summary").EvaluateAsync<bool>("element => element === document.activeElement"));

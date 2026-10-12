@@ -32,8 +32,8 @@ public sealed class HtmlReportRendererTests : IDisposable
         Assert.Contains("data-section-target=\"summary\"", html, StringComparison.Ordinal);
         Assert.Contains("data-section-target=\"reviews\"", html, StringComparison.Ordinal);
         Assert.Contains("data-section-target=\"reports\"", html, StringComparison.Ordinal);
-        Assert.Contains("data-section-target=\"technical\"", html, StringComparison.Ordinal);
-        Assert.Contains("data-section-target=\"semantic-usage\"", html, StringComparison.Ordinal);
+        Assert.Contains("data-section-target=\"power-query\"", html, StringComparison.Ordinal);
+        Assert.Contains("data-section-target=\"model\"", html, StringComparison.Ordinal);
         Assert.True(html.IndexOf("id=\"semantic-usage\"", StringComparison.Ordinal) <
             html.IndexOf("id=\"theme-review\"", StringComparison.Ordinal));
         Assert.Contains("class=\"report-section\" data-report-section=\"summary\"", html, StringComparison.Ordinal);
@@ -724,7 +724,7 @@ public sealed class HtmlReportRendererTests : IDisposable
         var html = HtmlReportRenderer.Render(inventory);
         var targets = System.Text.RegularExpressions.Regex.Matches(html, "<a [^>]*data-section-target=\"([^\"]+)\"")
             .Select(match => match.Groups[1].Value).ToArray();
-        string[] expected = ["summary", "semantic-usage", "reports", "reviews", "technical"];
+        string[] expected = ["summary", "model", "power-query", "reports", "reviews"];
         Assert.Equal(expected, targets);
         foreach (var target in new[] { "summary", "semantic-usage", "reports", "findings", "theme-review",
                      "accessibility-review", "power-query", "relationships", "row-level-security", "analysis-coverage" })
@@ -733,9 +733,19 @@ public sealed class HtmlReportRendererTests : IDisposable
             Assert.Contains($"href=\"#{target}\"", html, StringComparison.Ordinal);
         }
         Assert.Contains("data-workspace-group=\"reviews\"", html, StringComparison.Ordinal);
-        Assert.Contains("data-workspace-group=\"technical\"", html, StringComparison.Ordinal);
+        Assert.Contains("data-workspace-group=\"model\"", html, StringComparison.Ordinal);
         Assert.Contains("aria-label=\"Reviews views\"", html, StringComparison.Ordinal);
-        Assert.Contains("aria-label=\"Technical views\"", html, StringComparison.Ordinal);
+        Assert.Contains("aria-label=\"Model views\"", html, StringComparison.Ordinal);
+        Assert.DoesNotContain("data-workspace-group=\"technical\"", html, StringComparison.Ordinal);
+        Assert.Contains("id=\"technical\" data-context-route=\"power-query\"", html, StringComparison.Ordinal);
+        Assert.DoesNotContain("data-section-target=\"analysis-coverage\"", html, StringComparison.Ordinal);
+        var modelStart = html.IndexOf("<div id=\"model\"", StringComparison.Ordinal);
+        var powerQueryStart = html.IndexOf("<section id=\"power-query\"", StringComparison.Ordinal);
+        var modelWorkspace = html[modelStart..powerQueryStart];
+        foreach (var target in new[] { "semantic-usage", "relationships", "row-level-security" })
+            Assert.Contains($"<section id=\"{target}\"", modelWorkspace, StringComparison.Ordinal);
+        Assert.Contains("<p class=\"workspace-title\">Model</p>", modelWorkspace, StringComparison.Ordinal);
+        Assert.Contains(">Objects</h2>", modelWorkspace, StringComparison.Ordinal);
 
         var summary = html[html.IndexOf("<section id=\"summary\"", StringComparison.Ordinal)..
             html.IndexOf("<section id=\"semantic-usage\"", StringComparison.Ordinal)];

@@ -21,7 +21,7 @@ public sealed class ReportOverviewTests
             Regex.Matches(overview, "<h3 id=\"summary-([^\"]+)-heading\"").Select(match => match.Groups[1].Value));
         Assert.True(overview.IndexOf("<dt>Errors</dt>", StringComparison.Ordinal) < overview.IndexOf("<dt>Reports</dt>", StringComparison.Ordinal));
         Assert.Single(Regex.Matches(overview, "<details\\b")); // Only the existing scope disclosure.
-        Assert.Contains("data-section-target=\"semantic-usage\"", html, StringComparison.Ordinal);
+        Assert.Contains("data-section-target=\"model\"", html, StringComparison.Ordinal);
         Assert.Contains("data-section-target=\"reports\"", html, StringComparison.Ordinal);
     }
 
