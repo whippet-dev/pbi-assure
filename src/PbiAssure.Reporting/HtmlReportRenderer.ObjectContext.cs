@@ -88,7 +88,7 @@ public static partial class HtmlReportRenderer
             html.AppendLine("<p class=\"group-explanation\">Possible use or unresolved references are recorded. Review the distinctions in Lineage and the evidence in Details.</p>");
         if (card.Usage is { ClassificationConfidence: ClassificationConfidences.QualifiedByLimitation })
             html.AppendLine("<p class=\"group-explanation\">Some checks were limited for this model, so this result could miss some usage. See Details.</p>");
-        html.AppendLine("<p class=\"group-explanation\">Explore dependencies and all listed locations in Lineage. Supporting evidence is in Details.</p></section>");
+        html.AppendLine("</section>");
         html.Append("<section class=\"object-local-view\" data-object-view=\"lineage\" aria-labelledby=\"").Append(Encode(card.Id + "-view-heading")).AppendLine("\">");
         html.Append("<h3 id=\"").Append(Encode(card.Id + "-view-heading")).AppendLine("\" tabindex=\"-1\">Lineage</h3>");
     }

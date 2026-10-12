@@ -55,7 +55,7 @@ public sealed class VisualInlineInspectTests
     {
         var inspect = Inspect(Row(Coverage(), "access-missing-alt"));
         Assert.Contains("No configured action or tooltip.", inspect.Value, StringComparison.Ordinal);
-        Assert.Equal("Missing", Fact(inspect, "Alt text"));
+        Assert.Equal("Not set", Fact(inspect, "Alt text"));
         Assert.Contains("Included", Fact(inspect, "Tab order"), StringComparison.Ordinal);
         Assert.DoesNotContain("$.visual", inspect.Value, StringComparison.Ordinal);
     }

@@ -168,6 +168,21 @@ public static partial class HtmlReportRenderer
         AppendFact(html, "Findings", findings.Count(item => item.Finding.Category != AssuranceCategories.Accessibility).ToString(CultureInfo.InvariantCulture));
         AppendFact(html, "Accessibility observations", findings.Count(item => item.Finding.Category == AssuranceCategories.Accessibility).ToString(CultureInfo.InvariantCulture));
         AppendFact(html, "Theme review items", themeItems.Length.ToString(CultureInfo.InvariantCulture)); html.AppendLine("</dl>");
+        html.AppendLine("<h4>Objects used by this visual</h4>");
+        if (card.Uses.TotalCount == 0)
+            html.AppendLine("<p>No model objects found for this visual.</p>");
+        else
+        {
+            html.AppendLine("<ul class=\"visual-use-preview\">");
+            AppendVisualUsePreviewTiles(html, card, VisualSummaryPreviewLimit);
+            html.AppendLine("</ul>");
+            if (card.Uses.TotalCount > VisualSummaryPreviewLimit)
+            {
+                html.Append("<p>");
+                ContextLink(html, VisualViewId(card.Id, "objects"), $"See all {card.Uses.TotalCount} in Objects →");
+                html.AppendLine("</p>");
+            }
+        }
         AppendVisualBehaviour(html, report, visual);
         if (card.UnresolvedReportReferences.TotalCount > 0) html.Append("<p>").Append(card.UnresolvedReportReferences.TotalCount).Append(' ').Append(Pluralize(card.UnresolvedReportReferences.TotalCount, "field reference not found in the model", "field references not found in the model")).AppendLine(". See Details.</p>");
         if (card.UnresolvedReportReferences.TotalCount == 0 && retainedUnresolved.Length > 0)
@@ -208,7 +223,7 @@ public static partial class HtmlReportRenderer
         ContextDetails(html, card.Id);
         AppendFact(html, "Visual ID", visual.Name, true);
         AppendFact(html, "Saved title", visual.Accessibility.TitleText ?? "Not set");
-        AppendFact(html, "Saved alternative text", visual.Accessibility.AltText ?? "Not set");
+        AppendFact(html, "Saved alternative text", SavedAltText(visual));
         AppendFact(html, "On-canvas text", visual.OnCanvasText ?? "Not set");
         AppendFact(html, "Hidden", visual.IsHidden ? "Yes" : "No");
         AppendFact(html, "Parent group", visual.ParentGroupName ?? "Not set");

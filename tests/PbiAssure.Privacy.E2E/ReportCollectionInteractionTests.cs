@@ -210,4 +210,79 @@ public sealed class ReportCollectionInteractionTests(PrivacyE2EFixture fixture) 
         Assert.True(await row.Locator(".visual-preview-more").EvaluateAsync<bool>("element => element === document.activeElement"));
         Assert.True(await page.EvaluateAsync<bool>("document.documentElement.scrollWidth <= innerWidth"));
     }
+
+    [Fact]
+    public async Task VisualSummaryTilesPreserveCountsAndOpenTheCompleteObjectsView()
+    {
+        await using var context = await fixture.Browser.NewContextAsync();
+        var page = await Open(context, "acceptance-summary");
+        await Collection(page).Locator(".visual-preview:has(.visual-preview-more) h4 a").PressAsync("Enter");
+        var summary = Entity(page).Locator("[data-context-view='summary']");
+        Assert.Equal(4, await summary.Locator(".visual-use-preview li").CountAsync());
+        Assert.All(await summary.Locator(".visual-use-meta").AllTextContentsAsync(), text => Assert.Equal("Measure — Used as: Values", text));
+        foreach (var label in new[] { "Findings", "Accessibility observations", "Theme review items" })
+            Assert.Equal("1", await summary.Locator("dt").Filter(new() { HasText = label }).Locator("..").Locator("dd").InnerTextAsync());
+        Assert.Equal("7", await summary.Locator("dt").Filter(new() { HasText = "Model objects used" }).Locator("..").Locator("dd").InnerTextAsync());
+        await page.ScreenshotAsync(new() { Path = Path.Combine(Output, "acceptance-summary-desktop.png") });
+        await summary.GetByRole(AriaRole.Link, new() { Name = "See all 7 in Objects →", Exact = true }).PressAsync("Enter");
+        Assert.Equal("objects", await Entity(page).GetAttributeAsync("data-active-context-view"));
+        Assert.Equal(7, await Entity(page).Locator("[data-context-view='objects'] a[href^='#sum-']").CountAsync());
+        await page.GoBackAsync(); await Settle(page);
+        Assert.Equal(4, await summary.Locator(".visual-use-preview li").CountAsync());
+    }
+
+    [Fact]
+    public async Task VisualSummaryObjectLinksPreserveFreshSummaryReturnBackForwardFocusAndScroll()
+    {
+        await using var context = await fixture.Browser.NewContextAsync(new() { ViewportSize = new() { Width = 1280, Height = 900 } });
+        var discover = await Open(context, "acceptance-summary-history");
+        var fragment = await Collection(discover).Locator(".visual-preview:has(.visual-preview-more) h4 a").GetAttributeAsync("href");
+        var page = await context.NewPageAsync();
+        page.PageError += (_, error) => errors.Add(error);
+        await page.GotoAsync(discover.Url.Split('#')[0] + fragment); await Settle(page);
+        Assert.False(await page.Locator("#investigation-return-row").IsVisibleAsync());
+        var link = Entity(page).Locator("[data-context-view='summary'] .visual-use-preview a").First;
+        await link.FocusAsync(); await Settle(page);
+        var origin = page.Url; var href = await link.GetAttributeAsync("href"); var scroll = await page.EvaluateAsync<double>("scrollY");
+        await link.PressAsync("Enter");
+        Assert.EndsWith(href!, page.Url, StringComparison.Ordinal);
+        Assert.Equal("summary", await page.Locator("[data-lineage-card]:not([hidden])").GetAttributeAsync("data-active-object-view"));
+        await page.GoBackAsync(); await Settle(page);
+        Assert.Equal(origin, page.Url);
+        await page.GoForwardAsync(); await Settle(page);
+        await page.Locator("[data-lineage-card]:not([hidden]) [data-object-view-link='definition']").PressAsync("Enter");
+        await page.Locator("#investigation-return").PressAsync("Enter"); await Settle(page);
+        Assert.Equal(origin, page.Url);
+        Assert.Equal(href, await page.EvaluateAsync<string>("document.activeElement.getAttribute('href')"));
+        Assert.InRange(Math.Abs(await page.EvaluateAsync<double>("scrollY") - scroll), 0, 3);
+        Assert.Equal("summary", await Entity(page).GetAttributeAsync("data-active-context-view"));
+    }
+
+    [Theory]
+    [InlineData(1280, 900, ColorScheme.Light, ForcedColors.None)]
+    [InlineData(320, 900, ColorScheme.Light, ForcedColors.None)]
+    [InlineData(320, 225, ColorScheme.Dark, ForcedColors.None)]
+    [InlineData(320, 900, ColorScheme.Light, ForcedColors.Active)]
+    public async Task VisualSummaryTilesReflowAndRemainIndependentKeyboardTargets(int width, int height, ColorScheme colors, ForcedColors forced)
+    {
+        await using var context = await fixture.Browser.NewContextAsync(new() { ViewportSize = new() { Width = width, Height = height }, ColorScheme = colors, ForcedColors = forced, ReducedMotion = ReducedMotion.Reduce });
+        var page = await Open(context, "acceptance-summary-long", longName: true);
+        await Collection(page).Locator(".visual-preview:has(.visual-preview-more) h4 a").PressAsync("Enter");
+        var summary = Entity(page).Locator("[data-context-view='summary']");
+        var tiles = summary.Locator(".visual-use-preview li");
+        Assert.Equal(4, await tiles.CountAsync());
+        Assert.All(await summary.Locator(".visual-use-meta").AllTextContentsAsync(), text => Assert.Equal("Measure — Used as: Conditional formatting", text));
+        Assert.True(await page.EvaluateAsync<bool>("document.documentElement.scrollWidth <= innerWidth"));
+        Assert.All(await tiles.EvaluateAllAsync<double[]>("elements => elements.map(e => e.getBoundingClientRect().right)"), right => Assert.True(right <= width));
+        Assert.All(await tiles.EvaluateAllAsync<int[]>("elements => elements.map(e => e.querySelectorAll('a, button, input').length)"), count => Assert.Equal(1, count));
+        if (width == 320) Assert.Single((await tiles.EvaluateAllAsync<double[]>("elements => elements.map(e => e.getBoundingClientRect().x)")).Distinct());
+        if (forced == ForcedColors.Active)
+            Assert.All(await tiles.EvaluateAllAsync<string[]>("elements => elements.map(e => getComputedStyle(e).borderTopStyle)"), style => Assert.Equal("solid", style));
+        var links = summary.Locator(".visual-use-preview a");
+        await links.First.PressAsync("Tab");
+        Assert.True(await links.Nth(1).EvaluateAsync<bool>("e => e === document.activeElement && e.matches(':focus-visible')"));
+        await page.ScreenshotAsync(new() { Path = Path.Combine(Output, $"acceptance-summary-{width}-{height}-{colors}-{forced}.png") });
+        await summary.GetByRole(AriaRole.Link, new() { Name = "See all 7 in Objects →", Exact = true }).PressAsync("Enter");
+        Assert.Equal(7, await Entity(page).Locator("[data-context-view='objects'] a[href^='#sum-']").CountAsync());
+    }
 }

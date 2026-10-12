@@ -1316,7 +1316,7 @@ public static partial class HtmlReportRenderer
     {
         html.AppendLine("    <section id=\"semantic-usage\" class=\"report-section\" data-report-section=\"semantic-usage\" aria-labelledby=\"semantic-usage-heading\">");
         html.AppendLine("      <h2 id=\"semantic-usage-heading\" tabindex=\"-1\">Objects</h2>");
-        html.AppendLine("      <p class=\"section-intro\">Review tables, columns, measures and other model objects. Open an object name to explore its Summary, Lineage and Definition. Supporting evidence is in Details.</p>");
+        html.AppendLine("      <p class=\"section-intro\">Use More about this object for a quick look, or open an object for its Summary, Lineage and Definition.</p>");
         AppendUsageGuide(html, coverage);
         if (inventory.SemanticModels.Count == 0)
         {
@@ -1525,12 +1525,7 @@ public static partial class HtmlReportRenderer
     {
         html.AppendLine(inline ? "<h5>Accessibility</h5>" : "                  <h4>Accessibility snapshot</h4>");
         html.AppendLine("                  <dl class=\"fact-strip compact\">");
-        var altText = visual.Accessibility.AltTextIsDynamic
-            ? "Dynamic alt text"
-            : visual.Accessibility.HasAltText
-                ? visual.Accessibility.AltText ?? "Configured"
-                : inline ? "Missing" : "Not configured";
-        AppendFact(html, "Alt text", altText);
+        AppendFact(html, "Alt text", SavedAltText(visual));
         AppendTabOrderFact(html, DescribeTabOrder(visual, hierarchyContext), tooltipId);
         AppendFact(
             html,
@@ -1544,6 +1539,10 @@ public static partial class HtmlReportRenderer
         }
         html.AppendLine("                  </dl>");
     }
+
+    private static string SavedAltText(VisualInventory visual) => visual.Accessibility.AltTextIsDynamic
+        ? "Dynamic alt text"
+        : visual.Accessibility.HasAltText ? visual.Accessibility.AltText ?? "Configured" : "Not set";
 
     private static void AppendSemanticModel(
         StringBuilder html,

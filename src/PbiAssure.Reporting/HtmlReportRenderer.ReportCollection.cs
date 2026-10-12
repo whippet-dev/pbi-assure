@@ -6,6 +6,7 @@ namespace PbiAssure.Reporting;
 public static partial class HtmlReportRenderer
 {
     internal const int VisualCollectionPreviewLimit = 3;
+    internal const int VisualSummaryPreviewLimit = 4;
 
     private static readonly HashSet<string> CollectionRoleLabels = new(StringComparer.OrdinalIgnoreCase)
     {
@@ -40,19 +41,7 @@ public static partial class HtmlReportRenderer
             else
             {
                 html.AppendLine("<p class=\"visual-preview-label\">Objects used by this visual</p><ul class=\"visual-use-preview\">");
-                foreach (var use in card.Uses.Items.Take(VisualCollectionPreviewLimit))
-                {
-                    html.Append("<li><span>");
-                    if (use.Object.CardId is { } objectId) ContextLink(html, "sum-" + objectId[4..], use.Object.Name);
-                    else html.Append(Encode(use.Object.Name));
-                    html.Append("</span>");
-                    var objectType = SemanticLineageProjection.ObjectTypeLabel(use.Object.ObjectType);
-                    html.Append("<span class=\"visual-use-meta\">").Append(Encode(objectType));
-                    var role = CollectionUsageRole(use);
-                    if (role.Length > 0)
-                        html.Append(string.IsNullOrWhiteSpace(objectType) ? "" : " — ").Append("Used as: <span class=\"visual-use-role\">").Append(Encode(role)).Append("</span>");
-                    html.AppendLine("</span></li>");
-                }
+                AppendVisualUsePreviewTiles(html, card, VisualCollectionPreviewLimit);
                 html.AppendLine("</ul>");
                 var remaining = card.Uses.TotalCount - Math.Min(card.Uses.Items.Count, VisualCollectionPreviewLimit);
                 if (remaining > 0)
@@ -86,6 +75,23 @@ public static partial class HtmlReportRenderer
             html.AppendLine("</li>");
         }
         html.AppendLine("</ul>");
+    }
+
+    private static void AppendVisualUsePreviewTiles(StringBuilder html, LineageCard card, int limit)
+    {
+        foreach (var use in card.Uses.Items.Take(limit))
+        {
+            html.Append("<li><span>");
+            if (use.Object.CardId is { } objectId) ContextLink(html, "sum-" + objectId[4..], use.Object.Name);
+            else html.Append(Encode(use.Object.Name));
+            html.Append("</span>");
+            var objectType = SemanticLineageProjection.ObjectTypeLabel(use.Object.ObjectType);
+            html.Append("<span class=\"visual-use-meta\">").Append(Encode(objectType));
+            var role = CollectionUsageRole(use);
+            if (role.Length > 0)
+                html.Append(string.IsNullOrWhiteSpace(objectType) ? "" : " — ").Append("Used as: <span class=\"visual-use-role\">").Append(Encode(role)).Append("</span>");
+            html.AppendLine("</span></li>");
+        }
     }
 
     private static void AppendCollectionPageReferences(StringBuilder html, SemanticLineageProjection lineage, ReportInventory report, PageInventory page)

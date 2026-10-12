@@ -465,7 +465,7 @@ public sealed class HtmlReportRendererTests : IDisposable
         Assert.Contains("Find a report, page or visual", html, StringComparison.Ordinal);
         Assert.Contains("See which theme is applied", html, StringComparison.Ordinal);
         Assert.Contains("See how tables are connected", html, StringComparison.Ordinal);
-        Assert.Contains("Review tables, columns, measures and other model objects", html, StringComparison.Ordinal);
+        Assert.Contains("Use More about this object for a quick look", html, StringComparison.Ordinal);
     }
 
     [Fact]
