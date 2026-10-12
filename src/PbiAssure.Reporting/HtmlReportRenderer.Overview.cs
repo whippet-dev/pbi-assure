@@ -17,17 +17,17 @@ public static partial class HtmlReportRenderer
         html.AppendLine("      <h2 id=\"summary-heading\" tabindex=\"-1\">Overview</h2>");
         html.AppendLine("      <p class=\"section-intro\">What needs attention and where to investigate next.</p>");
         html.AppendLine("      <div class=\"summary-groups\">");
-        AppendOverviewAttention(html, inventory, mainFindings);
-        AppendOverviewReviews(html, inventory);
+        AppendOverviewAttention(html, mainFindings);
         AppendOverviewUsage(html, inventory);
         AppendOverviewConfidence(html, coverage);
         AppendOverviewSnapshot(html, inventory);
+        AppendOverviewReviews(html, inventory);
         html.AppendLine("      </div>");
         AppendScope(html);
         html.AppendLine("    </section>");
     }
 
-    private static void AppendOverviewAttention(StringBuilder html, ProjectInventory inventory, AssuranceFinding[] findings)
+    private static void AppendOverviewAttention(StringBuilder html, AssuranceFinding[] findings)
     {
         html.AppendLine("        <section class=\"summary-group summary-group-assurance\" aria-labelledby=\"summary-attention-heading\">");
         html.AppendLine("          <h3 id=\"summary-attention-heading\">Needs attention</h3>");
@@ -47,23 +47,6 @@ public static partial class HtmlReportRenderer
                 .Append(findings.Length.ToString("N0", CultureInfo.InvariantCulture)).Append(' ')
                 .Append(Pluralize(findings.Length, "finding", "findings")).AppendLine("</a></p>");
             html.AppendLine("          <p class=\"group-explanation\">A finding can both be a warning and require review, so these counts can overlap. Accessibility is counted separately.</p>");
-            html.AppendLine("          <ul class=\"overview-findings\">");
-            // Retain the original ordinal so the short list opens the existing finding, not a new copy.
-            foreach (var item in findings.Select((finding, index) => (Finding: finding, Index: index))
-                         .OrderBy(item => item.Finding.Severity == FindingSeverities.Error ? 0 : item.Finding.Severity == FindingSeverities.Warning ? 1 : 2)
-                         .Take(2))
-            {
-                html.Append("            <li><span class=\"badge ").Append(SeverityClass(item.Finding.Severity)).Append("\">")
-                    .Append(Encode(item.Finding.Severity)).Append("</span><a href=\"#")
-                    .Append(FindingAnchor(item.Index)).Append("\">").Append(Encode(item.Finding.Message)).Append("</a>");
-                var location = CreateFindingRenderItem(inventory, item.Finding);
-                if (!string.IsNullOrWhiteSpace(location.PageLabel))
-                {
-                    html.Append("<span class=\"overview-finding-location\">").Append(Encode(location.PageLabel)).Append("</span>");
-                }
-                html.AppendLine("</li>");
-            }
-            html.AppendLine("          </ul>");
         }
         html.AppendLine("        </section>");
     }
@@ -73,40 +56,36 @@ public static partial class HtmlReportRenderer
         var accessibilityCount = inventory.Findings.Count(IsAccessibilityFinding);
         var deviations = inventory.Reports.Sum(report => report.ThemeReview.Deviations.Count);
         var consistency = inventory.Reports.Sum(report => report.ThemeReview.ConsistencyObservations.Count);
-        var compared = inventory.Reports.SelectMany(report => report.Pages).SelectMany(page => page.Visuals)
-            .SelectMany(visual => visual.PersistedFormatting).Count(item => item.ThemeComparison?.State is
-                ThemeFormattingComparisonStates.SavedValueMatchesTheme or ThemeFormattingComparisonStates.SavedValueDiffersFromTheme);
         html.AppendLine("        <section class=\"summary-group summary-group-reviews\" aria-labelledby=\"summary-reviews-heading\">");
         html.AppendLine("          <h3 id=\"summary-reviews-heading\">Other reviews</h3>");
         html.AppendLine("          <div class=\"overview-reviews\">");
-        html.AppendLine("            <div><a href=\"#theme-review\">Theme review</a>");
-        if (deviations > 0 || consistency > 0)
-        {
-            html.Append("              <p>").Append(deviations.ToString("N0", CultureInfo.InvariantCulture)).Append(' ')
-                .Append(Pluralize(deviations, "theme deviation", "theme deviations")).Append(" · ")
-                .Append(consistency.ToString("N0", CultureInfo.InvariantCulture)).Append(' ')
-                .Append(Pluralize(consistency, "consistency observation", "consistency observations")).AppendLine("</p>");
-        }
-        else
-        {
-            html.AppendLine("              <p>No theme review items found.</p>");
-        }
-        html.Append("              <p class=\"group-explanation\">");
-        if (compared == 0)
-        {
-            html.Append("No theme settings could be compared automatically.");
-        }
-        else
-        {
-            html.Append(compared.ToString("N0", CultureInfo.InvariantCulture)).Append(' ')
-                .Append(Pluralize(compared, "saved visual setting compared", "saved visual settings compared"))
-                .Append(" against the theme.");
-        }
-        html.AppendLine("</p></div>");
         html.AppendLine("            <div><a href=\"#accessibility-review\">Accessibility review</a>");
         html.Append("              <p>").Append(accessibilityCount == 0 ? "No accessibility observations found." :
             $"{accessibilityCount.ToString("N0", CultureInfo.InvariantCulture)} accessibility {Pluralize(accessibilityCount, "observation", "observations")}").AppendLine("</p>");
         html.AppendLine("              <p class=\"group-explanation\">Accessibility observations are counted separately; manual review is still needed.</p></div>");
+        if (deviations > 0 || consistency > 0)
+        {
+            html.AppendLine("            <div><a href=\"#theme-review\">Theme review</a>");
+            html.Append("              <p>").Append(deviations.ToString("N0", CultureInfo.InvariantCulture)).Append(' ')
+                .Append(Pluralize(deviations, "theme deviation", "theme deviations")).Append(" · ")
+                .Append(consistency.ToString("N0", CultureInfo.InvariantCulture)).Append(' ')
+                .Append(Pluralize(consistency, "consistency observation", "consistency observations")).AppendLine("</p>");
+            var compared = inventory.Reports.SelectMany(report => report.Pages).SelectMany(page => page.Visuals)
+                .SelectMany(visual => visual.PersistedFormatting).Count(item => item.ThemeComparison?.State is
+                    ThemeFormattingComparisonStates.SavedValueMatchesTheme or ThemeFormattingComparisonStates.SavedValueDiffersFromTheme);
+            html.Append("              <p class=\"group-explanation\">");
+            if (compared == 0)
+            {
+                html.Append("No theme settings could be compared automatically.");
+            }
+            else
+            {
+                html.Append(compared.ToString("N0", CultureInfo.InvariantCulture)).Append(' ')
+                    .Append(Pluralize(compared, "saved visual setting compared", "saved visual settings compared"))
+                    .Append(" against the theme.");
+            }
+            html.AppendLine("</p></div>");
+        }
         html.AppendLine("          </div>");
         html.AppendLine("        </section>");
     }

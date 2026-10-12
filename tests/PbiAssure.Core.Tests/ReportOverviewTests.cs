@@ -17,7 +17,7 @@ public sealed class ReportOverviewTests
     {
         var html = HtmlReportRenderer.Render(Rich.Value);
         var overview = Overview(html);
-        Assert.Equal(["attention", "reviews", "usage", "confidence", "snapshot"],
+        Assert.Equal(["attention", "usage", "confidence", "snapshot", "reviews"],
             Regex.Matches(overview, "<h3 id=\"summary-([^\"]+)-heading\"").Select(match => match.Groups[1].Value));
         Assert.True(overview.IndexOf("<dt>Errors</dt>", StringComparison.Ordinal) < overview.IndexOf("<dt>Reports</dt>", StringComparison.Ordinal));
         Assert.Single(Regex.Matches(overview, "<details\\b")); // Only the existing scope disclosure.
@@ -26,18 +26,22 @@ public sealed class ReportOverviewTests
     }
 
     [Fact]
-    public void AttentionUsesExistingCountsAndOnlyTwoConcreteFindingsWithOriginalAnchors()
+    public void AttentionUsesExistingCountsAndRoutesToFindingsWithoutSamplingMessagesOrLocations()
     {
         var inventory = Rich.Value;
-        var primary = inventory.Findings.Where(finding => finding.Category != AssuranceCategories.Accessibility).ToArray();
-        var overview = Overview(HtmlReportRenderer.Render(inventory));
+        inventory = inventory with { Findings = inventory.Findings.Select((finding, index) => finding with { Message = $"Individual finding message {index}: only in the canonical review." }).ToArray() };
+        var html = HtmlReportRenderer.Render(inventory);
+        var overview = Overview(html);
         Assert.Contains("<dt>Errors</dt><dd>11</dd>", overview, StringComparison.Ordinal);
         Assert.Contains("<dt>Warnings</dt><dd>10</dd>", overview, StringComparison.Ordinal);
         Assert.Contains("<dt>Review required</dt><dd>7</dd>", overview, StringComparison.Ordinal);
         Assert.Contains("Review 28 findings", overview, StringComparison.Ordinal);
-        var links = Regex.Matches(overview, "href=\"#finding-(\\d+)\"");
-        Assert.Equal(2, links.Count);
-        Assert.All(links.Cast<Match>(), link => Assert.Equal(FindingSeverities.Error, primary[int.Parse(link.Groups[1].Value, System.Globalization.CultureInfo.InvariantCulture) - 1].Severity));
+        Assert.Contains("href=\"#findings\">Review 28 findings", overview, StringComparison.Ordinal);
+        Assert.DoesNotContain("Individual finding message", overview, StringComparison.Ordinal);
+        Assert.Contains("Individual finding message", html[html.IndexOf("<section id=\"findings\"", StringComparison.Ordinal)..], StringComparison.Ordinal);
+        Assert.Empty(Regex.Matches(overview, "href=\"#finding-"));
+        Assert.DoesNotContain("overview-findings", html, StringComparison.Ordinal);
+        Assert.DoesNotContain("overview-finding-location", html, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -63,6 +67,7 @@ public sealed class ReportOverviewTests
         Assert.Contains("href=\"#accessibility-review\"", overview, StringComparison.Ordinal);
         Assert.DoesNotContain("overview-attention-metrics", overview, StringComparison.Ordinal);
         Assert.Contains("Manual review is still recommended.", overview, StringComparison.Ordinal);
+        Assert.DoesNotContain("Review 0 findings", overview, StringComparison.Ordinal);
     }
 
     [Theory]
@@ -103,14 +108,46 @@ public sealed class ReportOverviewTests
     }
 
     [Fact]
-    public void ThemeStatesDoNotTreatZeroComparisonsAsNoDifferences()
+    public void SecondaryReviewsAreOrderedAndThemeIsOmittedOnlyFromOverviewWhenItHasNoItems()
     {
-        var simple = Overview(HtmlReportRenderer.Render(Simple.Value));
-        Assert.Contains("No theme settings could be compared automatically.", simple, StringComparison.Ordinal);
+        var simpleHtml = HtmlReportRenderer.Render(Simple.Value);
+        var simple = Overview(simpleHtml);
+        Assert.DoesNotContain("href=\"#theme-review\"", simple, StringComparison.Ordinal);
+        Assert.Contains("href=\"#theme-review\"", simpleHtml, StringComparison.Ordinal);
+        Assert.Contains("id=\"theme-review\"", simpleHtml, StringComparison.Ordinal);
+        Assert.Contains("No theme settings could be compared automatically in this report.", simpleHtml, StringComparison.Ordinal);
         Assert.DoesNotContain("no differences", simple, StringComparison.OrdinalIgnoreCase);
         var rich = Overview(HtmlReportRenderer.Render(Rich.Value));
         Assert.Contains("1 theme deviation · 1 consistency observation", rich, StringComparison.Ordinal);
         Assert.Contains("saved visual settings compared against the theme", rich, StringComparison.Ordinal);
+        Assert.True(rich.IndexOf("summary-reviews-heading", StringComparison.Ordinal) < rich.IndexOf("href=\"#accessibility-review\"", StringComparison.Ordinal));
+        Assert.True(rich.IndexOf("href=\"#accessibility-review\"", StringComparison.Ordinal) < rich.IndexOf("href=\"#theme-review\"", StringComparison.Ordinal));
+    }
+
+    [Theory]
+    [InlineData(true, false)]
+    [InlineData(false, true)]
+    [InlineData(false, false)]
+    public void EitherThemeReviewItemKindKeepsItsOverviewEntry(bool deviations, bool consistency)
+    {
+        var inventory = Rich.Value with { Reports = Rich.Value.Reports.Select(report => report with {
+            ThemeReview = report.ThemeReview with { Deviations = deviations ? report.ThemeReview.Deviations : [],
+                ConsistencyObservations = consistency ? report.ThemeReview.ConsistencyObservations : [] }
+        }).ToArray() };
+        Assert.Equal(deviations || consistency, Overview(HtmlReportRenderer.Render(inventory)).Contains("href=\"#theme-review\"", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void AccessibilityZeroStateStaysUnderOtherReviewsWithoutBecomingAMainFinding()
+    {
+        var html = HtmlReportRenderer.Render(Simple.Value with { Findings = [] });
+        var overview = Overview(html);
+        var reviews = overview[overview.IndexOf("<h3 id=\"summary-reviews-heading\"", StringComparison.Ordinal)..];
+        Assert.Contains("No findings.", overview, StringComparison.Ordinal);
+        Assert.Contains("No accessibility observations found.", reviews, StringComparison.Ordinal);
+        Assert.Contains("href=\"#accessibility-review\"", reviews, StringComparison.Ordinal);
+        Assert.DoesNotContain("Review 0 findings", overview, StringComparison.Ordinal);
+        Assert.DoesNotContain("compliance", overview, StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]

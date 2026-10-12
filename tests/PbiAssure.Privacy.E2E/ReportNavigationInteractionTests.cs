@@ -154,7 +154,7 @@ public sealed class ReportNavigationInteractionTests(PrivacyE2EFixture fixture) 
     }
 
     [Fact]
-    public async Task OverviewInvestigationsReturnToTheirFilteredCollectionOrOriginalFindingLink()
+    public async Task OverviewInvestigationsReturnToTheirFilteredModelOrCanonicalFindingCollection()
     {
         await using var context = await fixture.Browser.NewContextAsync(new() { ViewportSize = new() { Width = 1280, Height = 900 } });
         var page = await Open(context);
@@ -170,15 +170,16 @@ public sealed class ReportNavigationInteractionTests(PrivacyE2EFixture fixture) 
         Assert.Equal("ApparentlyUnused", await page.Locator("#usage-usage-state").InputValueAsync());
         Assert.Equal(sourceHref, await page.EvaluateAsync<string>("document.activeElement.getAttribute('href')"));
         await page.Locator(".section-nav a[href='#summary']").ClickAsync();
-        var overviewUrl = page.Url;
-        var findingLink = page.Locator("#summary .overview-findings a").First;
+        await page.Locator("#summary a[href='#findings']").ClickAsync();
+        var findingsUrl = page.Url;
+        var finding = page.Locator(".finding-card:not([hidden]):has(a[href^='#visual-'])").First;
+        await finding.Locator(":scope > summary").ClickAsync();
+        var findingLink = finding.Locator("a[href^='#visual-']").First;
         var findingHref = await findingLink.GetAttributeAsync("href");
         await findingLink.ClickAsync();
-        Assert.Equal("reviews", await page.Locator("main").GetAttributeAsync("data-active-area"));
-        await page.Locator(findingHref! + " a[href^='#visual-']").First.ClickAsync();
         Assert.Equal("reports", await page.Locator("main").GetAttributeAsync("data-active-area"));
         await page.Locator("#investigation-return").ClickAsync();
-        await page.WaitForURLAsync(overviewUrl); await Settle(page);
+        await page.WaitForURLAsync(findingsUrl); await Settle(page);
         Assert.Equal(findingHref, await page.EvaluateAsync<string>("document.activeElement.getAttribute('href')"));
         Assert.False(await page.Locator("#investigation-return-row").IsVisibleAsync());
     }

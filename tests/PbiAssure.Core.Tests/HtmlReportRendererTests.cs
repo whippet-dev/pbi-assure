@@ -741,7 +741,7 @@ public sealed class HtmlReportRendererTests : IDisposable
             html.IndexOf("<section id=\"semantic-usage\"", StringComparison.Ordinal)];
         var groups = System.Text.RegularExpressions.Regex.Matches(summary, "<h3 id=\"summary-([^\"]+)-heading\"")
             .Select(match => match.Groups[1].Value).ToArray();
-        Assert.Equal(["attention", "reviews", "usage", "confidence", "snapshot"], groups);
+        Assert.Equal(["attention", "usage", "confidence", "snapshot", "reviews"], groups);
         Assert.Contains("font-size: var(--pa-t-2xl)", html, StringComparison.Ordinal);
         Assert.Contains(".overview-snapshot .metric dd { font-size: var(--pa-t-lg); }", html, StringComparison.Ordinal);
         Assert.Contains("grid-template-columns: 13rem minmax(0, 1fr)", html, StringComparison.Ordinal);

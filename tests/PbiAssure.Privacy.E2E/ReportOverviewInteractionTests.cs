@@ -8,6 +8,7 @@ namespace PbiAssure.Privacy.E2E;
 [Collection(PrivacyE2EGroup.Name)]
 public sealed class ReportOverviewInteractionTests(PrivacyE2EFixture fixture)
 {
+    private static readonly string[] OverviewHeadings = ["Needs attention", "Model usage", "Checks", "Project snapshot", "Other reviews"];
     [Theory]
     [InlineData("DirectlyUsed", 18)]
     [InlineData("IndirectlyUsed", 23)]
@@ -55,19 +56,19 @@ public sealed class ReportOverviewInteractionTests(PrivacyE2EFixture fixture)
     }
 
     [Fact]
-    public async Task KeyboardCanOpenFindingAndSecondaryReviewsWithVisibleFocus()
+    public async Task KeyboardCanOpenCanonicalFindingsAndSecondaryReviewsWithVisibleFocus()
     {
         await using var context = await fixture.Browser.NewContextAsync();
         var page = await context.NewPageAsync();
         await page.SetContentAsync(Render("pbi-assure-coverage"));
-        var finding = page.Locator("#summary .overview-findings a").First;
-        var target = await finding.GetAttributeAsync("href");
+        Assert.Equal(0, await page.Locator("#summary a[href^='#finding-']").CountAsync());
+        var finding = page.Locator("#summary").GetByRole(AriaRole.Link, new() { Name = "Review 28 findings", Exact = true });
         await finding.FocusAsync();
         Assert.Equal("2px", await finding.EvaluateAsync<string>("element => getComputedStyle(element).outlineWidth"));
         await page.Keyboard.PressAsync("Enter");
-        Assert.True(await page.Locator(target!).IsVisibleAsync());
-        Assert.True(await page.Locator(target!).EvaluateAsync<bool>("element => element.open"));
-        foreach (var (label, section) in new[] { ("Theme review", "theme-review"), ("Accessibility review", "accessibility-review") })
+        Assert.True(await page.Locator("#findings").IsVisibleAsync());
+        Assert.Equal("findings-heading", await page.EvaluateAsync<string>("document.activeElement.id"));
+        foreach (var (label, section) in new[] { ("Accessibility review", "accessibility-review"), ("Theme review", "theme-review") })
         {
             await page.GetByRole(AriaRole.Link, new() { Name = "Overview", Exact = true }).ClickAsync();
             await page.Locator("#summary").GetByRole(AriaRole.Link, new() { Name = label, Exact = true }).FocusAsync();
@@ -88,16 +89,24 @@ public sealed class ReportOverviewInteractionTests(PrivacyE2EFixture fixture)
         page.PageError += (_, error) => errors.Add(error);
         page.Console += (_, message) => { if (message.Type == "error") errors.Add(message.Text); };
         await page.SetContentAsync(Render(name));
-        var directory = Path.Combine(fixture.RepositoryRoot, "artifacts", "ux-slice1");
+        var directory = Path.Combine(fixture.RepositoryRoot, "artifacts", "ux-overview-rebalance");
         Directory.CreateDirectory(directory);
+        Assert.Equal(OverviewHeadings,
+            await page.Locator("#summary .summary-groups > section > h3").AllTextContentsAsync());
         foreach (var appearance in new[] { "Light", "Dark" })
         {
             await page.GetByRole(AriaRole.Button, new() { Name = appearance + " appearance", Exact = true }).ClickAsync();
-            await page.ScreenshotAsync(new() { Path = Path.Combine(directory, $"{name}-{appearance.ToLowerInvariant()}.png") });
+            await page.ScreenshotAsync(new() { Path = Path.Combine(directory, $"{name}-{appearance.ToLowerInvariant()}.png"), FullPage = true });
             await page.SetViewportSizeAsync(320, 900);
             Assert.True(await page.EvaluateAsync<bool>("document.documentElement.scrollWidth <= window.innerWidth"));
             Assert.True(await page.Locator("#summary .summary-group-assurance").IsVisibleAsync());
+            var tops = await page.Locator("#summary .summary-groups > section").EvaluateAllAsync<double[]>("sections => sections.map(section => section.getBoundingClientRect().top)");
+            Assert.Equal(tops.Order().ToArray(), tops);
+            var metrics = await page.Locator("#summary .overview-attention-metrics > div").EvaluateAllAsync<double[]>("items => items.map(item => item.getBoundingClientRect().top)");
+            if (metrics.Length > 0) Assert.Equal(3, metrics.Distinct().Count());
             await page.ScreenshotAsync(new() { Path = Path.Combine(directory, $"{name}-{appearance.ToLowerInvariant()}-320.png"), FullPage = true });
+            await page.SetViewportSizeAsync(320, 225); // 1280 × 900 at 400% equivalent reflow.
+            Assert.True(await page.EvaluateAsync<bool>("document.documentElement.scrollWidth <= window.innerWidth"));
             await page.SetViewportSizeAsync(1280, 1000);
         }
         await page.EmulateMediaAsync(new() { ForcedColors = ForcedColors.Active });
@@ -107,5 +116,35 @@ public sealed class ReportOverviewInteractionTests(PrivacyE2EFixture fixture)
         Assert.Empty(errors);
     }
 
-    private string Render(string name) => HtmlReportRenderer.Render(ProjectScanner.Scan(Path.Combine(fixture.RepositoryRoot, "tests", "fixtures", name)));
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task ZeroStatesKeepAccessibilityAndThemeAvailableInReviews(bool clearAccessibility)
+    {
+        var inventory = ProjectScanner.Scan(Path.Combine(fixture.RepositoryRoot, "tests", "fixtures", "model-reference-context"));
+        if (clearAccessibility) inventory = inventory with { Findings = [] };
+        var directory = Path.Combine(fixture.RepositoryRoot, "artifacts", "ux-overview-rebalance");
+        Directory.CreateDirectory(directory);
+        var path = Path.Combine(directory, clearAccessibility ? "zero-observations.html" : "no-primary-findings.html");
+        await File.WriteAllTextAsync(path, HtmlReportRenderer.Render(inventory));
+        await using var context = await fixture.Browser.NewContextAsync(); var page = await context.NewPageAsync();
+        await page.GotoAsync(new Uri(path).AbsoluteUri);
+        Assert.Contains("No findings.", await page.Locator("#summary").InnerTextAsync(), StringComparison.Ordinal);
+        Assert.Equal(0, await page.Locator("#summary").GetByRole(AriaRole.Link, new() { Name = "Review 0 findings", Exact = true }).CountAsync());
+        Assert.Equal(0, await page.Locator("#summary a[href='#theme-review']").CountAsync());
+        Assert.Contains("No identified limitations", await page.Locator("#summary .summary-group-confidence").InnerTextAsync(), StringComparison.Ordinal);
+        Assert.Contains(clearAccessibility ? "No accessibility observations found." : "5 accessibility observations",
+            await page.Locator("#summary .summary-group-reviews").InnerTextAsync(), StringComparison.Ordinal);
+        await page.GetByRole(AriaRole.Link, new() { Name = "Reviews", Exact = true }).ClickAsync();
+        await page.Locator(".workspace-heading").GetByRole(AriaRole.Link, new() { Name = "Theme", Exact = true }).ClickAsync();
+        Assert.True(await page.Locator("#theme-review").IsVisibleAsync());
+    }
+
+    private string Render(string name)
+    {
+        var html = HtmlReportRenderer.Render(ProjectScanner.Scan(Path.Combine(fixture.RepositoryRoot, "tests", "fixtures", name)));
+        var directory = Path.Combine(fixture.RepositoryRoot, "artifacts", "ux-overview-rebalance");
+        Directory.CreateDirectory(directory); File.WriteAllText(Path.Combine(directory, name + ".html"), html);
+        return html;
+    }
 }

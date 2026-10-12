@@ -767,10 +767,8 @@ public static class DesignSystem
         .overview-attention-metrics .metric dd { margin: 0; padding: 0; font-size: var(--pa-t-2xl); }
         .overview-attention-scope { margin: 0.375rem 0 0.125rem; font-weight: 600; }
         .overview-conclusion { margin: 0 0 0.375rem; font-size: var(--pa-t-lg); font-weight: 600; }
-        .overview-findings { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 20rem), 1fr)); gap: 0.5rem 1rem; margin: 0.375rem 0 0; padding: 0; list-style: none; }
-        .overview-findings li { display: grid; min-width: 0; grid-template-columns: auto minmax(0, 1fr); align-content: start; align-items: start; gap: 0.25rem 0.5rem; font-size: var(--pa-t-xs); }
-        .overview-findings a { overflow-wrap: anywhere; }
-        .overview-finding-location { grid-column: 2; color: var(--pa-text-2); font-size: var(--pa-t-2xs); }
+        .summary-group-reviews { font-size: var(--pa-t-xs); }
+        .summary-group-reviews > h3 { color: var(--pa-text-2); font-size: var(--pa-t-xs); }
         .overview-reviews { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 19rem), 1fr)); gap: 0.625rem 1.5rem; }
         .overview-reviews > div { min-width: 0; }
         .overview-reviews a { font-weight: 600; }
@@ -798,7 +796,7 @@ public static class DesignSystem
 
         @media (max-width: 30rem) {
           .summary-group-assurance { padding: 0.75rem; }
-          .overview-attention-metrics { grid-template-columns: minmax(0, 1fr); }
+          .metrics.overview-attention-metrics { grid-template-columns: minmax(0, 1fr); }
           .overview-attention-metrics .metric { flex-direction: row; align-items: center; justify-content: space-between; gap: 0.75rem; }
           .overview-attention-metrics .metric dd { margin: 0; padding: 0; }
         }

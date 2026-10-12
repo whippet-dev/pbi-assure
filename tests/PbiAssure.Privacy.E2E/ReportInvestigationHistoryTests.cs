@@ -282,7 +282,8 @@ public sealed class ReportInvestigationHistoryTests(PrivacyE2EFixture fixture) :
     {
         await using var context = await fixture.Browser.NewContextAsync();
         var page = await OpenAsync(context);
-        await page.Locator("#summary .overview-findings a").First.ClickAsync();
+        await page.Locator("#summary a[href='#findings']").ClickAsync();
+        await page.Locator(".finding-card:not([hidden]) > summary").First.ClickAsync();
         var length = await page.EvaluateAsync<int>("history.length");
         var evidence = page.Locator(".finding-card:not([hidden])[open] details summary").First;
         await evidence.ClickAsync();
