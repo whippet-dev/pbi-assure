@@ -277,25 +277,22 @@ button:disabled:hover { background: var(--pa-accent); border-color: var(--pa-acc
 .output-actions > h2 { margin: 0; }
 .output-lede { margin: -0.25rem 0 0.25rem; max-width: 82ch; color: var(--pa-text-2); font-size: var(--pa-t-sm); }
 
-/* One analysis, two report experiences. Each is a card with its own heading, a one-line
-   explanation, a filled primary action and an outlined download beside it, and a status line that
-   speaks for that card alone. The cards sit side by side where there is room and stack below it. */
-.report-cards { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.625rem; }
-
-.report-card {
-  display: grid;
-  align-content: start;
-  gap: 0.5rem;
-  padding: 0.75rem 0.875rem;
-  border: 1px solid var(--pa-accent-line);
-  border-radius: var(--pa-r2);
-  background: var(--pa-accent-soft);
-}
-
-.report-card h3 { margin: 0; font-size: var(--pa-t-md); }
-.report-card p { margin: 0; max-width: 62ch; color: var(--pa-text-2); font-size: var(--pa-t-sm); line-height: 1.45; }
+/* Report delivery leads; focused review and exports remain secondary. */
+.primary-report { display: grid; gap: 0.75rem; }
+.primary-report > p, .report-secondary > p { color: var(--pa-text-2); font-size: var(--pa-t-sm); }
+.primary-report .report-card-actions > button:first-child { min-height: 2.75rem; padding: 0.5rem 1.25rem; font-size: var(--pa-t-lg); }
+.other-outputs { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1.5rem; border-top: 1px solid var(--pa-line); padding-top: 1rem; }
+.report-secondary { display: grid; align-content: start; gap: 0.625rem; }
+.report-secondary h4, .other-outputs .export-area h4 { margin: 0; font-size: var(--pa-t-md); }
 .report-card-actions { display: flex; flex-wrap: wrap; gap: 0.5rem; }
 .report-card-actions button { min-height: 2.375rem; padding: 0.375rem 0.875rem; font-size: var(--pa-t-md); }
+.output-project { color: var(--pa-text-2); overflow-wrap: anywhere; }
+.result-project-actions { border-top: 1px solid var(--pa-line); padding-top: 1rem; margin-top: 0.75rem; }
+.analysis-status { color: var(--pa-text); font-weight: 600; }
+.analysis-status:empty { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+#output-actions-heading { scroll-margin-top: 9rem; }
+#output-actions-heading:focus { outline: 2px solid var(--pa-focus); outline-offset: 4px; }
+.picker { gap: 0.875rem; }
 
 /* Feedback stays beside the action that caused it. The line is always present so a live region
    exists before anything is announced into it, and takes no room while it has nothing to say. */
@@ -317,7 +314,7 @@ button:disabled:hover { background: var(--pa-accent); border-color: var(--pa-acc
 }
 
 .export-area:has(> button[aria-expanded="true"]) { border-color: var(--pa-accent-line); }
-.export-area h3 { margin: 0; font-size: var(--pa-t-md); }
+.export-area h4 { margin: 0; font-size: var(--pa-t-md); }
 .export-area > p { margin: 0; max-width: 62ch; color: var(--pa-text-2); font-size: var(--pa-t-sm); line-height: 1.45; }
 .export-area .export-panel { justify-self: stretch; margin-top: 0.25rem; }
 
@@ -497,11 +494,16 @@ button:disabled:hover { background: var(--pa-accent); border-color: var(--pa-acc
 
 /* ------------------------------------------------------------------ layout */
 
+/* Heavy zoom can leave too little height beneath a sticky multi-line navigation bar. */
+@media (max-height: 30rem) {
+  .app-bar { position: static; }
+}
+
 @media (max-width: 46rem) {
   /* Two-column workspaces need real room; below a tablet width they read better stacked. */
   .guidance-steps { grid-template-columns: minmax(0, 1fr); }
   .export-config { grid-template-columns: minmax(0, 1fr); }
-  .report-cards { grid-template-columns: minmax(0, 1fr); }
+  .other-outputs { grid-template-columns: minmax(0, 1fr); }
   .project-metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .project-metrics .metric:last-child { grid-column: 1 / -1; }
   .information-definitions div { grid-template-columns: minmax(0, 1fr); gap: 0.125rem; }

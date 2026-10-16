@@ -12,22 +12,13 @@ namespace PbiAssure.Core.Tests;
 public sealed class WebUnusedReviewSurfaceTests
 {
     [Fact]
-    public void BothReportsAreOfferedAsCardsAfterAnalysis()
+    public void TheFocusedReviewRemainsAvailableUnderOtherOutputs()
     {
         var markup = ReadHomePage();
-        var cards = markup[markup.IndexOf("<div class=\"report-cards\">", StringComparison.Ordinal)..markup.IndexOf("<p class=\"output-note\">", StringComparison.Ordinal)];
-
-        var open = cards.IndexOf("<button @onclick=\"OpenHtmlAsync\" disabled=\"@isBusy\"", StringComparison.Ordinal);
-        var review = cards.IndexOf("<button @onclick=\"OpenUnusedReviewAsync\" disabled=\"@isBusy\"", StringComparison.Ordinal);
-        Assert.True(open >= 0 && review > open, "both reports have a card, interactive report first");
-        Assert.Contains(">Open interactive report</button>", cards, StringComparison.Ordinal);
-        Assert.Contains(">Review apparently unused (@inventory.DeveloperApparentlyUnusedSemanticObjectCount)</button>", cards, StringComparison.Ordinal);
-        Assert.Contains("aria-describedby=\"unused-review-help\"", cards, StringComparison.Ordinal);
-        Assert.Contains("<p id=\"unused-review-help\">Review model items with no report or semantic-model usage found in this project.</p>", cards, StringComparison.Ordinal);
-        Assert.Equal(2, CountOccurrences(cards, "<section class=\"report-card\""));
-        // The review card is a real region: heading-labelled, with its own status line.
-        Assert.Contains("<section class=\"report-card\" aria-labelledby=\"unused-review-heading\">", cards, StringComparison.Ordinal);
-        Assert.Contains("<p class=\"report-card-status\" role=\"status\">@unusedReviewMessage</p>", cards, StringComparison.Ordinal);
+        Assert.True(markup.IndexOf("other-outputs-heading", StringComparison.Ordinal) < markup.IndexOf("unused-review-heading", StringComparison.Ordinal));
+        Assert.Contains("class=\"secondary-button\" @onclick=\"OpenUnusedReviewAsync\"", markup, StringComparison.Ordinal);
+        Assert.Contains("aria-describedby=\"unused-review-help\"", markup, StringComparison.Ordinal);
+        Assert.Contains("<p class=\"report-card-status\" role=\"status\">@unusedReviewMessage</p>", markup, StringComparison.Ordinal);
     }
 
     [Fact]

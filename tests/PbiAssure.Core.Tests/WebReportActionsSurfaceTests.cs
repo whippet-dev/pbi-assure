@@ -3,31 +3,22 @@ using PbiAssure.Web;
 namespace PbiAssure.Core.Tests;
 
 /// <summary>
-/// One analysis, two report experiences, one export area. After a scan the browser application offers
-/// the interactive report and the apparently unused review as two named cards, each with an open
+/// One analysis, two report experiences, one export area. After analysis the browser application offers
+/// the interactive report and the apparently unused review as a report-first hierarchy, each with an open
 /// action and a download, and keeps export work visibly apart from report delivery.
 /// </summary>
 public sealed class WebReportActionsSurfaceTests
 {
     [Fact]
-    public void BothReportsHaveOpenAndDownloadActionsInTheirOwnCards()
+    public void ReportLeadsAndFocusedReviewRemainsSecondary()
     {
         var actions = NextSteps(ReadHomePage());
-
-        var interactive = Card(actions, "interactive-report-heading");
-        Assert.Contains("<h3 id=\"interactive-report-heading\">Interactive report</h3>", interactive, StringComparison.Ordinal);
-        Assert.Contains("<p id=\"interactive-report-help\">Explore model usage, dependencies, report structure and findings.</p>", interactive, StringComparison.Ordinal);
-        Assert.Contains("<button @onclick=\"OpenHtmlAsync\" disabled=\"@isBusy\" aria-describedby=\"interactive-report-help\">Open interactive report</button>", interactive, StringComparison.Ordinal);
-        Assert.Contains("<button class=\"secondary-button\" @onclick=\"DownloadHtmlAsync\" disabled=\"@isBusy\">Download <span class=\"visually-hidden\">interactive </span>report</button>", interactive, StringComparison.Ordinal);
-
-        var review = Card(actions, "unused-review-heading");
-        Assert.Contains("<h3 id=\"unused-review-heading\">Apparently unused review</h3>", review, StringComparison.Ordinal);
-        Assert.Contains("<p id=\"unused-review-help\">Review model items with no report or semantic-model usage found in this project.</p>", review, StringComparison.Ordinal);
-        Assert.Contains("<button @onclick=\"OpenUnusedReviewAsync\" disabled=\"@isBusy\" aria-describedby=\"unused-review-help\">Review apparently unused (@inventory.DeveloperApparentlyUnusedSemanticObjectCount)</button>", review, StringComparison.Ordinal);
-        Assert.Contains("<button class=\"secondary-button\" @onclick=\"DownloadUnusedReviewAsync\" disabled=\"@isBusy\">Download <span class=\"visually-hidden\">apparently unused </span>review</button>", review, StringComparison.Ordinal);
-
-        // The interactive report is first in reading order; the review is never disabled at zero.
-        Assert.True(actions.IndexOf("interactive-report-heading", StringComparison.Ordinal) < actions.IndexOf("unused-review-heading", StringComparison.Ordinal));
+        Assert.Contains(">Open report</button>", actions, StringComparison.Ordinal);
+        Assert.Contains(">Download report</button>", actions, StringComparison.Ordinal);
+        Assert.Contains("class=\"secondary-button\" @onclick=\"OpenUnusedReviewAsync\"", actions, StringComparison.Ordinal);
+        Assert.Contains("Review apparently unused (@inventory.DeveloperApparentlyUnusedSemanticObjectCount)", actions, StringComparison.Ordinal);
+        Assert.True(actions.IndexOf("OpenHtmlAsync", StringComparison.Ordinal) < actions.IndexOf("other-outputs-heading", StringComparison.Ordinal));
+        Assert.DoesNotContain("report-cards", actions, StringComparison.Ordinal);
         Assert.DoesNotContain("DeveloperApparentlyUnusedSemanticObjectCount == 0", actions, StringComparison.Ordinal);
     }
 
@@ -36,11 +27,11 @@ public sealed class WebReportActionsSurfaceTests
     {
         var actions = NextSteps(ReadHomePage());
 
-        Assert.Contains("<h2 id=\"output-actions-heading\">Analysis complete</h2>", actions, StringComparison.Ordinal);
-        Assert.Contains("Explore your project, review apparently unused items, or export metadata for further work.", actions, StringComparison.Ordinal);
-        Assert.Contains("<h3 id=\"export-data-heading\">Export data</h3>", actions, StringComparison.Ordinal);
+        Assert.Contains("<h2 id=\"output-actions-heading\" tabindex=\"-1\" @ref=\"completionHeading\">Analysis complete</h2>", actions, StringComparison.Ordinal);
+        Assert.Contains("Explore model usage, dependencies, report structure and findings.", actions, StringComparison.Ordinal);
+        Assert.Contains("<h4 id=\"export-data-heading\">Export data</h4>", actions, StringComparison.Ordinal);
         Assert.Contains("Export a Data Catalogue or Usage Mapping CSV for further work.", actions, StringComparison.Ordinal);
-        Assert.Contains("Reports open in a new tab. Downloads are self-contained HTML files.", actions, StringComparison.Ordinal);
+        Assert.Contains("Download the HTML to keep or share this report.", actions, StringComparison.Ordinal);
         // Retired wording from the single-report era.
         foreach (var retired in new[] { "Next steps", "Download HTML report", "Start here", "no usage evidence", "review list" })
         {
@@ -57,7 +48,7 @@ public sealed class WebReportActionsSurfaceTests
     {
         var actions = NextSteps(ReadHomePage());
 
-        Assert.Equal("Download interactive report", AccessibleName(actions, "DownloadHtmlAsync"));
+        Assert.Equal("Download report", AccessibleName(actions, "DownloadHtmlAsync"));
         Assert.Equal("Download apparently unused review", AccessibleName(actions, "DownloadUnusedReviewAsync"));
         Assert.Equal("Download report", VisibleText(actions, "DownloadHtmlAsync"));
         Assert.Equal("Download review", VisibleText(actions, "DownloadUnusedReviewAsync"));
@@ -84,8 +75,8 @@ public sealed class WebReportActionsSurfaceTests
         Assert.True(actions.IndexOf("<section class=\"export-area\"", StringComparison.Ordinal) > actions.IndexOf("DownloadUnusedReviewAsync", StringComparison.Ordinal));
         Assert.DoesNotContain("export-area", actions[..actions.IndexOf("<p class=\"output-note\">", StringComparison.Ordinal)], StringComparison.Ordinal);
         // The sharing warning still closes the section.
-        Assert.Contains("HTML and CSV files may contain sensitive project metadata, including paths, expressions, source details and model/report metadata.", export, StringComparison.Ordinal);
-        Assert.Contains("outputs are not automatically redacted", export, StringComparison.Ordinal);
+        Assert.Contains("HTML and CSV files may contain sensitive project metadata, including paths, expressions, source details and model/report metadata.", actions, StringComparison.Ordinal);
+        Assert.Contains("outputs are not automatically redacted", actions, StringComparison.Ordinal);
     }
 
     /// <summary>Closing the export workspace hands focus back to the control that opened it.</summary>
@@ -98,9 +89,9 @@ public sealed class WebReportActionsSurfaceTests
 
         Assert.Contains("exportPanelOpen = false;", close, StringComparison.Ordinal);
         Assert.Contains("await exportToggle.FocusAsync();", close, StringComparison.Ordinal);
-        // Nothing moves focus when analysis completes.
+        // Completion uses a guarded handoff rather than unconditional focus.
         var run = markup[markup.IndexOf("private async Task RunAssuranceAsync()", StringComparison.Ordinal)..markup.IndexOf("private sealed class JsFileAccess", StringComparison.Ordinal)];
-        Assert.DoesNotContain("FocusAsync", run, StringComparison.Ordinal);
+        Assert.Contains("pbiAssureAnalysisFocus.begin", run, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -127,29 +118,13 @@ public sealed class WebReportActionsSurfaceTests
     }
 
     [Fact]
-    public void ReportCardsSitSideBySideAndStackAtNarrowWidths()
+    public void SecondaryOutputsReflowAndStatusesRemainAvailable()
     {
         var styles = File.ReadAllText(Path.Combine(FindRepositoryRoot(), "src", "PbiAssure.Web", "wwwroot", "css", "app.css"));
-
-        Assert.Contains(".report-cards { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr));", styles, StringComparison.Ordinal);
-        var narrow = styles[styles.IndexOf("@media (max-width: 46rem)", StringComparison.Ordinal)..];
-        narrow = narrow[..narrow.IndexOf("@media", 1, StringComparison.Ordinal)];
-        Assert.Contains(".report-cards { grid-template-columns: minmax(0, 1fr); }", narrow, StringComparison.Ordinal);
-        var phone = styles[styles.IndexOf("@media (max-width: 34rem)", StringComparison.Ordinal)..];
-        Assert.Contains(".report-card-actions { flex-direction: column; align-items: stretch; }", phone, StringComparison.Ordinal);
-        // The export area is not a third accent card.
-        var exportRule = styles[styles.IndexOf(".export-area {", StringComparison.Ordinal)..];
-        exportRule = exportRule[..exportRule.IndexOf('}', StringComparison.Ordinal)];
-        Assert.Contains("border: 1px solid var(--pa-line);", exportRule, StringComparison.Ordinal);
-        Assert.Contains("background: var(--pa-surface);", exportRule, StringComparison.Ordinal);
-        var cardRule = styles[styles.IndexOf(".report-card {", StringComparison.Ordinal)..];
-        cardRule = cardRule[..cardRule.IndexOf('}', StringComparison.Ordinal)];
-        Assert.Contains("var(--pa-accent-line)", cardRule, StringComparison.Ordinal);
-        // The status line is always in the document, so a live region exists before it is filled.
+        Assert.Contains(".other-outputs { grid-template-columns: minmax(0, 1fr); }", styles, StringComparison.Ordinal);
+        Assert.Contains(".report-card-actions { flex-direction: column; align-items: stretch; }", styles, StringComparison.Ordinal);
         Assert.Contains(".report-card-status:empty { padding: 0; border: 0; }", styles, StringComparison.Ordinal);
-        // Nothing from the retired banner layout survives.
-        Assert.DoesNotContain(".output-primary", styles, StringComparison.Ordinal);
-        Assert.DoesNotContain(".output-secondary", styles, StringComparison.Ordinal);
+        Assert.DoesNotContain(".report-card {", styles, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -181,7 +156,7 @@ public sealed class WebReportActionsSurfaceTests
     {
         var start = markup.IndexOf("<section class=\"output-actions\"", StringComparison.Ordinal);
         Assert.True(start > markup.IndexOf("@if (inventory is not null)", StringComparison.Ordinal));
-        var end = markup.IndexOf("<section class=\"results\"", start, StringComparison.Ordinal);
+        var end = markup.IndexOf("<div class=\"setup-support", start, StringComparison.Ordinal);
         return markup[start..end];
     }
 

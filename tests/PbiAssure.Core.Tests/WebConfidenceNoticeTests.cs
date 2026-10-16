@@ -82,8 +82,8 @@ public sealed class WebConfidenceNoticeTests
     [Fact]
     public void TheNoticeRoutesToAnalysisCoverageInTheExistingReport()
     {
-        Assert.Contains("Analysis coverage", WebConfidenceSummary.Guidance, StringComparison.Ordinal);
-        Assert.Contains("interactive report", WebConfidenceSummary.Guidance, StringComparison.Ordinal);
+        Assert.Contains("What was checked", WebConfidenceSummary.Guidance, StringComparison.Ordinal);
+        Assert.Contains("report", WebConfidenceSummary.Guidance, StringComparison.Ordinal);
         Assert.Equal("Checks limited for some results", WebConfidenceSummary.Headline);
         Assert.Equal(
             "Checks limited means missing or partly understood metadata could affect this result. The usage classification has not changed.",
@@ -91,9 +91,9 @@ public sealed class WebConfidenceNoticeTests
 
         var markup = HomeMarkup();
         // The route reuses the report action already on this page rather than a new app route.
-        Assert.Contains("Open interactive report", markup, StringComparison.Ordinal);
+        Assert.Contains("Open report", markup, StringComparison.Ordinal);
         Assert.DoesNotContain("href=\"coverage\"", ResultsSection(markup), StringComparison.Ordinal);
-        Assert.Contains("@WebConfidenceSummary.Explanation", ResultsSection(markup), StringComparison.Ordinal);
+        Assert.DoesNotContain("@WebConfidenceSummary.Explanation", ResultsSection(markup), StringComparison.Ordinal);
     }
 
     /// <summary>
@@ -171,7 +171,7 @@ public sealed class WebConfidenceNoticeTests
         FindRepositoryRoot(), "src", "PbiAssure.Web", "Pages", "Home.razor"));
 
     private static string ResultsSection(string markup) =>
-        ExtractBetween(markup, "<section class=\"results\"", "<h3>Project</h3>");
+        ExtractBetween(markup, "<section class=\"output-actions\"", "<h3 id=\"other-outputs-heading\">");
 
     private static string ExtractBetween(string value, string start, string end)
     {

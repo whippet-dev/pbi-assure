@@ -1,5 +1,5 @@
 @page "/"
-@using System.Diagnostics
+@implements IAsyncDisposable
 @using System.Text.Json
 @using Microsoft.JSInterop
 @using PbiAssure.Core.Inventory
@@ -17,51 +17,101 @@
         <h1 id="page-title" tabindex="-1">@(HasProject ? selection!.DisplayName : "Understand your Power BI project")</h1>
         @if (!HasProject)
         {
-            <p class="page-lede">PBI Assure gives you a read-only snapshot of your Power BI project — how it is built, what is being used, and what may be worth investigating. <strong>Your Power BI project is not changed.</strong></p>
-            <h2 class="orientation-heading">What can I use PBI Assure for?</h2>
-            <ul class="orientation-outcomes">
-                <li>Find columns, measures and other model items that do not appear to be used</li>
-                <li>See which pages and visuals use a particular column or measure</li>
-                <li>Understand what depends on what across measures, tables and Power Query</li>
-                <li>See how tables relate to one another, and where security roles apply</li>
-                <li>Check selected accessibility settings and theme differences</li>
-                <li>Export a data catalogue and a usage list to work through in Excel</li>
-            </ul>
-            <p class="coverage-pointer">Want the technical detail? <a href="coverage">See exactly what PBI Assure analyses</a>.</p>
+            <p class="page-lede">Explore model usage, dependencies and report structure.</p>
         }
     </header>
 
-    @if (!HasProject || !string.IsNullOrWhiteSpace(message))
-    {
-        <p class="supported-input"><strong>What do I need?</strong> Choose a Power BI Project (<code>.pbip</code>) folder. PBI Assure reads the report and model files inside it on your device. Only have a <code>.pbix</code> file? Save it as a Power BI Project first — <strong>Check or prepare your Power BI project</strong> below shows how.</p>
-    }
-
-    @if (HasProject)
-    {
-        <div class="project-bar" role="group" aria-label="Project status and actions" aria-live="polite">
-            <div class="project-bar-identity">
-                <p class="project-bar-facts">@selection!.Files.Count files · @FormatBytes(selection.TotalBytes)</p>
-            </div>
-            <div class="project-bar-actions">
-                <button class="@(HasResults ? "secondary-button" : null)" @onclick="RunAssuranceAsync" disabled="@isBusy">@RunLabel</button>
-                <button class="secondary-button" @onclick="() => ChooseProjectAsync(false)" disabled="@isBusy">Change project</button>
-            </div>
-        </div>
-    }
-    else
+    @if (!HasProject)
     {
         <div class="picker">
+            <p id="folder-selection-help">Choose the folder containing your <code>.pbip</code> file. PBI Assure creates a standalone HTML report.</p>
             <div class="picker-actions">
-                <button @onclick="() => ChooseProjectAsync(false)" disabled="@isBusy">Choose Power BI project</button>
+                <button @onclick="() => ChooseProjectAsync(false)" disabled="@isBusy" aria-describedby="@PickerDescription">Choose project folder</button>
             </div>
-            <p class="privacy"><strong>Kept on this device:</strong> your Power BI project is processed locally in your browser. Project files and analysis results are not uploaded to PBI Assure. <a href="https://github.com/whippet-dev/pbi-assure/blob/master/PRIVACY.md" target="_blank" rel="noopener noreferrer">How privacy works</a>.</p>
+            <p class="privacy"><strong>Processed locally:</strong> your Power BI project is processed in your browser. Your project is not changed. Project files and analysis results are not uploaded to PBI Assure. <a href="https://github.com/whippet-dev/pbi-assure/blob/master/PRIVACY.md" target="_blank" rel="noopener noreferrer">How privacy works</a>.</p>
         </div>
+    }
+
+    @if (HasProject && !HasResults)
+    {
+        <div class="project-bar" role="group" aria-label="Project status and actions" aria-busy="@(IsAnalysing ? "true" : "false")">
+            <p class="project-bar-facts">@selection!.Files.Count metadata files · @FormatBytes(selection.TotalBytes)</p>
+            <div class="project-bar-actions">
+                <button @ref="analysisTrigger" @onclick="RunAssuranceAsync" disabled="@isBusy" aria-describedby="@ProjectMessageId">@RunLabel</button>
+                <button class="secondary-button" @onclick="() => ChooseProjectAsync(false)" disabled="@isBusy" aria-describedby="@ProjectMessageId">Change project</button>
+            </div>
+        </div>
+    }
+
+    <p id="analysis-status" class="analysis-status @(IsAnalysing ? null : "visually-hidden")" role="status" aria-live="polite" aria-atomic="true">@analysisStatus</p>
+    @if (!string.IsNullOrWhiteSpace(message))
+    {
+        <p id="project-message" class="message" role="alert">@message</p>
+    }
+
+    @if (inventory is not null)
+    {
+        var confidence = WebConfidenceSummary.FromInventory(inventory);
+        <section class="output-actions" aria-labelledby="output-actions-heading" aria-busy="@(IsAnalysing ? "true" : "false")">
+            <h2 id="output-actions-heading" tabindex="-1" @ref="completionHeading">Analysis complete</h2>
+            <p class="output-project">@selection!.DisplayName · @CountLabel(inventory.ReportCount, "report") · @CountLabel(inventory.PageCount, "page") · @CountLabel(inventory.VisualCount, "visual")</p>
+            <section class="primary-report" aria-labelledby="interactive-report-heading">
+                <h3 id="interactive-report-heading" class="visually-hidden">Report</h3>
+                <p id="interactive-report-help">Explore model usage, dependencies, report structure and findings.</p>
+                <div class="report-card-actions">
+                    <button @onclick="OpenHtmlAsync" disabled="@isBusy" aria-describedby="interactive-report-help">Open report</button>
+                    <button class="secondary-button" @onclick="DownloadHtmlAsync" disabled="@isBusy">Download report</button>
+                </div>
+                <p class="report-card-status" role="status">@interactiveReportMessage</p>
+            </section>
+            @if (confidence.HasQualifiedAbsence)
+            {
+                <p class="confidence-notice"><strong>@WebConfidenceSummary.Headline</strong> @WebConfidenceSummary.Guidance</p>
+            }
+            <p class="output-note">Reports open in a new tab. Download the HTML to keep or share this report. The app and viewer URLs do not preserve this analysis.</p>
+            <p class="sensitivity"><strong>Before sharing:</strong> generated HTML and CSV files may contain sensitive project metadata, including paths, expressions, source details and model/report metadata. Review before sharing; outputs are not automatically redacted.</p>
+            <h3 id="other-outputs-heading">Other outputs</h3>
+            <div class="other-outputs" role="group" aria-labelledby="other-outputs-heading">
+                <section class="report-secondary" aria-labelledby="unused-review-heading">
+                    <h4 id="unused-review-heading">Apparently unused review</h4>
+                    <p id="unused-review-help">Review model items with no report or semantic-model usage found in this project.</p>
+                    <div class="report-card-actions">
+                        <button class="secondary-button" @onclick="OpenUnusedReviewAsync" disabled="@isBusy" aria-describedby="unused-review-help">Review apparently unused (@inventory.DeveloperApparentlyUnusedSemanticObjectCount)</button>
+                        <button class="secondary-button" @onclick="DownloadUnusedReviewAsync" disabled="@isBusy">Download <span class="visually-hidden">apparently unused </span>review</button>
+                    </div>
+                    <p class="report-card-status" role="status">@unusedReviewMessage</p>
+                </section>
+            <section class="export-area" aria-labelledby="export-data-heading">
+                <h4 id="export-data-heading">Export data</h4>
+                <p id="export-data-help">Export a Data Catalogue or Usage Mapping CSV for further work.</p>
+                <button class="secondary-button" @ref="exportToggle" @onclick="ToggleExportPanel" disabled="@isBusy" aria-expanded="@(exportPanelOpen ? "true" : "false")" aria-describedby="export-data-help">Export data</button>
+                <details class="summary-help legacy-output">
+                    <summary>Advanced: legacy export</summary>
+                    <div class="output-action">
+                        <p>The existing fixed semantic-usage CSV remains available for technical and compatibility workflows.</p>
+                        <button @onclick="DownloadCsvAsync" class="secondary-button" disabled="@isBusy">Download semantic usage CSV</button>
+                        <p class="report-card-status" role="status">@legacyCsvMessage</p>
+                    </div>
+                </details>
+            </section>
+            </div>
+                @if (exportPanelOpen && selection is not null)
+                {
+                    <ExportCsvPanel @key="exportPanelKey" Inventory="@inventory" ProjectDisplayName="@selection.DisplayName"
+                                    OnClose="CloseExportPanelAsync" />
+                }
+            <div class="project-bar-actions result-project-actions" role="group" aria-label="Project actions">
+                <button class="secondary-button" @ref="analysisTrigger" @onclick="RunAssuranceAsync" disabled="@isBusy" aria-describedby="@ProjectMessageId">@RunLabel</button>
+                <button class="secondary-button" @onclick="() => ChooseProjectAsync(false)" disabled="@isBusy" aria-describedby="@ProjectMessageId">Change project</button>
+            </div>
+        </section>
     }
 
     <div class="setup-support @(HasProject ? "setup-support-compact" : null)">
         <details class="guidance-panel">
             <summary>Check or prepare your Power BI project</summary>
             <div class="guidance-content">
+                <p>Only have a <code>.pbix</code> file? Save it as a Power BI Project first.</p>
                 <p class="guidance-intro">PBIR and TMDL store the report and semantic model as structured project files that PBI Assure can analyse locally in your browser.</p>
                 <div class="guidance-steps">
                     <ol>
@@ -88,162 +138,6 @@
         </details>
     </div>
 
-    @if (!string.IsNullOrWhiteSpace(message))
-    {
-        <p class="message" role="alert">@message</p>
-    }
-
-    @if (inventory is not null)
-    {
-        var assurance = WebAssuranceSummary.FromFindings(inventory.Findings);
-        var confidence = WebConfidenceSummary.FromInventory(inventory);
-        <section class="output-actions" aria-labelledby="output-actions-heading">
-            <h2 id="output-actions-heading">Analysis complete</h2>
-            <p class="output-lede">Explore your project, review apparently unused items, or export metadata for further work.</p>
-            <div class="report-cards">
-                <section class="report-card" aria-labelledby="interactive-report-heading">
-                    <h3 id="interactive-report-heading">Interactive report</h3>
-                    <p id="interactive-report-help">Explore model usage, dependencies, report structure and findings.</p>
-                    <div class="report-card-actions">
-                        <button @onclick="OpenHtmlAsync" disabled="@isBusy" aria-describedby="interactive-report-help">Open interactive report</button>
-                        <button class="secondary-button" @onclick="DownloadHtmlAsync" disabled="@isBusy">Download <span class="visually-hidden">interactive </span>report</button>
-                    </div>
-                    <p class="report-card-status" role="status">@interactiveReportMessage</p>
-                </section>
-                <section class="report-card" aria-labelledby="unused-review-heading">
-                    <h3 id="unused-review-heading">Apparently unused review</h3>
-                    <p id="unused-review-help">Review model items with no report or semantic-model usage found in this project.</p>
-                    <div class="report-card-actions">
-                        <button @onclick="OpenUnusedReviewAsync" disabled="@isBusy" aria-describedby="unused-review-help">Review apparently unused (@inventory.DeveloperApparentlyUnusedSemanticObjectCount)</button>
-                        <button class="secondary-button" @onclick="DownloadUnusedReviewAsync" disabled="@isBusy">Download <span class="visually-hidden">apparently unused </span>review</button>
-                    </div>
-                    <p class="report-card-status" role="status">@unusedReviewMessage</p>
-                </section>
-            </div>
-            <p class="output-note">Reports open in a new tab. Downloads are self-contained HTML files.</p>
-            <section class="export-area" aria-labelledby="export-data-heading">
-                <h3 id="export-data-heading">Export data</h3>
-                <p id="export-data-help">Export a Data Catalogue or Usage Mapping CSV for further work.</p>
-                <button class="secondary-button" @ref="exportToggle" @onclick="ToggleExportPanel" disabled="@isBusy" aria-expanded="@(exportPanelOpen ? "true" : "false")" aria-describedby="export-data-help">Export data</button>
-                @if (exportPanelOpen && selection is not null)
-                {
-                    <ExportCsvPanel @key="exportPanelKey" Inventory="@inventory" ProjectDisplayName="@selection.DisplayName"
-                                    OnClose="CloseExportPanelAsync" />
-                }
-                <details class="summary-help legacy-output">
-                    <summary>Advanced: legacy export</summary>
-                    <div class="output-action">
-                        <p>The existing fixed semantic-usage CSV remains available for technical and compatibility workflows.</p>
-                        <button @onclick="DownloadCsvAsync" class="secondary-button" disabled="@isBusy">Download semantic usage CSV</button>
-                        <p class="report-card-status" role="status">@legacyCsvMessage</p>
-                    </div>
-                </details>
-            </section>
-            <p class="sensitivity"><strong>Before sharing generated outputs:</strong> HTML and CSV files may contain sensitive project metadata, including paths, expressions, source details and model/report metadata. Review before sharing; outputs are not automatically redacted.</p>
-        </section>
-
-        <section class="results" aria-labelledby="results-title">
-            <h2 id="results-title">Analysis summary</h2>
-            <details class="summary-help summary-guide">
-                <summary>How to read these results</summary>
-                <div class="summary-guide-groups">
-                    <section>
-                        <h4>Semantic usage</h4>
-                        <dl>
-                            <div class="metric-used"><dt>Directly used</dt><dd>Used somewhere in the report, such as a visual, filter, tooltip or drillthrough setting.</dd></div>
-                            <div class="metric-indirect"><dt>Indirectly used</dt><dd>Not used directly in the report, but needed by something that is.</dd></div>
-                            <div class="metric-structural"><dt>Structurally required</dt><dd>Needed for the model to work, for example in a relationship, hierarchy or sort-by setting.</dd></div>
-                            <div class="metric-branch"><dt>Only used by unused items</dt><dd>Only used by other model items that themselves have no detected report usage.</dd></div>
-                            <div class="metric-unused"><dt>Apparently unused</dt><dd>No report or semantic-model usage was found in this project. Power Query preparation evidence may still exist. Check before removing it because external reports and dynamic behaviour may not be visible here.</dd></div>
-                        </dl>
-                    </section>
-                    <section>
-                        <h4>Project</h4>
-                        <dl>
-                            <div><dt>Reports</dt><dd>Reports found in the analysed project.</dd></div>
-                            <div><dt>Pages</dt><dd>Report pages found across those reports.</dd></div>
-                            <div><dt>Visuals</dt><dd>Visuals found on those pages.</dd></div>
-                            <div><dt>Your model objects</dt><dd>Columns, measures and other model objects that you authored.</dd></div>
-                            <div><dt>System-generated model objects</dt><dd>Objects Power BI generated itself, counted separately from your own.</dd></div>
-                        </dl>
-                    </section>
-                    <section>
-                        <h4>Power Query</h4>
-                        <dl>
-                            <div><dt>Power Query queries</dt><dd>Power Query queries found in this project.</dd></div>
-                            <div><dt>Data source types</dt><dd>Different types of recognised data sources used by those queries. This is not the number of individual connections.</dd></div>
-                            <div><dt>Data source references</dt><dd>Recognised data source functions found in Power Query, counted once per query and function. This is not a count of physical connections either.</dd></div>
-                        </dl>
-                    </section>
-                    <section>
-                        <h4>Assurance</h4>
-                        <dl>
-                            <div class="metric-error"><dt>Errors</dt><dd>Higher-confidence issues that would normally merit attention.</dd></div>
-                            <div class="metric-warning"><dt>Warnings</dt><dd>Potential problems, good-practice concerns or lower-confidence issues worth reviewing.</dd></div>
-                            <div class="metric-review"><dt>Review required</dt><dd>Situations that need human judgement or contextual review; they are not necessarily defects.</dd></div>
-                            <div><dt>Total findings</dt><dd>All non-accessibility issues and review items found by the automated checks.</dd></div>
-                        </dl>
-                        <p class="summary-guide-note">Accessibility observations are not part of these counts. They stay in the interactive report’s Accessibility review.</p>
-                    </section>
-                </div>
-            </details>
-            <div class="summary-group">
-                <h3>Semantic usage</h3>
-                <p>How model objects are used by the report and by one another.</p>
-            </div>
-            <div class="metrics">
-                <Metric Label="Directly used" Value="@UsageCount(SemanticUsageStates.DirectlyUsed)" State="used" />
-                <Metric Label="Indirectly used" Value="@UsageCount(SemanticUsageStates.IndirectlyUsed)" State="indirect" />
-                <Metric Label="Structurally required" Value="@UsageCount(SemanticUsageStates.StructurallyRequired)" State="structural" />
-                <Metric Label="Only used by unused items" Value="@UsageCount(SemanticUsageStates.UsedOnlyByUnusedBranch)" State="branch" />
-                <Metric Label="Apparently unused" Value="@inventory.DeveloperApparentlyUnusedSemanticObjectCount" State="unused" />
-            </div>
-            @if (confidence.HasQualifiedAbsence)
-            {
-                <p class="confidence-notice">
-                    <strong>@WebConfidenceSummary.Headline</strong>
-                    @confidence.Detail @WebConfidenceSummary.Explanation @WebConfidenceSummary.Guidance
-                </p>
-            }
-            <details class="summary-help">
-                <summary>What does “Apparently unused” mean?</summary>
-                <p>No report or semantic-model usage was found in this project. Power Query preparation evidence may still exist. This does not prove it is safe to delete; external reports and dynamic behaviour may not be visible here.</p>
-            </details>
-            <div class="summary-group">
-                <h3>Project</h3>
-                <p>Counts of the report, pages, visuals and model objects found.</p>
-            </div>
-            <div class="metrics project-metrics">
-                <Metric Label="Reports" Value="@inventory.ReportCount" />
-                <Metric Label="Pages" Value="@inventory.PageCount" />
-                <Metric Label="Visuals" Value="@inventory.VisualCount" />
-                <Metric Label="Your model objects" Value="@inventory.DeveloperSemanticObjectCount" />
-                <Metric Label="System-generated model objects" Value="@inventory.SystemGeneratedSemanticObjectCount" />
-            </div>
-            <div class="summary-group">
-                <h3>Power Query</h3>
-                <p>Queries and recognised data-source references found in the project.</p>
-            </div>
-            <div class="metrics power-query-metrics">
-                <Metric Label="Power Query queries" Value="@inventory.PowerQueryCount" />
-                <Metric Label="Data source types" Value="@inventory.DistinctConnectorFamilyCount" />
-                <Metric Label="Data source references" Value="@inventory.DataSourceCount" />
-            </div>
-            <div class="summary-group">
-                <h3>Assurance</h3>
-                <p>Non-accessibility issues and review items found by the automated checks.</p>
-            </div>
-            <div class="metrics">
-                <Metric Label="Errors" Value="@assurance.Errors" State="error" />
-                <Metric Label="Warnings" Value="@assurance.Warnings" State="warning" />
-                <Metric Label="Review required" Value="@assurance.ReviewRequired" State="review" />
-                <Metric Label="Total findings" Value="@assurance.TotalFindings" />
-            </div>
-            <p class="metrics-note">Accessibility observations are excluded from these Assurance counts and remain available separately in the interactive report’s Accessibility review.</p>
-        </section>
-
-        <p class="diagnostic">@TimingSummary</p>
-    }
 </section>
 
 @code {
@@ -257,13 +151,6 @@
     private string? legacyCsvMessage;
     private ElementReference exportToggle;
     private bool isBusy;
-    private TimeSpan selectionElapsed;
-    private TimeSpan fileReadElapsed;
-    private TimeSpan scanElapsed;
-    private TimeSpan? htmlRenderElapsed;
-    private TimeSpan? csvRenderElapsed;
-    private long htmlLength;
-    private long csvLength;
     private bool exportPanelOpen;
     private int exportPanelKey;
 
@@ -279,39 +166,39 @@
 
     private bool HasResults => inventory is not null;
 
+    private static string CountLabel(int count, string noun) => $"{count:N0} {noun}{(count == 1 ? "" : "s")}";
+
     // The project now stays on screen while a replacement is being chosen, so "busy with a project
     // selected" no longer means a scan is running. Choosing is excluded explicitly.
     private bool IsAnalysing => isBusy && HasProject && !isChoosingProject;
 
-    private string RunLabel => IsAnalysing ? "Analysing…" : HasResults ? "Analyse again" : "Run analysis";
+    private string RunLabel => IsAnalysing ? "Analysing…" : HasResults
+        ? selection!.CanRefresh ? "Analyse again" : "Choose folder again to analyse"
+        : "Run analysis";
 
-    private int UsageCount(string state) => inventory?.DeveloperSemanticObjectCountForState(state) ?? 0;
+    private string? ProjectMessageId => string.IsNullOrWhiteSpace(message) ? null : "project-message";
+    private string PickerDescription => ProjectMessageId is null ? "folder-selection-help" : "folder-selection-help project-message";
+    private string? analysisStatus;
+    private ElementReference analysisTrigger;
+    private ElementReference completionHeading;
+    private bool pendingFocusHandoff;
 
-    private string TimingSummary
+    protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        get
+        if (pendingFocusHandoff && !isBusy)
         {
-            var timings = new List<string>
-            {
-                $"Selection: {selectionElapsed.TotalMilliseconds:N0} ms",
-                $"File read: {fileReadElapsed.TotalMilliseconds:N0} ms",
-                $"Scan: {scanElapsed.TotalMilliseconds:N0} ms",
-            };
-            if (htmlRenderElapsed is { } htmlElapsed)
-            {
-                timings.Add($"HTML: {htmlElapsed.TotalMilliseconds:N0} ms ({FormatBytes(htmlLength)})");
-            }
-
-            if (csvRenderElapsed is { } csvElapsed)
-            {
-                timings.Add($"CSV: {csvElapsed.TotalMilliseconds:N0} ms ({FormatBytes(csvLength)})");
-            }
-
-            return string.Join(" · ", timings);
+            pendingFocusHandoff = false;
+            await JS.InvokeVoidAsync("pbiAssureAnalysisFocus.finish", message is null ? completionHeading : null);
         }
     }
 
-    private async Task ChooseProjectAsync(bool useFallback)
+    public async ValueTask DisposeAsync()
+    {
+        try { await JS.InvokeVoidAsync("pbiAssureAnalysisFocus.cancel"); }
+        catch (JSException) { }
+    }
+
+    private async Task<bool> ChooseProjectAsync(bool useFallback)
     {
         isBusy = true;
         isChoosingProject = true;
@@ -319,7 +206,6 @@
         ClearActionFeedback();
         try
         {
-            var stopwatch = Stopwatch.StartNew();
             // Nothing on screen is cleared up front. A picker that is cancelled or fails leaves the
             // project, its analysis and its export configuration exactly where they were.
             var outcome = await BrowserProjectSelectionWorkflow.ChooseAsync(
@@ -328,8 +214,9 @@
             message = outcome.Message;
             if (outcome.Replaced)
             {
-                selectionElapsed = stopwatch.Elapsed;
+                analysisStatus = null;
             }
+            return outcome.Replaced;
         }
         finally
         {
@@ -362,41 +249,42 @@
 
     private async Task RunAssuranceAsync()
     {
+        if (isBusy) return;
         var action = BrowserProjectAnalysis.Decide(selection, HasResults);
         if (action == BrowserProjectRerunAction.None)
         {
             return;
         }
 
+        await JS.InvokeVoidAsync("pbiAssureAnalysisFocus.begin", analysisTrigger);
         if (action == BrowserProjectRerunAction.RequiresReselection)
         {
-            // The result already on screen stays: it was true of the folder when it was read.
-            message = BrowserProjectAnalysis.ReselectionRequiredMessage;
-            return;
+            // Reselect through the existing staged workflow. Failure leaves the previous result intact.
+            if (!await ChooseProjectAsync(true))
+            {
+                await JS.InvokeVoidAsync("pbiAssureAnalysisFocus.cancel");
+                return;
+            }
+            action = BrowserProjectRerunAction.Analyse;
         }
 
         isBusy = true;
+        analysisStatus = "Analysing your project…";
         message = null;
         ClearActionFeedback();
+        StateHasChanged();
         try
         {
-            var readStopwatch = Stopwatch.StartNew();
             // Analysing again re-enumerates the folder first, so files saved since the last run are
             // found and deleted ones stop being read. Nothing is scanned until that has validated.
             var prepared = await BrowserProjectAnalysis.PrepareAsync(
                 selection!, fileAccess, action == BrowserProjectRerunAction.RefreshThenAnalyse);
             selection = prepared.Selection;
 
-            fileReadElapsed = readStopwatch.Elapsed;
-            var scanStopwatch = Stopwatch.StartNew();
             inventory = ProjectScanner.Scan(new InMemoryProjectFileSource(selection.DisplayName, prepared.Files));
             exportPanelOpen = false;
             exportPanelKey++;
-            scanElapsed = scanStopwatch.Elapsed;
-            htmlRenderElapsed = null;
-            csvRenderElapsed = null;
-            htmlLength = 0;
-            csvLength = 0;
+            analysisStatus = $"Analysis complete for {selection.DisplayName}.";
         }
         catch (BrowserProjectSelectionException exception)
         {
@@ -405,7 +293,7 @@
         }
         catch (UnsupportedProjectInputException exception)
         {
-            message = exception.Message;
+            message = exception.Message.Replace("assurance output", "report", StringComparison.OrdinalIgnoreCase);
             inventory = null;
         }
         catch (Exception exception) when (exception is InvalidDataException or JsonException or ArgumentException or IOException)
@@ -432,6 +320,8 @@
         finally
         {
             isBusy = false;
+            if (message is not null) analysisStatus = null;
+            pendingFocusHandoff = true;
         }
     }
 
@@ -478,10 +368,7 @@
         interactiveReportMessage = null;
         try
         {
-            var stopwatch = Stopwatch.StartNew();
             var html = HtmlReportRenderer.Render(inventory);
-            htmlRenderElapsed = stopwatch.Elapsed;
-            htmlLength = System.Text.Encoding.UTF8.GetByteCount(html);
             await JS.InvokeVoidAsync("pbiAssureDownload.save", BrowserDownloadFileNames.Html(selection.DisplayName), "text/html;charset=utf-8", html);
             interactiveReportMessage = WebReportViewerStatus.DownloadStarted(WebReportKind.InteractiveReport);
         }
@@ -501,10 +388,7 @@
         interactiveReportMessage = WebReportViewerStatus.Opening(WebReportKind.InteractiveReport);
         try
         {
-            var stopwatch = Stopwatch.StartNew();
             var html = HtmlReportRenderer.Render(inventory);
-            htmlRenderElapsed = stopwatch.Elapsed;
-            htmlLength = System.Text.Encoding.UTF8.GetByteCount(html);
             // Resolves only once the viewer acknowledges the report, so success is never claimed for
             // a tab that opened but never received anything.
             var status = await JS.InvokeAsync<string>("pbiAssureDownload.open", "text/html;charset=utf-8", html);
@@ -571,11 +455,8 @@
         legacyCsvMessage = null;
         try
         {
-            var stopwatch = Stopwatch.StartNew();
             var csv = SemanticUsageCsvRenderer.Render(inventory);
-            csvRenderElapsed = stopwatch.Elapsed;
             var csvWithBom = "\uFEFF" + csv;
-            csvLength = System.Text.Encoding.UTF8.GetByteCount(csvWithBom);
             await JS.InvokeVoidAsync("pbiAssureDownload.save", BrowserDownloadFileNames.SemanticUsageCsv(selection.DisplayName), "text/csv;charset=utf-8", csvWithBom);
             legacyCsvMessage = "Download started: semantic usage CSV.";
         }

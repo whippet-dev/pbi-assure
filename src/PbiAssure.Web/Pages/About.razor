@@ -40,7 +40,7 @@
         <section aria-labelledby="about-understand">
             <h3 id="about-understand">What can it help me understand?</h3>
             <ul>
-                <li>Find model objects with no detected usage. <strong>Apparently unused</strong> means no report or semantic-model usage was found in the scanned project — not permission to delete, and Power Query preparation evidence may still exist.</li>
+                <li>Find model objects with no detected usage. <strong>Apparently unused</strong> means no report or semantic-model usage was found in the analysed project — not permission to delete, and Power Query preparation evidence may still exist.</li>
                 <li>Explore <strong>semantic usage</strong>: objects used directly by the report, needed indirectly by another object, or required by model structure.</li>
                 <li>Trace where fields and measures are used across report pages and visuals, and follow their semantic dependencies.</li>
                 <li>Understand Power Query dependencies, review model relationships, and inspect report, page and visual metadata.</li>
@@ -53,16 +53,16 @@
              aria-labelledby="@TabId(Outputs)" hidden="@(active.Fragment != Outputs.Fragment)">
         <h2>@Outputs.Label</h2>
         <section aria-labelledby="about-outputs">
-            <h3 id="about-outputs">What do I get after a scan?</h3>
-            <p>One analysis, offered three ways. Choose by the task in front of you: full exploration, a cleanup review, or export work. The two reports and the exports all read the same analysis; none runs a separate one.</p>
+            <h3 id="about-outputs">What do I get after analysis?</h3>
+            <p>Open the report to explore your analysis. The apparently unused review and CSV exports are secondary outputs for focused review or further work. All outputs use the same analysis.</p>
             <div class="information-outputs">
                 <div class="information-output information-output-primary">
                     <p class="information-output-kicker">Full exploration</p>
                     <h4>Interactive report</h4>
-                    <p>Explore semantic usage, dependency evidence, Power Query, relationships and the report/page/visual inventory, with findings, specialist reviews and Analysis coverage alongside them. Open it in a new tab or download it as a self-contained HTML file.</p>
+                    <p>Explore semantic usage, dependency evidence, Power Query, relationships and the report/page/visual inventory, with findings, specialist reviews and What was checked alongside them. Open it in a new tab or download it as a self-contained HTML file.</p>
                 </div>
-                <div class="information-output information-output-primary">
-                    <p class="information-output-kicker">Cleanup review</p>
+                <div class="information-output">
+                    <p class="information-output-kicker">Focused review</p>
                     <h4>Apparently unused review</h4>
                     <p>A focused working list of the model items you authored for which no report or semantic-model usage was found in this project. Power Query preparation evidence may still exist, and the list is a review candidate, not a deletion recommendation. It is a focused view of the same analysis as the interactive report, not a separate analysis engine. Open it in a new tab or download it as a self-contained HTML file.</p>
                 </div>
@@ -81,7 +81,7 @@
             <ol>
                 <li>Prepare and select a supported structured Power BI project. Analyse includes preparation guidance.</li>
                 <li>Run the analysis.</li>
-                <li>Choose the route that fits your task: open the interactive report to explore the project, open the Apparently unused review to work through cleanup candidates, or export CSV metadata for further work. None of these has to come first.</li>
+                <li>Open the report to explore the project. Use the Apparently unused review or CSV exports when you need a focused review or metadata for further work.</li>
                 <li>Review the evidence in context before making changes.</li>
                 <li>Check generated files for sensitive metadata before sharing.</li>
             </ol>
@@ -94,17 +94,17 @@
         <section class="information-panel" aria-labelledby="about-limitations">
             <h3 id="about-limitations">Important limitations</h3>
             <ul>
-                <li><strong>Apparently unused does not mean safe to delete.</strong> PBI Assure sees the scanned project, not every external report or service dependency.</li>
+                <li><strong>Apparently unused does not mean safe to delete.</strong> PBI Assure sees the analysed project, not every external report or service dependency.</li>
                 <li>Metadata analysis does not validate runtime data correctness, refresh success or data quality.</li>
                 <li>Where analysis is bounded, PBI Assure says so rather than implying completeness. <a href="coverage">Coverage</a> sets out what is read from a project, area by area, and the local boundaries of each.</li>
             </ul>
         </section>
         <section class="information-panel" aria-labelledby="about-privacy">
             <h3 id="about-privacy">Privacy and read-only analysis</h3>
-            <p>Selected project metadata is processed in your browser. Normal project selection and scanning are read-only: PBI Assure does not modify the selected source project. The application code does not upload selected project content or generated results as part of scanning or export.</p>
+            <p>Selected project metadata is processed in your browser. Normal project selection and analysis are read-only: PBI Assure does not modify the selected source project. The application code does not upload selected project content or generated results as part of analysis or export.</p>
             <p>Projects and results are held in application memory, not application-managed persistent browser storage. Leaving or reloading Analyse loses that working state; secure memory deletion is not guaranteed. Downloads may contain sensitive metadata, so review them before sharing.</p>
             <p>The only value PBI Assure stores in your browser is your Light, Dark or System appearance choice, so that the application and the reports it generates keep the appearance you picked. No project content or analysis result is stored.</p>
-            <p>Loading the website requires normal site/runtime requests, and online HTML viewing can request a static same-origin viewer shell. Hosting infrastructure can receive ordinary request metadata. Offline scanning has been tested after the application has loaded; this is not a promise of zero network traffic or offline first-load availability.</p>
+            <p>Loading the website requires normal site/runtime requests, and online HTML viewing can request a static same-origin viewer shell. Hosting infrastructure can receive ordinary request metadata. Offline analysis has been tested after the application has loaded; this is not a promise of zero network traffic or offline first-load availability.</p>
             <p><a href="https://github.com/whippet-dev/pbi-assure/blob/master/PRIVACY.md" target="_blank" rel="noopener noreferrer">Read the detailed privacy statement (opens in new tab)</a>.</p>
         </section>
     </section>

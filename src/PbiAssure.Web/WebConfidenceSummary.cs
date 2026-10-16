@@ -34,9 +34,9 @@ public sealed record WebConfidenceSummary(int QualifiedAbsenceCount)
     public static string Explanation =>
         "Checks limited means missing or partly understood metadata could affect this result. The usage classification has not changed.";
 
-    /// <summary>The route to the detail, which lives in the report's Analysis coverage section.</summary>
+    /// <summary>The route to the detail in the accepted report.</summary>
     public static string Guidance =>
-        "Open the interactive report and review Analysis coverage before making cleanup decisions.";
+        "See What was checked in the report.";
 
     public static WebConfidenceSummary FromInventory(ProjectInventory inventory)
     {

@@ -9,7 +9,7 @@
         <p class="eyebrow">Model intelligence</p>
         <h1 id="coverage-title" tabindex="-1">What PBI Assure analyses</h1>
         <p>Coverage describes what is read from the files in a local Power BI project, and where the evidence in those files runs out. Everything below is what this version does today.</p>
-        <p class="coverage-distinction">This page describes the checks PBI Assure supports. Your report’s <strong>Analysis coverage</strong> explains any limitations found in your project.</p>
+        <p class="coverage-distinction">This page describes the checks PBI Assure supports. Your report’s <strong>What was checked</strong> explains any limitations found in your project.</p>
         <ul class="coverage-scope" aria-label="Project files PBI Assure reads">
             <li><span>PBIP</span> the project launcher and its item folders</li>
             <li><span>PBIR</span> the report definition: pages, visuals, filters, bookmarks</li>
@@ -142,7 +142,7 @@
                 <p>Where a query is deterministically associated with a persisted incremental refresh policy, that association is retained as a dependency.</p>
                 <div class="coverage-boundary">
                     <h3>Boundaries</h3>
-                    <p>PBI Assure reads M; it does not run it. It does not determine query folding, predict whether a refresh would succeed, or test credentials, gateways or connectivity to any source. Nothing in a scan contacts an external system.</p>
+                    <p>PBI Assure reads M; it does not run it. It does not determine query folding, predict whether a refresh would succeed, or test credentials, gateways or connectivity to any source. Nothing in an analysis contacts an external system.</p>
                 </div>
             </div>
         </details>
@@ -309,7 +309,7 @@
             </summary>
             <div class="coverage-detail">
                 <h3>What is analysed</h3>
-                <p>Which theme the report resolves to: a custom theme applied over a base theme, a base theme only, or a configured theme resource that cannot be resolved or read. An unresolvable custom theme is reported as a finding, because the configured local resource is unavailable to this scan. This does not establish how Power BI will render it.</p>
+                <p>Which theme the report resolves to: a custom theme applied over a base theme, a base theme only, or a configured theme resource that cannot be resolved or read. An unresolvable custom theme is reported as a finding, because the configured local resource is unavailable to this analysis. This does not establish how Power BI will render it.</p>
                 <p>Within visuals, three persisted properties are recognised: <strong>title font size</strong>, <strong>title text colour</strong> and <strong>title background colour</strong>. Where several visuals of the same type carry one of those, PBI Assure reports the dominant value and any visual that departs from it — a saved-value difference to investigate, not proof of a manual edit.</p>
                 <p>Saved-versus-theme comparison is narrower again: it currently resolves <strong>title font size on clustered column charts</strong> against the theme's own rule.</p>
                 <div class="coverage-boundary">
@@ -322,7 +322,7 @@
         <details class="coverage-row">
             <summary class="disclosure-marker">
                 <span class="coverage-head">
-                    <span class="coverage-name">Analysis coverage &amp; confidence</span>
+                    <span class="coverage-name">Checks &amp; confidence</span>
                     <span class="coverage-status">Analysed</span>
                 </span>
                 <span class="coverage-lede">What PBI Assure did and did not read in your project, and how that changes its conclusions.</span>
@@ -332,7 +332,7 @@
                 <h3>What is analysed</h3>
                 <p>Definition artefacts that PBI Assure recognises are classified by how they are handled — parsed into the analysis, recognised content this version does not yet parse, packaging content that is correctly not parsed, or unrecognised. Unrecognised dependency-capable artefacts can qualify absence-based conclusions rather than being silently treated as understood.</p>
                 <p>Where a construct is only partly understood, the analysis says which part. Security roles are the clearest example: row-level filters and explicitly named object-level permissions are analysed, and the rest of a role's content is not claimed.</p>
-                <p>This matters most for conclusions based on <em>absence</em>. If a project contains metadata that was not analysed and that could create a dependency, the <strong>Apparently unused</strong> and <strong>Only used by unused items</strong> results that limitation could actually affect are reported as <strong>qualified by limitation</strong> — shown as <strong>Checks limited</strong> — rather than <strong>established</strong>. Where the unread metadata can be tied to particular objects, only those objects are qualified; where it could reach anything in the model, every absence result in that model is. Doubt that concerns only the Power Query graph is recorded in Analysis coverage but does not qualify semantic usage, because no usage state is derived from Power Query references. Established means this scan identified no qualifying limitation within its supported scope; it is not proof of complete knowledge. The usage state does not change; the confidence in it does. Checks limited means missing or partly understood metadata could affect that result, and is a prompt to look at the thing that was not read.</p>
+                <p>This matters most for conclusions based on <em>absence</em>. If a project contains metadata that was not analysed and that could create a dependency, the <strong>Apparently unused</strong> and <strong>Only used by unused items</strong> results that limitation could actually affect are reported as <strong>qualified by limitation</strong> — shown as <strong>Checks limited</strong> — rather than <strong>established</strong>. Where the unread metadata can be tied to particular objects, only those objects are qualified; where it could reach anything in the model, every absence result in that model is. Doubt that concerns only the Power Query graph is recorded in What was checked but does not qualify semantic usage, because no usage state is derived from Power Query references. Established means this analysis identified no qualifying limitation within its supported scope; it is not proof of complete knowledge. The usage state does not change; the confidence in it does. Checks limited means missing or partly understood metadata could affect that result, and is a prompt to look at the thing that was not read.</p>
                 <div class="coverage-boundary">
                     <h3>Boundaries</h3>
                     <p>Coverage reporting describes this version of PBI Assure against your project. It is not a claim that unread metadata does or does not create a dependency — only that it could, and was not analysed.</p>

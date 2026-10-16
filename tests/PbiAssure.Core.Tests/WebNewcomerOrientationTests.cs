@@ -8,63 +8,18 @@ public sealed class WebNewcomerOrientationTests
     /// PBI Assure's own vocabulary belongs on Coverage.
     /// </summary>
     [Fact]
-    public void AnalyseOrientsWithoutReplacingPreparationPickerOrScanActions()
+    public void SelectionComesBeforePreparationWithAnOutputPromiseAndLocalReassurance()
     {
         var home = ReadWeb("Pages/Home.razor");
         Assert.Contains("Understand your Power BI project", home, StringComparison.Ordinal);
-        Assert.Contains("read-only snapshot of your Power BI project", home, StringComparison.Ordinal);
-        Assert.Contains("What can I use PBI Assure for?", home, StringComparison.Ordinal);
-
-        // The things someone can do, named with the Power BI nouns they already use.
-        foreach (var familiar in new[] { "columns, measures", "pages and visuals", "Power Query", "tables relate to one another", "security roles", "accessibility", "data catalogue" })
-        {
-            Assert.Contains(familiar, home, StringComparison.Ordinal);
-        }
-
-        // Read-only is stated as a plain fact, not as a disclaimer.
-        Assert.Contains("Your Power BI project is not changed.", home, StringComparison.Ordinal);
-        Assert.Contains("processed locally in your browser", home, StringComparison.Ordinal);
-
-        // What to select, and the way out for someone holding only a .pbix.
-        Assert.Contains("Power BI Project (<code>.pbip</code>) folder", home, StringComparison.Ordinal);
-        Assert.Contains("<code>.pbix</code> file", home, StringComparison.Ordinal);
-
-        Assert.Contains("href=\"coverage\"", home, StringComparison.Ordinal);
+        Assert.Contains("Choose the folder containing your <code>.pbip</code> file", home, StringComparison.Ordinal);
+        Assert.Contains("standalone HTML report", home, StringComparison.Ordinal);
+        Assert.Contains("Your project is not changed", home, StringComparison.Ordinal);
+        Assert.Contains("Project files and analysis results are not uploaded", home, StringComparison.Ordinal);
+        Assert.True(home.IndexOf(">Choose project folder</button>", StringComparison.Ordinal) < home.IndexOf("guidance-panel", StringComparison.Ordinal));
         foreach (var retained in new[] { "Check or prepare your Power BI project", "folder-example", "<strong>project root</strong>", "ChooseProjectAsync(false)", "ChooseProjectAsync(true)", "RunAssuranceAsync", "projects-overview", "projects-report", "projects-dataset", "How privacy works" })
-        {
             Assert.Contains(retained, home, StringComparison.Ordinal);
-        }
-
-        Assert.DoesNotContain("full assurance", home, StringComparison.OrdinalIgnoreCase);
-        Assert.True(home.IndexOf("<AppNavigation", StringComparison.Ordinal) < home.IndexOf("guidance-panel", StringComparison.Ordinal));
-    }
-
-    /// <summary>
-    /// The implementation vocabulary still exists where it earns its place — inside the preparation
-    /// guidance and on Coverage — but a newcomer meets none of it before choosing a project.
-    /// </summary>
-    [Fact]
-    public void TheNewcomerCopyUsesNoneOfPbiAssuresOwnVocabulary()
-    {
-        var home = ReadWeb("Pages/Home.razor");
-        var newcomerCopy = ExtractBetween(home, "@if (!HasProject)", "@if (HasProject)");
-
-        foreach (var jargon in new[] { "PBIR", "TMDL", "TMSL", "model.bim", ".SemanticModel", "semantic model", "model objects", "metadata" })
-        {
-            Assert.DoesNotContain(jargon, newcomerCopy, StringComparison.OrdinalIgnoreCase);
-        }
-
-        // Nothing here promises completeness or that anything is safe to remove.
-        foreach (var overclaim in new[] { "safe to delete", "unused objects", "fully compliant", "all accessibility" })
-        {
-            Assert.DoesNotContain(overclaim, newcomerCopy, StringComparison.OrdinalIgnoreCase);
-        }
-
-        Assert.Contains("do not appear to be used", newcomerCopy, StringComparison.Ordinal);
-        Assert.Contains("selected accessibility settings and theme differences", newcomerCopy, StringComparison.Ordinal);
-        Assert.DoesNotContain("common accessibility, formatting and theme issues", newcomerCopy, StringComparison.Ordinal);
-        // The detail a reader may still want has a home, and it is not this page.
-        Assert.Contains("TMSL", ExtractBetween(home, "guidance-panel", "</details>"), StringComparison.Ordinal);
+        Assert.DoesNotContain("orientation-outcomes", home, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -77,7 +32,7 @@ public sealed class WebNewcomerOrientationTests
         // "What does it analyse?" moved to /coverage. About must not carry a second copy of it.
         Assert.DoesNotContain("What does it analyse?", about, StringComparison.Ordinal);
         Assert.DoesNotContain("information-definitions", about, StringComparison.Ordinal);
-        foreach (var heading in new[] { "What is PBI Assure?", "What can it help me understand?", "What do I get after a scan?", "Typical workflow", "Important limitations", "Privacy and read-only analysis" })
+        foreach (var heading in new[] { "What is PBI Assure?", "What can it help me understand?", "What do I get after analysis?", "Typical workflow", "Important limitations", "Privacy and read-only analysis" })
         {
             Assert.Contains($">{heading}</h3>", about, StringComparison.Ordinal);
         }
@@ -91,14 +46,14 @@ public sealed class WebNewcomerOrientationTests
         Assert.Contains("no report or semantic-model usage was found in this project", about, StringComparison.Ordinal);
         Assert.Contains("Power Query preparation evidence may still exist", about, StringComparison.Ordinal);
         Assert.Contains("not a separate analysis engine", about, StringComparison.Ordinal);
-        Assert.Contains("Choose the route that fits your task", about, StringComparison.Ordinal);
+        Assert.Contains("Open the report to explore the project", about, StringComparison.Ordinal);
         Assert.DoesNotContain("Start here", about, StringComparison.Ordinal);
         Assert.DoesNotContain("Start with the interactive", about, StringComparison.Ordinal);
         Assert.DoesNotContain("Interactive HTML report", about, StringComparison.Ordinal);
 
         Assert.Contains("class=\"secondary-output\"", about, StringComparison.Ordinal);
         Assert.Contains("does not modify the selected source project", about, StringComparison.Ordinal);
-        Assert.Contains("does not upload selected project content or generated results as part of scanning or export", about, StringComparison.Ordinal);
+        Assert.Contains("does not upload selected project content or generated results as part of analysis or export", about, StringComparison.Ordinal);
         Assert.DoesNotContain("full assurance", about, StringComparison.OrdinalIgnoreCase);
     }
 
