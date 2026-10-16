@@ -6,31 +6,19 @@ import {
   supportingEdges,
   words,
 } from "./data.js";
+import { escape, icon, glyph } from "./ui.js";
+import { reportContext, visualLabel } from "./report-data.js";
+import {
+  VISUAL_TABS,
+  reportSelection,
+  reportNavigation,
+  reportWorkspace,
+  visualCollection,
+  visualInspector,
+  visibleVisuals,
+} from "./report-view.js";
 
 const $ = (s) => document.querySelector(s);
-const escape = (v) =>
-  String(v ?? "").replace(
-    /[&<>"']/g,
-    (c) =>
-      ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[
-        c
-      ],
-  );
-const icons = {
-  objects:
-    '<rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/>',
-  pages:
-    '<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 9h18M9 9v11"/>',
-  check:
-    '<path d="m7 12 3 3 7-7"/><path d="M12 3 3 7v6c0 5 9 8 9 8s9-3 9-8V7z"/>',
-  search: '<circle cx="10" cy="10" r="6"/><path d="m15 15 5 5"/>',
-  arrow: '<path d="m9 5 7 7-7 7"/>',
-  back: '<path d="m15 5-7 7 7 7"/>',
-  folder: '<path d="M3 7V5h6l2 2h10v13H3z"/>',
-  open: '<path d="M14 3h7v7m0-7L10 14M10 3H3v18h18v-7"/>',
-};
-const icon = (name) =>
-  `<svg viewBox="0 0 24 24" aria-hidden="true">${icons[name] || icons.objects}</svg>`;
 const state = {
   view: "objects",
   model: "PbiAssureCoverage",
@@ -46,6 +34,13 @@ const state = {
   history: [],
   cursor: -1,
   page: null,
+  report: null,
+  reportVisuals: {},
+  reportScroll: {},
+  visualSearch: "",
+  visualTab: "Uses",
+  reportPageDetails: false,
+  reportOrigin: null,
   source: "Repository fixture",
   fixture: true,
 };
@@ -55,8 +50,6 @@ const announce = (text) => {
 };
 const badge = (o) =>
   `<span class="badge ${STATES[o.UsageState].tone}"><i></i>${escape(STATES[o.UsageState].label)}</span>`;
-const glyph = (type) =>
-  `<span class="object-icon ${type === "Measure" ? "measure" : ""}" aria-hidden="true">${type === "Measure" ? "ƒ" : type === "Column" ? "▥" : "⋮"}</span>`;
 const selected = () => data.byId.get(state.selected);
 const uniqueEdges = (edges) => [
   ...new Map(edges.map((e) => [edgeId(e, "From"), e])).values(),
@@ -99,16 +92,22 @@ function renderSidebar() {
           `<button data-view="${v}" class="nav-item ${state.view === v ? "active" : ""}" ${state.view === v ? 'aria-current="page"' : ""}>${icon(v)}${label}${v === "objects" ? `<span>${data.objects.length}</span>` : ""}</button>`,
       )
       .join("")}</nav>
-    <div class="model-navigation"><label class="project-label" for="model-select">SEMANTIC MODEL</label><select id="model-select" aria-label="Semantic model">${data.raw.SemanticModels.map((m) => `<option ${m.Name === state.model ? "selected" : ""}>${escape(m.Name)}</option>`).join("")}</select><div class="table-heading">Tables <span>${tables.filter((t) => state.system || !t.IsSystemGenerated).length}</span></div><nav class="table-nav" aria-label="Filter by table"><button data-table="" class="${!state.table ? "chosen" : ""}">${icon("objects")}All tables<span>${modelObjects.length}</span></button>${tables
-      .filter((t) => state.system || !t.IsSystemGenerated)
-      .map(
-        (t) =>
-          `<button data-table="${escape(t.Name)}" class="${state.table === t.Name ? "chosen" : ""}" title="${escape(t.Name)}"><span class="table-symbol">▦</span><span class="table-name">${escape(t.Name)}</span><span>${modelObjects.filter((o) => o.Table === t.Name).length}</span></button>`,
-      )
-      .join("")}</nav></div>
+    ${
+      state.view === "pages"
+        ? reportNavigation(data, state)
+        : `    <div class="model-navigation"><label class="project-label" for="model-select">SEMANTIC MODEL</label><select id="model-select" aria-label="Semantic model">${data.raw.SemanticModels.map((m) => `<option ${m.Name === state.model ? "selected" : ""}>${escape(m.Name)}</option>`).join("")}</select><div class="table-heading">Tables <span>${tables.filter((t) => state.system || !t.IsSystemGenerated).length}</span></div><nav class="table-nav" aria-label="Filter by table"><button data-table="" class="${!state.table ? "chosen" : ""}">${icon("objects")}All tables<span>${modelObjects.length}</span></button>${tables
+            .filter((t) => state.system || !t.IsSystemGenerated)
+            .map(
+              (t) =>
+                `<button data-table="${escape(t.Name)}" class="${state.table === t.Name ? "chosen" : ""}" title="${escape(t.Name)}"><span class="table-symbol">▦</span><span class="table-name">${escape(t.Name)}</span><span>${modelObjects.filter((o) => o.Table === t.Name).length}</span></button>`,
+            )
+            .join("")}</nav></div>`
+    }
     <div class="sidebar-bottom"><span class="project-label">ANALYSIS SCOPE</span><p>${data.raw.Reports.length} reports · ${data.raw.SemanticModels.length} models</p><span class="source-label">Metadata only. No DAX execution.</span><button class="text-button" data-action="scope">View evidence boundaries ${icon("arrow")}</button></div>`;
 }
 function renderWorkspace() {
+  $(".report-origin")?.remove();
+  $(".workspace").classList.toggle("report-workspace", state.view === "pages");
   const heading =
     state.view === "objects"
       ? [
@@ -120,7 +119,7 @@ function renderWorkspace() {
         ? [
             "REPORT / EXPLORE",
             "Report pages",
-            "See which objects appear in the saved report metadata.",
+            "Stay on the page. Follow each visual’s evidence.",
           ]
         : [
             "ANALYSIS / SCOPE",
@@ -129,6 +128,12 @@ function renderWorkspace() {
           ];
   $(".main-heading").innerHTML =
     `<div><div class="eyebrow">${heading[0]}</div><h1>${heading[1]}</h1><p>${heading[2]}</p></div><div class="heading-note">${state.fixture ? '<span class="fixture-mark">FIXTURE</span> Real scanner output<br><small>Synthetic PBIP · schema 0.26</small>' : '<span class="fixture-mark">LOCAL</span> Your analysis snapshot<br><small>Kept in this browser tab</small>'}</div>`;
+  if (state.reportOrigin && state.view !== "pages") {
+    $(".main-heading").insertAdjacentHTML(
+      "afterend",
+      `<div class="report-origin"><button data-action="return-visual">${icon("back")}Back to visual</button><span>${escape(state.reportOrigin.report)} / ${escape(state.reportOrigin.page)} / <strong>${escape(state.reportOrigin.visual)}</strong></span><small>Report context preserved</small></div>`,
+    );
+  }
   if (state.view === "objects") {
     $(".workspace").innerHTML =
       `<section class="collection-pane" aria-label="Model object collection"><div class="collection-tools"><div class="collection-title"><strong>${escape(state.table || "All tables")}</strong><span id="result-count"></span></div><div class="searchbox">${icon("search")}<input id="search" type="search" placeholder="Search objects or tables…" aria-label="Search objects or tables" value="${escape(state.search)}"><kbd>/</kbd></div><div class="filter-line"><label class="sr-only" for="usage-filter">Usage state</label><select id="usage-filter"><option value="">All usage states</option>${Object.entries(
@@ -259,35 +264,97 @@ function modelLimitations(model) {
     '<p class="quiet">No model-level limitations recorded by this scan. Permanent analysis boundaries still apply.</p>'
   );
 }
+function rememberReportScroll() {
+  const list = $(".visual-list");
+  if (list)
+    state.reportScroll[list.dataset.pageContext] = {
+      list: list.scrollTop,
+      detail: $(".visual-detail")?.scrollTop || 0,
+    };
+}
 function renderPages() {
-  const pages = data.raw.Reports.flatMap((r) =>
-    r.Pages.map((p) => ({ ...p, report: r })),
+  rememberReportScroll();
+  $(".workspace").innerHTML = reportWorkspace(data, state);
+  if (!$("#visual-inspector")) return;
+  renderVisualCollection();
+  renderVisualInspector();
+  const scroll = state.reportScroll[state.page];
+  if (scroll) {
+    $(".visual-list").scrollTop = scroll.list;
+    $(".visual-detail").scrollTop = scroll.detail;
+  }
+}
+function renderVisualCollection() {
+  $("#collection").innerHTML = visualCollection(data, state);
+  $("#visual-result-count").textContent =
+    `${visibleVisuals(data, state).length} of ${reportContext(data, state).page?.Visuals.length || 0} visuals`;
+}
+function renderVisualInspector() {
+  $("#visual-inspector").innerHTML = visualInspector(data, state);
+  $("#visual-inspector").setAttribute(
+    "aria-label",
+    state.reportPageDetails || !reportSelection(data, state).visual
+      ? "Selected page details"
+      : "Selected visual",
   );
-  const p =
-    pages.find(
-      (p) => JSON.stringify([p.report.RelativePath, p.Name]) === state.page,
-    ) || pages[0];
-  state.page = p ? JSON.stringify([p.report.RelativePath, p.Name]) : null;
-  $(".workspace").innerHTML =
-    `<section class="collection-pane"><div class="collection-tools"><div class="collection-title"><strong>Saved report pages</strong><span>${pages.length} pages</span></div><p class="quiet">Page metadata, visuals and direct object references.</p></div><div class="collection-scroll page-list" id="collection" tabindex="-1">${pages.map((pg) => `<button data-page="${escape(JSON.stringify([pg.report.RelativePath, pg.Name]))}" class="page-row ${pg === p ? "active" : ""}" ${pg === p ? 'aria-current="true"' : ""}>${icon("pages")}<span><strong>${escape(pg.DisplayName || pg.Name)}</strong><small>${escape(pg.report.Name)}${pg.Visibility ? " · " + escape(pg.Visibility) : ""}</small></span><span>${pg.Visuals.length}<small>visuals</small></span></button>`).join("")}</div></section><aside class="inspector page-inspector" aria-label="Selected report page">${
-      p
-        ? `<div class="object-hero"><div class="eyebrow">${escape(p.report.Name)}</div><h2>${escape(p.DisplayName || p.Name)}</h2><p>${p.Visuals.length} visuals · ${escape(p.PageType || "Report page")}</p></div><div class="inspector-content"><p class="quiet">Direct references from this saved page. Visuals are metadata representations, not rendered Power BI visuals.</p>${
-            p.Visuals.map((v) => {
-              const objects = data.objects.filter((o) =>
-                o.DirectReportReferences.some(
-                  (e) =>
-                    (e.Report === p.report.RelativePath ||
-                      e.Report === p.report.Name) &&
-                    e.Page === p.Name &&
-                    e.Visual === v.Name,
-                ),
-              );
-              return `<section class="visual-entry"><div class="section-heading"><h3>${escape(v.Accessibility?.TitleText || words(v.VisualType) || v.Name)}</h3>${v.IsHidden ? '<span class="fixture-mark">HIDDEN</span>' : ""}</div><code>${escape(v.Name)}</code><div class="visual-object-links">${objects.map((o) => `<button class="related-object" data-page-object="${escape(o.id)}">${glyph(o.ObjectType)}${escape(o.ObjectName)}${icon("arrow")}</button>`).join("") || '<p class="quiet">No resolved model object references recorded.</p>'}</div></section>`;
-            }).join("") ||
-            '<p class="quiet">No visuals recorded on this page.</p>'
-          }</div>`
-        : '<div class="empty"><h2>No saved pages</h2></div>'
-    }</aside>`;
+}
+function selectVisual(name, { focusHeading = false } = {}) {
+  const { page } = reportContext(data, state);
+  if (!page?.Visuals.some((v) => v.Name === name)) return;
+  state.reportVisuals[state.page] = name;
+  state.reportPageDetails = false;
+  renderVisualCollection();
+  renderVisualInspector();
+  announce(
+    `Inspecting ${visualLabel(page.Visuals.find((v) => v.Name === name))} on ${page.DisplayName || page.Name}.`,
+  );
+  if (focusHeading) $("#visual-heading").focus();
+  else $(`[data-visual="${CSS.escape(name)}"]`)?.focus();
+}
+const modelContextKeys = [
+  "model",
+  "table",
+  "type",
+  "usage",
+  "search",
+  "system",
+  "limited",
+  "sort",
+  "tab",
+  "selected",
+  "history",
+  "cursor",
+];
+function openModelFromVisual(id) {
+  const object = data.byId.get(id);
+  if (!object) return;
+  rememberReportScroll();
+  const { report, page, visual } = reportSelection(data, state);
+  state.reportOrigin = {
+    report: report.Name,
+    page: page.DisplayName || page.Name,
+    visual: visualLabel(visual),
+    model: Object.fromEntries(
+      modelContextKeys.map((key) => [key, structuredClone(state[key])]),
+    ),
+  };
+  state.view = "objects";
+  state.model = object.SemanticModel;
+  resetFilters();
+  state.table = object.Table;
+  state.system ||= object.system;
+  state.tab = "Summary";
+  renderSidebar();
+  renderWorkspace();
+  inspect(id, { focus: true });
+}
+function returnToVisual() {
+  if (state.reportOrigin) Object.assign(state, state.reportOrigin.model);
+  state.reportOrigin = null;
+  state.view = "pages";
+  renderSidebar();
+  renderWorkspace();
+  ($("#visual-heading") || $("#page-heading"))?.focus();
 }
 function renderCoverage() {
   const counts = Object.entries(STATES).map(([k, v]) => [
@@ -323,6 +390,11 @@ document.addEventListener("click", async (event) => {
   const b = event.target.closest("button");
   if (!b) return;
   if (b.dataset.view) {
+    if (state.view === "pages") rememberReportScroll();
+    if (b.dataset.view === "pages" && state.reportOrigin) {
+      returnToVisual();
+      return;
+    }
     state.view = b.dataset.view;
     renderSidebar();
     renderWorkspace();
@@ -353,17 +425,33 @@ document.addEventListener("click", async (event) => {
     return;
   }
   if (b.dataset.pageObject) {
-    state.view = "objects";
-    state.model = data.byId.get(b.dataset.pageObject).SemanticModel;
-    renderSidebar();
-    renderWorkspace();
-    inspect(b.dataset.pageObject, { focus: true });
+    openModelFromVisual(b.dataset.pageObject);
     return;
   }
   if (b.dataset.page) {
     state.page = b.dataset.page;
+    state.visualSearch = "";
+    state.reportPageDetails = false;
+    renderSidebar();
     renderPages();
     $(`[data-page="${CSS.escape(state.page)}"]`)?.focus();
+    return;
+  }
+  if (b.dataset.visualReview) {
+    state.visualTab = "Reviews";
+    selectVisual(b.dataset.visualReview, { focusHeading: true });
+    return;
+  }
+  if (b.dataset.visual) {
+    selectVisual(b.dataset.visual, {
+      focusHeading: !b.classList.contains("visual-select"),
+    });
+    return;
+  }
+  if (b.dataset.visualTab) {
+    state.visualTab = b.dataset.visualTab;
+    renderVisualInspector();
+    $(`#visual-tab-${state.visualTab}`).focus();
     return;
   }
   if (b.dataset.tab || b.dataset.goTab) {
@@ -373,6 +461,28 @@ document.addEventListener("click", async (event) => {
     return;
   }
   switch (b.dataset.action) {
+    case "return-visual":
+      returnToVisual();
+      break;
+    case "page-details":
+      state.reportPageDetails = true;
+      renderVisualCollection();
+      renderVisualInspector();
+      $("#page-heading").focus();
+      break;
+    case "resume-visual":
+      state.reportPageDetails = false;
+      renderVisualCollection();
+      renderVisualInspector();
+      $("#visual-heading").focus();
+      break;
+    case "clear-visual-search":
+      state.visualSearch = "";
+      $("#visual-search").value = "";
+      renderVisualCollection();
+      renderVisualInspector();
+      $("#visual-search").focus();
+      break;
     case "import":
       $("#file").click();
       break;
@@ -398,6 +508,7 @@ document.addEventListener("click", async (event) => {
       inspect(state.history[state.cursor], { focus: true, push: false });
       break;
     case "scope":
+      if (state.view === "pages") rememberReportScroll();
       state.view = "check";
       renderSidebar();
       renderWorkspace();
@@ -427,6 +538,11 @@ document.addEventListener("click", async (event) => {
   }
 });
 document.addEventListener("input", (event) => {
+  if (event.target.id === "visual-search") {
+    state.visualSearch = event.target.value;
+    renderVisualCollection();
+    renderVisualInspector();
+  }
   if (event.target.id === "search") {
     state.search = event.target.value;
     renderCollection();
@@ -435,6 +551,15 @@ document.addEventListener("input", (event) => {
 });
 document.addEventListener("change", async (event) => {
   const target = event.target;
+  if (target.id === "report-select") {
+    state.report = target.value;
+    state.page = null;
+    state.visualSearch = "";
+    state.reportPageDetails = false;
+    renderSidebar();
+    renderPages();
+    $("#report-select").focus();
+  }
   if (target.id === "model-select") {
     state.model = target.value;
     resetFilters();
@@ -477,6 +602,14 @@ document.addEventListener("change", async (event) => {
         source: file.name,
         fixture: false,
         tab: "Summary",
+        report: null,
+        page: null,
+        reportVisuals: {},
+        reportScroll: {},
+        visualSearch: "",
+        visualTab: "Uses",
+        reportPageDetails: false,
+        reportOrigin: null,
       });
       shell();
       const first = visible()[0];
@@ -501,10 +634,50 @@ document.addEventListener("keydown", (event) => {
   if (
     event.key === "/" &&
     !/INPUT|TEXTAREA|SELECT/.test(target.tagName) &&
-    state.view === "objects"
+    ["objects", "pages"].includes(state.view)
   ) {
     event.preventDefault();
-    $("#search").focus();
+    (state.view === "objects" ? $("#search") : $("#visual-search"))?.focus();
+  }
+  if (
+    target.matches("[data-visual]") &&
+    ["ArrowDown", "ArrowUp", "Home", "End"].includes(event.key)
+  ) {
+    event.preventDefault();
+    const rows = visibleVisuals(data, state),
+      current = rows.findIndex((v) => v.Name === target.dataset.visual);
+    const index =
+      event.key === "Home"
+        ? 0
+        : event.key === "End"
+          ? rows.length - 1
+          : Math.max(
+              0,
+              Math.min(
+                rows.length - 1,
+                current + (event.key === "ArrowDown" ? 1 : -1),
+              ),
+            );
+    if (rows[index]) selectVisual(rows[index].Name);
+    return;
+  }
+  if (
+    target.matches("[data-visual-tab]") &&
+    ["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key)
+  ) {
+    event.preventDefault();
+    const index =
+      event.key === "Home"
+        ? 0
+        : event.key === "End"
+          ? VISUAL_TABS.length - 1
+          : (VISUAL_TABS.indexOf(state.visualTab) +
+              (event.key === "ArrowRight" ? 1 : VISUAL_TABS.length - 1)) %
+            VISUAL_TABS.length;
+    state.visualTab = VISUAL_TABS[index];
+    renderVisualInspector();
+    $(`#visual-tab-${state.visualTab}`).focus();
+    return;
   }
   if (
     target.matches("[data-object]") &&

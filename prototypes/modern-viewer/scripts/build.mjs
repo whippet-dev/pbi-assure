@@ -5,6 +5,9 @@ for (const name of [
   "index.html",
   "app.js",
   "data.js",
+  "ui.js",
+  "report-data.js",
+  "report-view.js",
   "styles.css",
   "mark.svg",
 ]) {
