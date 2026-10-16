@@ -13,17 +13,32 @@ cd C:\Projects\pbi-assure\prototypes\modern-viewer
 npm run dev
 ```
 
-Open <http://127.0.0.1:4173>. Stop the server with Ctrl+C. `PORT` can override 4173. Serve over HTTP; opening `index.html` directly cannot load the JSON module/data reliably.
+Open <http://127.0.0.1:4173>. Overview is the starting workspace, including after a successful local JSON import. Stop the server with Ctrl+C. `PORT` can override 4173. Serve over HTTP; opening `index.html` directly cannot load the JSON module/data reliably.
 
 Suggested five-minute comparison:
 
-1. Select `DirectlyUsedMeasure` in the default model. Inspect Summary, DAX and its saved report location.
+1. Open **Model objects** and select `DirectlyUsedMeasure` in the default model. Inspect Summary, DAX and its saved report location.
 2. Filter to **Measures**, open **Dependencies**, then follow `IndirectlyUsedColumn`. The inspector changes while the collection remains filtered. Use inspector back/forward to retrace the investigation, or **Show in collection** to clear filters and reveal the object.
 3. Select `BaseAmount`. Compare all immediate **Used by** sources with the reachable predecessors in **Why**. An unused source is not automatically the reason for an indirectly used state.
 4. Filter to **Apparently unused** and **Checks limited**. Inspect the review language and model-level limitations under Evidence.
 5. Open **Report pages**, select **Core coverage**, then follow a visual’s object reference into the model inspector. **Back to visual** restores the report investigation.
 
 Keyboard: Tab reaches native controls and the selected collection row; ↑/↓ and Home/End move through the object collection; Enter selects; `/` focuses search outside editable controls; ←/→ and Home/End navigate inspector tabs. Dependency links are ordinary buttons and move focus to the new object heading. Usage states have text labels, not colour alone. Narrow screens stack the collection above the inspector.
+
+## Overview comparison
+
+Overview is a continuous investigation surface in the existing shell, ordered around Needs attention, Model usage, Checks, Project snapshot and Other reviews. It adds no overall assurance score, pass indicator or synthetic urgency. The Model/Report layouts and palette are retained.
+
+Try the following with the bundled analysis:
+
+1. **Needs attention** shows 28 non-accessibility findings: 11 errors, 10 warnings and 7 review-required records. Severity and review-required counts can overlap. Category rows preview an original finding and open the filtered findings collection; the severity and review-required counts are also actionable.
+2. **Apparently unused → Model objects** opens all 26 matching authored objects across all five models. The small **All models** extension keeps the destination count consistent with the Overview scope. Model identity appears in collection rows in that scope; selecting one model restores the existing table navigator. Other usage states work the same way. The 87 authored objects exclude one system-generated object.
+3. **Checks limited** opens **What was checked**. The 29 qualified object results and 12 recorded limitations are counted independently: not every recorded limitation affects usage. No identified limitations is explicitly not an everything-checked claim.
+4. **Project snapshot** shows report/page/visual inventory plus model and Power Query counts. A report row opens that report’s page context; **Explore reports** resumes the existing Report investigation. Counts describe inventories in the saved analysis, not live project state.
+5. **Accessibility review** opens a separate collection of five original accessibility observations. Theme’s two saved observations are secondary, under a collapsed disclosure; an available source link opens the exact visual’s saved formatting. Theme is not added to Needs attention or given its own headline metric.
+6. In **Reviews & findings**, select a finding, inspect its original recommendation and evidence, then open its source where a workspace exists. **Back to reviews** retains the collection filters and selected finding. Missing page/visual targets are identified as missing and offer only a broader report/page route; they are not silently replaced by another target.
+
+Sidebar visits retain Model search/filters/selection and Report page/visual/tab context, as well as collection/detail scroll positions. Overview and Reviews keep their own scroll/selection state. Explicit Overview shortcuts deliberately set a new collection scope; they are not saved review operations. Reviews has search, category/severity filters, a separate Review required filter, and the same collection arrow/Home/End and `/` keyboard conventions.
 
 ## Report pages comparison
 
@@ -53,6 +68,7 @@ Choose **Open analysis JSON** in the viewer. Schema `0.26` is supported, with a 
 ## What is implemented
 
 - Persistent application navigation, semantic-model selection and table filters.
+- Overview with attention/usage/checks/inventory routes and a small read-only findings/accessibility inspector.
 - Scannable object collection with search, usage, confidence and type filters; system-generated objects are optional.
 - Independent collection/inspector scrolling; contextual selection, dependency navigation and inspector history.
 - Summary/Why, Used by, direct report locations, saved DAX with copy, dependency directions and expandable evidence paths.
@@ -74,6 +90,8 @@ Native browser ES modules, semantic HTML and CSS; no frontend framework, backend
 
 Report pages adds `report-data.js` for scoped projections and `report-view.js` for report/visual presentation. The small `ui.js` module shares escaped text, icons and object-type glyphs with Model. There is no new data source, scanner change, dependency or production integration. Report/page identity uses the report-relative path and page name; visual selection is scoped to that page. The return context records the earlier Model state and retains the Report state independently while an object is investigated.
 
+Overview adds `overview-data.js` for counts, finding scopes and bounded source routes, plus `overview-view.js` for Overview and its findings destination. It reuses the existing finding-detail renderer. Counts are derived from the loaded scanner arrays rather than stale serialized summary counters. Sidebar navigation records pane scroll positions; explicit shortcuts set ordinary existing workspace state. No backend, runtime dependency or analysis changes were introduced.
+
 The architectural difference from the generated report is material: metadata is data, selection is application state, and following dependencies changes a detail pane rather than navigating through pre-rendered document sections. The read-only scanner and its classifications are unchanged. The adapter indexes the graph by model/table/name/type/hierarchy identity; object names alone are not keys.
 
 This deliberately small implementation makes the interaction architecture testable without introducing a framework/toolchain migration. Before production adoption, consider typed/versioned viewer DTOs, component boundaries, incremental rendering or virtualisation for large models, persisted/deep-linked investigation state, a more complete accessible interaction audit, and integration with the browser’s existing in-memory scanner. No large-model performance claim is made.
@@ -92,6 +110,8 @@ Important JSON boundaries:
 - Group visibility is omitted by JSON. Parent group paths and group-local coordinates are shown, but own hidden/tab-order settings are not represented as effective runtime accessibility or visibility. Unspecified settings remain unspecified; dynamic targets/text remain dynamic.
 - Findings retain original severity, assessment type, recommendation and evidence. Page/group/report findings are labelled separately from visual findings; no findings is not a pass result. Actions, URLs, bookmarks and tooltip bindings are inspected only, not executed.
 - There is no rendered page canvas, runtime filtering/navigation simulation, full theme review or complete Power BI formatting surface. Behaviour shows the metadata already published by the scanner. Page/report references are scoped evidence lists; model navigation in this slice starts from visual references. Report scroll/selection state is held in memory and is not a durable browser history or saved review.
+- Overview's authored usage scope excludes system-generated-table objects. Checks limited counts all published object results; recorded limitations are a separate inventory and do not imply every limitation qualifies every object. Other reviews retain separate accessibility and theme meanings.
+- The new findings collection is an inspection destination, not review management: no acknowledgement, assignment, resolution or modification is saved. Source routing is limited to existing Model/Report workspaces; other findings retain evidence in the inspector. Theme remains a small saved-observation disclosure, not a full theme workspace. Large-project pagination, persistent state and a full accessibility audit remain outside this prototype.
 
 ## Validation and static build
 
@@ -106,7 +126,7 @@ npm run test:browser
 
 `PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH` optionally points the tests at an existing Chromium installation. The application needs no browser download; that step is only for automated tests.
 
-Proportionate checks: nine data-adapter tests (including canonical fixture expectations, role/evidence grouping, saved selector/report-measure handling, model binding and finding scope); six browser workflows covering Model context/history, Report context/return/scroll, keyboard/tab operation, usage honesty, actions/tooltips, accessibility reviews, local import and escaped metadata. Desktop captures are written to ignored `artifacts/modern-viewer/`. Manually reviewed the 1440×900 and 1280×900 layouts and exercised Report selection, behaviour, keyboard tabs and the model return path. Production suites and exhaustive narrow-width/fixture/performance matrices were not run.
+Proportionate checks: thirteen data tests and nine browser workflows. These cover the existing Model/Report behaviours plus Overview count reconciliation, authored scope, severity/review overlap, separate accessibility, filtered routes, source return, retained investigation state, keyboard interaction and zero-findings/zero-limitations honesty. Desktop captures are written to ignored `artifacts/modern-viewer/`. Manually reviewed 1440×900 and 1280×900 captures and exercised Overview routes in the browser. Production suites and exhaustive narrow-width/fixture/performance matrices were not run.
 
 `npm run build` creates an ignored `dist/` with static files. This can be hosted at any static origin or subdirectory. No production site or hosting configuration is modified; this branch has not been remotely deployed.
 
@@ -115,3 +135,5 @@ Proportionate checks: nine data-adapter tests (including canonical fixture expec
 Yes: this direction materially improves object/dependency investigation. The stable collection and reversible inspector navigation make it easier to keep an investigation’s starting point while exploring evidence. The benefit comes primarily from application state and a persistent layout; it does not require React or a replacement analysis engine. This prototype is enough to compare that direction, but does not establish that it should replace the portable generated report or that every feature will benefit equally.
 
 The workspace model also holds up for Report pages: page context stays visible while visual details change, and the explicit return path makes crossing into the Model workspace reversible. A visual collection works better here than treating every visual as a new document section. The remaining question is how well this scales to larger real reports and richer visual metadata; this slice is sufficient for a hands-on comparison without rebuilding the whole report experience.
+
+Overview strengthens this direction by providing a project-level starting point with consistent routes into the existing investigation workspaces. Its value comes from scope-correct navigation and retained context, not more headline metrics. The findings inspector is intentionally small, and the lower-priority snapshot/other-review material may require a short scroll at desktop sizes. This is sufficient to compare the analytical home-screen direction without turning the prototype into a full review application.

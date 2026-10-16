@@ -6,6 +6,7 @@ const artifact = fileURLToPath(
 );
 test.beforeEach(async ({ page }) => {
   await page.goto("/");
+  await page.getByRole("button", { name: /^Model objects/ }).click();
   await expect(page.locator("#object-heading")).toHaveText(
     "DirectlyUsedMeasure",
   );

@@ -6,6 +6,7 @@ const artifact = fileURLToPath(
 );
 test.beforeEach(async ({ page }) => {
   await page.goto("/");
+  await page.getByRole("button", { name: /^Model objects/ }).click();
   await expect(page.locator("#object-heading")).toHaveText(
     "DirectlyUsedMeasure",
   );
@@ -135,13 +136,11 @@ test("local import rejects invalid input and treats metadata as text without net
   page.on("request", (r) =>
     requests.push({ method: r.method(), url: r.url() }),
   );
-  await page
-    .locator("#file")
-    .setInputFiles({
-      name: "invalid.json",
-      mimeType: "application/json",
-      buffer: Buffer.from('{"SchemaVersion":"bad"}'),
-    });
+  await page.locator("#file").setInputFiles({
+    name: "invalid.json",
+    mimeType: "application/json",
+    buffer: Buffer.from('{"SchemaVersion":"bad"}'),
+  });
   await expect(page.locator("#toast")).toContainText("schema 0.26");
   await expect(page.locator("#object-heading")).toHaveText(
     "DirectlyUsedMeasure",
@@ -150,16 +149,15 @@ test("local import rejects invalid input and treats metadata as text without net
     await readFile(new URL("../data/coverage.json", import.meta.url)),
   );
   raw.SemanticObjectUsages[0].ObjectName = "<img src=x onerror=alert(1)>";
-  await page
-    .locator("#file")
-    .setInputFiles({
-      name: "local-inventory.json",
-      mimeType: "application/json",
-      buffer: Buffer.from(JSON.stringify(raw)),
-    });
+  await page.locator("#file").setInputFiles({
+    name: "local-inventory.json",
+    mimeType: "application/json",
+    buffer: Buffer.from(JSON.stringify(raw)),
+  });
   await expect(page.locator(".project-name")).toHaveText(
     "local-inventory.json",
   );
+  await page.getByRole("button", { name: /^Model objects/ }).click();
   await expect(page.locator("#collection")).toContainText(
     "<img src=x onerror=alert(1)>",
   );

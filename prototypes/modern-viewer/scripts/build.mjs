@@ -8,6 +8,8 @@ for (const name of [
   "ui.js",
   "report-data.js",
   "report-view.js",
+  "overview-data.js",
+  "overview-view.js",
   "styles.css",
   "mark.svg",
 ]) {

@@ -8,6 +8,14 @@ import {
 } from "./data.js";
 import { escape, icon, glyph } from "./ui.js";
 import { reportContext, visualLabel } from "./report-data.js";
+import { pageId, pagesFor } from "./report-data.js";
+import { overviewData, reviewRows, findingTarget } from "./overview-data.js";
+import {
+  overviewWorkspace,
+  reviewsWorkspace,
+  reviewCollection,
+  reviewInspector,
+} from "./overview-view.js";
 import {
   VISUAL_TABS,
   reportSelection,
@@ -20,7 +28,7 @@ import {
 
 const $ = (s) => document.querySelector(s);
 const state = {
-  view: "objects",
+  view: "overview",
   model: "PbiAssureCoverage",
   table: "",
   type: "",
@@ -41,6 +49,14 @@ const state = {
   visualTab: "Uses",
   reportPageDetails: false,
   reportOrigin: null,
+  reviewMode: "main",
+  reviewCategory: "",
+  reviewSeverity: "",
+  reviewRequired: false,
+  reviewSearch: "",
+  reviewSelected: null,
+  reviewReturn: false,
+  workspaceScroll: {},
   source: "Repository fixture",
   fixture: true,
 };
@@ -78,13 +94,17 @@ function renderSidebar() {
   const tables =
     data.raw.SemanticModels.find((m) => m.Name === state.model)?.Tables || [];
   const modelObjects = data.objects.filter(
-    (o) => o.SemanticModel === state.model && (state.system || !o.system),
+    (o) =>
+      (!state.model || o.SemanticModel === state.model) &&
+      (state.system || !o.system),
   );
   $(".sidebar").innerHTML =
     `<div class="project-label">OPEN ANALYSIS</div><div class="project-name">${state.fixture ? "Coverage study" : escape(state.source)}</div><div class="source-label">${state.fixture ? "Synthetic repository fixture" : "Local JSON inventory"}</div>
     <nav class="primary-nav" aria-label="Investigation areas">${[
+      ["overview", "Overview"],
       ["objects", "Model objects"],
       ["pages", "Report pages"],
+      ["reviews", "Reviews & findings"],
       ["check", "What was checked"],
     ]
       .map(
@@ -95,48 +115,79 @@ function renderSidebar() {
     ${
       state.view === "pages"
         ? reportNavigation(data, state)
-        : `    <div class="model-navigation"><label class="project-label" for="model-select">SEMANTIC MODEL</label><select id="model-select" aria-label="Semantic model">${data.raw.SemanticModels.map((m) => `<option ${m.Name === state.model ? "selected" : ""}>${escape(m.Name)}</option>`).join("")}</select><div class="table-heading">Tables <span>${tables.filter((t) => state.system || !t.IsSystemGenerated).length}</span></div><nav class="table-nav" aria-label="Filter by table"><button data-table="" class="${!state.table ? "chosen" : ""}">${icon("objects")}All tables<span>${modelObjects.length}</span></button>${tables
-            .filter((t) => state.system || !t.IsSystemGenerated)
-            .map(
-              (t) =>
-                `<button data-table="${escape(t.Name)}" class="${state.table === t.Name ? "chosen" : ""}" title="${escape(t.Name)}"><span class="table-symbol">▦</span><span class="table-name">${escape(t.Name)}</span><span>${modelObjects.filter((o) => o.Table === t.Name).length}</span></button>`,
-            )
-            .join("")}</nav></div>`
+        : state.view !== "objects"
+          ? ""
+          : `    <div class="model-navigation"><label class="project-label" for="model-select">SEMANTIC MODEL</label><select id="model-select" aria-label="Semantic model"><option value="" ${!state.model ? "selected" : ""}>All models</option>${data.raw.SemanticModels.map((m) => `<option ${m.Name === state.model ? "selected" : ""}>${escape(m.Name)}</option>`).join("")}</select>${
+              !state.model
+                ? `<div class="table-heading">Choose a model to browse its tables</div><nav class="table-nav" aria-label="Filter by model">${data.raw.SemanticModels.map((m) => `<button data-model="${escape(m.Name)}">${icon("objects")}<span class="table-name">${escape(m.Name)}</span><span>${modelObjects.filter((o) => o.SemanticModel === m.Name).length}</span></button>`).join("")}</nav>`
+                : `<div class="table-heading">Tables <span>${tables.filter((t) => state.system || !t.IsSystemGenerated).length}</span></div><nav class="table-nav" aria-label="Filter by table"><button data-table="" class="${!state.table ? "chosen" : ""}">${icon("objects")}All tables<span>${modelObjects.length}</span></button>${tables
+                    .filter((t) => state.system || !t.IsSystemGenerated)
+                    .map(
+                      (t) =>
+                        `<button data-table="${escape(t.Name)}" class="${state.table === t.Name ? "chosen" : ""}" title="${escape(t.Name)}"><span class="table-symbol">▦</span><span class="table-name">${escape(t.Name)}</span><span>${modelObjects.filter((o) => o.Table === t.Name).length}</span></button>`,
+                    )
+                    .join("")}</nav>`
+            }</div>`
     }
     <div class="sidebar-bottom"><span class="project-label">ANALYSIS SCOPE</span><p>${data.raw.Reports.length} reports · ${data.raw.SemanticModels.length} models</p><span class="source-label">Metadata only. No DAX execution.</span><button class="text-button" data-action="scope">View evidence boundaries ${icon("arrow")}</button></div>`;
 }
 function renderWorkspace() {
-  $(".report-origin")?.remove();
+  document.querySelectorAll(".report-origin").forEach((el) => el.remove());
   $(".workspace").classList.toggle("report-workspace", state.view === "pages");
+  $(".workspace").classList.toggle(
+    "overview-workspace",
+    state.view === "overview",
+  );
   const heading =
-    state.view === "objects"
+    state.view === "overview"
       ? [
-          "MODEL / INVESTIGATE",
-          "Objects",
-          "Follow the evidence. Keep the context.",
+          "PROJECT / INVESTIGATE",
+          "Overview",
+          "What needs attention, and where to investigate next.",
         ]
-      : state.view === "pages"
+      : state.view === "reviews"
         ? [
-            "REPORT / EXPLORE",
-            "Report pages",
-            "Stay on the page. Follow each visual’s evidence.",
+            "ANALYSIS / REVIEW",
+            "Reviews & findings",
+            "Inspect the original evidence, then follow its source.",
           ]
-        : [
-            "ANALYSIS / SCOPE",
-            "What was checked",
-            "Understand the evidence before interpreting an absence.",
-          ];
+        : state.view === "objects"
+          ? [
+              "MODEL / INVESTIGATE",
+              "Objects",
+              "Follow the evidence. Keep the context.",
+            ]
+          : state.view === "pages"
+            ? [
+                "REPORT / EXPLORE",
+                "Report pages",
+                "Stay on the page. Follow each visual’s evidence.",
+              ]
+            : [
+                "ANALYSIS / SCOPE",
+                "What was checked",
+                "Understand the evidence before interpreting an absence.",
+              ];
   $(".main-heading").innerHTML =
-    `<div><div class="eyebrow">${heading[0]}</div><h1>${heading[1]}</h1><p>${heading[2]}</p></div><div class="heading-note">${state.fixture ? '<span class="fixture-mark">FIXTURE</span> Real scanner output<br><small>Synthetic PBIP · schema 0.26</small>' : '<span class="fixture-mark">LOCAL</span> Your analysis snapshot<br><small>Kept in this browser tab</small>'}</div>`;
-  if (state.reportOrigin && state.view !== "pages") {
+    `<div><div class="eyebrow">${heading[0]}</div><h1 id="workspace-heading" tabindex="-1">${heading[1]}</h1><p>${heading[2]}</p></div><div class="heading-note">${state.fixture ? '<span class="fixture-mark">FIXTURE</span> Real scanner output<br><small>Synthetic PBIP · schema 0.26</small>' : '<span class="fixture-mark">LOCAL</span> Your analysis snapshot<br><small>Kept in this browser tab</small>'}</div>`;
+  if (
+    state.reportOrigin &&
+    !state.reviewReturn &&
+    ["objects", "check"].includes(state.view)
+  ) {
     $(".main-heading").insertAdjacentHTML(
       "afterend",
       `<div class="report-origin"><button data-action="return-visual">${icon("back")}Back to visual</button><span>${escape(state.reportOrigin.report)} / ${escape(state.reportOrigin.page)} / <strong>${escape(state.reportOrigin.visual)}</strong></span><small>Report context preserved</small></div>`,
     );
   }
+  if (state.reviewReturn && !["overview", "reviews"].includes(state.view))
+    $(".main-heading").insertAdjacentHTML(
+      "afterend",
+      `<div class="report-origin"><button data-action="return-reviews">${icon("back")}Back to reviews</button><span>${escape(data.raw.Findings[state.reviewSelected]?.RuleId)} · Review selection and filters preserved</span></div>`,
+    );
   if (state.view === "objects") {
     $(".workspace").innerHTML =
-      `<section class="collection-pane" aria-label="Model object collection"><div class="collection-tools"><div class="collection-title"><strong>${escape(state.table || "All tables")}</strong><span id="result-count"></span></div><div class="searchbox">${icon("search")}<input id="search" type="search" placeholder="Search objects or tables…" aria-label="Search objects or tables" value="${escape(state.search)}"><kbd>/</kbd></div><div class="filter-line"><label class="sr-only" for="usage-filter">Usage state</label><select id="usage-filter"><option value="">All usage states</option>${Object.entries(
+      `<section class="collection-pane" aria-label="Model object collection"><div class="collection-tools"><div class="collection-title"><strong>${escape(state.table || (state.model ? "All tables" : "All models"))}</strong><span id="result-count"></span></div><div class="searchbox">${icon("search")}<input id="search" type="search" placeholder="Search objects or tables…" aria-label="Search objects or tables" value="${escape(state.search)}"><kbd>/</kbd></div><div class="filter-line"><label class="sr-only" for="usage-filter">Usage state</label><select id="usage-filter"><option value="">All usage states</option>${Object.entries(
         STATES,
       )
         .map(
@@ -162,6 +213,10 @@ function renderWorkspace() {
     renderCollection();
     renderInspector();
   } else if (state.view === "pages") renderPages();
+  else if (state.view === "overview")
+    $(".workspace").innerHTML = overviewWorkspace(data);
+  else if (state.view === "reviews")
+    $(".workspace").innerHTML = reviewsWorkspace(data, state);
   else renderCoverage();
 }
 function renderCollection() {
@@ -171,7 +226,7 @@ function renderCollection() {
     ? state.selected
     : rows[0]?.id;
   $("#collection").innerHTML = rows.length
-    ? `<table class="objects-table"><thead><tr><th scope="col"><button data-action="sort-name">Object ${state.sort === "name" ? "↓" : ""}</button></th><th scope="col"><button data-action="sort-usage">Usage ${state.sort === "usage" ? "↓" : ""}</button></th><th scope="col" class="numeric"><span title="Distinct immediate dependency sources">Used by</span></th></tr></thead><tbody>${rows.map((o) => `<tr class="${o.id === state.selected ? "selected" : ""}"><td><button class="object-select" data-object="${escape(o.id)}" tabindex="${o.id === active ? "0" : "-1"}" ${o.id === state.selected ? 'aria-current="true"' : ""}>${glyph(o.ObjectType)}<span><strong>${escape(o.ObjectName)}</strong><small>${escape(o.Table)} · ${escape(words(o.ObjectType))}${o.detail?.IsHidden ? " · Hidden" : ""}</small></span></button></td><td>${badge(o)}${o.ClassificationConfidence === "QualifiedByLimitation" ? '<small class="checks-limited">◐ Checks limited</small>' : ""}</td><td class="numeric">${incoming(o).length || '<span class="muted">—</span>'}</td></tr>`).join("")}</tbody></table>`
+    ? `<table class="objects-table"><thead><tr><th scope="col"><button data-action="sort-name">Object ${state.sort === "name" ? "↓" : ""}</button></th><th scope="col"><button data-action="sort-usage">Usage ${state.sort === "usage" ? "↓" : ""}</button></th><th scope="col" class="numeric"><span title="Distinct immediate dependency sources">Used by</span></th></tr></thead><tbody>${rows.map((o) => `<tr class="${o.id === state.selected ? "selected" : ""}"><td><button class="object-select" data-object="${escape(o.id)}" tabindex="${o.id === active ? "0" : "-1"}" ${o.id === state.selected ? 'aria-current="true"' : ""}>${glyph(o.ObjectType)}<span><strong>${escape(o.ObjectName)}</strong><small>${!state.model ? escape(o.SemanticModel) + " · " : ""}${escape(o.Table)} · ${escape(words(o.ObjectType))}${o.detail?.IsHidden ? " · Hidden" : ""}</small></span></button></td><td>${badge(o)}${o.ClassificationConfidence === "QualifiedByLimitation" ? '<small class="checks-limited">◐ Checks limited</small>' : ""}</td><td class="numeric">${incoming(o).length || '<span class="muted">—</span>'}</td></tr>`).join("")}</tbody></table>`
     : `<div class="empty"><span class="empty-symbol">⌕</span><h2>No matching objects</h2><p>Try a different name, table or usage state.</p><button class="primary-button" data-action="reset">Clear filters</button></div>`;
   announce(`${rows.length} objects in collection.`);
 }
@@ -386,18 +441,203 @@ function toast(message) {
     $("#toast").hidden = true;
   }, 5500);
 }
+const scrollSelectors = {
+  overview: ["#collection"],
+  objects: ["#collection", "#detail-panel"],
+  reviews: ["#collection", ".review-detail"],
+  check: ["#collection", ".inspector-content"],
+};
+function rememberWorkspace() {
+  if (state.view === "pages") rememberReportScroll();
+  else
+    state.workspaceScroll[state.view] = (scrollSelectors[state.view] || []).map(
+      (selector) => $(selector)?.scrollTop || 0,
+    );
+}
+function showView(view, { restore = true, focus = true } = {}) {
+  rememberWorkspace();
+  state.view = view;
+  if (view === "reviews") state.reviewReturn = false;
+  renderSidebar();
+  renderWorkspace();
+  if (restore && state.workspaceScroll[view])
+    (scrollSelectors[view] || []).forEach((selector, index) => {
+      if ($(selector))
+        $(selector).scrollTop = state.workspaceScroll[view][index] || 0;
+    });
+  if (focus) $("#workspace-heading")?.focus({ preventScroll: true });
+}
+function openOverviewReviews({
+  mode = "main",
+  category = "",
+  severity = "",
+  required = false,
+} = {}) {
+  Object.assign(state, {
+    reviewMode: mode,
+    reviewCategory: category,
+    reviewSeverity: severity,
+    reviewRequired: required,
+    reviewSearch: "",
+    reviewSelected: null,
+  });
+  showView("reviews", { restore: false });
+}
+function openOverviewUsage(usage = "") {
+  resetFilters();
+  state.model = "";
+  state.system = false;
+  state.usage = usage;
+  state.tab = "Summary";
+  state.reportOrigin = null;
+  state.reviewReturn = false;
+  state.selected = null;
+  showView("objects", { restore: false });
+  const first = visible()[0];
+  if (first) inspect(first.id, { focus: true });
+}
+function openReportTarget(report, page, visual, tab = "Reviews") {
+  state.reportOrigin = null;
+  state.report = report.RelativePath;
+  state.page = page
+    ? pageId(report, page)
+    : pagesFor(report)[0]
+      ? pageId(report, pagesFor(report)[0])
+      : null;
+  state.visualSearch = "";
+  state.visualTab = tab;
+  state.reportPageDetails = !visual;
+  if (visual) state.reportVisuals[state.page] = visual.Name;
+  delete state.reportScroll[state.page];
+  showView("pages", { restore: false });
+  ($("#visual-heading") || $("#page-heading"))?.focus({ preventScroll: true });
+}
+function renderReviewResults() {
+  $(".review-list").innerHTML = reviewCollection(data, state);
+  $("#review-inspector").innerHTML = reviewInspector(data, state);
+  $("#review-result-count").textContent =
+    `${reviewRows(data, state).length} results`;
+  announce(
+    `${reviewRows(data, state).length} findings in the selected collection.`,
+  );
+}
+function selectReview(index, { focusHeading = false } = {}) {
+  if (!reviewRows(data, state).some((row) => row.index === index)) return;
+  state.reviewSelected = index;
+  renderReviewResults();
+  if (focusHeading) $("#review-heading").focus();
+  else $(`[data-review="${index}"]`)?.focus();
+}
+function investigateReview() {
+  const target = findingTarget(data, data.raw.Findings[state.reviewSelected]);
+  if (!target) return;
+  state.reviewReturn = true;
+  if (target.kind === "report")
+    openReportTarget(target.report, target.page, target.visual);
+  else {
+    resetFilters();
+    state.model = target.model.Name;
+    state.system = !!target.object?.system;
+    state.table = target.object?.Table || "";
+    state.selected = null;
+    state.tab = "Summary";
+    showView("objects", { restore: false });
+    const object = target.object || visible()[0];
+    if (object) inspect(object.id, { focus: true });
+  }
+}
 document.addEventListener("click", async (event) => {
   const b = event.target.closest("button");
   if (!b) return;
+  if (b.dataset.overviewReviews) {
+    openOverviewReviews({ mode: b.dataset.overviewReviews });
+    return;
+  }
+  if (b.dataset.overviewCategory) {
+    openOverviewReviews({ category: b.dataset.overviewCategory });
+    return;
+  }
+  if (b.dataset.overviewSeverity) {
+    openOverviewReviews({ severity: b.dataset.overviewSeverity });
+    return;
+  }
+  if (b.hasAttribute("data-overview-required")) {
+    openOverviewReviews({ required: true });
+    return;
+  }
+  if (b.dataset.overviewUsage) {
+    openOverviewUsage(b.dataset.overviewUsage);
+    return;
+  }
+  if (b.hasAttribute("data-overview-models")) {
+    openOverviewUsage();
+    return;
+  }
+  if (b.hasAttribute("data-overview-checks")) {
+    showView("check", { restore: false });
+    return;
+  }
+  if (b.hasAttribute("data-overview-pages")) {
+    state.reviewReturn = false;
+    showView("pages");
+    return;
+  }
+  if (b.dataset.overviewReport) {
+    const report = data.raw.Reports.find(
+      (r) => r.RelativePath === b.dataset.overviewReport,
+    );
+    state.reviewReturn = false;
+    if (report) openReportTarget(report, pagesFor(report)[0], null);
+    return;
+  }
+  if (b.hasAttribute("data-overview-theme")) {
+    const observation =
+      overviewData(data).themes[Number(b.dataset.overviewTheme)];
+    if (observation) {
+      const page = observation.report.Pages.find(
+          (p) => p.Name === observation.item.PageName,
+        ),
+        visual = page?.Visuals.find(
+          (v) => v.Name === observation.item.VisualName,
+        );
+      state.reviewReturn = false;
+      if (visual)
+        openReportTarget(observation.report, page, visual, "Behaviour");
+    }
+    return;
+  }
+  if (b.dataset.reviewMode) {
+    Object.assign(state, {
+      reviewMode: b.dataset.reviewMode,
+      reviewCategory: "",
+      reviewSeverity: "",
+      reviewRequired: false,
+      reviewSearch: "",
+      reviewSelected: null,
+    });
+    renderWorkspace();
+    $(`[data-review-mode="${state.reviewMode}"]`).focus();
+    return;
+  }
+  if (b.hasAttribute("data-review")) {
+    selectReview(Number(b.dataset.review));
+    return;
+  }
+  if (b.dataset.model) {
+    state.model = b.dataset.model;
+    resetFilters();
+    renderSidebar();
+    renderWorkspace();
+    $("#model-select").focus();
+    return;
+  }
   if (b.dataset.view) {
-    if (state.view === "pages") rememberReportScroll();
     if (b.dataset.view === "pages" && state.reportOrigin) {
+      rememberWorkspace();
       returnToVisual();
       return;
     }
-    state.view = b.dataset.view;
-    renderSidebar();
-    renderWorkspace();
+    showView(b.dataset.view, { focus: false });
     $(`[data-view="${state.view}"]`)?.focus();
     return;
   }
@@ -461,6 +701,24 @@ document.addEventListener("click", async (event) => {
     return;
   }
   switch (b.dataset.action) {
+    case "return-reviews":
+      showView("reviews");
+      $("#review-heading")?.focus({ preventScroll: true });
+      break;
+    case "review-source":
+      investigateReview();
+      break;
+    case "reset-reviews":
+      Object.assign(state, {
+        reviewCategory: "",
+        reviewSeverity: "",
+        reviewRequired: false,
+        reviewSearch: "",
+        reviewSelected: null,
+      });
+      renderWorkspace();
+      $("#review-search").focus();
+      break;
     case "return-visual":
       returnToVisual();
       break;
@@ -508,10 +766,7 @@ document.addEventListener("click", async (event) => {
       inspect(state.history[state.cursor], { focus: true, push: false });
       break;
     case "scope":
-      if (state.view === "pages") rememberReportScroll();
-      state.view = "check";
-      renderSidebar();
-      renderWorkspace();
+      showView("check");
       break;
     case "object-coverage":
       state.tab = "Evidence";
@@ -538,6 +793,10 @@ document.addEventListener("click", async (event) => {
   }
 });
 document.addEventListener("input", (event) => {
+  if (event.target.id === "review-search") {
+    state.reviewSearch = event.target.value;
+    renderReviewResults();
+  }
   if (event.target.id === "visual-search") {
     state.visualSearch = event.target.value;
     renderVisualCollection();
@@ -551,6 +810,18 @@ document.addEventListener("input", (event) => {
 });
 document.addEventListener("change", async (event) => {
   const target = event.target;
+  if (
+    ["review-category", "review-severity", "review-required"].includes(
+      target.id,
+    )
+  ) {
+    if (target.id === "review-category") state.reviewCategory = target.value;
+    else if (target.id === "review-severity")
+      state.reviewSeverity = target.value;
+    else state.reviewRequired = target.checked;
+    state.reviewSelected = null;
+    renderReviewResults();
+  }
   if (target.id === "report-select") {
     state.report = target.value;
     state.page = null;
@@ -598,7 +869,7 @@ document.addEventListener("change", async (event) => {
         selected: null,
         history: [],
         cursor: -1,
-        view: "objects",
+        view: "overview",
         source: file.name,
         fixture: false,
         tab: "Summary",
@@ -610,10 +881,22 @@ document.addEventListener("change", async (event) => {
         visualTab: "Uses",
         reportPageDetails: false,
         reportOrigin: null,
+        reviewMode: "main",
+        reviewCategory: "",
+        reviewSeverity: "",
+        reviewRequired: false,
+        reviewSearch: "",
+        reviewSelected: null,
+        reviewReturn: false,
+        workspaceScroll: {},
       });
-      shell();
       const first = visible()[0];
-      if (first) inspect(first.id);
+      if (first) {
+        state.selected = first.id;
+        state.history = [first.id];
+        state.cursor = 0;
+      }
+      shell();
       toast("Analysis opened locally. Nothing was uploaded.");
     } catch (e) {
       // Opening is transactional: malformed nested metadata must not discard the investigation.
@@ -634,10 +917,39 @@ document.addEventListener("keydown", (event) => {
   if (
     event.key === "/" &&
     !/INPUT|TEXTAREA|SELECT/.test(target.tagName) &&
-    ["objects", "pages"].includes(state.view)
+    ["objects", "pages", "reviews"].includes(state.view)
   ) {
     event.preventDefault();
-    (state.view === "objects" ? $("#search") : $("#visual-search"))?.focus();
+    (state.view === "objects"
+      ? $("#search")
+      : state.view === "reviews"
+        ? $("#review-search")
+        : $("#visual-search")
+    )?.focus();
+  }
+  if (
+    target.matches("[data-review]") &&
+    ["ArrowDown", "ArrowUp", "Home", "End"].includes(event.key)
+  ) {
+    event.preventDefault();
+    const rows = reviewRows(data, state),
+      current = rows.findIndex(
+        (row) => row.index === Number(target.dataset.review),
+      );
+    const index =
+      event.key === "Home"
+        ? 0
+        : event.key === "End"
+          ? rows.length - 1
+          : Math.max(
+              0,
+              Math.min(
+                rows.length - 1,
+                current + (event.key === "ArrowDown" ? 1 : -1),
+              ),
+            );
+    if (rows[index]) selectReview(rows[index].index);
+    return;
   }
   if (
     target.matches("[data-visual]") &&
@@ -723,11 +1035,18 @@ try {
   const response = await fetch("./data/coverage.json");
   if (!response.ok) throw new Error("The fixture could not be loaded.");
   data = adaptInventory(await response.json());
-  shell();
   const first =
     visible().find((o) => o.ObjectName === "DirectlyUsedMeasure") ||
     visible()[0];
-  if (first) inspect(first.id);
+  if (first) {
+    state.selected = first.id;
+    state.history = [first.id];
+    state.cursor = 0;
+  }
+  shell();
+  announce(
+    "Project overview loaded. Counts describe the saved analysis snapshot.",
+  );
 } catch (e) {
   $("#app").innerHTML =
     `<div class="empty"><h1>Could not open the workspace</h1><p>${escape(e.message)}</p><p>Start the local server with <code>npm run dev</code>.</p></div>`;

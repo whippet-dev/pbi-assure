@@ -109,7 +109,7 @@ function useRows(rows) {
   if (!rows.length) return "";
   return `<div class="visual-use-list">${rows.map((row) => `<article class="visual-use-row"><div class="visual-use-identity">${glyph(row.type)}<div>${row.object ? `<button class="related-object" data-page-object="${escape(row.object.id)}">${escape(row.name)} ${icon("arrow")}</button>` : `<strong>${escape(row.name)}</strong>`}<small>${escape(row.table)} · ${row.type === "ReportMeasure" ? "Report measure" : escape(words(row.type))}${row.hierarchy ? ` · ${escape(row.hierarchy)}` : ""}</small></div></div><div class="used-as"><span>${row.status === "Scanner-confirmed direct usage" ? "Used as" : "Recorded as"}</span><strong>${row.roles.map(escape).join(" · ")}</strong></div>${row.status === "Scanner-confirmed direct usage" ? "" : `<p class="reference-status">${escape(row.status)}</p>`}${row.reportMeasure?.Expression ? `<details class="evidence"><summary>Report measure DAX</summary><pre class="dax">${escape(row.reportMeasure.Expression)}</pre><code>${escape(row.reportMeasure.RelativePath)}</code></details>` : ""}<details class="evidence usage-evidence"><summary>Reference evidence <span>${row.references.length}</span></summary>${row.references.map((ref) => `<code>${escape(ref.UsageContext)}${ref.Role ? " · " + escape(ref.Role) : ""}<br>${escape(ref.ArtifactPath || "")}<br>${escape(ref.EvidencePath)}</code>`).join("")}</details></article>`).join("")}</div>`;
 }
-function findingList(findings, empty) {
+export function findingList(findings, empty) {
   if (!findings.length) return `<p class="quiet">${escape(empty)}</p>`;
   return findings
     .map(

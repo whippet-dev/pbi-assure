@@ -8,6 +8,8 @@ export const escape = (value) =>
       ],
   );
 const icons = {
+  overview: '<path d="m3 10 9-7 9 7v11h-6v-7H9v7H3z"/>',
+  reviews: '<path d="M5 3h14v18H5zM9 8h6M9 12h6M9 16h3"/>',
   objects:
     '<rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/>',
   pages:
