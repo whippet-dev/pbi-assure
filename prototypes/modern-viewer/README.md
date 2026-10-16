@@ -31,7 +31,7 @@ Overview is a continuous investigation surface in the existing shell, ordered ar
 
 Try the following with the bundled analysis:
 
-1. **Needs attention** shows 28 non-accessibility findings: 11 errors, 10 warnings and 7 review-required records. Severity and review-required counts can overlap. Category rows preview an original finding and open the filtered findings collection; the severity and review-required counts are also actionable.
+1. **Needs attention** triages 28 non-accessibility findings through 11 errors, 10 warnings, 7 review-required records and **Review 28 findings**. Severity and review-required counts can overlap. Actual findings and category filtering belong to **Reviews & findings**; Overview does not surface category or sampled-finding previews.
 2. **Apparently unused → Model objects** opens all 26 matching authored objects across all five models. The small **All models** extension keeps the destination count consistent with the Overview scope. Model identity appears in collection rows in that scope; selecting one model restores the existing table navigator. Other usage states work the same way. The 87 authored objects exclude one system-generated object.
 3. **Checks limited** opens **What was checked**. The 29 qualified object results and 12 recorded limitations are counted independently: not every recorded limitation affects usage. No identified limitations is explicitly not an everything-checked claim.
 4. **Project snapshot** shows report/page/visual inventory plus model and Power Query counts. A report row opens that report’s page context; **Explore reports** resumes the existing Report investigation. Counts describe inventories in the saved analysis, not live project state.

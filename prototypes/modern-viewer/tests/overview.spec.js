@@ -23,6 +23,10 @@ test("Overview routes usage/checks and preserves an existing model and report in
   await expect(page.locator(".overview-attention")).toContainText(
     "Review 28 findings",
   );
+  await expect(page.locator(".overview-attention button")).toHaveCount(4);
+  await expect(page.locator(".overview-attention .attention-summary button")).toHaveText(["11 errors", "10 warnings", "7 require review"]);
+  await expect(page.locator(".overview-attention")).toContainText("Accessibility is counted separately.");
+  await expect(page.locator(".overview-attention [data-overview-category], .overview-attention .attention-row")).toHaveCount(0);
   await expect(page.locator(".overview-usage")).toContainText("87 authored");
   await page.locator('[data-overview-usage="ApparentlyUnused"]').focus();
   await page.locator('[data-overview-usage="ApparentlyUnused"]').press("Enter");
@@ -81,7 +85,8 @@ test("Overview routes usage/checks and preserves an existing model and report in
 test("attention routes to original findings with source return, separate accessibility and subordinate Theme", async ({
   page,
 }) => {
-  await page.locator('[data-overview-category="ModelIntegrity"]').click();
+  await page.locator('[data-overview-reviews="main"]').click();
+  await page.getByLabel("Finding category").selectOption("ModelIntegrity");
   await expect(page.getByLabel("Finding category")).toHaveValue(
     "ModelIntegrity",
   );
