@@ -1,0 +1,561 @@
+import {
+  adaptInventory,
+  STATES,
+  filterObjects,
+  edgeId,
+  supportingEdges,
+  words,
+} from "./data.js";
+
+const $ = (s) => document.querySelector(s);
+const escape = (v) =>
+  String(v ?? "").replace(
+    /[&<>"']/g,
+    (c) =>
+      ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[
+        c
+      ],
+  );
+const icons = {
+  objects:
+    '<rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/>',
+  pages:
+    '<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 9h18M9 9v11"/>',
+  check:
+    '<path d="m7 12 3 3 7-7"/><path d="M12 3 3 7v6c0 5 9 8 9 8s9-3 9-8V7z"/>',
+  search: '<circle cx="10" cy="10" r="6"/><path d="m15 15 5 5"/>',
+  arrow: '<path d="m9 5 7 7-7 7"/>',
+  back: '<path d="m15 5-7 7 7 7"/>',
+  folder: '<path d="M3 7V5h6l2 2h10v13H3z"/>',
+  open: '<path d="M14 3h7v7m0-7L10 14M10 3H3v18h18v-7"/>',
+};
+const icon = (name) =>
+  `<svg viewBox="0 0 24 24" aria-hidden="true">${icons[name] || icons.objects}</svg>`;
+const state = {
+  view: "objects",
+  model: "PbiAssureCoverage",
+  table: "",
+  type: "",
+  usage: "",
+  search: "",
+  system: false,
+  limited: false,
+  sort: "name",
+  tab: "Summary",
+  selected: null,
+  history: [],
+  cursor: -1,
+  page: null,
+  source: "Repository fixture",
+  fixture: true,
+};
+let data;
+const announce = (text) => {
+  $("#announcement").textContent = text;
+};
+const badge = (o) =>
+  `<span class="badge ${STATES[o.UsageState].tone}"><i></i>${escape(STATES[o.UsageState].label)}</span>`;
+const glyph = (type) =>
+  `<span class="object-icon ${type === "Measure" ? "measure" : ""}" aria-hidden="true">${type === "Measure" ? "ƒ" : type === "Column" ? "▥" : "⋮"}</span>`;
+const selected = () => data.byId.get(state.selected);
+const uniqueEdges = (edges) => [
+  ...new Map(edges.map((e) => [edgeId(e, "From"), e])).values(),
+];
+const incoming = (o) => uniqueEdges(data.incoming.get(o.id) || []);
+const visible = () => filterObjects(data, state);
+const filtersActive = () =>
+  state.table || state.type || state.usage || state.search || state.limited;
+const resetFilters = () =>
+  Object.assign(state, {
+    table: "",
+    type: "",
+    usage: "",
+    search: "",
+    limited: false,
+  });
+
+function shell() {
+  $("#app").innerHTML =
+    `<header class="topbar"><a class="brand" href="./" aria-label="PBI Assure home"><img src="./mark.svg" alt="">PBI <strong>Assure</strong></a><span class="top-divider"></span><span class="workspace-name">Investigation workspace</span><span class="prototype">PROTOTYPE</span><div class="top-actions"><span class="local-dot"></span><span>Local & read-only</span><button class="open-button" data-action="import">${icon("folder")}Open analysis JSON</button><input type="file" id="file" accept=".json,application/json" hidden></div></header>
+    <div class="app-layout"><aside class="sidebar" aria-label="Workspace navigation"></aside><main id="main"><header class="main-heading"></header><div class="workspace"></div></main></div><div id="toast" class="toast" role="alert" hidden></div>`;
+  renderSidebar();
+  renderWorkspace();
+}
+function renderSidebar() {
+  const tables =
+    data.raw.SemanticModels.find((m) => m.Name === state.model)?.Tables || [];
+  const modelObjects = data.objects.filter(
+    (o) => o.SemanticModel === state.model && (state.system || !o.system),
+  );
+  $(".sidebar").innerHTML =
+    `<div class="project-label">OPEN ANALYSIS</div><div class="project-name">${state.fixture ? "Coverage study" : escape(state.source)}</div><div class="source-label">${state.fixture ? "Synthetic repository fixture" : "Local JSON inventory"}</div>
+    <nav class="primary-nav" aria-label="Investigation areas">${[
+      ["objects", "Model objects"],
+      ["pages", "Report pages"],
+      ["check", "What was checked"],
+    ]
+      .map(
+        ([v, label]) =>
+          `<button data-view="${v}" class="nav-item ${state.view === v ? "active" : ""}" ${state.view === v ? 'aria-current="page"' : ""}>${icon(v)}${label}${v === "objects" ? `<span>${data.objects.length}</span>` : ""}</button>`,
+      )
+      .join("")}</nav>
+    <div class="model-navigation"><label class="project-label" for="model-select">SEMANTIC MODEL</label><select id="model-select" aria-label="Semantic model">${data.raw.SemanticModels.map((m) => `<option ${m.Name === state.model ? "selected" : ""}>${escape(m.Name)}</option>`).join("")}</select><div class="table-heading">Tables <span>${tables.filter((t) => state.system || !t.IsSystemGenerated).length}</span></div><nav class="table-nav" aria-label="Filter by table"><button data-table="" class="${!state.table ? "chosen" : ""}">${icon("objects")}All tables<span>${modelObjects.length}</span></button>${tables
+      .filter((t) => state.system || !t.IsSystemGenerated)
+      .map(
+        (t) =>
+          `<button data-table="${escape(t.Name)}" class="${state.table === t.Name ? "chosen" : ""}" title="${escape(t.Name)}"><span class="table-symbol">▦</span><span class="table-name">${escape(t.Name)}</span><span>${modelObjects.filter((o) => o.Table === t.Name).length}</span></button>`,
+      )
+      .join("")}</nav></div>
+    <div class="sidebar-bottom"><span class="project-label">ANALYSIS SCOPE</span><p>${data.raw.Reports.length} reports · ${data.raw.SemanticModels.length} models</p><span class="source-label">Metadata only. No DAX execution.</span><button class="text-button" data-action="scope">View evidence boundaries ${icon("arrow")}</button></div>`;
+}
+function renderWorkspace() {
+  const heading =
+    state.view === "objects"
+      ? [
+          "MODEL / INVESTIGATE",
+          "Objects",
+          "Follow the evidence. Keep the context.",
+        ]
+      : state.view === "pages"
+        ? [
+            "REPORT / EXPLORE",
+            "Report pages",
+            "See which objects appear in the saved report metadata.",
+          ]
+        : [
+            "ANALYSIS / SCOPE",
+            "What was checked",
+            "Understand the evidence before interpreting an absence.",
+          ];
+  $(".main-heading").innerHTML =
+    `<div><div class="eyebrow">${heading[0]}</div><h1>${heading[1]}</h1><p>${heading[2]}</p></div><div class="heading-note">${state.fixture ? '<span class="fixture-mark">FIXTURE</span> Real scanner output<br><small>Synthetic PBIP · schema 0.26</small>' : '<span class="fixture-mark">LOCAL</span> Your analysis snapshot<br><small>Kept in this browser tab</small>'}</div>`;
+  if (state.view === "objects") {
+    $(".workspace").innerHTML =
+      `<section class="collection-pane" aria-label="Model object collection"><div class="collection-tools"><div class="collection-title"><strong>${escape(state.table || "All tables")}</strong><span id="result-count"></span></div><div class="searchbox">${icon("search")}<input id="search" type="search" placeholder="Search objects or tables…" aria-label="Search objects or tables" value="${escape(state.search)}"><kbd>/</kbd></div><div class="filter-line"><label class="sr-only" for="usage-filter">Usage state</label><select id="usage-filter"><option value="">All usage states</option>${Object.entries(
+        STATES,
+      )
+        .map(
+          ([k, v]) =>
+            `<option value="${k}" ${state.usage === k ? "selected" : ""}>${v.label}</option>`,
+        )
+        .join(
+          "",
+        )}</select><label class="limited-filter"><input id="limited" type="checkbox" ${state.limited ? "checked" : ""}>Checks limited</label><button class="text-button" data-action="reset" title="Clear collection filters">Reset</button></div><div class="type-filters" aria-label="Filter object type">${[
+        ["", "All objects"],
+        ["Measure", "Measures"],
+        ["Column", "Columns"],
+        ["HierarchyLevel", "Hierarchy levels"],
+        ["CalculationItem", "Calculation items"],
+      ]
+        .map(
+          ([k, label]) =>
+            `<button data-type="${k}" aria-pressed="${state.type === k}" class="${state.type === k ? "active" : ""}">${label}</button>`,
+        )
+        .join(
+          "",
+        )}</div></div><div id="collection" class="collection-scroll" tabindex="-1"></div><div class="collection-footer"><label><input id="system" type="checkbox" ${state.system ? "checked" : ""}>Include system-generated</label><span>↑ ↓ to explore · Enter to select</span></div></section><aside id="inspector" class="inspector" aria-label="Selected object"></aside>`;
+    renderCollection();
+    renderInspector();
+  } else if (state.view === "pages") renderPages();
+  else renderCoverage();
+}
+function renderCollection() {
+  const rows = visible();
+  $("#result-count").textContent = `${rows.length} objects`;
+  const active = rows.some((o) => o.id === state.selected)
+    ? state.selected
+    : rows[0]?.id;
+  $("#collection").innerHTML = rows.length
+    ? `<table class="objects-table"><thead><tr><th scope="col"><button data-action="sort-name">Object ${state.sort === "name" ? "↓" : ""}</button></th><th scope="col"><button data-action="sort-usage">Usage ${state.sort === "usage" ? "↓" : ""}</button></th><th scope="col" class="numeric"><span title="Distinct immediate dependency sources">Used by</span></th></tr></thead><tbody>${rows.map((o) => `<tr class="${o.id === state.selected ? "selected" : ""}"><td><button class="object-select" data-object="${escape(o.id)}" tabindex="${o.id === active ? "0" : "-1"}" ${o.id === state.selected ? 'aria-current="true"' : ""}>${glyph(o.ObjectType)}<span><strong>${escape(o.ObjectName)}</strong><small>${escape(o.Table)} · ${escape(words(o.ObjectType))}${o.detail?.IsHidden ? " · Hidden" : ""}</small></span></button></td><td>${badge(o)}${o.ClassificationConfidence === "QualifiedByLimitation" ? '<small class="checks-limited">◐ Checks limited</small>' : ""}</td><td class="numeric">${incoming(o).length || '<span class="muted">—</span>'}</td></tr>`).join("")}</tbody></table>`
+    : `<div class="empty"><span class="empty-symbol">⌕</span><h2>No matching objects</h2><p>Try a different name, table or usage state.</p><button class="primary-button" data-action="reset">Clear filters</button></div>`;
+  announce(`${rows.length} objects in collection.`);
+}
+function relationList(edges, side, limit = Infinity) {
+  if (!edges.length)
+    return '<p class="quiet">No dependency evidence recorded in this direction.</p>';
+  return `<div class="relations">${edges
+    .slice(0, limit)
+    .map((e) => {
+      const id = edgeId(e, side),
+        object = data.byId.get(id);
+      return `<div class="relation-row">${glyph(e[side + "ObjectType"])}<div>${object ? `<button class="related-object" data-related="${escape(id)}">${escape(e[side + "ObjectName"])}${icon("arrow")}</button>` : `<strong>${escape(e[side + "ObjectName"])}</strong>`}<small>${escape(e[side + "Table"] || words(e[side + "ObjectType"]))} · ${escape(words(e.DependencyKind))}</small>${!object ? '<small class="quiet">Graph evidence · outside this object collection</small>' : ""}</div>${object ? `<span class="relation-state" title="${escape(STATES[object.UsageState].label)}">${escape(STATES[object.UsageState].label)}</span>` : ""}</div>`;
+    })
+    .join("")}</div>`;
+}
+function reportEvidence(o, full = false) {
+  if (!o.DirectReportLocations.length)
+    return `<p class="quiet">No direct report locations recorded.${o.UsageState === "IndirectlyUsed" ? " This object is reached through dependencies; see Used by." : ""}</p>`;
+  return `<div class="report-locations">${o.DirectReportLocations.map((loc) => {
+    const report = data.raw.Reports.find(
+      (r) => r.RelativePath === loc.Report || r.Name === loc.Report,
+    );
+    const page = report?.Pages.find((p) => p.Name === loc.Page);
+    const visual = page?.Visuals.find((v) => v.Name === loc.Visual);
+    return `<div class="report-location">${icon("pages")}<div><strong>${escape(page?.DisplayName || loc.Page || "Report-level reference")}</strong><small>${escape(report?.Name || loc.Report)} · ${escape(visual?.Accessibility?.TitleText || visual?.VisualType || loc.UsageContext || loc.LocationKind)}</small>${loc.Visual ? `<code>${escape(loc.Visual)}</code>` : ""}${full ? `<small>${escape(loc.LocationKind)}${visual?.IsHidden ? " · Hidden visual" : ""}</small>` : ""}</div></div>`;
+  }).join("")}</div>`;
+}
+function expression(o, full = false) {
+  const dax = o.detail?.Expression;
+  return dax
+    ? `<div class="code-heading"><span>DAX EXPRESSION</span><button class="text-button" data-action="copy">Copy</button></div><pre class="dax ${full ? "full" : ""}"><code>${highlight(dax)}</code></pre>${o.detail.FormatString ? `<p class="format-label">Format string <code>${escape(o.detail.FormatString)}</code></p>` : ""}`
+    : `<p class="quiet">No DAX expression is published for this ${escape(words(o.ObjectType).toLowerCase())} in the JSON inventory.${o.ObjectType === "Column" ? " Imported columns receive their data from the model’s partition." : ""}</p>`;
+}
+function highlight(dax) {
+  // Tokenise before escaping so metadata cannot introduce markup.
+  return (
+    dax.match(
+      /"(?:[^"]|"")*"|'(?:[^']|'')*'|\[[^\]]*\]|\b[A-Za-z_][A-Za-z_0-9]*(?=\s*\()|\b(?:VAR|RETURN|TRUE|FALSE)\b|[^\["'A-Za-z]+|[A-Za-z_0-9]+|./g,
+    ) || []
+  )
+    .map((t) => {
+      const cls = t.startsWith("[")
+        ? "dax-field"
+        : /^[A-Z_]+$/.test(t)
+          ? "dax-function"
+          : t.startsWith('"')
+            ? "dax-string"
+            : "";
+      return cls ? `<span class="${cls}">${escape(t)}</span>` : escape(t);
+    })
+    .join("");
+}
+function renderInspector() {
+  const o = selected();
+  if (!o) {
+    $("#inspector").innerHTML =
+      '<div class="empty"><h2>Select an object</h2><p>Its evidence and dependencies will appear here.</p></div>';
+    return;
+  }
+  const inEdges = incoming(o),
+    outEdges = data.outgoing.get(o.id) || [],
+    support = supportingEdges(data, o);
+  const outside = !visible().some((v) => v.id === o.id);
+  $("#inspector").innerHTML =
+    `<div class="inspector-toolbar"><div class="history-buttons"><button data-action="back" aria-label="Previous inspected object" ${state.cursor <= 0 ? "disabled" : ""}>${icon("back")}</button><button data-action="forward" aria-label="Next inspected object" ${state.cursor >= state.history.length - 1 ? "disabled" : ""}>${icon("arrow")}</button></div><span>OBJECT INSPECTOR</span><span class="history-count">${state.cursor + 1} / ${state.history.length}</span></div>
+    <div class="object-hero"><div class="object-breadcrumb">${escape(o.SemanticModel)} <span>/</span> ${escape(o.Table)}</div><div class="object-title">${glyph(o.ObjectType)}<h2 id="object-heading" tabindex="-1">${escape(o.ObjectName)}</h2></div><div class="object-meta"><span>${escape(words(o.ObjectType))}</span>${o.detail?.DataType ? `<span>${escape(o.detail.DataType)}</span>` : ""}${o.detail?.IsHidden ? "<span>Hidden</span>" : ""}${o.system ? "<span>System-generated</span>" : ""}</div><div class="hero-badges">${badge(o)}${o.ClassificationConfidence === "QualifiedByLimitation" ? '<button class="limit-badge" data-action="object-coverage">◐ Checks limited</button>' : '<span class="established">Established within scope</span>'}</div></div>
+    ${outside ? '<div class="outside-filter">Following a dependency outside your collection filters.<button data-action="reveal">Show in collection</button></div>' : ""}
+    <div class="inspector-tabs" role="tablist" aria-label="Object information">${["Summary", "Dependencies", "DAX", "Evidence"].map((tab) => `<button role="tab" id="tab-${tab}" aria-controls="detail-panel" aria-selected="${state.tab === tab}" tabindex="${state.tab === tab ? "0" : "-1"}" data-tab="${tab}">${tab}${tab === "Dependencies" ? `<span>${inEdges.length + outEdges.length}</span>` : ""}</button>`).join("")}</div><div id="detail-panel" class="inspector-content" role="tabpanel" aria-labelledby="tab-${state.tab}" tabindex="0">${
+      state.tab === "Summary"
+        ? `<section class="why-section"><div class="section-label"><span class="small-dot ${STATES[o.UsageState].tone}"></span>WHY ${escape(STATES[o.UsageState].label.toUpperCase())}</div><p class="why-text">${escape(STATES[o.UsageState].why)}</p>${support.length ? `<div class="supporting"><span>Supporting predecessor${support.length === 1 ? "" : "s"} from the scanner’s reachability</span>${relationList(uniqueEdges(support), "From", 2)}</div>` : ""}${["ApparentlyUnused", "UsedOnlyByUnusedBranch"].includes(o.UsageState) ? '<div class="review-note">Review candidate, never permission to delete. Other reports, external consumers and runtime behaviour may use this object.</div>' : ""}${o.ClassificationConfidence === "QualifiedByLimitation" ? '<p class="limitation-note">Incomplete analysis may affect this classification. Usage state and confidence are separate. <button data-action="object-coverage">Read model limitations →</button></p>' : ""}</section>
+      <section><div class="section-heading"><h3>Used by <span>${inEdges.length}</span></h3>${inEdges.length > 3 ? '<button class="text-button" data-go-tab="Dependencies">View all →</button>' : ""}</div>${relationList(inEdges, "From", 3)}</section><section><div class="section-heading"><h3>Used in the report <span>${o.DirectReportLocations.length}</span></h3><span class="subtle-label">DIRECT LOCATIONS</span></div>${reportEvidence(o)}</section><section>${expression(o)}</section>`
+        : state.tab === "Dependencies"
+          ? `<div class="panel-intro"><h3>Follow the dependency chain</h3><p>Each link opens in this inspector. Your collection filters and position stay in place.</p></div><section><h3>Used by <span>${inEdges.length}</span></h3><p class="quiet">Immediate sources referencing this object. These may include unused branches.</p>${relationList(inEdges, "From")}</section><section><h3>Depends on <span>${outEdges.length}</span></h3>${relationList(outEdges, "To")}</section><p class="footnote">Report measures and other graph-only nodes retain their evidence but cannot be opened as model objects. Same-named report-measure owners are not distinguished by this JSON contract.</p>`
+          : state.tab === "DAX"
+            ? `<div class="panel-intro"><h3>Calculation definition</h3><p>Saved model metadata. Expressions are displayed, never executed.</p></div>${expression(o, true)}`
+            : `<div class="panel-intro"><h3>Evidence & provenance</h3><p>Inspect the saved references behind this result.</p></div><section><h3>Object definition</h3><dl class="metadata"><dt>Semantic model</dt><dd>${escape(o.SemanticModel)}</dd><dt>Table</dt><dd>${escape(o.Table)}</dd><dt>Source</dt><dd><code>${escape(o.table?.RelativePath || "Not published in JSON")}</code></dd><dt>Confidence</dt><dd>${o.ClassificationConfidence === "QualifiedByLimitation" ? "Checks limited" : "Established within analysed scope"}</dd>${o.detail?.SourceColumn ? `<dt>Source column</dt><dd>${escape(o.detail.SourceColumn)}</dd>` : ""}${o.detail?.SortByColumn ? `<dt>Sort by column</dt><dd>${escape(o.detail.SortByColumn)}</dd>` : ""}</dl></section><section><h3>Direct report evidence</h3>${reportEvidence(o, true)}${o.DirectReportReferences.map((e) => `<details class="evidence"><summary>${escape(words(e.UsageContext))}${e.Role ? " · " + escape(e.Role) : ""}</summary><code>${escape(e.ArtifactPath)}<br>${escape(e.EvidencePath)}</code></details>`).join("")}</section><section><h3>Dependency evidence</h3>${[...(data.incoming.get(o.id) || []), ...outEdges].map((e) => `<details class="evidence"><summary>${escape(words(e.DependencyKind))} · ${escape(e.FromObjectName)} → ${escape(e.ToObjectName)}</summary><code>${escape(e.EvidenceText)}<br><br>${escape(e.EvidencePath)}</code></details>`).join("") || '<p class="quiet">No dependency edges recorded.</p>'}</section><section><h3>Model-level limitations</h3><p class="quiet">These belong to this model. JSON does not publish the exact affected-object reach of each limitation; the object’s confidence above is authoritative.</p>${modelLimitations(o.SemanticModel)}<button class="text-button" data-action="scope">What was checked →</button></section>`
+    }</div><div class="inspector-footer">${icon("check")} Evidence from saved metadata <span>Read-only</span></div>`;
+}
+function modelLimitations(model) {
+  const limitations = data.raw.AnalysisLimitations.filter(
+    (l) => l.SemanticModel === model,
+  );
+  return (
+    limitations
+      .map(
+        (l) =>
+          `<details class="evidence limitation"><summary>${escape(l.ConstructType)} · ${escape(words(l.SupportState))}</summary><p>${escape(l.Reason)}</p><code>${escape(l.ArtifactPath)}<br>${escape(l.EvidencePath)}</code></details>`,
+      )
+      .join("") ||
+    '<p class="quiet">No model-level limitations recorded by this scan. Permanent analysis boundaries still apply.</p>'
+  );
+}
+function renderPages() {
+  const pages = data.raw.Reports.flatMap((r) =>
+    r.Pages.map((p) => ({ ...p, report: r })),
+  );
+  const p =
+    pages.find(
+      (p) => JSON.stringify([p.report.RelativePath, p.Name]) === state.page,
+    ) || pages[0];
+  state.page = p ? JSON.stringify([p.report.RelativePath, p.Name]) : null;
+  $(".workspace").innerHTML =
+    `<section class="collection-pane"><div class="collection-tools"><div class="collection-title"><strong>Saved report pages</strong><span>${pages.length} pages</span></div><p class="quiet">Page metadata, visuals and direct object references.</p></div><div class="collection-scroll page-list" id="collection" tabindex="-1">${pages.map((pg) => `<button data-page="${escape(JSON.stringify([pg.report.RelativePath, pg.Name]))}" class="page-row ${pg === p ? "active" : ""}" ${pg === p ? 'aria-current="true"' : ""}>${icon("pages")}<span><strong>${escape(pg.DisplayName || pg.Name)}</strong><small>${escape(pg.report.Name)}${pg.Visibility ? " · " + escape(pg.Visibility) : ""}</small></span><span>${pg.Visuals.length}<small>visuals</small></span></button>`).join("")}</div></section><aside class="inspector page-inspector" aria-label="Selected report page">${
+      p
+        ? `<div class="object-hero"><div class="eyebrow">${escape(p.report.Name)}</div><h2>${escape(p.DisplayName || p.Name)}</h2><p>${p.Visuals.length} visuals · ${escape(p.PageType || "Report page")}</p></div><div class="inspector-content"><p class="quiet">Direct references from this saved page. Visuals are metadata representations, not rendered Power BI visuals.</p>${
+            p.Visuals.map((v) => {
+              const objects = data.objects.filter((o) =>
+                o.DirectReportReferences.some(
+                  (e) =>
+                    (e.Report === p.report.RelativePath ||
+                      e.Report === p.report.Name) &&
+                    e.Page === p.Name &&
+                    e.Visual === v.Name,
+                ),
+              );
+              return `<section class="visual-entry"><div class="section-heading"><h3>${escape(v.Accessibility?.TitleText || words(v.VisualType) || v.Name)}</h3>${v.IsHidden ? '<span class="fixture-mark">HIDDEN</span>' : ""}</div><code>${escape(v.Name)}</code><div class="visual-object-links">${objects.map((o) => `<button class="related-object" data-page-object="${escape(o.id)}">${glyph(o.ObjectType)}${escape(o.ObjectName)}${icon("arrow")}</button>`).join("") || '<p class="quiet">No resolved model object references recorded.</p>'}</div></section>`;
+            }).join("") ||
+            '<p class="quiet">No visuals recorded on this page.</p>'
+          }</div>`
+        : '<div class="empty"><h2>No saved pages</h2></div>'
+    }</aside>`;
+}
+function renderCoverage() {
+  const counts = Object.entries(STATES).map(([k, v]) => [
+    v,
+    data.objects.filter((o) => o.UsageState === k).length,
+  ]);
+  $(".workspace").innerHTML =
+    `<section class="coverage-main" id="collection" tabindex="-1"><div class="section-label">ANALYSED SNAPSHOT</div><h2>Evidence has boundaries.</h2><p class="coverage-lead">PBI Assure reads saved project metadata. A usage classification describes what this scan found within that scope.</p><div class="scope-numbers"><div><strong>${data.raw.SemanticModels.length}</strong>semantic models</div><div><strong>${data.raw.Reports.length}</strong>reports</div><div><strong>${data.objects.length}</strong>model objects</div></div><h3>Usage in this snapshot</h3><div class="usage-breakdown">${counts.map(([v, n]) => `<div><span class="badge ${v.tone}"><i></i>${v.label}</span><span class="bar-track"><i style="width:${data.objects.length ? (n / data.objects.length) * 100 : 0}%"></i></span><strong>${n}</strong></div>`).join("")}</div><div class="review-note">Apparently unused is a review candidate, never permission to delete. Check other reports, external consumers and runtime behaviour before making changes.</div><h3>What this viewer exposes</h3><p>Scanner-produced usage and confidence, direct report locations, semantic dependency edges, saved DAX definitions and recorded limitations.</p><h3>What the scan does not establish</h3><ul class="boundaries"><li>DAX or Power Query execution, refresh success or performance.</li><li>External consumers and other reports outside the selected project.</li><li>Runtime visual behaviour or a reproduction of Power BI rendering.</li><li>Absence of use where metadata could not be fully analysed.</li></ul></section><aside class="inspector"><div class="object-hero"><div class="eyebrow">ANALYSIS COVERAGE</div><h2>Checks & limitations</h2><p>Confidence is separate from usage state.</p></div><div class="inspector-content"><div class="review-note">${data.objects.filter((o) => o.ClassificationConfidence === "QualifiedByLimitation").length} objects have Checks limited in this snapshot.</div><p class="quiet">A limitation may affect only part of a model. This viewer preserves each object’s scanner-supplied confidence, and lists limitations at model level.</p>${data.raw.SemanticModels.map((m) => `<section><h3>${escape(m.Name)}</h3>${modelLimitations(m.Name)}</section>`).join("")}<p class="footnote">JSON schema 0.26 omits some in-process details, including descriptions, hidden projection provenance and precise per-limitation reach. This prototype does not infer them.</p></div></aside>`;
+}
+function inspect(id, { focus = false, push = true } = {}) {
+  if (!data.byId.has(id)) return;
+  if (push && id !== state.selected) {
+    state.history = state.history.slice(0, state.cursor + 1);
+    state.history.push(id);
+    state.cursor = state.history.length - 1;
+  }
+  state.selected = id;
+  renderCollection();
+  renderInspector();
+  announce(
+    `Inspecting ${selected().ObjectName}. ${STATES[selected().UsageState].label}.`,
+  );
+  if (focus) $("#object-heading")?.focus();
+}
+function toast(message) {
+  $("#toast").textContent = message;
+  $("#toast").hidden = false;
+  setTimeout(() => {
+    $("#toast").hidden = true;
+  }, 5500);
+}
+document.addEventListener("click", async (event) => {
+  const b = event.target.closest("button");
+  if (!b) return;
+  if (b.dataset.view) {
+    state.view = b.dataset.view;
+    renderSidebar();
+    renderWorkspace();
+    $(`[data-view="${state.view}"]`)?.focus();
+    return;
+  }
+  if (b.hasAttribute("data-table")) {
+    state.table = b.dataset.table;
+    state.view = "objects";
+    renderSidebar();
+    renderWorkspace();
+    $(`[data-table="${CSS.escape(state.table)}"]`)?.focus();
+    return;
+  }
+  if (b.hasAttribute("data-type")) {
+    state.type = b.dataset.type;
+    renderWorkspace();
+    $(`[data-type="${state.type}"]`)?.focus();
+    return;
+  }
+  if (b.dataset.object) {
+    inspect(b.dataset.object);
+    $(`[data-object="${CSS.escape(b.dataset.object)}"]`)?.focus();
+    return;
+  }
+  if (b.dataset.related) {
+    inspect(b.dataset.related, { focus: true });
+    return;
+  }
+  if (b.dataset.pageObject) {
+    state.view = "objects";
+    state.model = data.byId.get(b.dataset.pageObject).SemanticModel;
+    renderSidebar();
+    renderWorkspace();
+    inspect(b.dataset.pageObject, { focus: true });
+    return;
+  }
+  if (b.dataset.page) {
+    state.page = b.dataset.page;
+    renderPages();
+    $(`[data-page="${CSS.escape(state.page)}"]`)?.focus();
+    return;
+  }
+  if (b.dataset.tab || b.dataset.goTab) {
+    state.tab = b.dataset.tab || b.dataset.goTab;
+    renderInspector();
+    $(`#tab-${state.tab}`)?.focus();
+    return;
+  }
+  switch (b.dataset.action) {
+    case "import":
+      $("#file").click();
+      break;
+    case "reset":
+      resetFilters();
+      renderSidebar();
+      renderWorkspace();
+      $("#search").focus();
+      break;
+    case "sort-name":
+      state.sort = "name";
+      renderCollection();
+      $('[data-action="sort-name"]').focus();
+      break;
+    case "sort-usage":
+      state.sort = "usage";
+      renderCollection();
+      $('[data-action="sort-usage"]').focus();
+      break;
+    case "back":
+    case "forward":
+      state.cursor += b.dataset.action === "back" ? -1 : 1;
+      inspect(state.history[state.cursor], { focus: true, push: false });
+      break;
+    case "scope":
+      state.view = "check";
+      renderSidebar();
+      renderWorkspace();
+      break;
+    case "object-coverage":
+      state.tab = "Evidence";
+      renderInspector();
+      $("#tab-Evidence").focus();
+      break;
+    case "reveal":
+      state.model = selected().SemanticModel;
+      state.system ||= selected().system;
+      resetFilters();
+      renderSidebar();
+      renderWorkspace();
+      break;
+    case "copy":
+      try {
+        await navigator.clipboard.writeText(selected().detail.Expression);
+        toast("DAX expression copied.");
+      } catch {
+        toast(
+          "Copy is unavailable here. Select the expression text to copy it.",
+        );
+      }
+      break;
+  }
+});
+document.addEventListener("input", (event) => {
+  if (event.target.id === "search") {
+    state.search = event.target.value;
+    renderCollection();
+    renderInspector();
+  }
+});
+document.addEventListener("change", async (event) => {
+  const target = event.target;
+  if (target.id === "model-select") {
+    state.model = target.value;
+    resetFilters();
+    renderSidebar();
+    renderWorkspace();
+    $("#model-select").focus();
+  }
+  if (target.id === "usage-filter") {
+    state.usage = target.value;
+    renderCollection();
+    renderInspector();
+  }
+  if (target.id === "limited") {
+    state.limited = target.checked;
+    renderCollection();
+    renderInspector();
+  }
+  if (target.id === "system") {
+    state.system = target.checked;
+    renderSidebar();
+    renderCollection();
+    renderInspector();
+  }
+  if (target.id === "file" && target.files[0]) {
+    const file = target.files[0];
+    const previousData = data,
+      previousState = structuredClone(state);
+    try {
+      if (file.size > 30 * 1024 * 1024)
+        throw new Error("This prototype opens JSON inventories up to 30 MB.");
+      const next = adaptInventory(JSON.parse(await file.text()));
+      data = next;
+      resetFilters();
+      Object.assign(state, {
+        model: data.raw.SemanticModels[0]?.Name || "",
+        selected: null,
+        history: [],
+        cursor: -1,
+        view: "objects",
+        source: file.name,
+        fixture: false,
+        tab: "Summary",
+      });
+      shell();
+      const first = visible()[0];
+      if (first) inspect(first.id);
+      toast("Analysis opened locally. Nothing was uploaded.");
+    } catch (e) {
+      // Opening is transactional: malformed nested metadata must not discard the investigation.
+      data = previousData;
+      Object.assign(state, previousState);
+      shell();
+      toast(
+        e instanceof SyntaxError
+          ? "This file is not valid JSON. Your current investigation is still open."
+          : e.message,
+      );
+    }
+    target.value = "";
+  }
+});
+document.addEventListener("keydown", (event) => {
+  const target = event.target;
+  if (
+    event.key === "/" &&
+    !/INPUT|TEXTAREA|SELECT/.test(target.tagName) &&
+    state.view === "objects"
+  ) {
+    event.preventDefault();
+    $("#search").focus();
+  }
+  if (
+    target.matches("[data-object]") &&
+    ["ArrowDown", "ArrowUp", "Home", "End"].includes(event.key)
+  ) {
+    event.preventDefault();
+    const rows = visible(),
+      current = rows.findIndex((o) => o.id === target.dataset.object);
+    const index =
+      event.key === "Home"
+        ? 0
+        : event.key === "End"
+          ? rows.length - 1
+          : Math.max(
+              0,
+              Math.min(
+                rows.length - 1,
+                current + (event.key === "ArrowDown" ? 1 : -1),
+              ),
+            );
+    inspect(rows[index].id);
+    $(`[data-object="${CSS.escape(rows[index].id)}"]`).focus();
+  }
+  if (
+    target.matches('[role="tab"]') &&
+    ["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key)
+  ) {
+    event.preventDefault();
+    const tabs = ["Summary", "Dependencies", "DAX", "Evidence"];
+    const index =
+      event.key === "Home"
+        ? 0
+        : event.key === "End"
+          ? 3
+          : (tabs.indexOf(state.tab) + (event.key === "ArrowRight" ? 1 : 3)) %
+            4;
+    state.tab = tabs[index];
+    renderInspector();
+    $(`#tab-${state.tab}`).focus();
+  }
+});
+try {
+  const response = await fetch("./data/coverage.json");
+  if (!response.ok) throw new Error("The fixture could not be loaded.");
+  data = adaptInventory(await response.json());
+  shell();
+  const first =
+    visible().find((o) => o.ObjectName === "DirectlyUsedMeasure") ||
+    visible()[0];
+  if (first) inspect(first.id);
+} catch (e) {
+  $("#app").innerHTML =
+    `<div class="empty"><h1>Could not open the workspace</h1><p>${escape(e.message)}</p><p>Start the local server with <code>npm run dev</code>.</p></div>`;
+}

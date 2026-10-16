@@ -1,0 +1,15 @@
+{
+  "name": "pbi-assure-modern-viewer-prototype",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "node scripts/serve.mjs",
+    "build": "node scripts/build.mjs",
+    "test": "node --test tests/data.test.mjs",
+    "test:browser": "playwright test",
+    "fixture": "node scripts/refresh-fixture.mjs"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.58.2"
+  }
+}
