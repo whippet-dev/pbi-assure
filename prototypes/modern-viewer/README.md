@@ -55,6 +55,22 @@ Try these investigations using the same bundled scanner snapshot:
 
 The visual list and tabs support the same arrow/Home/End and `/` keyboard conventions as Model. Search can hide the selected visual from the collection without discarding its inspector. Previously selected visuals are remembered per page.
 
+## Power Query comparison
+
+Open **Power Query** in the sidebar. The same real scanner snapshot contains 27 M-backed query records: 9 loaded table partitions, 15 supporting expressions and 3 apparently unused expressions. The collection combines M table partitions and named expressions, rather than claiming to reproduce Desktop's query editor. Filter by semantic model, query usage or type, and search names without discarding the selected inspector.
+
+1. Start at **LoadedFactQuery → Dependencies → AddColumnLineageQuery → Fact**. Both directions of the dependency relationship remain in the inspector. Back/forward retraces query selections while the collection keeps its filters; **Show in collection** reveals a selection outside them.
+2. **Fact → Summary → Fact** opens that table's existing Model objects context. **Back to Power Query** restores the query, filters, tab and pane positions, and restores the earlier Model selection/filter state. The Power Query sidebar entry provides the same return while a query-origin model investigation is active.
+3. **Fact → Dependencies → Column preparation evidence** exposes recognised operation/column evidence behind a disclosure. These are preparation operations, not report usage or a claim of complete column lineage.
+4. **LoadedFactQuery → Sources** distinguishes directly recognised connectors from those reached through upstream query edges. Open the originating query in place. **DynamicSourceQuery** has a dynamic/unspecified source location; **DynamicQuery** has dynamic query references. Those are different kinds of uncertainty.
+5. **DynamicQuery → M & evidence** shows original M and its original review-required finding. **LocalFileQuery** retains the original source warning. **EstablishedCoverage → Apparently unused → UnusedQuery** retains its orphan review; apparently unused never grants deletion permission. Full M/source literals are secondary, not shown in the default inspector.
+
+Power Query adds `query-data.js` for query identities, bounded graph traversal and evidence scope, plus `query-view.js` for collection and inspector presentation. It reuses the shell, shared primitives and original finding renderer. Each query is identified by model, name, source kind, table and partition. No scanner, production renderer, runtime dependency or palette changes were needed.
+
+The JSON does not publish dependency target partition identity or parameter flags. Ambiguous same-name targets remain separate candidates and stop traversal; the viewer does not pick one. A missing role remains unspecified. Entity partitions can contribute recorded model connections without being invented as M expressions. Source views show recognised connector functions and coarse location kinds, never inferred connectivity, refresh success or complete lineage. Query-dependency limitations remain distinct from semantic-object confidence, and limitations elsewhere in a model are labelled as model context.
+
+Query navigation is in memory. Sources are inspectable per query; there is no separate cross-project source catalogue or canvas graph. Explicit model-table links open the existing filtered object workspace, not a new table-detail design. This is sufficient to compare the workflow without expanding into a query editor.
+
 ## Use your own analysis
 
 From the repository root, export with the existing scanner:
@@ -128,6 +144,8 @@ npm run test:browser
 
 Proportionate checks: thirteen data tests and nine browser workflows. These cover the existing Model/Report behaviours plus Overview count reconciliation, authored scope, severity/review overlap, separate accessibility, filtered routes, source return, retained investigation state, keyboard interaction and zero-findings/zero-limitations honesty. Desktop captures are written to ignored `artifacts/modern-viewer/`. Manually reviewed 1440×900 and 1280×900 captures and exercised Overview routes in the browser. Production suites and exhaustive narrow-width/fixture/performance matrices were not run.
 
+The Power Query slice adds four focused data checks (real evidence, ambiguous partitions, cyclic/missing edges, limitation/column scope) and three browser workflows (query/model return, source/dynamic evidence, keyboard/scroll/import context). Its targeted run also checks one existing Overview and one Report/Model navigation workflow, plus the static build. Desktop captures at 1440×900 and 1280×900 are reviewed; no production regression suite or size benchmark is run.
+
 `npm run build` creates an ignored `dist/` with static files. This can be hosted at any static origin or subdirectory. No production site or hosting configuration is modified; this branch has not been remotely deployed.
 
 ## Assessment
@@ -137,3 +155,5 @@ Yes: this direction materially improves object/dependency investigation. The sta
 The workspace model also holds up for Report pages: page context stays visible while visual details change, and the explicit return path makes crossing into the Model workspace reversible. A visual collection works better here than treating every visual as a new document section. The remaining question is how well this scales to larger real reports and richer visual metadata; this slice is sufficient for a hands-on comparison without rebuilding the whole report experience.
 
 Overview strengthens this direction by providing a project-level starting point with consistent routes into the existing investigation workspaces. Its value comes from scope-correct navigation and retained context, not more headline metrics. The findings inspector is intentionally small, and the lower-priority snapshot/other-review material may require a short scroll at desktop sizes. This is sufficient to compare the analytical home-screen direction without turning the prototype into a full review application.
+
+Power Query also fits the workspace model. Keeping query selection separate from list filters supports comparison and dependency investigation, while the explicit model return avoids a chain of pages. The extra inspector width helps relationships and source evidence more than a wide metadata table would. Inventory-scale performance and a full query graph remain unproven; this slice is enough for hands-on judgement.

@@ -10,6 +10,8 @@ for (const name of [
   "report-view.js",
   "overview-data.js",
   "overview-view.js",
+  "query-data.js",
+  "query-view.js",
   "styles.css",
   "mark.svg",
 ]) {
