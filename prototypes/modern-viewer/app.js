@@ -7,6 +7,20 @@ import {
   words,
 } from "./data.js";
 import { escape, icon, glyph } from "./ui.js";
+import {
+  buildLineageData,
+  createLineageSession,
+  BRANCH_SIZE,
+  LINEAGE_TABS,
+  revealLineage,
+  lineageEndpoints,
+} from "./lineage-data.js";
+import {
+  lineageNavigation,
+  lineageSearchResults,
+  lineageWorkspace,
+  lineageInspector,
+} from "./lineage-view.js";
 import { buildQueryData, filterQueries } from "./query-data.js";
 import {
   QUERY_TABS,
@@ -89,11 +103,19 @@ const state = {
   queryHistory: [],
   queryCursor: -1,
   queryOrigin: null,
+  lineageCentre: null,
+  lineageSessions: {},
+  lineageHistory: [],
+  lineageCursor: -1,
+  lineageModel: "PbiAssureCoverage",
+  lineageSearch: "",
+  lineageSearchLimit: BRANCH_SIZE,
+  lineageOrigin: null,
   workspaceScroll: {},
   source: "Repository fixture",
   fixture: true,
 };
-let data, queryIndex;
+let data, queryIndex, lineageIndex;
 const announce = (text) => {
   $("#announcement").textContent = text;
 };
@@ -124,6 +146,7 @@ function shell() {
   renderWorkspace();
 }
 function renderSidebar() {
+  if (state.view === "lineage") ensureLineage();
   const tables =
     data.raw.SemanticModels.find((m) => m.Name === state.model)?.Tables || [];
   const modelObjects = data.objects.filter(
@@ -136,6 +159,7 @@ function renderSidebar() {
     <nav class="primary-nav" aria-label="Investigation areas">${[
       ["overview", "Overview"],
       ["objects", "Model objects"],
+      ["lineage", "Lineage"],
       ["pages", "Report pages"],
       ["queries", "Power Query"],
       ["reviews", "Reviews & findings"],
@@ -149,23 +173,25 @@ function renderSidebar() {
     ${
       state.view === "pages"
         ? reportNavigation(data, state)
-        : state.view === "queries"
-          ? queryNavigation(queryIndex, state)
-          : state.view === "reviews"
-            ? reviewsNavigation(data, state)
-            : state.view !== "objects"
-              ? ""
-              : `    <div class="model-navigation"><label class="project-label" for="model-select">SEMANTIC MODEL</label><select id="model-select" aria-label="Semantic model"><option value="" ${!state.model ? "selected" : ""}>All models</option>${data.raw.SemanticModels.map((m) => `<option ${m.Name === state.model ? "selected" : ""}>${escape(m.Name)}</option>`).join("")}</select>${
-                  !state.model
-                    ? `<div class="table-heading">Choose a model to browse its tables</div><nav class="table-nav" aria-label="Filter by model">${data.raw.SemanticModels.map((m) => `<button data-model="${escape(m.Name)}">${icon("objects")}<span class="table-name">${escape(m.Name)}</span><span>${modelObjects.filter((o) => o.SemanticModel === m.Name).length}</span></button>`).join("")}</nav>`
-                    : `<div class="table-heading">Tables <span>${tables.filter((t) => state.system || !t.IsSystemGenerated).length}</span></div><nav class="table-nav" aria-label="Filter by table"><button data-table="" class="${!state.table ? "chosen" : ""}">${icon("objects")}All tables<span>${modelObjects.length}</span></button>${tables
-                        .filter((t) => state.system || !t.IsSystemGenerated)
-                        .map(
-                          (t) =>
-                            `<button data-table="${escape(t.Name)}" class="${state.table === t.Name ? "chosen" : ""}" title="${escape(t.Name)}"><span class="table-symbol">▦</span><span class="table-name">${escape(t.Name)}</span><span>${modelObjects.filter((o) => o.Table === t.Name).length}</span></button>`,
-                        )
-                        .join("")}</nav>`
-                }</div>`
+        : state.view === "lineage"
+          ? lineageNavigation(lineageIndex, state)
+          : state.view === "queries"
+            ? queryNavigation(queryIndex, state)
+            : state.view === "reviews"
+              ? reviewsNavigation(data, state)
+              : state.view !== "objects"
+                ? ""
+                : `    <div class="model-navigation"><label class="project-label" for="model-select">SEMANTIC MODEL</label><select id="model-select" aria-label="Semantic model"><option value="" ${!state.model ? "selected" : ""}>All models</option>${data.raw.SemanticModels.map((m) => `<option ${m.Name === state.model ? "selected" : ""}>${escape(m.Name)}</option>`).join("")}</select>${
+                    !state.model
+                      ? `<div class="table-heading">Choose a model to browse its tables</div><nav class="table-nav" aria-label="Filter by model">${data.raw.SemanticModels.map((m) => `<button data-model="${escape(m.Name)}">${icon("objects")}<span class="table-name">${escape(m.Name)}</span><span>${modelObjects.filter((o) => o.SemanticModel === m.Name).length}</span></button>`).join("")}</nav>`
+                      : `<div class="table-heading">Tables <span>${tables.filter((t) => state.system || !t.IsSystemGenerated).length}</span></div><nav class="table-nav" aria-label="Filter by table"><button data-table="" class="${!state.table ? "chosen" : ""}">${icon("objects")}All tables<span>${modelObjects.length}</span></button>${tables
+                          .filter((t) => state.system || !t.IsSystemGenerated)
+                          .map(
+                            (t) =>
+                              `<button data-table="${escape(t.Name)}" class="${state.table === t.Name ? "chosen" : ""}" title="${escape(t.Name)}"><span class="table-symbol">▦</span><span class="table-name">${escape(t.Name)}</span><span>${modelObjects.filter((o) => o.Table === t.Name).length}</span></button>`,
+                          )
+                          .join("")}</nav>`
+                  }</div>`
     }
     <div class="sidebar-bottom"><span class="project-label">ANALYSIS SCOPE</span><p>${data.raw.Reports.length} reports · ${data.raw.SemanticModels.length} models</p><span class="source-label">Metadata only. No DAX execution.</span><button class="text-button" data-action="scope">View evidence boundaries ${icon("arrow")}</button></div>`;
 }
@@ -173,6 +199,10 @@ function renderWorkspace() {
   document.querySelectorAll(".report-origin").forEach((el) => el.remove());
   $(".workspace").classList.toggle("report-workspace", state.view === "pages");
   $(".workspace").classList.toggle("query-workspace", state.view === "queries");
+  $(".workspace").classList.toggle(
+    "lineage-workspace",
+    state.view === "lineage",
+  );
   $(".workspace").classList.toggle(
     "reviews-workspace",
     state.view === "reviews",
@@ -188,39 +218,46 @@ function renderWorkspace() {
           "Overview",
           "What needs attention, and where to investigate next.",
         ]
-      : state.view === "reviews"
+      : state.view === "lineage"
         ? [
-            "ANALYSIS / REVIEW",
-            "Reviews & findings",
-            "Inspect the original evidence, then follow its source.",
+            "MODEL / TRACE",
+            "Lineage",
+            "Explore every recorded branch. Keep the object at the centre.",
           ]
-        : state.view === "objects"
+        : state.view === "reviews"
           ? [
-              "MODEL / INVESTIGATE",
-              "Objects",
-              "Follow the evidence. Keep the context.",
+              "ANALYSIS / REVIEW",
+              "Reviews & findings",
+              "Inspect the original evidence, then follow its source.",
             ]
-          : state.view === "pages"
+          : state.view === "objects"
             ? [
-                "REPORT / EXPLORE",
-                "Report pages",
-                "Stay on the page. Follow each visual’s evidence.",
+                "MODEL / INVESTIGATE",
+                "Objects",
+                "Follow the evidence. Keep the context.",
               ]
-            : state.view === "queries"
+            : state.view === "pages"
               ? [
-                  "DATA / PREPARE",
-                  "Power Query",
-                  "Explore queries, their dependencies and their model connections.",
+                  "REPORT / EXPLORE",
+                  "Report pages",
+                  "Stay on the page. Follow each visual’s evidence.",
                 ]
-              : [
-                  "ANALYSIS / SCOPE",
-                  "What was checked",
-                  "Understand the evidence before interpreting an absence.",
-                ];
+              : state.view === "queries"
+                ? [
+                    "DATA / PREPARE",
+                    "Power Query",
+                    "Explore queries, their dependencies and their model connections.",
+                  ]
+                : [
+                    "ANALYSIS / SCOPE",
+                    "What was checked",
+                    "Understand the evidence before interpreting an absence.",
+                  ];
   $(".main-heading").innerHTML =
     `<div><div class="eyebrow">${heading[0]}</div><h1 id="workspace-heading" tabindex="-1">${heading[1]}</h1><p>${heading[2]}</p></div><div class="heading-note">${state.fixture ? '<span class="fixture-mark">FIXTURE</span> Real scanner output<br><small>Synthetic PBIP · schema 0.26</small>' : '<span class="fixture-mark">LOCAL</span> Your analysis snapshot<br><small>Kept in this browser tab</small>'}</div>`;
   if (
     state.reportOrigin &&
+    !state.lineageOrigin &&
     !state.queryOrigin &&
     !state.reviewReturn &&
     ["objects", "check"].includes(state.view)
@@ -230,19 +267,32 @@ function renderWorkspace() {
       `<div class="report-origin"><button data-action="return-visual">${icon("back")}Back to visual</button><span>${escape(state.reportOrigin.report)} / ${escape(state.reportOrigin.page)} / <strong>${escape(state.reportOrigin.visual)}</strong></span><small>Report context preserved</small></div>`,
     );
   }
-  if (state.reviewReturn && !["overview", "reviews"].includes(state.view))
+  if (
+    state.reviewReturn &&
+    !state.lineageOrigin &&
+    !["overview", "reviews"].includes(state.view)
+  )
     $(".main-heading").insertAdjacentHTML(
       "afterend",
       `<div class="report-origin"><button data-action="return-reviews">${icon("back")}Back to reviews</button><span>${escape(reviewLabel(data, state))} · Review selection and filters preserved</span></div>`,
     );
   if (
     state.queryOrigin &&
+    !state.lineageOrigin &&
     !state.reviewReturn &&
     ["objects", "check"].includes(state.view)
   )
     $(".main-heading").insertAdjacentHTML(
       "afterend",
       `<div class="report-origin"><button data-action="return-query">${icon("back")}Back to Power Query</button><span>${escape(state.queryOrigin.name)}</span><small>Query selection and filters preserved</small></div>`,
+    );
+  if (
+    state.lineageOrigin &&
+    ["objects", "pages", "check", "queries"].includes(state.view)
+  )
+    $(".main-heading").insertAdjacentHTML(
+      "afterend",
+      `<div class="report-origin"><button data-action="return-lineage">${icon("back")}Back to lineage</button><span>${escape(lineageIndex.nodes.get(state.lineageCentre)?.ObjectName)} · Centre, branches and selection preserved</span></div>`,
     );
   if (state.view === "objects") {
     $(".workspace").innerHTML =
@@ -272,6 +322,7 @@ function renderWorkspace() {
     renderCollection();
     renderInspector();
   } else if (state.view === "pages") renderPages();
+  else if (state.view === "lineage") renderLineage();
   else if (state.view === "queries") {
     const firstVisit = !queryIndex.byId.has(state.querySelected);
     $(".workspace").innerHTML = queryWorkspace(queryIndex, state);
@@ -447,6 +498,108 @@ const modelContextKeys = [
   "history",
   "cursor",
 ];
+const lineageSession = () => state.lineageSessions[state.lineageCentre];
+function ensureLineage() {
+  if (!lineageIndex.nodes.has(state.lineageCentre)) {
+    const node =
+      lineageIndex.nodes.get(state.selected) ||
+      [...lineageIndex.nodes.values()].find(
+        (n) => n.ObjectName === "BaseAmount",
+      ) ||
+      lineageIndex.nodes.values().next().value;
+    if (!node) return null;
+    state.lineageCentre = node.id;
+    state.lineageHistory = [node.id];
+    state.lineageCursor = 0;
+  }
+  state.lineageSessions[state.lineageCentre] ||= createLineageSession(
+    state.lineageCentre,
+  );
+  return lineageSession();
+}
+function rememberLineage() {
+  const session = lineageSession();
+  if (state.view === "lineage" && session)
+    session.scroll = ["#lineage-up", "#lineage-down", ".lineage-detail"].map(
+      (selector) => $(selector)?.scrollTop || 0,
+    );
+}
+function renderLineage() {
+  const session = ensureLineage();
+  if (!session) {
+    $(".workspace").innerHTML =
+      '<div class="empty"><h2>No semantic graph objects</h2><p>Open an analysis with semantic dependency data.</p></div>';
+    return;
+  }
+  $(".workspace").innerHTML = lineageWorkspace(lineageIndex, state, session);
+  ["#lineage-up", "#lineage-down", ".lineage-detail"].forEach((selector, i) => {
+    if ($(selector)) $(selector).scrollTop = session.scroll[i] || 0;
+  });
+}
+function centreLineage(id, { push = true } = {}) {
+  if (!lineageIndex.nodes.has(id)) return;
+  rememberLineage();
+  if (push && id !== state.lineageCentre) {
+    state.lineageHistory = state.lineageHistory.slice(
+      0,
+      state.lineageCursor + 1,
+    );
+    state.lineageHistory.push(id);
+    state.lineageCursor = state.lineageHistory.length - 1;
+  }
+  state.lineageCentre = id;
+  state.lineageSessions[id] ||= createLineageSession(id);
+  renderSidebar();
+  renderLineage();
+  announce(`Lineage centred on ${lineageIndex.nodes.get(id).ObjectName}.`);
+  $("#lineage-node-heading")?.focus({ preventScroll: true });
+}
+function selectLineage(id, { focus = true } = {}) {
+  if (!lineageIndex.nodes.has(id)) return;
+  rememberLineage();
+  const session = lineageSession();
+  session.selected = id;
+  session.scroll[2] = 0;
+  renderLineage();
+  if (focus) $("#lineage-node-heading")?.focus({ preventScroll: true });
+}
+function lineageVisit() {
+  rememberWorkspace();
+  const keys = [
+    ...modelContextKeys,
+    "report",
+    "page",
+    "reportVisuals",
+    "reportScroll",
+    "visualSearch",
+    "visualTab",
+    "reportPageDetails",
+    "reportOrigin",
+    "queryOrigin",
+    "reviewReturn",
+    "workspaceScroll",
+  ];
+  state.lineageOrigin = {
+    context: Object.fromEntries(
+      keys.map((key) => [key, structuredClone(state[key])]),
+    ),
+  };
+}
+function openLineageModel() {
+  const node = lineageIndex.nodes.get(lineageSession().selected);
+  if (!node?.usage) return;
+  lineageVisit();
+  resetFilters();
+  Object.assign(state, {
+    model: node.SemanticModel,
+    table: node.Table,
+    system: node.usage.system,
+    tab: "Summary",
+    selected: null,
+  });
+  showView("objects", { restore: false });
+  inspect(node.id, { focus: true });
+}
 function renderQueries({ resetDetail = false } = {}) {
   const scroll = $("#collection")?.scrollTop || 0;
   const detailScroll = resetDetail ? 0 : $(".query-detail")?.scrollTop || 0;
@@ -579,6 +732,7 @@ function toast(message) {
   }, 5500);
 }
 const scrollSelectors = {
+  lineage: ["#lineage-up", "#lineage-down", ".lineage-detail"],
   overview: ["#collection"],
   objects: ["#collection", "#detail-panel"],
   reviews: ["#collection", ".review-detail"],
@@ -586,6 +740,7 @@ const scrollSelectors = {
   queries: ["#collection", ".query-detail"],
 };
 function rememberWorkspace() {
+  if (state.view === "lineage") rememberLineage();
   if (state.view === "pages") rememberReportScroll();
   else
     state.workspaceScroll[state.view] = (scrollSelectors[state.view] || []).map(
@@ -594,15 +749,20 @@ function rememberWorkspace() {
 }
 function showView(view, { restore = true, focus = true } = {}) {
   rememberWorkspace();
+  if (view === "lineage" && state.lineageOrigin) {
+    Object.assign(state, state.lineageOrigin.context);
+    state.lineageOrigin = null;
+  }
   if (view === "reviews" && state.reviewOrigin) {
     Object.assign(state, state.reviewOrigin.context);
     state.reviewOrigin = null;
+    state.lineageOrigin = null;
   }
   state.view = view;
   if (view === "reviews") state.reviewReturn = false;
   renderSidebar();
   renderWorkspace();
-  if (restore && state.workspaceScroll[view])
+  if (restore && state.workspaceScroll[view] && view !== "lineage")
     (scrollSelectors[view] || []).forEach((selector, index) => {
       if ($(selector))
         $(selector).scrollTop = state.workspaceScroll[view][index] || 0;
@@ -745,6 +905,70 @@ function investigateReview() {
 document.addEventListener("click", async (event) => {
   const b = event.target.closest("button");
   if (!b) return;
+  if (b.dataset.lineageCentre) {
+    centreLineage(b.dataset.lineageCentre);
+    return;
+  }
+  if (b.dataset.lineageSelect) {
+    selectLineage(b.dataset.lineageSelect);
+    return;
+  }
+  if (b.dataset.lineageExpand || b.dataset.lineageMore) {
+    rememberLineage();
+    const session = lineageSession(),
+      direction = b.dataset.direction,
+      id = b.dataset.lineageExpand || b.dataset.lineageMore;
+    if (b.dataset.lineageMore)
+      session.limits[direction][id] =
+        (session.limits[direction][id] || BRANCH_SIZE) + BRANCH_SIZE;
+    else if (session.expanded[direction].includes(id))
+      session.expanded[direction] = session.expanded[direction].filter(
+        (key) => key !== id,
+      );
+    else session.expanded[direction].push(id);
+    renderLineage();
+    $(
+      `[data-lineage-expand="${CSS.escape(id)}"][data-direction="${direction}"]`,
+    )?.focus({ preventScroll: true });
+    return;
+  }
+  if (b.dataset.lineageTab) {
+    rememberLineage();
+    const session = lineageSession();
+    session.tab = b.dataset.lineageTab;
+    session.scroll[2] = 0;
+    $("#lineage-inspector").innerHTML = lineageInspector(lineageIndex, session);
+    $(`#lineage-tab-${session.tab}`).focus();
+    return;
+  }
+  if (b.dataset.lineageReveal) {
+    rememberLineage();
+    const session = lineageSession(),
+      id = b.dataset.lineageReveal;
+    const found =
+      revealLineage(lineageIndex, session, id, b.dataset.direction || "up") ||
+      revealLineage(lineageIndex, session, id, "down");
+    if (found) {
+      session.tab = "Connections";
+      session.scroll[2] = 0;
+      renderLineage();
+      $(`[data-lineage-node="${CSS.escape(id)}"]`)?.scrollIntoView({
+        block: "nearest",
+      });
+      $("#lineage-node-heading")?.focus({ preventScroll: true });
+    }
+    return;
+  }
+  if (b.dataset.lineageEndpoint) {
+    const endpoint = lineageEndpoints(lineageIndex, lineageSession()).rows.find(
+      (row) => row.key === b.dataset.lineageEndpoint,
+    );
+    if (endpoint?.report) {
+      lineageVisit();
+      openReportTarget(endpoint.report, endpoint.page, endpoint.visual, "Uses");
+    }
+    return;
+  }
   if (b.hasAttribute("data-query-state")) {
     state.queryState = b.dataset.queryState;
     renderSidebar();
@@ -942,6 +1166,56 @@ document.addEventListener("click", async (event) => {
     return;
   }
   switch (b.dataset.action) {
+    case "return-lineage":
+      showView("lineage");
+      $("#lineage-node-heading")?.focus({ preventScroll: true });
+      break;
+    case "lineage-centre-evidence":
+      rememberLineage();
+      lineageSession().selected = state.lineageCentre;
+      lineageSession().tab = "Evidence";
+      lineageSession().scroll[2] = 0;
+      renderLineage();
+      $("#lineage-tab-Evidence").focus();
+      break;
+    case "lineage-model":
+      openLineageModel();
+      break;
+    case "lineage-current-model":
+      centreLineage(state.selected);
+      break;
+    case "lineage-more-search":
+      state.lineageSearchLimit += BRANCH_SIZE;
+      $("#lineage-search-results").innerHTML = lineageSearchResults(
+        lineageIndex,
+        state,
+      );
+      break;
+    case "lineage-back":
+    case "lineage-forward":
+      state.lineageCursor += b.dataset.action === "lineage-back" ? -1 : 1;
+      centreLineage(state.lineageHistory[state.lineageCursor], { push: false });
+      break;
+    case "lineage-reset": {
+      const session = lineageSession(),
+        membership = session.membership;
+      Object.assign(session, createLineageSession(state.lineageCentre), {
+        membership,
+      });
+      renderLineage();
+      break;
+    }
+    case "lineage-more-connections":
+    case "lineage-more-endpoints": {
+      rememberLineage();
+      const session = lineageSession();
+      if (b.dataset.action === "lineage-more-connections")
+        session.connectionLimit =
+          (session.connectionLimit || BRANCH_SIZE) + BRANCH_SIZE;
+      else session.endpointLimit += BRANCH_SIZE;
+      renderLineage();
+      break;
+    }
     case "return-query":
       returnToQuery();
       break;
@@ -1071,6 +1345,14 @@ document.addEventListener(
   true,
 );
 document.addEventListener("input", (event) => {
+  if (event.target.id === "lineage-search") {
+    state.lineageSearch = event.target.value;
+    state.lineageSearchLimit = BRANCH_SIZE;
+    $("#lineage-search-results").innerHTML = lineageSearchResults(
+      lineageIndex,
+      state,
+    );
+  }
   if (event.target.id === "query-search") {
     state.querySearch = event.target.value;
     renderQueries();
@@ -1092,6 +1374,18 @@ document.addEventListener("input", (event) => {
 });
 document.addEventListener("change", async (event) => {
   const target = event.target;
+  if (target.id === "lineage-model") {
+    state.lineageModel = target.value;
+    state.lineageSearchLimit = BRANCH_SIZE;
+    renderSidebar();
+    $("#lineage-model").focus();
+  }
+  if (target.id === "lineage-membership") {
+    rememberLineage();
+    lineageSession().membership = target.checked;
+    renderLineage();
+    $("#lineage-membership").focus();
+  }
   if (["query-model", "query-kind"].includes(target.id)) {
     state[target.id === "query-model" ? "queryModel" : "queryKind"] =
       target.value;
@@ -1166,14 +1460,17 @@ document.addEventListener("change", async (event) => {
     const file = target.files[0];
     const previousData = data,
       previousQueries = queryIndex,
+      previousLineage = lineageIndex,
       previousState = structuredClone(state);
     try {
       if (file.size > 30 * 1024 * 1024)
         throw new Error("This prototype opens JSON inventories up to 30 MB.");
       const next = adaptInventory(JSON.parse(await file.text()));
       const nextQueries = buildQueryData(next);
+      const nextLineage = buildLineageData(next);
       data = next;
       queryIndex = nextQueries;
+      lineageIndex = nextLineage;
       resetFilters();
       Object.assign(state, {
         model: data.raw.SemanticModels[0]?.Name || "",
@@ -1212,6 +1509,14 @@ document.addEventListener("change", async (event) => {
         queryCursor: -1,
         queryTab: "Summary",
         queryOrigin: null,
+        lineageCentre: null,
+        lineageSessions: {},
+        lineageHistory: [],
+        lineageCursor: -1,
+        lineageModel: data.raw.SemanticModels[0]?.Name || "",
+        lineageSearch: "",
+        lineageSearchLimit: BRANCH_SIZE,
+        lineageOrigin: null,
       });
       const first = visible()[0];
       if (first) {
@@ -1225,6 +1530,7 @@ document.addEventListener("change", async (event) => {
       // Opening is transactional: malformed nested metadata must not discard the investigation.
       data = previousData;
       queryIndex = previousQueries;
+      lineageIndex = previousLineage;
       Object.assign(state, previousState);
       shell();
       toast(
@@ -1238,6 +1544,58 @@ document.addEventListener("change", async (event) => {
 });
 document.addEventListener("keydown", (event) => {
   const target = event.target;
+  if (
+    target.matches("[data-lineage-tab]") &&
+    ["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key)
+  ) {
+    event.preventDefault();
+    rememberLineage();
+    const session = lineageSession();
+    const index =
+      event.key === "Home"
+        ? 0
+        : event.key === "End"
+          ? LINEAGE_TABS.length - 1
+          : (LINEAGE_TABS.indexOf(session.tab) +
+              (event.key === "ArrowRight" ? 1 : LINEAGE_TABS.length - 1)) %
+            LINEAGE_TABS.length;
+    session.tab = LINEAGE_TABS[index];
+    session.scroll[2] = 0;
+    $("#lineage-inspector").innerHTML = lineageInspector(lineageIndex, session);
+    $(`#lineage-tab-${session.tab}`).focus();
+    return;
+  }
+  if (
+    target.matches(".lineage-node-select") &&
+    ["ArrowUp", "ArrowDown", "Home", "End"].includes(event.key)
+  ) {
+    event.preventDefault();
+    const laneId = target.closest(".lineage-lane-scroll").id,
+      rows = [
+        ...target
+          .closest(".lineage-lane-scroll")
+          .querySelectorAll(".lineage-node-select"),
+      ],
+      current = rows.indexOf(target);
+    const next =
+        event.key === "Home"
+          ? 0
+          : event.key === "End"
+            ? rows.length - 1
+            : Math.max(
+                0,
+                Math.min(
+                  rows.length - 1,
+                  current + (event.key === "ArrowDown" ? 1 : -1),
+                ),
+              ),
+      id = rows[next]?.dataset.lineageSelect;
+    if (id) {
+      selectLineage(id, { focus: false });
+      $(`#${laneId} [data-lineage-select="${CSS.escape(id)}"]`)?.focus();
+    }
+    return;
+  }
   if (
     target.matches("[data-review-tab]") &&
     ["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key)
@@ -1257,16 +1615,18 @@ document.addEventListener("keydown", (event) => {
   if (
     event.key === "/" &&
     !/INPUT|TEXTAREA|SELECT/.test(target.tagName) &&
-    ["objects", "pages", "reviews", "queries"].includes(state.view)
+    ["objects", "pages", "reviews", "queries", "lineage"].includes(state.view)
   ) {
     event.preventDefault();
     (state.view === "objects"
       ? $("#search")
-      : state.view === "queries"
-        ? $("#query-search")
-        : state.view === "reviews"
-          ? $("#review-search")
-          : $("#visual-search")
+      : state.view === "lineage"
+        ? $("#lineage-search")
+        : state.view === "queries"
+          ? $("#query-search")
+          : state.view === "reviews"
+            ? $("#review-search")
+            : $("#visual-search")
     )?.focus();
   }
   if (
@@ -1418,6 +1778,7 @@ try {
   if (!response.ok) throw new Error("The fixture could not be loaded.");
   data = adaptInventory(await response.json());
   queryIndex = buildQueryData(data);
+  lineageIndex = buildLineageData(data);
   const first =
     visible().find((o) => o.ObjectName === "DirectlyUsedMeasure") ||
     visible()[0];

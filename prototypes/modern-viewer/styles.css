@@ -2563,6 +2563,95 @@ input[type="checkbox"] {
 .reviews-workspace .inspector-footer { justify-content: space-between; min-height: 62px; }
 .reviews-workspace .inspector-footer > span { margin-left: 0; }
 .reviews-workspace .inspector-footer .primary-button { display: inline-flex; align-items: center; gap: 7px; }
+
+/* Lineage is a progressive adjacency map, not a canvas of crossing edges. */
+.lineage-workspace { grid-template-columns: minmax(560px, 1.9fr) minmax(300px, 1fr); gap: 16px; }
+.lineage-navigation { margin-top: 0; }
+.lineage-navigation > select { width: 100%; margin: 9px 0 12px; padding: 9px 5px; border: 1px solid var(--line); border-radius: 5px; background: transparent; font-size: 11px; }
+.lineage-navigation .searchbox { padding: 0 7px; }
+.lineage-navigation .searchbox input { font-size: 10px; width: 100%; min-width: 0; }
+#lineage-search-results > small { display: block; margin: 12px 7px 8px; }
+.lineage-picker button { align-items: flex-start; }
+.lineage-picker button > span:last-child { margin: 0; color: inherit; white-space: normal; min-width: 0; }
+.lineage-picker strong { font-size: 10px; font-weight: 550; overflow-wrap: anywhere; display: block; }
+.lineage-picker small { font-size: 9px; color: var(--muted); display: block; margin-top: 5px; line-height: 1.6; }
+.lineage-current-model { margin: 18px 7px 0; text-align: left; }
+.lineage-map { background: white; border: 1px solid var(--line); border-radius: 8px; min-width: 0; min-height: 0; overflow: hidden; display: flex; flex-direction: column; }
+.lineage-centre { padding: 17px 20px 14px; border-bottom: 1px solid var(--line); flex-shrink: 0; }
+.lineage-centre-toolbar { display: flex; align-items: center; gap: 10px; }
+.lineage-centre-toolbar .history-buttons { margin-left: auto; }
+.lineage-centre-toolbar .source-label { font-size: 9px; }
+.lineage-centre-title { display: flex; gap: 10px; text-align: left; align-items: center; padding: 15px 0 0; }
+.lineage-centre-title strong { font-size: 21px; font-weight: 600; overflow-wrap: anywhere; letter-spacing: -.6px; }
+.lineage-centre-title small { display: block; font-size: 10px; color: var(--muted); margin-top: 6px; line-height: 1.6; }
+.lineage-centre-title .object-icon { width: 30px; height: 32px; }
+.lineage-scale { display: flex; align-items: center; gap: 20px; flex-wrap: wrap; margin-top: 15px; font-size: 10px; color: var(--muted); }
+.lineage-scale strong { font-size: 13px; margin-right: 4px; color: var(--ink); }
+.lineage-scale button { padding: 0; color: var(--teal); display: inline-flex; align-items: center; gap: 5px; font-size: 10px; }
+.lineage-scale svg { width: 12px; height: 12px; }
+.lineage-scope { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 17px; font-size: 10px; color: var(--muted); }
+.lineage-scope label { display: flex; align-items: center; gap: 5px; }
+.lineage-boundary { font-size: 9px; color: var(--muted); line-height: 1.7; margin: 9px 0 0; }
+.lineage-qualification { display: flex; gap: 8px; align-items: baseline; flex-wrap: wrap; }
+.lineage-qualification .text-button { font-size: 9px; padding: 0; }
+.lineage-lanes { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); flex: 1; min-height: 0; }
+.lineage-lane { min-width: 0; min-height: 0; display: flex; flex-direction: column; }
+.lineage-lane + .lineage-lane { border-left: 1px solid var(--line); }
+.lineage-lane-heading { padding: 15px 16px 11px; border-bottom: 1px solid var(--line); flex-shrink: 0; display: flex; flex-wrap: wrap; gap: 5px 10px; align-items: baseline; }
+.lineage-lane-heading h3 { font-size: 12px; }
+.lineage-lane-heading > span { margin-left: auto; font-size: 9px; color: var(--muted); }
+.lineage-lane-heading p { font-size: 10px; color: var(--muted); flex-basis: 100%; margin: 0; }
+.lineage-lane-scroll { flex: 1; overflow: auto; scrollbar-width: thin; padding: 0 12px 15px; min-height: 0; }
+.lineage-level { margin: 0; }
+.lineage-level-heading { display: flex; gap: 8px; align-items: baseline; justify-content: space-between; color: var(--muted); font-size: 9px; padding: 14px 3px 9px; }
+.lineage-level-heading > span { font-size: 8px; }
+.lineage-node { border: 1px solid var(--line); border-radius: 5px; margin-bottom: 8px; padding: 10px 9px 8px; }
+.lineage-node.selected { background: #eef4ec; border-left: 3px solid var(--teal); padding-left: 7px; }
+.lineage-node-main { display: flex; align-items: flex-start; gap: 6px; }
+.lineage-node-select { display: flex; align-items: flex-start; gap: 7px; text-align: left; padding: 0; min-width: 0; flex: 1; }
+.lineage-node-select .object-icon { width: 22px; height: 23px; font-size: 12px; flex-shrink: 0; }
+.lineage-node-select strong { font-size: 11px; font-weight: 600; line-height: 1.5; overflow-wrap: anywhere; }
+.lineage-node-select small { display: block; margin-top: 4px; font-size: 9px; line-height: 1.6; color: var(--muted); overflow-wrap: anywhere; }
+.lineage-expand { display: flex; align-items: center; gap: 4px; border: 1px solid var(--line); border-radius: 4px; padding: 3px 5px; color: var(--teal); font-size: 14px; }
+.lineage-expand small { font-size: 9px; }
+.lineage-node-notes { display: flex; gap: 6px; flex-wrap: wrap; font-size: 8px; color: var(--teal); line-height: 1.7; margin: 7px 0 0; }
+.lineage-node-notes:empty { display: none; }
+.lineage-node-notes span + span::before { content: '·'; margin-right: 6px; }
+.lineage-parent-links { font-size: 9px; color: var(--muted); margin-top: 7px; line-height: 1.7; overflow-wrap: anywhere; }
+.lineage-parent-links button { font-size: inherit; padding: 0 2px; color: var(--teal); }
+.lineage-parent-links button:hover { text-decoration: underline; }
+.lineage-more { display: block; margin: 9px 0 0; text-align: left; font-size: 9px; }
+.lineage-root-more { display: block; text-align: left; margin: 12px 5px; }
+.lineage-empty { padding: 10px 5px; }
+.lineage-node-hero { padding: 17px 19px; }
+.lineage-node-hero h2 { font-size: 19px; margin-top: 10px; overflow-wrap: anywhere; }
+.lineage-workspace .inspector-tabs { gap: 18px; padding: 0 19px; }
+.lineage-detail { padding: 18px 19px; }
+.lineage-detail > section:first-child { padding-top: 0; }
+.lineage-detail > .badge { margin-bottom: 16px; }
+.lineage-connection { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; padding: 10px 0; }
+.lineage-connection + .lineage-connection { border-top: 1px solid var(--line); }
+.lineage-connection .related-object { display: inline-flex; align-items: center; gap: 5px; font-size: 11px; text-align: left; overflow-wrap: anywhere; }
+.lineage-connection small, .lineage-endpoint small { display: block; font-size: 9px; color: var(--muted); line-height: 1.8; overflow-wrap: anywhere; }
+.lineage-route { display: flex; flex-wrap: wrap; align-items: center; gap: 7px; margin-top: 12px; font-size: 10px; }
+.lineage-route button { font-size: 10px; text-align: left; overflow-wrap: anywhere; }
+.lineage-route svg { display: none; }
+.lineage-endpoint { padding: 15px 0; font-size: 11px; line-height: 1.8; }
+.lineage-endpoint + .lineage-endpoint { border-top: 1px solid var(--line); }
+.lineage-endpoint > span { display: block; font-size: 10px; margin: 7px 0; }
+.lineage-endpoint-owners { display: flex; flex-direction: column; align-items: flex-start; margin: 7px 0; }
+.lineage-endpoint > .text-button { display: inline-flex; align-items: center; gap: 5px; }
+.lineage-unresolved { font-size: 11px; line-height: 1.8; margin-top: 14px; overflow-wrap: anywhere; }
+.lineage-unresolved small { display: block; color: var(--muted); }
+.lineage-unresolved code { font-size: 10px; }
+.lineage-actions { flex-wrap: wrap; justify-content: space-between; min-height: 58px; gap: 10px; }
+.lineage-actions .primary-button { display: inline-flex; align-items: center; gap: 7px; font-size: 10px; padding: 9px 10px; }
+.lineage-actions > span { margin-left: 0; }
+@media (max-width: 1200px) {
+  .lineage-workspace { grid-template-columns: minmax(500px, 1.8fr) minmax(280px, 1fr); gap: 12px; }
+  .lineage-centre { padding: 15px; }
+  .lineage-scale { gap: 13px; }
+}
 @media (max-width: 1100px) {
   .reviews-workspace { grid-template-columns: minmax(310px, .92fr) minmax(360px, 1.08fr); }
 }

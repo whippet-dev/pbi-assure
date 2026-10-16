@@ -8,6 +8,8 @@ export const escape = (value) =>
       ],
   );
 const icons = {
+  lineage:
+    '<circle cx="12" cy="12" r="3"/><path d="M9 12H3m12 0h6M12 9V3m0 12v6M3 9v6m18-6v6M9 3h6M9 21h6"/>',
   queries: '<path d="M4 4h6v6H4zM14 14h6v6h-6zM7 10v7h7M10 7h7v7"/>',
   overview: '<path d="m3 10 9-7 9 7v11h-6v-7H9v7H3z"/>',
   reviews: '<path d="M5 3h14v18H5zM9 8h6M9 12h6M9 16h3"/>',

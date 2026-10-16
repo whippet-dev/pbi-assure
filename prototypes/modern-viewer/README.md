@@ -55,6 +55,30 @@ Try these investigations using the same bundled scanner snapshot:
 
 The visual list and tabs support the same arrow/Home/End and `/` keyboard conventions as Model. Search can hide the selected visual from the collection without discarding its inspector. Previously selected visuals are remembered per page.
 
+## Full lineage comparison
+
+Open **Lineage** in the sidebar. Its first centre is the current Model selection; later visits resume the lineage investigation. Find a different object in the contextual sidebar or use **Start from Model selection** explicitly. The accepted workspaces and palette are retained.
+
+This prototype uses two progressive adjacency lanes around a fixed centre: upstream dependencies and downstream dependents. Selecting a node changes the inspector; **Centre on this object** changes the centre. Previous/next centre restores each centre's expanded branches, selected node, tab and pane positions. The layout favours readable connections over a crossing-edge canvas; it does not require a graph library.
+
+Try these with the unchanged real scanner snapshot:
+
+1. Start at **DirectlyUsedMeasure**. Expand upstream **IndirectlyUsedMeasure** and **DynamicFormatStringMeasure**. `BaseAmount` appears once, marked **Shared · 2 connections**. Inspect it while keeping the centre and both lanes visible. Connections retains every immediate edge and a shortest orientation route; that route is not presented as the only lineage path.
+2. **BaseAmount → Centre on this object** exposes 13 downstream nodes, initially seven immediate dependents. Expand additional levels individually. **Reports** aggregates all reachable downstream branches, independently of which are expanded: four dependent objects reach one confirmed projection-visual location. Reveal any owner to expose its connection without changing the centre, or inspect the saved visual and **Back to lineage**.
+3. Select a model usage object and **Open in Model**. Follow other Model dependencies, then **Back to lineage**. Centre, selection, branches, inspector tab and scroll are retained; the earlier Model investigation is restored. Graph-only functions, relationships, roles and report measures stay inspectable in Lineage without being invented as selectable Model usage objects.
+4. Centre **ReportRootedUdfSource**, expand downstream through **ReportRootedCoverageFunction**, and inspect its real function dependency and saved DAX evidence. Centre **ActiveReportMeasure** to see its published dependencies and report reach without inventing an exact visual placement.
+5. Centre **UnresolvedSortColumn**. Its missing sort reference stays in **Evidence**, separate from established edges, with Checks limited retained. Centre **Fact · Table**, enable **Include table membership**, and reveal its 62 immediate dependents in batches of eight. Membership is explicit because it otherwise floods ordinary lineage with sibling context.
+
+`lineage-data.js` indexes the existing `SemanticDependencies`, model usage objects and graph-only reachability nodes by model/table/name/type/hierarchy identity. An edge means **From depends on To**. Upstream traversal follows outgoing edges; downstream traversal follows incoming edges. Breadth-first traversal supplies distinct reachable nodes and shortest connections. Visible layers use shortest *visible* connections; each direction renders a node once, with all discovered parent links retained. Shared nodes are not copied into trees. Structural edges retain their kinds; they do not imply runtime filter propagation. Table membership is excluded by default and available explicitly, including its original evidence.
+
+Strongly connected components identify cycles. Expansion keeps visited identities and back edges, so loops remain inspectable without repeating the centre or expanding forever. A node can appear once on each side if a cycle makes it both upstream and downstream. Each branch initially exposes eight neighbours; further batches are explicit. Inspector connections, endpoint locations and owners are also progressively bounded. No all-path enumeration or automatic whole-model canvas is generated.
+
+Confirmed endpoints come only from `SemanticObjectUsages.DirectReportReferences`, collected across the centre and every reachable downstream node and grouped by saved location. Multiple owning objects and evidence roles are retained. Raw selectors, unresolved references and same-named visual guesses never create endpoints. Missing saved entities retain location evidence without an exact navigation link.
+
+Important boundaries remain visible. Public JSON omits report-measure ownership, scoped reachability and exact report-measure placements. A report-measure projection is traversable only with one matching definition and an explicit local model binding; ambiguous/unbound ownership stops traversal, with the projected connections and candidates still inspectable. Recorded report reach without exact location evidence is separate from confirmed endpoint counts. Table/function direct report evidence is also absent from this contract. Unresolved dependency targets and candidate sets are not reconstructed. Counts describe the bounded saved graph in the chosen scope, not complete runtime lineage or Power Query/source-to-column flow.
+
+The graph and centre sessions stay in memory. There is no durable/deep-linked investigation state, canvas layout, virtualisation or inventory-scale performance claim. The canonical snapshot has convergence and high fan-out; cycle handling is verified with clearly test-only added edges, not altered product fixture data. This is sufficient to judge multi-level investigation without changing scanner or production report semantics.
+
 ## Reviews & findings comparison
 
 **Reviews & findings** opens the Findings collection. Accessibility and Theme are subordinate specialist views in the contextual sidebar, each remembering its own filters, selection, inspector tab and pane positions. The accepted Overview, Model, Report and Power Query layouts and palette are unchanged.
@@ -162,6 +186,8 @@ The Power Query slice adds four focused data checks (real evidence, ambiguous pa
 
 The Reviews slice adds four focused data checks and four browser workflows covering context-filter intersections, unique source identities, specialist semantics, secondary/escaped evidence, source qualifications, direct/nested source return, earlier workspace restoration and keyboard controls. The targeted run includes the existing Overview checks and one Power Query plus one Report navigation workflow, and the static build. Desktop captures at 1440×900 and 1280×900 are reviewed. Production regression suites and size benchmarks are not run.
 
+The Lineage slice adds five graph/data checks and four browser workflows covering real multi-level traversal, shared-node convergence/collapse, function/structural/report-measure nodes, endpoint grouping, unresolved/ambiguous boundaries, actual table fan-out, synthetic cycles, keyboard navigation, recenter history and source returns. Its targeted run includes one existing Overview, Power Query, Report and Reviews workflow, plus the static build. Desktop captures at 1440×900 and 1280×900 are reviewed; no exhaustive repository suite, mobile matrix or size benchmark is run.
+
 `npm run build` creates an ignored `dist/` with static files. This can be hosted at any static origin or subdirectory. No production site or hosting configuration is modified; this branch has not been remotely deployed.
 
 ## Assessment
@@ -175,3 +201,5 @@ Overview strengthens this direction by providing a project-level starting point 
 Power Query also fits the workspace model. Keeping query selection separate from list filters supports comparison and dependency investigation, while the explicit model return avoids a chain of pages. The extra inspector width helps relationships and source evidence more than a wide metadata table would. Inventory-scale performance and a full query graph remain unproven; this slice is enough for hands-on judgement.
 
 Reviews strengthens the workspace model: findings provide an evidence-led entry into existing investigations, with a single return path that preserves both review and earlier workspace context. A persistent inspector accommodates original recommendations and secondary evidence without making the collection a technical report. Findings stay primary while specialist semantics remain distinct. This slice is enough for hands-on comparison without extending into issue tracking.
+
+Lineage is materially better than immediate Uses/Used by plus one report path for multi-level investigation: the centre stays fixed, converging dependencies remain shared, every recorded branch is explorable and report locations aggregate across all downstream branches. The trade-off is less global spatial topology than a canvas graph, and the JSON cannot support precise report-scoped lineage everywhere. Those limitations are exposed rather than filled with inferred edges or placements.

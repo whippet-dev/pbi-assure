@@ -12,6 +12,8 @@ for (const name of [
   "overview-view.js",
   "review-data.js",
   "review-view.js",
+  "lineage-data.js",
+  "lineage-view.js",
   "query-data.js",
   "query-view.js",
   "styles.css",
