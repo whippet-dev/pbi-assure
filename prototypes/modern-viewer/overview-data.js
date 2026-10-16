@@ -1,16 +1,14 @@
 import { STATES } from "./data.js";
 
-export const isAccessibility = (f) =>
-  String(f.Category).toLowerCase() === "accessibility";
-export const severityRank = (f) =>
-  ({ Error: 0, Warning: 1, Information: 2 })[f.Severity] ?? 3;
-export const categoryLabel = (category) =>
-  ({
-    ModelIntegrity: "Model integrity",
-    Accessibility: "Accessibility",
-    Navigation: "Navigation",
-    Compatibility: "Compatibility",
-  })[category] || category;
+import { isAccessibility, severityRank } from "./review-data.js";
+export {
+  isAccessibility,
+  severityRank,
+  categoryLabel,
+  reviewRows,
+  findingContext,
+  findingTarget,
+} from "./review-data.js";
 export function overviewData(data) {
   const authored = data.objects.filter((o) => !o.system);
   const main = data.raw.Findings.filter((f) => !isAccessibility(f)),
@@ -76,94 +74,4 @@ export function overviewData(data) {
     pages: reports.reduce((n, r) => n + r.pages, 0),
     visuals: reports.reduce((n, r) => n + r.visuals, 0),
   };
-}
-export function reviewRows(data, state) {
-  const query = state.reviewSearch.trim().toLowerCase();
-  return data.raw.Findings.map((finding, index) => ({ finding, index }))
-    .filter(
-      ({ finding: f }) =>
-        (state.reviewMode === "accessibility"
-          ? isAccessibility(f)
-          : !isAccessibility(f)) &&
-        (!state.reviewCategory || f.Category === state.reviewCategory) &&
-        (!state.reviewSeverity || f.Severity === state.reviewSeverity) &&
-        (!state.reviewRequired || f.AssessmentType === "ReviewRequired") &&
-        (!query ||
-          [
-            f.RuleId,
-            f.Message,
-            f.Report,
-            f.PageDisplayName,
-            f.Visual,
-            f.SemanticModel,
-            f.Table,
-            f.ObjectName,
-          ]
-            .filter(Boolean)
-            .join(" ")
-            .toLowerCase()
-            .includes(query)),
-    )
-    .sort(
-      (a, b) =>
-        severityRank(a.finding) - severityRank(b.finding) || a.index - b.index,
-    );
-}
-export function findingContext(f) {
-  return (
-    [
-      f.Report,
-      f.PageDisplayName || f.Page,
-      f.Visual || f.VisualGroup,
-      !f.Report ? f.SemanticModel : null,
-      !f.Report ? f.Table : null,
-    ]
-      .filter(Boolean)
-      .join(" / ") || "Project metadata"
-  );
-}
-export function findingTarget(data, finding) {
-  const report = data.raw.Reports.find(
-    (r) => r.Name === finding.Report || r.RelativePath === finding.Report,
-  );
-  if (report) {
-    const page = report.Pages.find((p) => p.Name === finding.Page);
-    const visual = page?.Visuals.find((v) => v.Name === finding.Visual);
-    return {
-      kind: "report",
-      report,
-      page,
-      visual,
-      label: visual
-        ? "Inspect visual reviews"
-        : page
-          ? "Inspect page context"
-          : "Browse report",
-      note:
-        finding.Page && !page
-          ? "The referenced page is absent from this inventory. The finding evidence remains here."
-          : finding.Visual && !visual
-            ? "The referenced visual is absent from this page. The finding evidence remains here."
-            : "",
-    };
-  }
-  const model = data.raw.SemanticModels.find(
-    (m) => m.Name === finding.SemanticModel,
-  );
-  if (model) {
-    const objects = data.objects.filter(
-      (o) =>
-        o.SemanticModel === model.Name &&
-        o.Table === finding.Table &&
-        o.ObjectName === finding.ObjectName,
-    );
-    return {
-      kind: "model",
-      model,
-      object: objects.length === 1 ? objects[0] : null,
-      label:
-        objects.length === 1 ? "Inspect model object" : "Browse semantic model",
-    };
-  }
-  return null;
 }

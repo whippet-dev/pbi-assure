@@ -17,13 +17,22 @@ import {
 } from "./query-view.js";
 import { reportContext, visualLabel } from "./report-data.js";
 import { pageId, pagesFor } from "./report-data.js";
-import { overviewData, reviewRows, findingTarget } from "./overview-data.js";
+import { overviewData } from "./overview-data.js";
+import { overviewWorkspace } from "./overview-view.js";
 import {
-  overviewWorkspace,
+  REVIEW_DEFAULTS,
+  REVIEW_TABS,
+  reviewRows,
+  selectedReview,
+  reviewTarget,
+  reviewLabel,
+} from "./review-data.js";
+import {
   reviewsWorkspace,
+  reviewsNavigation,
   reviewCollection,
   reviewInspector,
-} from "./overview-view.js";
+} from "./review-view.js";
 import {
   VISUAL_TABS,
   reportSelection,
@@ -64,6 +73,13 @@ const state = {
   reviewSearch: "",
   reviewSelected: null,
   reviewReturn: false,
+  reviewReport: "",
+  reviewPage: "",
+  reviewModel: "",
+  reviewTab: "Review",
+  reviewLimitOpen: false,
+  reviewViews: {},
+  reviewOrigin: null,
   queryModel: "",
   queryState: "",
   queryKind: "",
@@ -135,19 +151,21 @@ function renderSidebar() {
         ? reportNavigation(data, state)
         : state.view === "queries"
           ? queryNavigation(queryIndex, state)
-          : state.view !== "objects"
-            ? ""
-            : `    <div class="model-navigation"><label class="project-label" for="model-select">SEMANTIC MODEL</label><select id="model-select" aria-label="Semantic model"><option value="" ${!state.model ? "selected" : ""}>All models</option>${data.raw.SemanticModels.map((m) => `<option ${m.Name === state.model ? "selected" : ""}>${escape(m.Name)}</option>`).join("")}</select>${
-                !state.model
-                  ? `<div class="table-heading">Choose a model to browse its tables</div><nav class="table-nav" aria-label="Filter by model">${data.raw.SemanticModels.map((m) => `<button data-model="${escape(m.Name)}">${icon("objects")}<span class="table-name">${escape(m.Name)}</span><span>${modelObjects.filter((o) => o.SemanticModel === m.Name).length}</span></button>`).join("")}</nav>`
-                  : `<div class="table-heading">Tables <span>${tables.filter((t) => state.system || !t.IsSystemGenerated).length}</span></div><nav class="table-nav" aria-label="Filter by table"><button data-table="" class="${!state.table ? "chosen" : ""}">${icon("objects")}All tables<span>${modelObjects.length}</span></button>${tables
-                      .filter((t) => state.system || !t.IsSystemGenerated)
-                      .map(
-                        (t) =>
-                          `<button data-table="${escape(t.Name)}" class="${state.table === t.Name ? "chosen" : ""}" title="${escape(t.Name)}"><span class="table-symbol">▦</span><span class="table-name">${escape(t.Name)}</span><span>${modelObjects.filter((o) => o.Table === t.Name).length}</span></button>`,
-                      )
-                      .join("")}</nav>`
-              }</div>`
+          : state.view === "reviews"
+            ? reviewsNavigation(data, state)
+            : state.view !== "objects"
+              ? ""
+              : `    <div class="model-navigation"><label class="project-label" for="model-select">SEMANTIC MODEL</label><select id="model-select" aria-label="Semantic model"><option value="" ${!state.model ? "selected" : ""}>All models</option>${data.raw.SemanticModels.map((m) => `<option ${m.Name === state.model ? "selected" : ""}>${escape(m.Name)}</option>`).join("")}</select>${
+                  !state.model
+                    ? `<div class="table-heading">Choose a model to browse its tables</div><nav class="table-nav" aria-label="Filter by model">${data.raw.SemanticModels.map((m) => `<button data-model="${escape(m.Name)}">${icon("objects")}<span class="table-name">${escape(m.Name)}</span><span>${modelObjects.filter((o) => o.SemanticModel === m.Name).length}</span></button>`).join("")}</nav>`
+                    : `<div class="table-heading">Tables <span>${tables.filter((t) => state.system || !t.IsSystemGenerated).length}</span></div><nav class="table-nav" aria-label="Filter by table"><button data-table="" class="${!state.table ? "chosen" : ""}">${icon("objects")}All tables<span>${modelObjects.length}</span></button>${tables
+                        .filter((t) => state.system || !t.IsSystemGenerated)
+                        .map(
+                          (t) =>
+                            `<button data-table="${escape(t.Name)}" class="${state.table === t.Name ? "chosen" : ""}" title="${escape(t.Name)}"><span class="table-symbol">▦</span><span class="table-name">${escape(t.Name)}</span><span>${modelObjects.filter((o) => o.Table === t.Name).length}</span></button>`,
+                        )
+                        .join("")}</nav>`
+                }</div>`
     }
     <div class="sidebar-bottom"><span class="project-label">ANALYSIS SCOPE</span><p>${data.raw.Reports.length} reports · ${data.raw.SemanticModels.length} models</p><span class="source-label">Metadata only. No DAX execution.</span><button class="text-button" data-action="scope">View evidence boundaries ${icon("arrow")}</button></div>`;
 }
@@ -155,6 +173,10 @@ function renderWorkspace() {
   document.querySelectorAll(".report-origin").forEach((el) => el.remove());
   $(".workspace").classList.toggle("report-workspace", state.view === "pages");
   $(".workspace").classList.toggle("query-workspace", state.view === "queries");
+  $(".workspace").classList.toggle(
+    "reviews-workspace",
+    state.view === "reviews",
+  );
   $(".workspace").classList.toggle(
     "overview-workspace",
     state.view === "overview",
@@ -211,9 +233,13 @@ function renderWorkspace() {
   if (state.reviewReturn && !["overview", "reviews"].includes(state.view))
     $(".main-heading").insertAdjacentHTML(
       "afterend",
-      `<div class="report-origin"><button data-action="return-reviews">${icon("back")}Back to reviews</button><span>${escape(data.raw.Findings[state.reviewSelected]?.RuleId)} · Review selection and filters preserved</span></div>`,
+      `<div class="report-origin"><button data-action="return-reviews">${icon("back")}Back to reviews</button><span>${escape(reviewLabel(data, state))} · Review selection and filters preserved</span></div>`,
     );
-  if (state.queryOrigin && ["objects", "check"].includes(state.view))
+  if (
+    state.queryOrigin &&
+    !state.reviewReturn &&
+    ["objects", "check"].includes(state.view)
+  )
     $(".main-heading").insertAdjacentHTML(
       "afterend",
       `<div class="report-origin"><button data-action="return-query">${icon("back")}Back to Power Query</button><span>${escape(state.queryOrigin.name)}</span><small>Query selection and filters preserved</small></div>`,
@@ -469,7 +495,7 @@ function openQueryTable(model, table) {
     view: "objects",
     tab: "Summary",
     selected: null,
-    reviewReturn: false,
+    reviewReturn: !!state.reviewOrigin,
   });
   state.system = !!data.raw.SemanticModels.find(
     (m) => m.Name === model,
@@ -568,6 +594,10 @@ function rememberWorkspace() {
 }
 function showView(view, { restore = true, focus = true } = {}) {
   rememberWorkspace();
+  if (view === "reviews" && state.reviewOrigin) {
+    Object.assign(state, state.reviewOrigin.context);
+    state.reviewOrigin = null;
+  }
   state.view = view;
   if (view === "reviews") state.reviewReturn = false;
   renderSidebar();
@@ -586,6 +616,7 @@ function openOverviewReviews({
   required = false,
 } = {}) {
   Object.assign(state, {
+    ...REVIEW_DEFAULTS,
     reviewMode: mode,
     reviewCategory: category,
     reviewSeverity: severity,
@@ -625,38 +656,89 @@ function openReportTarget(report, page, visual, tab = "Reviews") {
   showView("pages", { restore: false });
   ($("#visual-heading") || $("#page-heading"))?.focus({ preventScroll: true });
 }
-function renderReviewResults() {
+function renderReviewResults({ resetDetail = false } = {}) {
+  const scroll = $(".review-list")?.scrollTop || 0;
+  const detail = resetDetail ? 0 : $(".review-detail")?.scrollTop || 0;
   $(".review-list").innerHTML = reviewCollection(data, state);
+  $(".review-list").scrollTop = scroll;
   $("#review-inspector").innerHTML = reviewInspector(data, state);
+  if ($(".review-detail")) $(".review-detail").scrollTop = detail;
   $("#review-result-count").textContent =
     `${reviewRows(data, state).length} results`;
   announce(
-    `${reviewRows(data, state).length} findings in the selected collection.`,
+    `${reviewRows(data, state).length} results in the selected review collection.`,
   );
 }
 function selectReview(index, { focusHeading = false } = {}) {
   if (!reviewRows(data, state).some((row) => row.index === index)) return;
+  if (state.reviewSelected !== index) state.reviewLimitOpen = false;
   state.reviewSelected = index;
-  renderReviewResults();
+  renderReviewResults({ resetDetail: true });
   if (focusHeading) $("#review-heading").focus();
   else $(`[data-review="${index}"]`)?.focus();
 }
 function investigateReview() {
-  const target = findingTarget(data, data.raw.Findings[state.reviewSelected]);
+  const target = reviewTarget(data, selectedReview(data, state));
   if (!target) return;
+  rememberWorkspace();
+  // Source visits are temporary investigations. Restore all prior workspace states on return.
+  const keys = [
+    ...modelContextKeys,
+    "report",
+    "page",
+    "reportVisuals",
+    "reportScroll",
+    "visualSearch",
+    "visualTab",
+    "reportPageDetails",
+    "reportOrigin",
+    "queryModel",
+    "queryState",
+    "queryKind",
+    "querySearch",
+    "querySelected",
+    "queryTab",
+    "queryHistory",
+    "queryCursor",
+    "queryOrigin",
+    "workspaceScroll",
+  ];
+  state.reviewOrigin = {
+    context: Object.fromEntries(
+      keys.map((key) => [key, structuredClone(state[key])]),
+    ),
+  };
   state.queryOrigin = null;
   state.reviewReturn = true;
   if (target.kind === "report")
-    openReportTarget(target.report, target.page, target.visual);
-  else {
+    openReportTarget(
+      target.report,
+      target.page,
+      target.visual,
+      target.tab || "Reviews",
+    );
+  else if (target.kind === "query") {
+    Object.assign(state, {
+      queryModel: target.model.Name,
+      queryState: "",
+      queryKind: "",
+      querySearch: "",
+      querySelected: target.id,
+      queryTab: "Summary",
+      queryHistory: [target.id],
+      queryCursor: 0,
+    });
+    showView("queries", { restore: false });
+    $("#query-heading")?.focus({ preventScroll: true });
+  } else {
     resetFilters();
     state.model = target.model.Name;
     state.system = !!target.object?.system;
-    state.table = target.object?.Table || "";
+    state.table = target.table?.Name || target.object?.Table || "";
     state.selected = null;
     state.tab = "Summary";
     showView("objects", { restore: false });
-    const object = target.object || visible()[0];
+    const object = target.object;
     if (object) inspect(object.id, { focus: true });
   }
 }
@@ -744,16 +826,34 @@ document.addEventListener("click", async (event) => {
     return;
   }
   if (b.dataset.reviewMode) {
-    Object.assign(state, {
+    rememberWorkspace();
+    state.reviewViews[state.reviewMode] = {
+      values: Object.fromEntries(
+        Object.keys(REVIEW_DEFAULTS).map((key) => [
+          key,
+          structuredClone(state[key]),
+        ]),
+      ),
+      scroll: state.workspaceScroll.reviews,
+    };
+    const saved = state.reviewViews[b.dataset.reviewMode];
+    Object.assign(state, REVIEW_DEFAULTS, saved?.values || {}, {
       reviewMode: b.dataset.reviewMode,
-      reviewCategory: "",
-      reviewSeverity: "",
-      reviewRequired: false,
-      reviewSearch: "",
-      reviewSelected: null,
     });
+    state.workspaceScroll.reviews = saved?.scroll || [0, 0];
+    renderSidebar();
     renderWorkspace();
+    scrollSelectors.reviews.forEach((selector, index) => {
+      if ($(selector))
+        $(selector).scrollTop = state.workspaceScroll.reviews[index] || 0;
+    });
     $(`[data-review-mode="${state.reviewMode}"]`).focus();
+    return;
+  }
+  if (b.dataset.reviewTab) {
+    state.reviewTab = b.dataset.reviewTab;
+    $("#review-inspector").innerHTML = reviewInspector(data, state);
+    $(`#review-tab-${state.reviewTab}`).focus();
     return;
   }
   if (b.hasAttribute("data-review")) {
@@ -872,12 +972,15 @@ document.addEventListener("click", async (event) => {
       investigateReview();
       break;
     case "reset-reviews":
+    case "reveal-review":
       Object.assign(state, {
         reviewCategory: "",
         reviewSeverity: "",
         reviewRequired: false,
         reviewSearch: "",
-        reviewSelected: null,
+        reviewReport: "",
+        reviewPage: "",
+        reviewModel: "",
       });
       renderWorkspace();
       $("#review-search").focus();
@@ -955,6 +1058,18 @@ document.addEventListener("click", async (event) => {
       break;
   }
 });
+document.addEventListener(
+  "toggle",
+  (event) => {
+    if (
+      event.target.matches(".review-context-limits") &&
+      event.target.isConnected &&
+      state.view === "reviews"
+    )
+      state.reviewLimitOpen = event.target.open;
+  },
+  true,
+);
 document.addEventListener("input", (event) => {
   if (event.target.id === "query-search") {
     state.querySearch = event.target.value;
@@ -985,16 +1100,35 @@ document.addEventListener("change", async (event) => {
     $(`#${target.id}`).focus();
   }
   if (
-    ["review-category", "review-severity", "review-required"].includes(
-      target.id,
-    )
+    [
+      "review-category",
+      "review-severity",
+      "review-required",
+      "review-report",
+      "review-page",
+      "review-model",
+    ].includes(target.id)
   ) {
     if (target.id === "review-category") state.reviewCategory = target.value;
     else if (target.id === "review-severity")
       state.reviewSeverity = target.value;
-    else state.reviewRequired = target.checked;
-    state.reviewSelected = null;
-    renderReviewResults();
+    else if (target.id === "review-required")
+      state.reviewRequired = target.checked;
+    else if (target.id === "review-report") {
+      state.reviewReport = target.value;
+      state.reviewPage = "";
+    } else if (target.id === "review-page") state.reviewPage = target.value;
+    else state.reviewModel = target.value;
+    if (target.id === "review-report") {
+      const panes = scrollSelectors.reviews.map(
+        (selector) => $(selector)?.scrollTop || 0,
+      );
+      renderWorkspace();
+      scrollSelectors.reviews.forEach((selector, index) => {
+        if ($(selector)) $(selector).scrollTop = panes[index];
+      });
+      $("#review-report").focus();
+    } else renderReviewResults();
   }
   if (target.id === "report-select") {
     state.report = target.value;
@@ -1065,6 +1199,9 @@ document.addEventListener("change", async (event) => {
         reviewSearch: "",
         reviewSelected: null,
         reviewReturn: false,
+        ...REVIEW_DEFAULTS,
+        reviewViews: {},
+        reviewOrigin: null,
         workspaceScroll: {},
         queryModel: "",
         queryState: "",
@@ -1101,6 +1238,22 @@ document.addEventListener("change", async (event) => {
 });
 document.addEventListener("keydown", (event) => {
   const target = event.target;
+  if (
+    target.matches("[data-review-tab]") &&
+    ["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key)
+  ) {
+    event.preventDefault();
+    const index =
+      event.key === "Home"
+        ? 0
+        : event.key === "End"
+          ? REVIEW_TABS.length - 1
+          : (REVIEW_TABS.indexOf(state.reviewTab) + 1) % REVIEW_TABS.length;
+    state.reviewTab = REVIEW_TABS[index];
+    $("#review-inspector").innerHTML = reviewInspector(data, state);
+    $(`#review-tab-${state.reviewTab}`).focus();
+    return;
+  }
   if (
     event.key === "/" &&
     !/INPUT|TEXTAREA|SELECT/.test(target.tagName) &&
