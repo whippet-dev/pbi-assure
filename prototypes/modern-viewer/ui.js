@@ -8,6 +8,10 @@ export const escape = (value) =>
       ],
   );
 const icons = {
+  relationships:
+    '<rect x="2" y="5" width="7" height="14" rx="1"/><rect x="15" y="5" width="7" height="14" rx="1"/><path d="M9 12h6M5 9h1m12 6h1"/>',
+  security:
+    '<path d="M12 3 3 7v6c0 5 9 8 9 8s9-3 9-8V7z"/><rect x="8" y="10" width="8" height="6" rx="1"/><path d="M10 10V8a2 2 0 0 1 4 0v2"/>',
   lineage:
     '<circle cx="12" cy="12" r="3"/><path d="M9 12H3m12 0h6M12 9V3m0 12v6M3 9v6m18-6v6M9 3h6M9 21h6"/>',
   queries: '<path d="M4 4h6v6H4zM14 14h6v6h-6zM7 10v7h7M10 7h7v7"/>',

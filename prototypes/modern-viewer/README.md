@@ -109,6 +109,17 @@ The JSON does not publish dependency target partition identity or parameter flag
 
 Query navigation is in memory. Sources are inspectable per query; there is no separate cross-project source catalogue or canvas graph. Explicit model-table links open the existing filtered object workspace, not a new table-detail design. This is sufficient to compare the workflow without expanding into a query editor.
 
+## Relationships, Security and What was checked comparison
+
+The sidebar now groups **Model objects, Relationships, Security and Lineage** under Model; **Report pages and Power Query** under Report & data; **Reviews & findings** under Review; and **What was checked** under Confidence & scope. Overview remains the entry point. Existing workspace layouts and palette are retained.
+
+1. **Relationships → InactiveRelationship**: compare both ends, cardinalities, saved state and cross-filter direction. Follow the recorded `Fact[InactiveRelationshipMeasure]` activation source into Model, then **Back to Relationships**. This is the scanner's bounded `USERELATIONSHIP` evidence; the relationship remains inactive and no runtime activation is inferred. **Evidence** holds original structural edges and a model-limitation link. Names embedded only in finding prose are not treated as exact relationship identities.
+2. **Security → CoverageRlsRole**: inspect the saved `[RlsColumn] = "Allowed"` filter. **Objects** shows explicit security dependencies and model links. Compare **CoverageOlsRole** for column `OlsColumn` and table `TableOlsProtected` permissions. Empty filters are described as no stored row filter, never as verified unrestricted access. **Evidence** retains source paths, unanalysed constructs and matching role-file limitations. Saved definitions do not establish Service membership or effective user access.
+3. **What was checked → Recorded limitations**: compare the 12 original records with the separate 29 object results carrying Checks limited. Filter by area/model/reason, inspect Meaning, then open Evidence for source paths and scanner fields. `UnresolvedSortColumn` opens an exact model object; report records open broader report/page context. Imported query-domain limitations route into Power Query and explicitly do not themselves qualify semantic usage. Missing or ambiguous identities offer only broader context.
+4. **Evidence available** inventories what the JSON actually contains. **Outside scope** explains permanent static-analysis and JSON boundaries. Neither is an invented checklist of successful checks. No identified limitations remains distinct from everything being checked.
+
+Each new collection keeps the selected item inspectable when filters exclude it. Source visits preserve collection filters, selection, tab and pane scroll positions, including nested visits such as Relationship → model limitations → object. Returning also restores the earlier Model/Report/Query investigation. Sidebar navigation resumes workspace state; the explicit Overview Checks shortcut resets to all recorded limitations.
+
 ## Use your own analysis
 
 From the repository root, export with the existing scanner:
@@ -130,7 +141,7 @@ Choose **Open analysis JSON** in the viewer. Schema `0.26` is supported, with a 
 - An explicit report-to-model return path and separate page/report context; a scope/limitation view.
 - The scanner’s five usage states and separate confidence, including explicit review language for absence-based states.
 
-No report rendering, project picker/scanner integration, review management, full Power Query workspace, relationship/security workspace or production export workflow is implemented.
+No report rendering, project picker/scanner integration, review management, runtime access testing or production export workflow is implemented.
 
 ## Data provenance
 
@@ -145,6 +156,8 @@ Native browser ES modules, semantic HTML and CSS; no frontend framework, backend
 Report pages adds `report-data.js` for scoped projections and `report-view.js` for report/visual presentation. The small `ui.js` module shares escaped text, icons and object-type glyphs with Model. There is no new data source, scanner change, dependency or production integration. Report/page identity uses the report-relative path and page name; visual selection is scoped to that page. The return context records the earlier Model state and retains the Report state independently while an object is investigated.
 
 Overview adds `overview-data.js` for counts, finding scopes and bounded source routes, plus `overview-view.js` for Overview and its findings destination. It reuses the existing finding-detail renderer. Counts are derived from the loaded scanner arrays rather than stale serialized summary counters. Sidebar navigation records pane scroll positions; explicit shortcuts set ordinary existing workspace state. No backend, runtime dependency or analysis changes were introduced.
+
+`model-area-data.js` and `model-area-view.js` share the Relationship/Security collection and inspector shell. They retain model-scoped identities, original inventories, structural/security edge kinds and original activation annotations. `scope-data.js` and `scope-view.js` replace the initial coverage placeholder with limitation investigation and continuous evidence/scope views. A small shared source-visit snapshot in `app.js` restores nested investigation context; existing workspace-specific navigation remains intact. New inventories are validated before transactional import. The static build includes these modules; no framework, runtime package, Core or public JSON change is introduced.
 
 The architectural difference from the generated report is material: metadata is data, selection is application state, and following dependencies changes a detail pane rather than navigating through pre-rendered document sections. The read-only scanner and its classifications are unchanged. The adapter indexes the graph by model/table/name/type/hierarchy identity; object names alone are not keys.
 
@@ -188,6 +201,8 @@ The Reviews slice adds four focused data checks and four browser workflows cover
 
 The Lineage slice adds five graph/data checks and four browser workflows covering real multi-level traversal, shared-node convergence/collapse, function/structural/report-measure nodes, endpoint grouping, unresolved/ambiguous boundaries, actual table fan-out, synthetic cycles, keyboard navigation, recenter history and source returns. Its targeted run includes one existing Overview, Power Query, Report and Reviews workflow, plus the static build. Desktop captures at 1440×900 and 1280×900 are reviewed; no exhaustive repository suite, mobile matrix or size benchmark is run.
 
+The remaining-core slice adds six focused data checks and four browser workflows for relationship activation/identity, row versus object permissions, confidence/limitation counts, scoped routes, nested returns, keyboard interaction, no-limit honesty and transactional imports. Imported query/role boundary cases are test-only and do not alter the bundled scanner snapshot. Its targeted run includes one existing workflow each for Overview, Model/Report, Power Query, Reviews and Lineage, plus the static build. Desktop captures are reviewed; no repository-wide regression, benchmark or mobile matrix is run.
+
 `npm run build` creates an ignored `dist/` with static files. This can be hosted at any static origin or subdirectory. No production site or hosting configuration is modified; this branch has not been remotely deployed.
 
 ## Assessment
@@ -203,3 +218,5 @@ Power Query also fits the workspace model. Keeping query selection separate from
 Reviews strengthens the workspace model: findings provide an evidence-led entry into existing investigations, with a single return path that preserves both review and earlier workspace context. A persistent inspector accommodates original recommendations and secondary evidence without making the collection a technical report. Findings stay primary while specialist semantics remain distinct. This slice is enough for hands-on comparison without extending into issue tracking.
 
 Lineage is materially better than immediate Uses/Used by plus one report path for multi-level investigation: the centre stays fixed, converging dependencies remain shared, every recorded branch is explorable and report locations aggregate across all downstream branches. The trade-off is less global spatial topology than a canvas graph, and the JSON cannot support precise report-scoped lineage everywhere. Those limitations are exposed rather than filled with inferred edges or placements.
+
+Relationships and Security fit the same collection/inspector approach without needing a diagram or permission matrix. What was checked benefits from a limitation inspector plus continuous evidence/scope views rather than forcing everything into a list. The weaker area is still confidence breadth: this JSON exposes limitations and available evidence, not an exhaustive successful-check register or per-limitation affected-object mapping. Security also depends on a small saved-definition inventory, with no runtime access proof. These are explicit product/data limits, not filled with inferred assurance.

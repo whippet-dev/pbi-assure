@@ -8,6 +8,28 @@ import {
 } from "./data.js";
 import { escape, icon, glyph } from "./ui.js";
 import {
+  MODEL_AREA_DEFAULTS,
+  buildModelAreas,
+  relationshipRows,
+  securityRows,
+} from "./model-area-data.js";
+import {
+  AREA_TABS,
+  modelAreaNavigation,
+  modelAreaWorkspace,
+  modelAreaCollection,
+  modelAreaInspector,
+  areaSelection,
+} from "./model-area-view.js";
+import { SCOPE_DEFAULTS, scopeRows } from "./scope-data.js";
+import {
+  SCOPE_TABS,
+  scopeNavigation,
+  scopeWorkspace,
+  scopeCollection,
+  scopeInspector,
+} from "./scope-view.js";
+import {
   buildLineageData,
   createLineageSession,
   BRANCH_SIZE,
@@ -111,11 +133,16 @@ const state = {
   lineageSearch: "",
   lineageSearchLimit: BRANCH_SIZE,
   lineageOrigin: null,
+  ...MODEL_AREA_DEFAULTS,
+  ...SCOPE_DEFAULTS,
+  coreOrigin: null,
+  areaVisited: {},
+  checkViews: {},
   workspaceScroll: {},
   source: "Repository fixture",
   fixture: true,
 };
-let data, queryIndex, lineageIndex;
+let data, queryIndex, lineageIndex, modelAreas;
 const announce = (text) => {
   $("#announcement").textContent = text;
 };
@@ -145,6 +172,11 @@ function shell() {
   renderSidebar();
   renderWorkspace();
 }
+function workspaceNavigation() {
+  const button = (view, label) =>
+    `<button data-view="${view}" class="nav-item ${state.view === view ? "active" : ""}" ${state.view === view ? 'aria-current="page"' : ""}>${icon(view)}${label}${view === "objects" ? `<span>${data.objects.length}</span>` : ""}</button>`;
+  return `<nav class="primary-nav" aria-label="Investigation areas">${button("overview", "Overview")}<div class="nav-group-label">MODEL</div>${button("objects", "Model objects")}${button("relationships", "Relationships")}${button("security", "Security")}${button("lineage", "Lineage")}<div class="nav-group-label">REPORT & DATA</div>${button("pages", "Report pages")}${button("queries", "Power Query")}<div class="nav-group-label">REVIEW</div>${button("reviews", "Reviews & findings")}<div class="nav-group-label">CONFIDENCE & SCOPE</div>${button("check", "What was checked")}</nav>`;
+}
 function renderSidebar() {
   if (state.view === "lineage") ensureLineage();
   const tables =
@@ -156,42 +188,35 @@ function renderSidebar() {
   );
   $(".sidebar").innerHTML =
     `<div class="project-label">OPEN ANALYSIS</div><div class="project-name">${state.fixture ? "Coverage study" : escape(state.source)}</div><div class="source-label">${state.fixture ? "Synthetic repository fixture" : "Local JSON inventory"}</div>
-    <nav class="primary-nav" aria-label="Investigation areas">${[
-      ["overview", "Overview"],
-      ["objects", "Model objects"],
-      ["lineage", "Lineage"],
-      ["pages", "Report pages"],
-      ["queries", "Power Query"],
-      ["reviews", "Reviews & findings"],
-      ["check", "What was checked"],
-    ]
-      .map(
-        ([v, label]) =>
-          `<button data-view="${v}" class="nav-item ${state.view === v ? "active" : ""}" ${state.view === v ? 'aria-current="page"' : ""}>${icon(v)}${label}${v === "objects" ? `<span>${data.objects.length}</span>` : ""}</button>`,
-      )
-      .join("")}</nav>
+    ${workspaceNavigation()}
     ${
       state.view === "pages"
         ? reportNavigation(data, state)
-        : state.view === "lineage"
-          ? lineageNavigation(lineageIndex, state)
-          : state.view === "queries"
-            ? queryNavigation(queryIndex, state)
-            : state.view === "reviews"
-              ? reviewsNavigation(data, state)
-              : state.view !== "objects"
-                ? ""
-                : `    <div class="model-navigation"><label class="project-label" for="model-select">SEMANTIC MODEL</label><select id="model-select" aria-label="Semantic model"><option value="" ${!state.model ? "selected" : ""}>All models</option>${data.raw.SemanticModels.map((m) => `<option ${m.Name === state.model ? "selected" : ""}>${escape(m.Name)}</option>`).join("")}</select>${
-                    !state.model
-                      ? `<div class="table-heading">Choose a model to browse its tables</div><nav class="table-nav" aria-label="Filter by model">${data.raw.SemanticModels.map((m) => `<button data-model="${escape(m.Name)}">${icon("objects")}<span class="table-name">${escape(m.Name)}</span><span>${modelObjects.filter((o) => o.SemanticModel === m.Name).length}</span></button>`).join("")}</nav>`
-                      : `<div class="table-heading">Tables <span>${tables.filter((t) => state.system || !t.IsSystemGenerated).length}</span></div><nav class="table-nav" aria-label="Filter by table"><button data-table="" class="${!state.table ? "chosen" : ""}">${icon("objects")}All tables<span>${modelObjects.length}</span></button>${tables
-                          .filter((t) => state.system || !t.IsSystemGenerated)
-                          .map(
-                            (t) =>
-                              `<button data-table="${escape(t.Name)}" class="${state.table === t.Name ? "chosen" : ""}" title="${escape(t.Name)}"><span class="table-symbol">▦</span><span class="table-name">${escape(t.Name)}</span><span>${modelObjects.filter((o) => o.Table === t.Name).length}</span></button>`,
-                          )
-                          .join("")}</nav>`
-                  }</div>`
+        : ["relationships", "security"].includes(state.view)
+          ? modelAreaNavigation(modelAreas, state)
+          : state.view === "check"
+            ? scopeNavigation(data, state)
+            : state.view === "lineage"
+              ? lineageNavigation(lineageIndex, state)
+              : state.view === "queries"
+                ? queryNavigation(queryIndex, state)
+                : state.view === "reviews"
+                  ? reviewsNavigation(data, state)
+                  : state.view !== "objects"
+                    ? ""
+                    : `    <div class="model-navigation"><label class="project-label" for="model-select">SEMANTIC MODEL</label><select id="model-select" aria-label="Semantic model"><option value="" ${!state.model ? "selected" : ""}>All models</option>${data.raw.SemanticModels.map((m) => `<option ${m.Name === state.model ? "selected" : ""}>${escape(m.Name)}</option>`).join("")}</select>${
+                        !state.model
+                          ? `<div class="table-heading">Choose a model to browse its tables</div><nav class="table-nav" aria-label="Filter by model">${data.raw.SemanticModels.map((m) => `<button data-model="${escape(m.Name)}">${icon("objects")}<span class="table-name">${escape(m.Name)}</span><span>${modelObjects.filter((o) => o.SemanticModel === m.Name).length}</span></button>`).join("")}</nav>`
+                          : `<div class="table-heading">Tables <span>${tables.filter((t) => state.system || !t.IsSystemGenerated).length}</span></div><nav class="table-nav" aria-label="Filter by table"><button data-table="" class="${!state.table ? "chosen" : ""}">${icon("objects")}All tables<span>${modelObjects.length}</span></button>${tables
+                              .filter(
+                                (t) => state.system || !t.IsSystemGenerated,
+                              )
+                              .map(
+                                (t) =>
+                                  `<button data-table="${escape(t.Name)}" class="${state.table === t.Name ? "chosen" : ""}" title="${escape(t.Name)}"><span class="table-symbol">▦</span><span class="table-name">${escape(t.Name)}</span><span>${modelObjects.filter((o) => o.Table === t.Name).length}</span></button>`,
+                              )
+                              .join("")}</nav>`
+                      }</div>`
     }
     <div class="sidebar-bottom"><span class="project-label">ANALYSIS SCOPE</span><p>${data.raw.Reports.length} reports · ${data.raw.SemanticModels.length} models</p><span class="source-label">Metadata only. No DAX execution.</span><button class="text-button" data-action="scope">View evidence boundaries ${icon("arrow")}</button></div>`;
 }
@@ -199,6 +224,11 @@ function renderWorkspace() {
   document.querySelectorAll(".report-origin").forEach((el) => el.remove());
   $(".workspace").classList.toggle("report-workspace", state.view === "pages");
   $(".workspace").classList.toggle("query-workspace", state.view === "queries");
+  $(".workspace").classList.toggle(
+    "model-area-workspace",
+    ["relationships", "security"].includes(state.view),
+  );
+  $(".workspace").classList.toggle("scope-workspace", state.view === "check");
   $(".workspace").classList.toggle(
     "lineage-workspace",
     state.view === "lineage",
@@ -218,45 +248,58 @@ function renderWorkspace() {
           "Overview",
           "What needs attention, and where to investigate next.",
         ]
-      : state.view === "lineage"
+      : state.view === "relationships"
         ? [
-            "MODEL / TRACE",
-            "Lineage",
-            "Explore every recorded branch. Keep the object at the centre.",
+            "MODEL / RELATIONSHIPS",
+            "Relationships",
+            "Inspect saved relationships, their ends and supporting evidence.",
           ]
-        : state.view === "reviews"
+        : state.view === "security"
           ? [
-              "ANALYSIS / REVIEW",
-              "Reviews & findings",
-              "Inspect the original evidence, then follow its source.",
+              "MODEL / SECURITY",
+              "Security",
+              "Explore saved roles, filters and explicit permissions.",
             ]
-          : state.view === "objects"
+          : state.view === "lineage"
             ? [
-                "MODEL / INVESTIGATE",
-                "Objects",
-                "Follow the evidence. Keep the context.",
+                "MODEL / TRACE",
+                "Lineage",
+                "Explore every recorded branch. Keep the object at the centre.",
               ]
-            : state.view === "pages"
+            : state.view === "reviews"
               ? [
-                  "REPORT / EXPLORE",
-                  "Report pages",
-                  "Stay on the page. Follow each visual’s evidence.",
+                  "ANALYSIS / REVIEW",
+                  "Reviews & findings",
+                  "Inspect the original evidence, then follow its source.",
                 ]
-              : state.view === "queries"
+              : state.view === "objects"
                 ? [
-                    "DATA / PREPARE",
-                    "Power Query",
-                    "Explore queries, their dependencies and their model connections.",
+                    "MODEL / INVESTIGATE",
+                    "Objects",
+                    "Follow the evidence. Keep the context.",
                   ]
-                : [
-                    "ANALYSIS / SCOPE",
-                    "What was checked",
-                    "Understand the evidence before interpreting an absence.",
-                  ];
+                : state.view === "pages"
+                  ? [
+                      "REPORT / EXPLORE",
+                      "Report pages",
+                      "Stay on the page. Follow each visual’s evidence.",
+                    ]
+                  : state.view === "queries"
+                    ? [
+                        "DATA / PREPARE",
+                        "Power Query",
+                        "Explore queries, their dependencies and their model connections.",
+                      ]
+                    : [
+                        "ANALYSIS / SCOPE",
+                        "What was checked",
+                        "Understand the evidence before interpreting an absence.",
+                      ];
   $(".main-heading").innerHTML =
     `<div><div class="eyebrow">${heading[0]}</div><h1 id="workspace-heading" tabindex="-1">${heading[1]}</h1><p>${heading[2]}</p></div><div class="heading-note">${state.fixture ? '<span class="fixture-mark">FIXTURE</span> Real scanner output<br><small>Synthetic PBIP · schema 0.26</small>' : '<span class="fixture-mark">LOCAL</span> Your analysis snapshot<br><small>Kept in this browser tab</small>'}</div>`;
   if (
     state.reportOrigin &&
+    !state.coreOrigin &&
     !state.lineageOrigin &&
     !state.queryOrigin &&
     !state.reviewReturn &&
@@ -269,6 +312,7 @@ function renderWorkspace() {
   }
   if (
     state.reviewReturn &&
+    !state.coreOrigin &&
     !state.lineageOrigin &&
     !["overview", "reviews"].includes(state.view)
   )
@@ -278,6 +322,7 @@ function renderWorkspace() {
     );
   if (
     state.queryOrigin &&
+    !state.coreOrigin &&
     !state.lineageOrigin &&
     !state.reviewReturn &&
     ["objects", "check"].includes(state.view)
@@ -288,11 +333,21 @@ function renderWorkspace() {
     );
   if (
     state.lineageOrigin &&
+    !state.coreOrigin &&
     ["objects", "pages", "check", "queries"].includes(state.view)
   )
     $(".main-heading").insertAdjacentHTML(
       "afterend",
       `<div class="report-origin"><button data-action="return-lineage">${icon("back")}Back to lineage</button><span>${escape(lineageIndex.nodes.get(state.lineageCentre)?.ObjectName)} · Centre, branches and selection preserved</span></div>`,
+    );
+  if (
+    state.coreOrigin &&
+    state.view !== state.coreOrigin.view &&
+    state.view !== "overview"
+  )
+    $(".main-heading").insertAdjacentHTML(
+      "afterend",
+      `<div class="report-origin"><button data-action="return-core">${icon("back")}Back to ${escape(state.coreOrigin.label)}</button><span>${escape(state.coreOrigin.selection)} · Selection and filters preserved</span></div>`,
     );
   if (state.view === "objects") {
     $(".workspace").innerHTML =
@@ -322,6 +377,8 @@ function renderWorkspace() {
     renderCollection();
     renderInspector();
   } else if (state.view === "pages") renderPages();
+  else if (["relationships", "security"].includes(state.view))
+    $(".workspace").innerHTML = modelAreaWorkspace(modelAreas, state);
   else if (state.view === "lineage") renderLineage();
   else if (state.view === "queries") {
     const firstVisit = !queryIndex.byId.has(state.querySelected);
@@ -335,7 +392,7 @@ function renderWorkspace() {
     $(".workspace").innerHTML = overviewWorkspace(data);
   else if (state.view === "reviews")
     $(".workspace").innerHTML = reviewsWorkspace(data, state);
-  else renderCoverage();
+  else $(".workspace").innerHTML = scopeWorkspace(data, state);
 }
 function renderCollection() {
   const rows = visible();
@@ -498,6 +555,134 @@ const modelContextKeys = [
   "history",
   "cursor",
 ];
+function renderAreaResults({ resetDetail = false } = {}) {
+  const list = $("#collection").scrollTop,
+    detail = resetDetail ? 0 : $(".area-detail")?.scrollTop || 0;
+  $("#collection").innerHTML = modelAreaCollection(modelAreas, state);
+  $("#collection").scrollTop = list;
+  $("#area-inspector").innerHTML = modelAreaInspector(modelAreas, state);
+  if ($(".area-detail")) $(".area-detail").scrollTop = detail;
+  const rows =
+    state.view === "relationships"
+      ? relationshipRows(modelAreas, state)
+      : securityRows(modelAreas, state);
+  $("#area-count").textContent =
+    `${rows.length} ${state.view === "relationships" ? "relationships" : "roles"}`;
+  announce(`${rows.length} results in this model workspace.`);
+}
+function selectArea(id) {
+  const prefix = state.view === "relationships" ? "relationship" : "security";
+  state[prefix + "Selected"] = id;
+  renderAreaResults({ resetDetail: true });
+  $(`[data-area-row="${CSS.escape(id)}"]`)?.focus();
+}
+function renderScopeResults({ resetDetail = false } = {}) {
+  const list = $("#collection").scrollTop,
+    detail = resetDetail ? 0 : $(".scope-detail")?.scrollTop || 0;
+  $("#collection").innerHTML = scopeCollection(data, state);
+  $("#collection").scrollTop = list;
+  $("#scope-inspector").innerHTML = scopeInspector(data, state);
+  if ($(".scope-detail")) $(".scope-detail").scrollTop = detail;
+  $("#scope-count").textContent = `${scopeRows(data, state).length} entries`;
+}
+function selectScope(index) {
+  state.checkSelected = index;
+  renderScopeResults({ resetDetail: true });
+  $(`[data-scope-row="${index}"]`)?.focus();
+}
+function startCoreVisit() {
+  rememberWorkspace();
+  const label =
+    {
+      relationships: "Relationships",
+      security: "Security",
+      check: "What was checked",
+    }[state.view] || "workspace";
+  const selection = ["relationships", "security"].includes(state.view)
+    ? areaSelection(modelAreas, state).selected?.[
+        state.view === "relationships" ? "relationship" : "role"
+      ].Name || label
+    : "Confidence and scope";
+  const context = structuredClone(state);
+  state.coreOrigin = { view: state.view, label, selection, context };
+  state.reportOrigin = null;
+  state.queryOrigin = null;
+  state.lineageOrigin = null;
+  state.reviewOrigin = null;
+  state.reviewReturn = false;
+}
+function openCoreTarget(target) {
+  if (
+    !target ||
+    ![
+      "object",
+      "model",
+      "limited",
+      "query",
+      "query-scope",
+      "report",
+      "security",
+      "scope",
+      "view",
+    ].includes(target.kind)
+  )
+    return;
+  startCoreVisit();
+  if (["object", "model", "limited"].includes(target.kind)) {
+    const object = target.kind === "object" ? data.byId.get(target.id) : null;
+    resetFilters();
+    Object.assign(state, {
+      model: object?.SemanticModel || target.model || "",
+      table: object?.Table || target.table || "",
+      selected: null,
+      system: target.kind === "limited" || !!object?.system,
+      tab: "Summary",
+      limited: target.kind === "limited",
+    });
+    showView("objects", { restore: false });
+    const selectedObject =
+      object || (target.kind === "limited" ? visible()[0] : null);
+    if (selectedObject) inspect(selectedObject.id, { focus: true });
+  } else if (["query", "query-scope"].includes(target.kind)) {
+    Object.assign(state, {
+      queryModel: target.model,
+      querySelected: target.id || null,
+      querySearch: target.search || "",
+      queryState: "",
+      queryKind: "",
+      queryTab: "Summary",
+      queryHistory: target.id ? [target.id] : [],
+      queryCursor: target.id ? 0 : -1,
+    });
+    showView("queries", { restore: false });
+  } else if (target.kind === "report") {
+    const report = data.raw.Reports.find(
+        (r) => r.RelativePath === target.report,
+      ),
+      page = report?.Pages.find((p) => p.Name === target.page);
+    if (report) openReportTarget(report, page, null);
+  } else if (target.kind === "security") {
+    Object.assign(state, {
+      securityModel: target.model,
+      securitySelected: target.id,
+      securitySearch: "",
+      securityKind: "",
+      securityTab: "Permissions",
+    });
+    state.areaVisited.security = true;
+    showView("security", { restore: false });
+  } else if (target.kind === "scope") {
+    Object.assign(state, {
+      checkMode: "limits",
+      checkModel: target.model || "",
+      checkArea: "",
+      checkSearch: "",
+      checkSelected: null,
+      checkTab: "Meaning",
+    });
+    showView("check", { restore: false });
+  } else showView(target.view);
+}
 const lineageSession = () => state.lineageSessions[state.lineageCentre];
 function ensureLineage() {
   if (!lineageIndex.nodes.has(state.lineageCentre)) {
@@ -701,14 +886,6 @@ function returnToVisual() {
   renderWorkspace();
   ($("#visual-heading") || $("#page-heading"))?.focus();
 }
-function renderCoverage() {
-  const counts = Object.entries(STATES).map(([k, v]) => [
-    v,
-    data.objects.filter((o) => o.UsageState === k).length,
-  ]);
-  $(".workspace").innerHTML =
-    `<section class="coverage-main" id="collection" tabindex="-1"><div class="section-label">ANALYSED SNAPSHOT</div><h2>Evidence has boundaries.</h2><p class="coverage-lead">PBI Assure reads saved project metadata. A usage classification describes what this scan found within that scope.</p><div class="scope-numbers"><div><strong>${data.raw.SemanticModels.length}</strong>semantic models</div><div><strong>${data.raw.Reports.length}</strong>reports</div><div><strong>${data.objects.length}</strong>model objects</div></div><h3>Usage in this snapshot</h3><div class="usage-breakdown">${counts.map(([v, n]) => `<div><span class="badge ${v.tone}"><i></i>${v.label}</span><span class="bar-track"><i style="width:${data.objects.length ? (n / data.objects.length) * 100 : 0}%"></i></span><strong>${n}</strong></div>`).join("")}</div><div class="review-note">Apparently unused is a review candidate, never permission to delete. Check other reports, external consumers and runtime behaviour before making changes.</div><h3>What this viewer exposes</h3><p>Scanner-produced usage and confidence, direct report locations, semantic dependency edges, saved DAX definitions and recorded limitations.</p><h3>What the scan does not establish</h3><ul class="boundaries"><li>DAX or Power Query execution, refresh success or performance.</li><li>External consumers and other reports outside the selected project.</li><li>Runtime visual behaviour or a reproduction of Power BI rendering.</li><li>Absence of use where metadata could not be fully analysed.</li></ul></section><aside class="inspector"><div class="object-hero"><div class="eyebrow">ANALYSIS COVERAGE</div><h2>Checks & limitations</h2><p>Confidence is separate from usage state.</p></div><div class="inspector-content"><div class="review-note">${data.objects.filter((o) => o.ClassificationConfidence === "QualifiedByLimitation").length} objects have Checks limited in this snapshot.</div><p class="quiet">A limitation may affect only part of a model. This viewer preserves each object’s scanner-supplied confidence, and lists limitations at model level.</p>${data.raw.SemanticModels.map((m) => `<section><h3>${escape(m.Name)}</h3>${modelLimitations(m.Name)}</section>`).join("")}<p class="footnote">JSON schema 0.26 omits some in-process details, including descriptions, hidden projection provenance and precise per-limitation reach. This prototype does not infer them.</p></div></aside>`;
-}
 function inspect(id, { focus = false, push = true } = {}) {
   if (!data.byId.has(id)) return;
   if (push && id !== state.selected) {
@@ -732,11 +909,13 @@ function toast(message) {
   }, 5500);
 }
 const scrollSelectors = {
+  relationships: ["#collection", ".area-detail"],
+  security: ["#collection", ".area-detail"],
   lineage: ["#lineage-up", "#lineage-down", ".lineage-detail"],
   overview: ["#collection"],
   objects: ["#collection", "#detail-panel"],
   reviews: ["#collection", ".review-detail"],
-  check: ["#collection", ".inspector-content"],
+  check: ["#collection", ".scope-detail"],
   queries: ["#collection", ".query-detail"],
 };
 function rememberWorkspace() {
@@ -749,6 +928,16 @@ function rememberWorkspace() {
 }
 function showView(view, { restore = true, focus = true } = {}) {
   rememberWorkspace();
+  if (state.coreOrigin?.view === view)
+    Object.assign(state, state.coreOrigin.context);
+  if (
+    ["relationships", "security"].includes(view) &&
+    !state.areaVisited[view]
+  ) {
+    state[view === "relationships" ? "relationshipModel" : "securityModel"] =
+      state.model || "";
+    state.areaVisited[view] = true;
+  }
   if (view === "lineage" && state.lineageOrigin) {
     Object.assign(state, state.lineageOrigin.context);
     state.lineageOrigin = null;
@@ -905,6 +1094,44 @@ function investigateReview() {
 document.addEventListener("click", async (event) => {
   const b = event.target.closest("button");
   if (!b) return;
+  if (b.dataset.coreTarget) {
+    openCoreTarget(JSON.parse(b.dataset.coreTarget));
+    return;
+  }
+  if (b.dataset.areaRow) {
+    selectArea(b.dataset.areaRow);
+    return;
+  }
+  if (b.dataset.areaTab) {
+    state[state.view === "relationships" ? "relationshipTab" : "securityTab"] =
+      b.dataset.areaTab;
+    $("#area-inspector").innerHTML = modelAreaInspector(modelAreas, state);
+    $(`#area-tab-${b.dataset.areaTab}`).focus();
+    return;
+  }
+  if (b.hasAttribute("data-scope-row")) {
+    selectScope(Number(b.dataset.scopeRow));
+    return;
+  }
+  if (b.dataset.scopeTab) {
+    state.checkTab = b.dataset.scopeTab;
+    $("#scope-inspector").innerHTML = scopeInspector(data, state);
+    $(`#scope-tab-${state.checkTab}`).focus();
+    return;
+  }
+  if (b.dataset.checkMode) {
+    rememberWorkspace();
+    state.checkViews[state.checkMode] = state.workspaceScroll.check;
+    state.checkMode = b.dataset.checkMode;
+    renderSidebar();
+    renderWorkspace();
+    scrollSelectors.check.forEach((selector, index) => {
+      if ($(selector))
+        $(selector).scrollTop = state.checkViews[state.checkMode]?.[index] || 0;
+    });
+    $(`[data-check-mode="${state.checkMode}"]`).focus();
+    return;
+  }
   if (b.dataset.lineageCentre) {
     centreLineage(b.dataset.lineageCentre);
     return;
@@ -1018,6 +1245,9 @@ document.addEventListener("click", async (event) => {
   }
   if (b.hasAttribute("data-overview-checks")) {
     showView("check", { restore: false });
+    Object.assign(state, SCOPE_DEFAULTS);
+    renderSidebar();
+    renderWorkspace();
     return;
   }
   if (b.hasAttribute("data-overview-pages")) {
@@ -1166,6 +1396,43 @@ document.addEventListener("click", async (event) => {
     return;
   }
   switch (b.dataset.action) {
+    case "return-core": {
+      const view = state.coreOrigin?.view;
+      if (view) {
+        showView(view);
+        (
+          $("#area-heading") ||
+          $("#scope-heading") ||
+          $("#workspace-heading")
+        )?.focus({ preventScroll: true });
+      }
+      break;
+    }
+    case "area-reset":
+    case "area-reveal": {
+      const prefix =
+          state.view === "relationships" ? "relationship" : "security",
+        row = areaSelection(modelAreas, state).selected;
+      Object.assign(state, {
+        [prefix + "Search"]: "",
+        [prefix + "Model"]:
+          b.dataset.action === "area-reveal"
+            ? row.model.Name
+            : state[prefix + "Model"],
+        relationshipActive: "",
+        relationshipDirection: "",
+        securityKind: "",
+      });
+      renderSidebar();
+      renderWorkspace();
+      $("#area-search").focus();
+      break;
+    }
+    case "scope-reset":
+      Object.assign(state, { checkSearch: "", checkModel: "", checkArea: "" });
+      renderWorkspace();
+      $("#scope-search").focus();
+      break;
     case "return-lineage":
       showView("lineage");
       $("#lineage-node-heading")?.focus({ preventScroll: true });
@@ -1345,6 +1612,16 @@ document.addEventListener(
   true,
 );
 document.addEventListener("input", (event) => {
+  if (event.target.id === "area-search") {
+    state[
+      state.view === "relationships" ? "relationshipSearch" : "securitySearch"
+    ] = event.target.value;
+    renderAreaResults();
+  }
+  if (event.target.id === "scope-search") {
+    state.checkSearch = event.target.value;
+    renderScopeResults();
+  }
   if (event.target.id === "lineage-search") {
     state.lineageSearch = event.target.value;
     state.lineageSearchLimit = BRANCH_SIZE;
@@ -1374,6 +1651,22 @@ document.addEventListener("input", (event) => {
 });
 document.addEventListener("change", async (event) => {
   const target = event.target;
+  const areaFields = {
+    "area-model":
+      state.view === "relationships" ? "relationshipModel" : "securityModel",
+    "relationship-active": "relationshipActive",
+    "relationship-direction": "relationshipDirection",
+    "security-kind": "securityKind",
+  };
+  if (areaFields[target.id]) {
+    state[areaFields[target.id]] = target.value;
+    renderAreaResults();
+  }
+  if (target.id === "scope-area" || target.id === "scope-model") {
+    state[target.id === "scope-area" ? "checkArea" : "checkModel"] =
+      target.value;
+    renderScopeResults();
+  }
   if (target.id === "lineage-model") {
     state.lineageModel = target.value;
     state.lineageSearchLimit = BRANCH_SIZE;
@@ -1461,6 +1754,7 @@ document.addEventListener("change", async (event) => {
     const previousData = data,
       previousQueries = queryIndex,
       previousLineage = lineageIndex,
+      previousModelAreas = modelAreas,
       previousState = structuredClone(state);
     try {
       if (file.size > 30 * 1024 * 1024)
@@ -1468,9 +1762,11 @@ document.addEventListener("change", async (event) => {
       const next = adaptInventory(JSON.parse(await file.text()));
       const nextQueries = buildQueryData(next);
       const nextLineage = buildLineageData(next);
+      const nextModelAreas = buildModelAreas(next);
       data = next;
       queryIndex = nextQueries;
       lineageIndex = nextLineage;
+      modelAreas = nextModelAreas;
       resetFilters();
       Object.assign(state, {
         model: data.raw.SemanticModels[0]?.Name || "",
@@ -1517,6 +1813,11 @@ document.addEventListener("change", async (event) => {
         lineageSearch: "",
         lineageSearchLimit: BRANCH_SIZE,
         lineageOrigin: null,
+        ...MODEL_AREA_DEFAULTS,
+        ...SCOPE_DEFAULTS,
+        coreOrigin: null,
+        areaVisited: {},
+        checkViews: {},
       });
       const first = visible()[0];
       if (first) {
@@ -1531,6 +1832,7 @@ document.addEventListener("change", async (event) => {
       data = previousData;
       queryIndex = previousQueries;
       lineageIndex = previousLineage;
+      modelAreas = previousModelAreas;
       Object.assign(state, previousState);
       shell();
       toast(
@@ -1544,6 +1846,65 @@ document.addEventListener("change", async (event) => {
 });
 document.addEventListener("keydown", (event) => {
   const target = event.target;
+  if (
+    (target.matches("[data-area-tab]") || target.matches("[data-scope-tab]")) &&
+    ["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key)
+  ) {
+    event.preventDefault();
+    const area = target.hasAttribute("data-area-tab"),
+      tabs = area ? AREA_TABS[state.view] : SCOPE_TABS,
+      key = area
+        ? state.view === "relationships"
+          ? "relationshipTab"
+          : "securityTab"
+        : "checkTab";
+    const next =
+      event.key === "Home"
+        ? 0
+        : event.key === "End"
+          ? tabs.length - 1
+          : (tabs.indexOf(state[key]) +
+              (event.key === "ArrowRight" ? 1 : tabs.length - 1)) %
+            tabs.length;
+    state[key] = tabs[next];
+    $(area ? "#area-inspector" : "#scope-inspector").innerHTML = area
+      ? modelAreaInspector(modelAreas, state)
+      : scopeInspector(data, state);
+    $(`#${area ? "area" : "scope"}-tab-${state[key]}`).focus();
+    return;
+  }
+  if (
+    (target.matches("[data-area-row]") || target.matches("[data-scope-row]")) &&
+    ["ArrowDown", "ArrowUp", "Home", "End"].includes(event.key)
+  ) {
+    event.preventDefault();
+    const area = target.hasAttribute("data-area-row"),
+      rows = area
+        ? state.view === "relationships"
+          ? relationshipRows(modelAreas, state)
+          : securityRows(modelAreas, state)
+        : scopeRows(data, state);
+    const current = rows.findIndex((row) =>
+        area
+          ? row.id === target.dataset.areaRow
+          : row.index === Number(target.dataset.scopeRow),
+      ),
+      next =
+        event.key === "Home"
+          ? 0
+          : event.key === "End"
+            ? rows.length - 1
+            : Math.max(
+                0,
+                Math.min(
+                  rows.length - 1,
+                  current + (event.key === "ArrowDown" ? 1 : -1),
+                ),
+              );
+    if (rows[next])
+      area ? selectArea(rows[next].id) : selectScope(rows[next].index);
+    return;
+  }
   if (
     target.matches("[data-lineage-tab]") &&
     ["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key)
@@ -1615,18 +1976,31 @@ document.addEventListener("keydown", (event) => {
   if (
     event.key === "/" &&
     !/INPUT|TEXTAREA|SELECT/.test(target.tagName) &&
-    ["objects", "pages", "reviews", "queries", "lineage"].includes(state.view)
+    [
+      "objects",
+      "pages",
+      "reviews",
+      "queries",
+      "lineage",
+      "relationships",
+      "security",
+      "check",
+    ].includes(state.view)
   ) {
     event.preventDefault();
     (state.view === "objects"
       ? $("#search")
-      : state.view === "lineage"
-        ? $("#lineage-search")
-        : state.view === "queries"
-          ? $("#query-search")
-          : state.view === "reviews"
-            ? $("#review-search")
-            : $("#visual-search")
+      : ["relationships", "security"].includes(state.view)
+        ? $("#area-search")
+        : state.view === "check"
+          ? $("#scope-search")
+          : state.view === "lineage"
+            ? $("#lineage-search")
+            : state.view === "queries"
+              ? $("#query-search")
+              : state.view === "reviews"
+                ? $("#review-search")
+                : $("#visual-search")
     )?.focus();
   }
   if (
@@ -1779,6 +2153,7 @@ try {
   data = adaptInventory(await response.json());
   queryIndex = buildQueryData(data);
   lineageIndex = buildLineageData(data);
+  modelAreas = buildModelAreas(data);
   const first =
     visible().find((o) => o.ObjectName === "DirectlyUsedMeasure") ||
     visible()[0];
