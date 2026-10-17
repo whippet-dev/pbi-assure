@@ -26,7 +26,7 @@ export function scopeNavigation(data, state) {
     )
     .join(
       "",
-    )}</nav><p class="source-label">Confidence is separate from usage. An absence conclusion depends on the analysis scope.</p></div>`;
+    )}</nav><p class="source-label">A usage result describes what was found. Confidence describes the limits of that result.</p></div>`;
 }
 function scopeSelection(data, state) {
   const rows = scopeRows(data, state);
@@ -39,7 +39,7 @@ export function scopeWorkspace(data, state) {
   if (state.checkMode === "boundaries") return boundarySheet();
   const rows = scopeSelection(data, state),
     summary = scopeSummary(data);
-  return `<section class="collection-pane scope-collection" aria-label="Recorded analysis limitations"><div class="collection-tools"><div class="scope-intro"><h2>Evidence has boundaries.</h2><p>Confidence is separate from usage state.</p><div class="scope-summary-line">${targetButton({ kind: "limited", model: "" }, `${summary.limited.length} object results have Checks limited`)}<span>${summary.limitations.length} recorded limitations</span></div>${!summary.limitations.length ? '<p class="quiet">No identified limitations. This does not mean everything was checked.</p>' : ""}</div><div class="collection-title"><strong>Recorded limitations</strong><span id="scope-count">${rows.length} entries</span></div><div class="searchbox">${icon("search")}<input id="scope-search" type="search" aria-label="Search analysis limitations" placeholder="Reason, object or area…" value="${escape(state.checkSearch)}"><kbd>/</kbd></div><div class="filter-line"><label class="sr-only" for="scope-area">Limitation area</label><select id="scope-area"><option value="">All areas</option>${Object.entries(
+  return `<section class="collection-pane scope-collection" aria-label="Recorded analysis limitations"><div class="collection-tools"><div class="scope-intro"><h2>Analysis scope and limitations</h2><p>Usage and confidence are separate. This analysis does not include a complete register of successful checks.</p><div class="scope-summary-line">${targetButton({ kind: "limited", model: "" }, `${summary.limited.length} object results have Checks limited`)}<span>${summary.limitations.length} recorded limitations</span></div>${!summary.limitations.length ? '<p class="quiet">No identified limitations. This does not mean everything was checked.</p>' : ""}</div><div class="collection-title"><strong>Recorded limitations</strong><span id="scope-count">${rows.length} entries</span></div><div class="searchbox">${icon("search")}<input id="scope-search" type="search" aria-label="Search analysis limitations" placeholder="Reason, object or area…" value="${escape(state.checkSearch)}"><kbd>/</kbd></div><div class="filter-line"><label class="sr-only" for="scope-area">Limitation area</label><select id="scope-area"><option value="">All areas</option>${Object.entries(
     areaLabel,
   )
     .map(
@@ -78,16 +78,16 @@ export function scopeInspector(data, state) {
         o.SemanticModel === l.SemanticModel &&
         o.ClassificationConfidence === "QualifiedByLimitation",
     );
-  return `<div class="inspector-toolbar"><span>CONFIDENCE & SCOPE</span></div><div class="object-hero"><div class="object-breadcrumb">${escape(areaLabel[limitArea(l)])} / ${escape(l.SemanticModel || "Project")}</div><h2 id="scope-heading" tabindex="-1">${escape(constructLabel(l.ConstructType))}</h2><p>${escape(supportLabel(l.SupportState))}</p></div>${outside ? '<div class="outside-filter">Selected limitation is outside your filters.<button data-action="scope-reset">Show in collection</button></div>' : ""}<div class="inspector-tabs" role="tablist" aria-label="Limitation information">${SCOPE_TABS.map((t) => `<button role="tab" id="scope-tab-${t}" data-scope-tab="${t}" aria-controls="scope-panel" aria-selected="${state.checkTab === t}" tabindex="${state.checkTab === t ? 0 : -1}">${t}</button>`).join("")}</div><div class="inspector-content scope-detail" id="scope-panel" role="tabpanel" aria-labelledby="scope-tab-${state.checkTab}" tabindex="0">${
+  return `<div class="inspector-toolbar"><span>ANALYSIS SCOPE</span></div><div class="object-hero"><div class="object-breadcrumb">${escape(areaLabel[limitArea(l)])} / ${escape(l.SemanticModel || "Project")}</div><h2 id="scope-heading" tabindex="-1">${escape(constructLabel(l.ConstructType))}</h2><p>${escape(supportLabel(l.SupportState))}</p></div>${outside ? '<div class="outside-filter">Selected limitation is outside your filters.<button data-action="scope-reset">Show in collection</button></div>' : ""}<div class="inspector-tabs" role="tablist" aria-label="Limitation information">${SCOPE_TABS.map((t) => `<button role="tab" id="scope-tab-${t}" data-scope-tab="${t}" aria-controls="scope-panel" aria-selected="${state.checkTab === t}" tabindex="${state.checkTab === t ? 0 : -1}">${t}</button>`).join("")}</div><div class="inspector-content scope-detail" id="scope-panel" role="tabpanel" aria-labelledby="scope-tab-${state.checkTab}" tabindex="0">${
     state.checkTab === "Meaning"
-      ? `<section><h3>Why this matters</h3><p class="area-lead">${escape(l.Reason)}</p></section><section><h3>Meaning for confidence</h3><p class="area-lead">${escape(confidenceMeaning(l))}</p></section><section><h3>Recorded scope</h3>${facts(
+      ? `<section><h3>Why this matters</h3><p class="area-lead">${escape(l.Reason)}</p></section><section><h3>How to interpret results</h3><p class="area-lead">${escape(confidenceMeaning(l))}</p></section><section><h3>Recorded scope</h3>${facts(
           [
             ["Area", areaLabel[limitArea(l)]],
             ["Model", l.SemanticModel],
             ["Table", l.Table],
             ["Object / query", l.ObjectName],
           ],
-        )}${l.DependencyImpact !== "MayCreateQueryDependencies" && l.SemanticModel ? `<p class="quiet">${limited.length} model results carry Checks limited. The JSON does not map their individual qualification to this record.</p>${targetButton({ kind: "limited", model: l.SemanticModel }, "Inspect qualified model results")}` : ""}</section>`
+        )}${l.DependencyImpact !== "MayCreateQueryDependencies" && l.SemanticModel ? `<p class="quiet">${limited.length} model result${limited.length === 1 ? " carries" : "s carry"} Checks limited. This analysis does not map their individual qualification to this limitation.</p>${targetButton({ kind: "limited", model: l.SemanticModel }, "View model objects with Checks limited")}` : ""}</section>`
       : `<section><h3>Original limitation evidence</h3>${facts([
           ["Cause", words(l.Cause)],
           ["Source", l.ArtifactPath],
@@ -100,7 +100,7 @@ export function scopeInspector(data, state) {
   }</div><div class="inspector-footer scope-actions"><span>Saved analysis</span>${targetButton(target, target?.label, true)}</div>`;
 }
 function evidenceSheet(data) {
-  return `<section id="collection" class="scope-sheet" tabindex="-1"><div class="eyebrow">EVIDENCE AVAILABLE</div><h2>What is present in this snapshot</h2><p class="scope-lead">The scanner publishes parsed inventories, usage results and recorded limitations. Presence is evidence available to investigate, not a pass/fail checklist of every possible check.</p><div class="scope-evidence-rows">${availableEvidence(
+  return `<section id="collection" class="scope-sheet" tabindex="-1"><div class="eyebrow">EVIDENCE AVAILABLE</div><h2>What is present in this snapshot</h2><p class="scope-lead">This snapshot contains definitions, usage results and recorded limitations. These are available evidence, not a pass/fail checklist. A complete register of successful checks is not included.</p><div class="scope-evidence-rows">${availableEvidence(
     data,
   )
     .map(
@@ -109,8 +109,8 @@ function evidenceSheet(data) {
     )
     .join(
       "",
-    )}</div><p class="footnote">Successful per-construct parser checks are not enumerated in this JSON contract. Recorded limitations and each object's confidence remain the source of qualification.</p></section>`;
+    )}</div><p class="footnote">Limitation records are not mapped to every affected object. Interpret each usage result using its own confidence label.</p></section>`;
 }
 function boundarySheet() {
-  return `<section id="collection" class="scope-sheet" tabindex="-1"><div class="eyebrow">OUTSIDE SCOPE</div><h2>Saved definitions cannot establish everything</h2><p class="scope-lead">No identified limitations means none were recorded within the scan. It does not mean everything was checked.</p><div class="scope-boundary-rows"><section><h3>Runtime calculations and refresh</h3><p>The scan does not execute DAX or Power Query, test connector availability, verify refresh success or measure runtime performance.</p></section><section><h3>Effective user access</h3><p>Saved roles, filters and explicit permissions are inspectable. Power BI Service membership and effective user-access testing are outside this analysis.</p></section><section><h3>Consumers outside this project</h3><p>Other reports, external tools and runtime consumers outside the scanned project can still use objects. Apparently unused remains a review candidate, never permission to delete.</p></section><section><h3>Rendered report behaviour</h3><p>Saved visual configuration, navigation and accessibility observations do not reproduce final rendering or establish an accessibility certification.</p></section><section><h3>Evidence omitted by the JSON contract</h3><p>Precise per-limitation reach, structural provenance and report-scoped report-measure ownership/use evidence are not fully published. The viewer keeps those gaps explicit.</p></section></div></section>`;
+  return `<section id="collection" class="scope-sheet" tabindex="-1"><div class="eyebrow">OUTSIDE SCOPE</div><h2>Saved definitions cannot establish everything</h2><p class="scope-lead">No identified limitations means none were recorded within the scan. It does not mean everything was checked.</p><div class="scope-boundary-rows"><section><h3>Runtime calculations and refresh</h3><p>The scan does not execute DAX or Power Query, test connector availability, verify refresh success or measure runtime performance.</p></section><section><h3>Effective user access</h3><p>Saved roles, filters and explicit permissions are inspectable. Power BI Service membership and effective user-access testing are outside this analysis.</p></section><section><h3>Consumers outside this project</h3><p>Other reports, external tools and runtime consumers outside the scanned project can still use objects. Apparently unused remains a review candidate, never permission to delete.</p></section><section><h3>Rendered report behaviour</h3><p>Saved visual configuration, navigation and accessibility observations do not reproduce final rendering or establish an accessibility certification.</p></section><section><h3>Evidence not included in this analysis</h3><p>This snapshot does not include every object affected by each limitation, all structural provenance, or complete report-measure ownership and usage locations. These gaps remain explicit.</p></section></div></section>`;
 }

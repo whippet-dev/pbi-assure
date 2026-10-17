@@ -4,6 +4,18 @@ A separate, read-only PBI Assure investigation workspace. This experiment is con
 
 Started from `master` at `93ae2c6d35aebf382a9be402d4a2c9cafa909f4a` (merged front-door analysis journey), on `modern-viewer-prototype`. Nothing is merged by this work.
 
+## Desktop coherence pass
+
+The prototype now uses cool neutral chrome, white analytical surfaces, slate text and a restrained deep-teal selection/action system. Error, warning, usage and confidence treatments remain distinct. Headers, collection rows and inspector spacing are more compact, while primary object names and body text remain readable. Model/report selectors sit above the workspace; contextual navigation has its own scroll area.
+
+Lineage retains its progressive two-lane interaction, now using **Starting object**, **Depends on**, **Used by**, **Show connection** and **Start from this object**. Selecting a related object still only updates the inspector. Relationship endpoints, finding titles and interpreted security permissions lead their inspectors; technical identities and stored values remain available.
+
+**Analysis scope** replaces **What was checked**. The fixture's 29 object results with Checks limited and 12 limitation records are separate counts, without invented per-limitation reach or a successful-check register. Theme counts distinguish observations from report summaries. Accessibility remains a specialist review; Theme remains secondary.
+
+Validation is scoped to this prototype: 32 data tests, 24 existing browser workflows and two desktop/reflow checks. Visual inspection covered all nine workspaces at 1280–1440px, with a 1366×768 density check and 720 CSS-pixel reflow check (the layout width of a 1440px desktop at 200% zoom). The reflow check is not a full browser-zoom or accessibility audit. `tests/polish.spec.js` checks desktop overflow/control placement, collection density, reachable stacked inspectors and access to specialist/scope views. Screenshots are written under `artifacts/modern-viewer/` by the browser tests.
+
+The existing workspace architecture, usage semantics, explicit return paths and cautious unused-object guidance remain. No canvas graph, assurance score, new analysis features or production integration is introduced.
+
 ## Run and compare
 
 Requires Node.js 22 or newer. The viewer itself has **no npm runtime dependencies** and needs no .NET build to open the bundled fixture.

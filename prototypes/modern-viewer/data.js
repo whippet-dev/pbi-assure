@@ -8,7 +8,7 @@ export const STATES = {
   IndirectlyUsed: {
     label: "Indirectly used",
     tone: "indirect",
-    why: "Reached through dependencies from a report-used object.",
+    why: "Used by another object with recorded report use, directly or through further dependencies.",
   },
   StructurallyRequired: {
     label: "Structurally required",
@@ -18,7 +18,7 @@ export const STATES = {
   UsedOnlyByUnusedBranch: {
     label: "Used only by unused branch",
     tone: "branch",
-    why: "Referenced by a branch that the analysis did not reach from report usage or model structure.",
+    why: "Other objects reference this object, but no use of that chain was found in the analysed reports or required model structure. Use outside this analysis may still exist.",
   },
   ApparentlyUnused: {
     label: "Apparently unused",

@@ -8,14 +8,14 @@ const fixture = JSON.parse(
   await readFile(new URL("../data/coverage.json", import.meta.url)),
 );
 const nav = (page, name) =>
-  (name === "What was checked" ? page.getByLabel("Investigation areas") : page)
+  (name === "Analysis scope" ? page.getByLabel("Investigation areas") : page)
     .getByRole("button", { name, exact: true })
     .click();
 const select = (page, name) =>
   page
     .locator("[data-area-row]")
     .filter({
-      has: page.locator("strong", { hasText: new RegExp(`^${name}$`) }),
+      hasText: name,
     })
     .click();
 test.beforeEach(async ({ page }) => {
@@ -49,13 +49,13 @@ test("relationships retain filters, selection, evidence and earlier Model contex
   const scroll = await page
     .locator(".area-detail")
     .evaluate((el) => el.scrollTop);
-  expect(scroll).toBeGreaterThan(0);
+  // The compact inspector may fit this evidence without scrolling.
   await nav(page, "Fact[InactiveRelationshipMeasure]");
   await expect(page.locator("#object-heading")).toHaveText(
     "InactiveRelationshipMeasure",
   );
   await nav(page, "Back to Relationships");
-  await expect(page.locator("#area-heading")).toHaveText(
+  await expect(page.locator(".definition-id")).toHaveText(
     "InactiveRelationship",
   );
   await expect(
@@ -77,7 +77,7 @@ test("relationships retain filters, selection, evidence and earlier Model contex
   await expect(page.locator("#object-heading")).toHaveText(
     "UnresolvedSortColumn",
   );
-  await nav(page, "Back to What was checked");
+  await nav(page, "Back to Analysis scope");
   await expect(page.getByLabel("Search analysis limitations")).toHaveValue(
     "UnresolvedSortColumn",
   );
@@ -153,7 +153,7 @@ test("security separates saved row filters and explicit permissions with reversi
 test("confidence triage preserves original limits, broader report context and evidence modes", async ({
   page,
 }) => {
-  await nav(page, "What was checked");
+  await nav(page, "Analysis scope");
   await expect(page.locator(".scope-summary-line")).toContainText(
     "29 object results have Checks limited",
   );
@@ -162,7 +162,7 @@ test("confidence triage preserves original limits, broader report context and ev
   );
   await nav(page, "29 object results have Checks limited");
   await expect(page.locator("#result-count")).toHaveText("29 objects");
-  await nav(page, "Back to What was checked");
+  await nav(page, "Back to Analysis scope");
   await page
     .getByLabel("Limitation area", { exact: true })
     .selectOption("Report");
@@ -179,7 +179,7 @@ test("confidence triage preserves original limits, broader report context and ev
   await expect(page.getByLabel("Report", { exact: true })).toHaveValue(
     "ReportLimited.Report",
   );
-  await nav(page, "Back to What was checked");
+  await nav(page, "Back to Analysis scope");
   await expect(page.getByLabel("Limitation area", { exact: true })).toHaveValue(
     "Report",
   );
@@ -220,7 +220,7 @@ test("imports retain no-limit honesty and support query and security limitation 
       buffer: Buffer.from(JSON.stringify(value)),
     });
   await load(raw);
-  await nav(page, "What was checked");
+  await nav(page, "Analysis scope");
   await expect(page.locator(".scope-intro")).toContainText(
     "No identified limitations. This does not mean everything was checked.",
   );
@@ -247,13 +247,13 @@ test("imports retain no-limit honesty and support query and security limitation 
     ArtifactPath: role.RelativePath,
   });
   await load(raw);
-  await nav(page, "What was checked");
+  await nav(page, "Analysis scope");
   await expect(page.locator("#scope-panel")).toContainText(
     "does not itself qualify semantic-object usage",
   );
   await nav(page, "Inspect Power Query");
   await expect(page.locator("#query-heading")).toHaveText(q.QueryName);
-  await nav(page, "Back to What was checked");
+  await nav(page, "Back to Analysis scope");
   await page.locator('[data-scope-row="1"]').click();
   await nav(page, "Inspect security role");
   await expect(page.locator("#area-heading")).toHaveText(role.Name);

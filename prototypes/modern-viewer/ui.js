@@ -31,5 +31,13 @@ const icons = {
 };
 export const icon = (name) =>
   `<svg viewBox="0 0 24 24" aria-hidden="true">${icons[name] || icons.objects}</svg>`;
+const objectIcons = {
+  Measure: '<path d="M16 4h-3c-2 0-3 2-3 4v8c0 3-1 4-4 4M6 10h10"/><path d="m15 15 5 5m0-5-5 5"/>',
+  Column: '<rect x="4" y="3" width="16" height="18" rx="2"/><path d="M4 8h16M9 8v13m6-13v13"/><path d="M10 9h4v11h-4z"/>',
+  Table: '<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 9h18M9 9v11M3 14h18"/>',
+  Function: '<path d="m8 5-5 7 5 7m8-14 5 7-5 7m-3-14-2 14"/>',
+  HierarchyLevel: '<path d="M5 3v14h5m-5-9h9"/><rect x="14" y="5" width="6" height="6" rx="1"/><rect x="10" y="14" width="10" height="6" rx="1"/>',
+  CalculationItem: '<rect x="5" y="3" width="14" height="18" rx="2"/><path d="M8 7h8m-8 5h3m-3 4h3m4-4h1m-1 4h1"/>',
+};
 export const glyph = (type) =>
-  `<span class="object-icon ${type === "Measure" || type === "ReportMeasure" ? "measure" : ""}" aria-hidden="true">${type === "Measure" || type === "ReportMeasure" ? "ƒ" : type === "Column" ? "▥" : "⋮"}</span>`;
+  `<span class="object-icon" aria-hidden="true"><svg viewBox="0 0 24 24">${objectIcons[type === "ReportMeasure" ? "Measure" : type] || icons[type === "Relationship" ? "relationships" : type === "Role" ? "security" : "objects"]}</svg></span>`;

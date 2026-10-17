@@ -52,7 +52,7 @@ test("Overview routes usage/checks and preserves an existing model and report in
   await page.getByRole("button", { name: "Overview", exact: true }).click();
   await page.locator("[data-overview-checks]").first().click();
   await expect(
-    page.getByRole("heading", { name: "Evidence has boundaries." }),
+    page.getByRole("heading", { name: "Analysis scope and limitations" }),
   ).toBeVisible();
   await page.getByRole("button", { name: "Overview", exact: true }).click();
   await page
@@ -91,7 +91,7 @@ test("attention routes to original findings with source return, separate accessi
     "ModelIntegrity",
   );
   await expect(page.locator("#review-result-count")).toHaveText("7 results");
-  await expect(page.locator("#review-heading")).toHaveText("PBI-MODEL-001");
+  await expect(page.locator(".rule-id")).toHaveText("PBI-MODEL-001");
   await page
     .getByRole("button", { name: "Inspect visual reviews", exact: true })
     .click();
@@ -105,12 +105,12 @@ test("attention routes to original findings with source return, separate accessi
   await page
     .getByRole("button", { name: "Back to reviews", exact: true })
     .click();
-  await expect(page.locator("#review-heading")).toHaveText("PBI-MODEL-001");
+  await expect(page.locator(".rule-id")).toHaveText("PBI-MODEL-001");
   await expect(page.getByLabel("Finding category")).toHaveValue(
     "ModelIntegrity",
   );
   await page.locator("[data-review]").first().press("ArrowDown");
-  await expect(page.locator("#review-heading")).toHaveText("PBI-MODEL-002");
+  await expect(page.locator(".rule-id")).toHaveText("PBI-MODEL-002");
   await page
     .locator("[data-review]")
     .filter({ hasText: "PBI-MODEL-002" })

@@ -76,7 +76,7 @@ test("visual investigation keeps the page, scroll and model return context", asy
     "Other saved references",
   );
   await expect(page.locator("#visual-panel")).toContainText(
-    "No scanner-confirmed direct model usage",
+    "No recorded direct model usage",
   );
   await expect(page.locator("#visual-panel .used-as")).toContainText(
     "Recorded as",

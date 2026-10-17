@@ -1,5 +1,6 @@
 import { path, areaId } from "./model-area-data.js";
 import { queryId } from "./query-data.js";
+import { isAccessibility } from "./review-data.js";
 export const SCOPE_DEFAULTS = {
   checkMode: "limits",
   checkArea: "",
@@ -17,7 +18,7 @@ export const areaLabel = {
 export const constructLabel = (type) =>
   ({
     function: "DAX functions",
-    modelDefinition: "Model definition",
+    modelDefinition: "Model-level definition file",
     perspective: "Perspective presentation",
     semanticReference: "Unresolved model reference",
     unrecognizedReportDefinitionFile: "Unrecognised report metadata",
@@ -38,14 +39,14 @@ export const limitArea = (l) =>
 export const supportLabel = (value) =>
   ({
     PartiallyAnalyzed: "Partially analysed",
-    NotYetAnalyzed: "Not yet analysed",
+    NotYetAnalyzed: "Not analysed by this version",
     Unrecognized: "Unrecognised construct",
     Analyzed: "Analysed aspects",
   })[value] || value;
 export const confidenceMeaning = (l) =>
   ({
     MayCreateDependencies:
-      "Dependencies may be missing. Absence conclusions can rest on an incomplete graph. Use each object’s Checks limited state when interpreting its result.",
+      "Dependencies may be missing, so an apparently unused result may be incomplete. Use each object’s Checks limited label when interpreting its result.",
     MayCreateQueryDependencies:
       "Query dependencies may be missing. This concerns Power Query lineage; it does not itself qualify semantic-object usage results.",
     NoKnownDependencyEffect:
@@ -196,7 +197,7 @@ export function availableEvidence(data) {
     ],
     [
       "Semantic dependencies",
-      `${data.raw.SemanticDependencies.length} recorded edges`,
+      `${data.raw.SemanticDependencies.length} recorded dependencies`,
       "Definitions and model structure; unresolved references remain separate.",
       "lineage",
     ],
@@ -226,7 +227,7 @@ export function availableEvidence(data) {
     ],
     [
       "Findings & reviews",
-      `${data.raw.Findings.length} original records`,
+      `${data.raw.Findings.filter((f) => !isAccessibility(f)).length} findings · ${data.raw.Findings.filter(isAccessibility).length} Accessibility observations`,
       "Severity, assessment type and evidence retained; Accessibility and Theme keep separate meanings.",
       "reviews",
     ],

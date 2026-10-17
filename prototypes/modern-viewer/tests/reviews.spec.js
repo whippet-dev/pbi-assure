@@ -38,14 +38,14 @@ test("findings triage combines context filters while keeping the selected review
   await page.getByLabel("Finding severity").selectOption("Warning");
   await expect(page.locator("#review-result-count")).toHaveText("1 results");
   await choose(page, "PBI-NAV-002");
-  await expect(page.locator("#review-heading")).toHaveText("PBI-NAV-002");
+  await expect(page.locator(".rule-id")).toHaveText("PBI-NAV-002");
   await page.getByRole("tab", { name: "Evidence", exact: true }).click();
   await expect(page.locator("#review-panel")).toContainText(
     "$.visual.visualContainerObjects.visualLink[1]",
   );
   await page.getByLabel("Review required", { exact: true }).check();
   await expect(page.locator("#review-result-count")).toHaveText("0 results");
-  await expect(page.locator("#review-heading")).toHaveText("PBI-NAV-002");
+  await expect(page.locator(".rule-id")).toHaveText("PBI-NAV-002");
   await expect(page.locator(".outside-filter")).toContainText(
     "outside your filters",
   );
@@ -94,7 +94,7 @@ test("query and model source visits return to the finding and restore earlier wo
   await page.locator('[data-query-table="LoadedFactQuery"]').click();
   await expect(page.locator(".report-origin")).toContainText("PBI-QUERY-001");
   await back(page);
-  await expect(page.locator("#review-heading")).toHaveText("PBI-QUERY-001");
+  await expect(page.locator(".rule-id")).toHaveText("PBI-QUERY-001");
   await expect(page.getByLabel("Search findings")).toHaveValue("PBI-QUERY-001");
   await page.getByRole("button", { name: "Power Query", exact: true }).click();
   await expect(page.locator("#query-heading")).toHaveText("LocalFileQuery");
@@ -122,7 +122,7 @@ test("query and model source visits return to the finding and restore earlier wo
     "UnresolvedSortColumn",
   );
   await back(page);
-  await expect(page.locator("#review-heading")).toHaveText("PBI-MODEL-005");
+  await expect(page.locator(".rule-id")).toHaveText("PBI-MODEL-005");
   await expect(
     page.getByRole("tab", { name: "Evidence", exact: true }),
   ).toHaveAttribute("aria-selected", "true");
@@ -156,7 +156,7 @@ test("visual, page and missing-target routes preserve the review selection and p
     "Diagnostic actions",
   );
   await back(page);
-  await expect(page.locator("#review-heading")).toHaveText("PBI-NAV-001");
+  await expect(page.locator(".rule-id")).toHaveText("PBI-NAV-001");
   expect(
     await page.locator(".review-list").evaluate((el) => el.scrollTop),
   ).toBe(160);
@@ -185,7 +185,7 @@ test("visual, page and missing-target routes preserve the review selection and p
     "Diagnostics.Report",
   );
   await back(page);
-  await expect(page.locator("#review-heading")).toHaveText("PBI-NAV-003");
+  await expect(page.locator(".rule-id")).toHaveText("PBI-NAV-003");
 });
 
 test("specialist views retain their own context and theme comparisons never become findings", async ({
@@ -208,7 +208,7 @@ test("specialist views retain their own context and theme comparisons never beco
   );
   await back(page);
   await page.locator('[data-review-mode="theme"]').click();
-  await expect(page.locator("#review-result-count")).toHaveText("7 results");
+  await expect(page.locator("#review-result-count")).toHaveText("2 observations · 5 report summaries");
   await expect(page.locator("#review-severity, #review-required")).toHaveCount(
     0,
   );
@@ -236,7 +236,7 @@ test("specialist views retain their own context and theme comparisons never beco
     "ModelIntegrity",
   );
   await page.locator("[data-review]").first().press("End");
-  await expect(page.locator("#review-heading")).toHaveText("PBI-QUERY-002");
+  await expect(page.locator(".rule-id")).toHaveText("PBI-QUERY-002");
   await page.locator('[data-review][aria-current="true"]').press("/");
   await expect(page.getByLabel("Search findings")).toBeFocused();
   await page

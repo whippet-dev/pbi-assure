@@ -114,7 +114,7 @@ export function findingList(findings, empty) {
   return findings
     .map(
       (f) =>
-        `<article class="finding"><div class="finding-heading"><span class="badge ${f.Severity === "Information" ? "unused" : "branch"}">${escape(f.Severity)}</span><strong>${f.AssessmentType === "ReviewRequired" ? "Review required" : "Finding"}</strong><span>${escape(words(f.Category))}</span></div><p>${escape(f.Message)}</p><p class="finding-recommendation">${escape(f.Recommendation)}</p>${evidence(f.RuleId + " · v" + f.RuleVersion + (f.VisualGroup ? " · Group: " + f.VisualGroup : ""), null, [f.ArtifactPath, ...(f.EvidencePaths || [])].join("\n"))}</article>`,
+        `<article class="finding"><div class="finding-heading"><span class="badge ${f.Severity === "Error" ? "severity-error" : f.Severity === "Warning" ? "severity-warning" : "severity-info"}">${escape(f.Severity)}</span><strong>${f.AssessmentType === "ReviewRequired" ? "Review required" : "Finding"}</strong><span>${escape(words(f.Category))}</span></div><p>${escape(f.Message)}</p><p class="finding-recommendation">${escape(f.Recommendation)}</p>${evidence(f.RuleId + " · v" + f.RuleVersion + (f.VisualGroup ? " · Group: " + f.VisualGroup : ""), null, [f.ArtifactPath, ...(f.EvidencePaths || [])].join("\n"))}</article>`,
     )
     .join("");
 }
@@ -135,7 +135,7 @@ function limitationList(data, report) {
 }
 function usesPanel(data, report, page, visual) {
   const uses = visualUses(data, report, page, visual);
-  return `<div class="panel-intro"><h3>Objects used by this visual <span>${uses.confirmed.length}</span></h3><p>Direct usage published by the scanner. Open an object in its model workspace, then return to this visual.</p></div>${useRows(uses.confirmed) || '<p class="quiet">No scanner-confirmed direct model usage was published for this visual. This is not proof that it uses no data.</p>'}${uses.other.length ? `<section class="other-references"><h3>Other saved references <span>${uses.other.length}</span></h3><p class="quiet">Report-measure bindings, unmatched fields and metadata references without confirmed direct usage. Saved selectors can outlive active use; the JSON does not publish their full relevance classification.</p>${useRows(uses.other)}</section>` : ""}<p class="footnote">Page and report filters belong to their own scopes; inspect Page details to see them. Hidden projection flags are omitted by this JSON contract, so these rows do not claim to be user-facing fields.</p>`;
+  return `<div class="panel-intro"><h3>Objects used by this visual <span>${uses.confirmed.length}</span></h3><p>References found in the analysed report metadata. Open an object to inspect its model usage.</p></div>${useRows(uses.confirmed) || '<p class="quiet">No recorded direct model usage was published for this visual. This is not proof that it uses no data.</p>'}${uses.other.length ? `<section class="other-references"><h3>Other saved references <span>${uses.other.length}</span></h3><p class="quiet">Report-measure bindings, unmatched fields and metadata references without confirmed direct usage. Saved selectors can outlive active use; this analysis does not establish whether every saved reference is active.</p>${useRows(uses.other)}</section>` : ""}<p class="footnote">Page and report filters belong to their own scopes; inspect Page details to see them. Some saved fields may be hidden from the rendered visual; that detail is not included in this analysis.</p>`;
 }
 function behaviourPanel(report, page, visual) {
   const interactions = (page.VisualInteractions || []).filter(

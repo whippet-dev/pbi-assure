@@ -22,14 +22,14 @@ const status = (n) =>
     ? `<span class="badge ${STATES[n.usage.UsageState].tone}"><i></i>${STATES[n.usage.UsageState].label}</span>`
     : n.tableUsage && STATES[n.tableUsage.UsageState]
       ? `<span class="source-label">Table usage: ${STATES[n.tableUsage.UsageState].label}</span>`
-      : '<span class="source-label">Graph node · no object usage result</span>';
+      : '<span class="source-label">Definition only · no object usage result</span>';
 export function lineageNavigation(index, state) {
-  return `<div class="lineage-navigation"><label class="project-label" for="lineage-model">START FROM AN OBJECT</label><select id="lineage-model" aria-label="Lineage semantic model"><option value="">All models</option>${index.data.raw.SemanticModels.map((m) => `<option ${m.Name === state.lineageModel ? "selected" : ""}>${escape(m.Name)}</option>`).join("")}</select><div class="searchbox">${icon("search")}<input type="search" id="lineage-search" aria-label="Find lineage object" placeholder="Object, table or type…" value="${escape(state.lineageSearch)}"></div><div id="lineage-search-results">${lineageSearchResults(index, state)}</div>${index.data.byId.has(state.selected) ? '<button class="text-button lineage-current-model" data-action="lineage-current-model">Start from Model selection →</button>' : ""}</div>`;
+  return `<div class="lineage-navigation"><label class="project-label" for="lineage-model">SEMANTIC MODEL</label><select id="lineage-model" aria-label="Lineage semantic model"><option value="">All models</option>${index.data.raw.SemanticModels.map((m) => `<option ${m.Name === state.lineageModel ? "selected" : ""}>${escape(m.Name)}</option>`).join("")}</select><label class="project-label" for="lineage-search">STARTING OBJECT</label><div class="searchbox">${icon("search")}<input type="search" id="lineage-search" aria-label="Find lineage object" placeholder="Object, table or type…" value="${escape(state.lineageSearch)}"></div><div id="lineage-search-results">${lineageSearchResults(index, state)}</div>${index.data.byId.has(state.selected) ? '<button class="text-button lineage-current-model" data-action="lineage-current-model">Start from Model selection →</button>' : ""}</div>`;
 }
 export function lineageSearchResults(index, state) {
   const rows = lineageSearch(index, state),
     limit = state.lineageSearchLimit || BRANCH_SIZE;
-  return `<small class="source-label">${rows.length} graph objects</small><nav class="table-nav lineage-picker" aria-label="Choose lineage centre">${
+  return `<small class="source-label">${rows.length} objects available in Lineage</small><nav class="table-nav lineage-picker" aria-label="Choose starting object">${
     rows
       .slice(0, limit)
       .map(
@@ -46,7 +46,7 @@ function branch(index, session, direction, id, visible, cycleMap) {
     limit = session.limits[direction][id] || BRANCH_SIZE,
     parents = [...(visible.parents.get(id) || [])],
     unresolved = node.unresolved.length;
-  return `<div class="lineage-node ${session.selected === id ? "selected" : ""}" data-lineage-node="${escape(id)}"><div class="lineage-node-main"><button class="lineage-node-select" data-lineage-select="${escape(id)}" ${session.selected === id ? 'aria-current="true"' : ""}>${glyph(node.ObjectType)}<span><strong>${escape(node.ObjectName)}</strong><small>${escape(label(node))}</small></span></button>${rows.length ? `<button class="lineage-expand" data-lineage-expand="${escape(id)}" data-direction="${direction}" aria-expanded="${expanded}" aria-label="${expanded ? "Collapse" : "Expand"} ${escape(node.ObjectName)} ${direction === "up" ? "dependencies" : "dependents"}">${expanded ? "−" : "+"}<small>${rows.length}</small></button>` : ""}</div><div class="lineage-node-notes">${parents.length > 1 ? `<span>Shared · ${parents.length} connections</span>` : ""}${cycleMap.has(id) ? "<span>Cycle</span>" : ""}${node.blocked ? "<span>Ownership unresolved · traversal stops</span>" : ""}${unresolved ? `<span>${unresolved} unresolved reference${unresolved === 1 ? "" : "s"}</span>` : ""}${node.usage?.ClassificationConfidence === "QualifiedByLimitation" ? "<span>Checks limited</span>" : ""}</div><div class="lineage-parent-links">${direction === "up" ? "Feeds" : "Depends on"} ${parents
+  return `<div class="lineage-node ${session.selected === id ? "selected" : ""}" data-lineage-node="${escape(id)}"><div class="lineage-node-main"><button class="lineage-node-select" data-lineage-select="${escape(id)}" ${session.selected === id ? 'aria-current="true"' : ""}>${glyph(node.ObjectType)}<span><strong>${escape(node.ObjectName)}</strong><small>${escape(label(node))}</small></span></button>${rows.length ? `<button class="lineage-expand" data-lineage-expand="${escape(id)}" data-direction="${direction}" aria-expanded="${expanded}" aria-label="${expanded ? "Collapse" : "Expand"} ${escape(node.ObjectName)} ${direction === "up" ? "dependencies" : "dependents"}">${expanded ? "Hide" : "Show"}<small>${rows.length}</small></button>` : ""}</div><div class="lineage-node-notes">${parents.length > 1 ? `<span>Shared · ${parents.length} connections</span>` : ""}${cycleMap.has(id) ? "<span>Cycle</span>" : ""}${node.blocked ? "<span>Ownership unresolved · traversal stops</span>" : ""}${unresolved ? `<span>${unresolved} unresolved reference${unresolved === 1 ? "" : "s"}</span>` : ""}${node.usage?.ClassificationConfidence === "QualifiedByLimitation" ? "<span>Checks limited</span>" : ""}</div><div class="lineage-parent-links">${direction === "up" ? "Used by" : "Depends on"} ${parents
     .slice(0, 2)
     .map(
       (parent) =>
@@ -70,11 +70,11 @@ export function lineageLane(index, session, direction) {
       session.membership,
     ),
     centreLimit = session.limits[direction][session.centre] || BRANCH_SIZE;
-  return `<header class="lineage-lane-heading"><h3>${direction === "up" ? "Upstream" : "Downstream"}</h3><span>${visible.ids.length} shown / ${full.ids.length - 1} reachable</span><p>${direction === "up" ? "What the centre depends on" : "What depends on the centre"}</p></header><div class="lineage-lane-scroll" id="lineage-${direction}" tabindex="0">${
+  return `<header class="lineage-lane-heading"><h3>${direction === "up" ? "Depends on" : "Used by"}</h3><span>${visible.ids.length} shown / ${full.ids.length - 1} in scope</span><p>${direction === "up" ? "Dependencies of the starting object" : "Objects that use the starting object"}</p></header><div class="lineage-lane-scroll" id="lineage-${direction}" tabindex="0">${
     depths
       .map(
         (depth) =>
-          `<section class="lineage-level"><div class="lineage-level-heading">${depth} ${depth === 1 ? "hop" : "hops"} from centre <span>${visible.ids.filter((id) => visible.distance.get(id) === depth).length} objects</span></div>${visible.ids
+          `<section class="lineage-level"><div class="lineage-level-heading">${depth === 1 ? (direction === "up" ? "Direct dependencies" : "Direct dependents") : `${depth} steps from starting object`} <span>${visible.ids.filter((id) => visible.distance.get(id) === depth).length} objects</span></div>${visible.ids
             .filter((id) => visible.distance.get(id) === depth)
             .map((id) =>
               branch(index, session, direction, id, visible, cycleMap),
@@ -82,8 +82,8 @@ export function lineageLane(index, session, direction) {
             .join("")}</section>`,
       )
       .join("") ||
-    `<p class="quiet lineage-empty">${index.nodes.get(session.centre).blocked ? "Ownership is unresolved at the centre. Inspect Evidence; no traversal is established across this node." : "No dependencies recorded in this direction within the chosen scope."}</p>`
-  }${centreRows.length > centreLimit ? `<button class="text-button lineage-root-more" data-lineage-more="${escape(session.centre)}" data-direction="${direction}">Show next ${Math.min(BRANCH_SIZE, centreRows.length - centreLimit)} centre connections (${centreRows.length - centreLimit} remaining)</button>` : ""}${visible.parents.get(session.centre)?.size ? '<p class="quiet lineage-empty">A visible edge returns to the centre. The cycle is retained without repeating the centre.</p>' : ""}</div>`;
+    `<p class="quiet lineage-empty">${index.nodes.get(session.centre).blocked ? "The starting object’s owner could not be identified. Inspect Evidence; connections beyond this object cannot be followed." : "No dependencies recorded in this direction within the chosen scope."}</p>`
+  }${centreRows.length > centreLimit ? `<button class="text-button lineage-root-more" data-lineage-more="${escape(session.centre)}" data-direction="${direction}">Show next ${Math.min(BRANCH_SIZE, centreRows.length - centreLimit)} direct connections (${centreRows.length - centreLimit} remaining)</button>` : ""}${visible.parents.get(session.centre)?.size ? '<p class="quiet lineage-empty">A connection returns to the starting object. The cycle is retained without repeating the object.</p>' : ""}</div>`;
 }
 export function lineageWorkspace(index, state, session) {
   const node = index.nodes.get(session.centre),
@@ -95,21 +95,21 @@ export function lineageWorkspace(index, state, session) {
   ).length;
   const notes = [
     node.usage?.ClassificationConfidence === "QualifiedByLimitation"
-      ? "Checks limited for the centre"
+      ? "Checks limited for the starting object"
       : "",
     node.unresolved.length
-      ? `${node.unresolved.length} unresolved reference${node.unresolved.length === 1 ? "" : "s"} at centre`
+      ? `${node.unresolved.length} unresolved reference${node.unresolved.length === 1 ? "" : "s"} at starting object`
       : "",
     stopped
       ? `Traversal stops at ${stopped} ownership ${stopped === 1 ? "boundary" : "boundaries"}`
       : "",
     cycles(index, session.membership).has(node.id)
-      ? "Cycle includes centre"
+      ? "Cycle includes starting object"
       : "",
   ]
     .filter(Boolean)
     .join(" · ");
-  return `<section class="lineage-map" id="collection" tabindex="-1" aria-label="Semantic lineage map"><header class="lineage-centre"><div class="lineage-centre-toolbar"><span class="eyebrow">INVESTIGATION CENTRE</span><div class="history-buttons"><button data-action="lineage-back" aria-label="Previous lineage centre" ${state.lineageCursor <= 0 ? "disabled" : ""}>${icon("back")}</button><button data-action="lineage-forward" aria-label="Next lineage centre" ${state.lineageCursor >= state.lineageHistory.length - 1 ? "disabled" : ""}>${icon("arrow")}</button></div><span class="source-label">${state.lineageCursor + 1} / ${state.lineageHistory.length} centres</span></div><button class="lineage-centre-title" data-lineage-select="${escape(node.id)}">${glyph(node.ObjectType)}<span><strong id="lineage-centre-heading">${escape(node.ObjectName)}</strong><small>${escape(node.SemanticModel)} / ${escape(label(node))}</small></span></button><div class="lineage-scale"><span><strong>${up.ids.length - 1}</strong> upstream</span><span><strong>${down.ids.length - 1}</strong> downstream</span><button data-lineage-tab="Reports"><strong>${endpoints.rows.length}</strong> confirmed report locations ${icon("arrow")}</button></div><div class="lineage-scope"><label><input id="lineage-membership" type="checkbox" ${session.membership ? "checked" : ""}>Include table membership</label><button class="text-button" data-action="lineage-reset">Reset branches</button></div><p class="lineage-boundary">${session.membership ? "Membership included; table context can bring in sibling objects." : "Definition and structural dependencies · table membership kept in Evidence."} Layers follow shortest visible connections. Counts describe the saved graph.</p>${notes ? `<div class="lineage-boundary lineage-qualification">${escape(notes)}${node.unresolved.length || node.blocked || node.usage?.ClassificationConfidence === "QualifiedByLimitation" ? '<button class="text-button" data-action="lineage-centre-evidence">Inspect centre evidence</button>' : ""}</div>` : ""}</header><div class="lineage-lanes"><section class="lineage-lane" aria-label="Upstream dependencies">${lineageLane(index, session, "up")}</section><section class="lineage-lane" aria-label="Downstream dependents">${lineageLane(index, session, "down")}</section></div></section><aside class="inspector" id="lineage-inspector" aria-label="Selected lineage node">${lineageInspector(index, session)}</aside>`;
+  return `<section class="lineage-map" id="collection" tabindex="-1" aria-label="Semantic lineage map"><header class="lineage-centre"><div class="lineage-centre-toolbar"><span class="eyebrow">STARTING OBJECT</span><div class="history-buttons"><button data-action="lineage-back" aria-label="Previous starting object" ${state.lineageCursor <= 0 ? "disabled" : ""}>${icon("back")}</button><button data-action="lineage-forward" aria-label="Next starting object" ${state.lineageCursor >= state.lineageHistory.length - 1 ? "disabled" : ""}>${icon("arrow")}</button></div><span class="source-label">${state.lineageCursor + 1} / ${state.lineageHistory.length} starting object${state.lineageHistory.length === 1 ? "" : "s"}</span></div><button class="lineage-centre-title" data-lineage-select="${escape(node.id)}">${glyph(node.ObjectType)}<span><strong id="lineage-centre-heading">${escape(node.ObjectName)}</strong><small>${escape(node.SemanticModel)} / ${escape(label(node))}</small></span></button><div class="lineage-scale"><span><strong>${up.ids.length - 1}</strong> dependencies</span><span><strong>${down.ids.length - 1}</strong> dependents</span><button data-lineage-tab="Reports"><strong>${endpoints.rows.length}</strong> recorded report location${endpoints.rows.length === 1 ? "" : "s"} ${icon("arrow")}</button></div><div class="lineage-scope"><label><input id="lineage-membership" type="checkbox" ${session.membership ? "checked" : ""}>Include table membership</label><button class="text-button" data-action="lineage-reset">Reset branches</button></div><p class="lineage-boundary">${session.membership ? "Membership included; table context can bring in sibling objects." : "Definition and structural dependencies."} Counts include direct and further dependencies in this analysis.</p>${notes ? `<div class="lineage-boundary lineage-qualification">${escape(notes)}${node.unresolved.length || node.blocked || node.usage?.ClassificationConfidence === "QualifiedByLimitation" ? '<button class="text-button" data-action="lineage-centre-evidence">Inspect starting object evidence</button>' : ""}</div>` : ""}</header><div class="lineage-lanes"><section class="lineage-lane" aria-label="Depends on">${lineageLane(index, session, "up")}</section><section class="lineage-lane" aria-label="Used by">${lineageLane(index, session, "down")}</section></div></section><aside class="inspector" id="lineage-inspector" aria-label="Selected lineage object">${lineageInspector(index, session)}</aside>`;
 }
 function connections(index, session, node) {
   const limit = session.connectionLimit || BRANCH_SIZE;
@@ -145,32 +145,32 @@ function connections(index, session, node) {
     }
     route.reverse();
   }
-  return `${status(node)}${node.blocked ? '<p class="quiet">Report-measure ownership is unresolved. The connections below are projected graph records; traversal stops here to avoid combining different owners.</p>' : ""}${node.id !== session.centre ? `<section><h3>Connection to centre</h3>${route.length ? `<div class="lineage-route">${route.map((id) => nodeLink(index.nodes.get(id))).join("<span>→</span>")}</div><p class="footnote">One shortest connection, shown for orientation. Other connections remain explorable.</p><button class="text-button" data-lineage-reveal="${escape(node.id)}">Reveal connection in map</button>` : '<p class="quiet">Outside the centre’s reachable graph in this scope. Recenter to investigate it.</p>'}</section>` : ""}${group("up", "Depends on")}${group("down", "Depended on by")}<p class="footnote">Edges mean “depends on”. Structural relationships describe requirements, not runtime filter propagation.</p>`;
+  return `${status(node)}${node.blocked ? '<p class="quiet">Report-measure ownership is unresolved. The connections below are projected graph records; traversal stops here to avoid combining different owners.</p>' : ""}${node.id !== session.centre ? `<section><h3>Connection to starting object</h3>${route.length ? `<div class="lineage-route">${route.map((id) => nodeLink(index.nodes.get(id))).join("<span>→</span>")}</div><p class="footnote">One recorded path. Other connections may also exist.</p><button class="text-button" data-lineage-reveal="${escape(node.id)}">Show connection</button>` : '<p class="quiet">No connection to the starting object was found in this scope. Start from this object to investigate it.</p>'}</section>` : ""}${group("up", "Direct dependencies")}${group("down", "Direct dependents")}<p class="footnote">Dependencies describe saved definitions and model requirements, not runtime filter propagation.</p>`;
 }
 function reports(index, session) {
   const endpoints = lineageEndpoints(index, session);
-  return `<section><h3>Reports reached from the centre</h3><p class="quiet">Scanner-confirmed direct references on the centre or its downstream dependents. Each location is counted once.</p>${
+  return `<section><h3>Report use of the starting object</h3><p class="quiet">References in the analysed reports, to the starting object or objects that depend on it. Each location is counted once; all recorded dependency paths are considered.</p>${
     endpoints.rows
       .slice(0, session.endpointLimit)
       .map((endpoint) => {
         const first = endpoint.references[0].reference;
-        return `<div class="lineage-endpoint"><strong>${escape(endpoint.report?.Name || first.Report)}</strong><small>${escape(endpoint.page?.DisplayName || first.Page || "Report scope")} / ${escape(endpoint.visual ? visualLabel(endpoint.visual) : first.Visual || "Page / report reference")}</small><span>${[...new Set(endpoint.references.map((e) => usedAs(e.reference)))].map(escape).join(" · ")}</span><small>${endpoint.direct ? "Direct reference to the centre" : "Through downstream dependencies"}</small><div class="lineage-endpoint-owners">${[
+        return `<div class="lineage-endpoint"><strong>${escape(endpoint.report?.Name || first.Report)}</strong><small>${escape(endpoint.page?.DisplayName || first.Page || "Report scope")} / ${escape(endpoint.visual ? visualLabel(endpoint.visual) : first.Visual || "Page / report reference")}</small><span>${[...new Set(endpoint.references.map((e) => usedAs(e.reference)))].map(escape).join(" · ")}</span><small>${endpoint.direct ? "Direct reference to the starting object" : "Through objects that use the starting object"}</small><div class="lineage-endpoint-owners">${[
           ...endpoint.owners,
         ]
           .slice(0, session.connectionLimit || BRANCH_SIZE)
           .map(
             (id) =>
-              `<button class="text-button" data-lineage-reveal="${escape(id)}" data-direction="down">Reveal ${escape(index.nodes.get(id).ObjectName)}</button>`,
+              `<button class="text-button" data-lineage-reveal="${escape(id)}" data-direction="down">Show connection to ${escape(index.nodes.get(id).ObjectName)}</button>`,
           )
           .join(
             "",
           )}${endpoint.owners.size > (session.connectionLimit || BRANCH_SIZE) ? '<button class="text-button" data-action="lineage-more-connections">Show more owners</button>' : ""}</div>${endpoint.report && (!first.Page || endpoint.page) && (!first.Visual || endpoint.visual) ? `<button class="text-button" data-lineage-endpoint="${escape(endpoint.key)}">Inspect ${endpoint.visual ? "visual" : endpoint.page ? "page" : "report"} ${icon("arrow")}</button>` : '<p class="quiet">Location recorded; the exact saved entity is unavailable in this inventory.</p>'}</div>`;
       })
       .join("") ||
-    '<p class="quiet">No confirmed report locations reached in the published graph. This does not establish no report use.</p>'
+    '<p class="quiet">No exact report locations were found through these dependencies. This does not establish no report use.</p>'
   }${endpoints.rows.length > session.endpointLimit ? '<button class="text-button" data-action="lineage-more-endpoints">Show more report locations</button>' : ""}</section>${
     endpoints.unlocated.length
-      ? `<section><h3>Report reach without locations</h3><p class="quiet">The scanner records report reach for these graph nodes, but exact report-use evidence is not published in this JSON.</p>${endpoints.unlocated
+      ? `<section><h3>Report reach without locations</h3><p class="quiet">Report use is recorded for these objects, but exact locations are not included in this analysis.</p>${endpoints.unlocated
           .slice(0, session.connectionLimit || BRANCH_SIZE)
           .map(
             (n) =>
@@ -203,5 +203,5 @@ export function lineageInspector(index, session) {
   const node =
       index.nodes.get(session.selected) || index.nodes.get(session.centre),
     tab = session.tab;
-  return `<div class="inspector-toolbar"><span>${node.id === session.centre ? "CENTRE OBJECT" : "SELECTED NODE · CENTRE RETAINED"}</span></div><div class="object-hero lineage-node-hero"><div class="object-breadcrumb">${escape(node.SemanticModel)} / ${escape(label(node))}</div><h2 id="lineage-node-heading" tabindex="-1">${escape(node.ObjectName)}</h2></div><div class="inspector-tabs" role="tablist" aria-label="Lineage information">${LINEAGE_TABS.map((t) => `<button role="tab" id="lineage-tab-${t}" data-lineage-tab="${t}" aria-controls="lineage-panel" aria-selected="${tab === t}" tabindex="${tab === t ? 0 : -1}">${t}</button>`).join("")}</div><div class="inspector-content lineage-detail" id="lineage-panel" role="tabpanel" aria-labelledby="lineage-tab-${tab}" tabindex="0">${tab === "Reports" ? reports(index, session) : tab === "Evidence" ? evidence(index, session, node) : connections(index, session, node)}</div><div class="inspector-footer lineage-actions">${node.id !== session.centre ? `<button class="text-button" data-lineage-centre="${escape(node.id)}">Centre on this object</button>` : "<span>Saved dependency graph</span>"}${node.usage ? `<button class="primary-button" data-action="lineage-model">Open in Model ${icon("arrow")}</button>` : '<span class="source-label">Graph evidence</span>'}</div>`;
+  return `<div class="inspector-toolbar"><span>${node.id === session.centre ? "STARTING OBJECT" : "INSPECTING RELATED OBJECT"}</span></div><div class="object-hero lineage-node-hero"><div class="object-breadcrumb">${escape(node.SemanticModel)} / ${escape(label(node))}</div><h2 id="lineage-node-heading" tabindex="-1">${escape(node.ObjectName)}</h2></div><div class="inspector-tabs" role="tablist" aria-label="Lineage information">${LINEAGE_TABS.map((t) => `<button role="tab" id="lineage-tab-${t}" data-lineage-tab="${t}" aria-controls="lineage-panel" aria-selected="${tab === t}" tabindex="${tab === t ? 0 : -1}">${t}</button>`).join("")}</div><div class="inspector-content lineage-detail" id="lineage-panel" role="tabpanel" aria-labelledby="lineage-tab-${tab}" tabindex="0">${tab === "Reports" ? reports(index, session) : tab === "Evidence" ? evidence(index, session, node) : connections(index, session, node)}</div><div class="inspector-footer lineage-actions">${node.id !== session.centre ? `<button class="text-button" data-lineage-centre="${escape(node.id)}">Start from this object</button>` : "<span>Saved dependencies</span>"}${node.usage ? `<button class="primary-button" data-action="lineage-model">Open in Model ${icon("arrow")}</button>` : '<span class="source-label">Definition evidence</span>'}</div>`;
 }

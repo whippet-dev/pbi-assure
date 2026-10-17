@@ -13,6 +13,43 @@ import {
   reviewQualifications,
 } from "./review-data.js";
 
+// Presentation titles only; original messages and recommendations remain unchanged.
+const findingTitles = {
+  "PBI-MODEL-001": "Referenced field was not found",
+  "PBI-MODEL-002": "Referenced semantic model was not found",
+  "PBI-MODEL-003": "Review bidirectional filtering",
+  "PBI-MODEL-004": "Review a many-to-many relationship",
+  "PBI-MODEL-005": "Sort-by column was not found",
+  "PBI-NAV-001": "Action targets a missing bookmark",
+  "PBI-NAV-002": "Bookmark action has no target",
+  "PBI-NAV-003": "Bookmark targets a missing page",
+  "PBI-NAV-004": "Bookmark references a missing visual",
+  "PBI-NAV-005": "Bookmark definition is missing",
+  "PBI-NAV-006": "Bookmark is absent from the report index",
+  "PBI-NAV-007": "Action targets a missing page",
+  "PBI-NAV-008": "Review a dynamic action target",
+  "PBI-NAV-009": "Drillthrough page has no parameters",
+  "PBI-NAV-010": "Drillthrough parameter has no page filter",
+  "PBI-NAV-011": "Drillthrough filter was not found",
+  "PBI-NAV-012": "Visual interaction has a missing endpoint",
+  "PBI-NAV-013": "Tooltip targets a missing page",
+  "PBI-NAV-014": "Tooltip has no target page",
+  "PBI-NAV-015": "Target page is not configured as a tooltip",
+  "PBI-NAV-016": "Review a dynamic tooltip target",
+  "PBI-NAV-017": "Landing page was not found",
+  "PBI-ACCESS-001": "Keyboard-accessible visual has no alt text",
+  "PBI-ACCESS-002": "Page items share a tab-order rank",
+  "PBI-ACCESS-003": "Review a visual excluded from tab order",
+  "PBI-ACCESS-004": "Review a visual with its title disabled",
+  "PBI-ACCESS-005": "Drillthrough page has no Back action",
+  "PBI-COMPAT-001": "Review a retiring visual type",
+  "PBI-COMPAT-002": "Custom theme resource was not found",
+  "PBI-SOURCE-001": "File source may be unavailable elsewhere",
+  "PBI-QUERY-001": "Review dynamic query references",
+  "PBI-QUERY-002": "No use found for this Power Query expression"
+};
+const findingTitle = (finding) => findingTitles[finding.RuleId] || finding.Message || finding.RuleId;
+
 const modeLabel = (mode) =>
   ({
     main: "Findings",
@@ -20,7 +57,7 @@ const modeLabel = (mode) =>
     theme: "Theme review",
   })[mode];
 const severity = (f) =>
-  `<span class="badge ${f.Severity === "Information" ? "unused" : "branch"}">${escape(f.Severity)}</span>`;
+  `<span class="badge ${f.Severity === "Error" ? "severity-error" : f.Severity === "Warning" ? "severity-warning" : "severity-info"}">${escape(f.Severity)}</span>`;
 const assessment = (f) =>
   f.AssessmentType === "ReviewRequired"
     ? '<span class="review-assessment">Review required</span>'
@@ -57,7 +94,7 @@ export function reviewsNavigation(data, state) {
       (row) => mode !== "theme" || row.theme.item,
     ).length;
   const button = (mode, label) =>
-    `<button data-review-mode="${mode}" class="${state.reviewMode === mode ? "chosen" : ""}" aria-pressed="${state.reviewMode === mode}"><span>${label}</span><span>${count(mode)}</span></button>`;
+    `<button data-review-mode="${mode}" class="${state.reviewMode === mode ? "chosen" : ""}" aria-pressed="${state.reviewMode === mode}"><span>${label}</span><span>${count(mode)}${mode === "theme" ? " observations" : ""}</span></button>`;
   return `<div class="reviews-navigation"><nav class="table-nav" aria-label="Main review view">${button("main", "Findings")}</nav><div class="project-label specialist-label">SPECIALIST REVIEWS</div><nav class="table-nav specialist-nav" aria-label="Specialist review views">${button("accessibility", "Accessibility")}${button("theme", "Theme")}</nav><p class="source-label review-mode-note">${state.reviewMode === "main" ? "Accessibility is counted separately. Theme comparisons remain in Theme." : state.reviewMode === "accessibility" ? "Saved settings and observations; manual review is still needed." : "Saved comparisons and report theme availability. Separate from finding severity."}</p></div>`;
 }
 export function reviewsWorkspace(data, state) {
@@ -66,7 +103,7 @@ export function reviewsWorkspace(data, state) {
     theme = state.reviewMode === "theme";
   if (!selectedReview(data, state))
     state.reviewSelected = rows[0]?.index ?? null;
-  return `<section class="collection-pane" aria-label="Review collection"><div class="collection-tools"><div class="collection-title"><strong>${modeLabel(state.reviewMode)}</strong><span id="review-result-count">${rows.length} results</span></div><div class="searchbox">${icon("search")}<input id="review-search" type="search" aria-label="Search findings" placeholder="${theme ? "Search reports, comparisons or settings…" : "Search findings, objects or reports…"}" value="${escape(state.reviewSearch)}"><kbd>/</kbd></div>${
+  return `<section class="collection-pane" aria-label="Review collection"><div class="collection-tools"><div class="collection-title"><strong>${modeLabel(state.reviewMode)}</strong><span id="review-result-count">${theme ? `${rows.filter((r) => r.theme.item).length} observations · ${rows.filter((r) => !r.theme.item).length} report summaries` : `${rows.length} results`}</span></div><div class="searchbox">${icon("search")}<input id="review-search" type="search" aria-label="Search findings" placeholder="${theme ? "Search reports, comparisons or settings…" : "Search findings, objects or reports…"}" value="${escape(state.reviewSearch)}"><kbd>/</kbd></div>${
     !theme
       ? `<div class="filter-line"><label class="sr-only" for="review-category">Finding category</label><select id="review-category">${options(
           filters.categories.map((name) => ({
@@ -77,7 +114,7 @@ export function reviewsWorkspace(data, state) {
           "All categories",
         )}</select><label class="sr-only" for="review-severity">Finding severity</label><select id="review-severity">${options(["Error", "Warning", "Information"], state.reviewSeverity, "All severities")}</select></div>`
       : ""
-  }<div class="review-context-controls"><label class="sr-only" for="review-report">Review report</label><select id="review-report">${options(filters.reports, state.reviewReport, "All reports")}</select>${!theme ? `<label class="sr-only" for="review-model">Review semantic model</label><select id="review-model">${options(filters.models, state.reviewModel, "All recorded models")}</select>` : ""}${state.reviewReport ? `<label class="sr-only" for="review-page">Review page</label><select id="review-page">${options(filters.pages, state.reviewPage, "All pages / report scope")}</select>` : ""}</div><div class="review-required-filter">${!theme ? `<label><input id="review-required" type="checkbox" ${state.reviewRequired ? "checked" : ""}>Review required</label>` : '<span class="source-label">Report status and saved observations</span>'}<button class="text-button" data-action="reset-reviews">Reset filters</button></div></div><div class="collection-scroll review-list" id="collection" tabindex="-1">${reviewCollection(data, state)}</div><div class="collection-footer"><span>${theme ? "Saved theme review" : "Original scanner findings"} · read-only</span><span>↑ ↓ to explore · / to search</span></div></section><aside class="inspector" id="review-inspector" aria-label="Selected review">${reviewInspector(data, state)}</aside>`;
+  }<div class="review-context-controls"><label class="sr-only" for="review-report">Review report</label><select id="review-report">${options(filters.reports, state.reviewReport, "All reports")}</select>${!theme ? `<label class="sr-only" for="review-model">Review semantic model</label><select id="review-model">${options(filters.models, state.reviewModel, "All recorded models")}</select>` : ""}${state.reviewReport ? `<label class="sr-only" for="review-page">Review page</label><select id="review-page">${options(filters.pages, state.reviewPage, "All pages / report scope")}</select>` : ""}</div><div class="review-required-filter">${!theme ? `<label><input id="review-required" type="checkbox" ${state.reviewRequired ? "checked" : ""}>Review required</label>` : '<span class="source-label">Report status and saved observations</span>'}<button class="text-button" data-action="reset-reviews">Reset filters</button></div></div><div class="collection-scroll review-list" id="collection" tabindex="-1">${reviewCollection(data, state)}</div><div class="collection-footer"><span>${theme ? "Saved theme review" : "Recorded findings"} · read-only</span><span>↑ ↓ to explore · / to search</span></div></section><aside class="inspector" id="review-inspector" aria-label="Selected review">${reviewInspector(data, state)}</aside>`;
 }
 export function reviewCollection(data, state) {
   const rows = reviewRows(data, state);
@@ -134,7 +171,7 @@ function sourceSection(data, row) {
 }
 function qualificationSummary(data, f) {
   const qualification = reviewQualifications(data, f);
-  return `${qualification.object?.ClassificationConfidence === "QualifiedByLimitation" ? '<p class="review-qualification">Checks limited for this model object. Its scanner usage state is retained.</p>' : ""}${qualification.direct.length ? `<p class="quiet">${qualification.direct.length} limitation record${qualification.direct.length === 1 ? "" : "s"} at this source. Inspect Evidence before interpreting absence.</p>` : ""}`;
+  return `${qualification.object?.ClassificationConfidence === "QualifiedByLimitation" ? '<p class="review-qualification">Checks limited for this model object. Its recorded usage state is retained.</p>' : ""}${qualification.direct.length ? `<p class="quiet">${qualification.direct.length} limitation record${qualification.direct.length === 1 ? "" : "s"} at this source. Inspect Evidence before interpreting absence.</p>` : ""}`;
 }
 function findingReview(data, row) {
   const f = row.finding;
@@ -218,5 +255,5 @@ export function reviewInspector(data, state) {
     tab = state.reviewTab || "Review",
     outside = !reviewRows(data, state).some((r) => r.index === row.index),
     target = reviewTarget(data, row);
-  return `<div class="inspector-toolbar"><span>${f ? (state.reviewMode === "accessibility" ? "ACCESSIBILITY OBSERVATION" : "FINDING INSPECTOR") : "THEME REVIEW"}</span></div><div class="object-hero review-hero"><div class="eyebrow">${escape(f ? categoryLabel(f.Category) : row.theme.kind)}</div><h2 id="review-heading" tabindex="-1">${escape(f?.RuleId || row.theme.item?.PropertyLabel || row.theme.report.Name)}</h2>${f ? `<div class="hero-badges">${severity(f)}${assessment(f)}</div>` : ""}</div>${outside ? '<div class="outside-filter">Selected review is outside your filters.<button data-action="reveal-review">Show in collection</button></div>' : ""}<div class="inspector-tabs" role="tablist" aria-label="Review information">${REVIEW_TABS.map((t) => `<button role="tab" id="review-tab-${t}" data-review-tab="${t}" aria-controls="review-panel" aria-selected="${tab === t}" tabindex="${tab === t ? 0 : -1}">${t}</button>`).join("")}</div><div class="inspector-content review-detail" id="review-panel" role="tabpanel" aria-labelledby="review-tab-${tab}" tabindex="0">${tab === "Evidence" ? evidenceView(data, row, state) : f ? findingReview(data, row) : themeReview(data, row)}</div><div class="inspector-footer"><span>Saved analysis · Read-only</span>${target ? `<button class="primary-button" data-action="review-source">${escape(target.label)} ${icon("arrow")}</button>` : ""}</div>`;
+  return `<div class="inspector-toolbar"><span>${f ? (state.reviewMode === "accessibility" ? "ACCESSIBILITY OBSERVATION" : "FINDING INSPECTOR") : "THEME REVIEW"}</span></div><div class="object-hero review-hero"><div class="eyebrow">${escape(f ? categoryLabel(f.Category) : row.theme.kind)}</div><h2 id="review-heading" tabindex="-1">${escape(f ? findingTitle(f) : row.theme.item?.PropertyLabel || row.theme.report.Name)}</h2>${f ? `<div class="hero-badges">${severity(f)}${assessment(f)}<code class="rule-id">${escape(f.RuleId)}</code></div>` : ""}</div>${outside ? '<div class="outside-filter">Selected review is outside your filters.<button data-action="reveal-review">Show in collection</button></div>' : ""}<div class="inspector-tabs" role="tablist" aria-label="Review information">${REVIEW_TABS.map((t) => `<button role="tab" id="review-tab-${t}" data-review-tab="${t}" aria-controls="review-panel" aria-selected="${tab === t}" tabindex="${tab === t ? 0 : -1}">${t}</button>`).join("")}</div><div class="inspector-content review-detail" id="review-panel" role="tabpanel" aria-labelledby="review-tab-${tab}" tabindex="0">${tab === "Evidence" ? evidenceView(data, row, state) : f ? findingReview(data, row) : themeReview(data, row)}</div><div class="inspector-footer"><span>Saved analysis · Read-only</span>${target ? `<button class="primary-button" data-action="review-source">${escape(target.label)} ${icon("arrow")}</button>` : ""}</div>`;
 }

@@ -92,14 +92,14 @@ test("progressive shared lineage retains the centre and reverses a model visit a
   );
   await expect(base).toContainText("Shared · 2 connections");
   await page
-    .getByRole("button", { name: "Centre on this object", exact: true })
+    .getByRole("button", { name: "Start from this object", exact: true })
     .click();
   await expect(page.locator("#lineage-centre-heading")).toHaveText(
     "BaseAmount",
   );
-  await expect(page.locator(".lineage-scale")).toContainText("13 downstream");
+  await expect(page.locator(".lineage-scale")).toContainText("13 dependents");
   await page
-    .getByRole("button", { name: "Previous lineage centre", exact: true })
+    .getByRole("button", { name: "Previous starting object", exact: true })
     .click();
   await expect(page.locator("#lineage-centre-heading")).toHaveText(
     "DirectlyUsedMeasure",
@@ -128,7 +128,7 @@ test("report endpoints aggregate all downstream branches and reveal an owner wit
   );
   await expect(page.locator(".lineage-endpoint-owners button")).toHaveCount(4);
   await page
-    .getByRole("button", { name: "Reveal DirectlyUsedMeasure", exact: true })
+    .getByRole("button", { name: "Show connection to DirectlyUsedMeasure", exact: true })
     .click();
   await expect(page.locator("#lineage-centre-heading")).toHaveText(
     "BaseAmount",
@@ -261,7 +261,7 @@ test("table membership handles real fan-out and an imported test cycle stays fin
     "Cycle",
   );
   await expect(page.locator("#lineage-up")).toContainText(
-    "edge returns to the centre",
+    "connection returns to the starting object",
   );
   await expect(mapNode(page, id("DirectlyUsedMeasure"))).toHaveCount(0);
   expect(await page.locator("#lineage-up .lineage-node").count()).toBeLessThan(

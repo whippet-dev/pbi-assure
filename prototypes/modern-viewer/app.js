@@ -7,6 +7,7 @@ import {
   words,
 } from "./data.js";
 import { escape, icon, glyph } from "./ui.js";
+import { visualType } from "./report-data.js";
 import {
   MODEL_AREA_DEFAULTS,
   buildModelAreas,
@@ -21,7 +22,7 @@ import {
   modelAreaInspector,
   areaSelection,
 } from "./model-area-view.js";
-import { SCOPE_DEFAULTS, scopeRows } from "./scope-data.js";
+import { SCOPE_DEFAULTS, scopeRows, constructLabel, supportLabel } from "./scope-data.js";
 import {
   SCOPE_TABS,
   scopeNavigation,
@@ -168,14 +169,14 @@ const resetFilters = () =>
 function shell() {
   $("#app").innerHTML =
     `<header class="topbar"><a class="brand" href="./" aria-label="PBI Assure home"><img src="./mark.svg" alt="">PBI <strong>Assure</strong></a><span class="top-divider"></span><span class="workspace-name">Investigation workspace</span><span class="prototype">PROTOTYPE</span><div class="top-actions"><span class="local-dot"></span><span>Local & read-only</span><button class="open-button" data-action="import">${icon("folder")}Open analysis JSON</button><input type="file" id="file" accept=".json,application/json" hidden></div></header>
-    <div class="app-layout"><aside class="sidebar" aria-label="Workspace navigation"></aside><main id="main"><header class="main-heading"></header><div class="workspace"></div></main></div><div id="toast" class="toast" role="alert" hidden></div>`;
+    <div class="app-layout"><aside class="sidebar" aria-label="Workspace navigation"></aside><main id="main"><header class="main-heading"></header><div class="context-controls" aria-label="Workspace scope"></div><div class="workspace"></div></main></div><div id="toast" class="toast" role="alert" hidden></div>`;
   renderSidebar();
   renderWorkspace();
 }
 function workspaceNavigation() {
   const button = (view, label) =>
-    `<button data-view="${view}" class="nav-item ${state.view === view ? "active" : ""}" ${state.view === view ? 'aria-current="page"' : ""}>${icon(view)}${label}${view === "objects" ? `<span>${data.objects.length}</span>` : ""}</button>`;
-  return `<nav class="primary-nav" aria-label="Investigation areas">${button("overview", "Overview")}<div class="nav-group-label">MODEL</div>${button("objects", "Model objects")}${button("relationships", "Relationships")}${button("security", "Security")}${button("lineage", "Lineage")}<div class="nav-group-label">REPORT & DATA</div>${button("pages", "Report pages")}${button("queries", "Power Query")}<div class="nav-group-label">REVIEW</div>${button("reviews", "Reviews & findings")}<div class="nav-group-label">CONFIDENCE & SCOPE</div>${button("check", "What was checked")}</nav>`;
+    `<button data-view="${view}" class="nav-item ${state.view === view ? "active" : ""}" ${state.view === view ? 'aria-current="page"' : ""}>${icon(view)}${label}</button>`;
+  return `<nav class="primary-nav" aria-label="Investigation areas">${button("overview", "Overview")}<div class="nav-group-label">MODEL</div>${button("objects", "Model objects")}${button("relationships", "Relationships")}${button("security", "Security")}${button("lineage", "Lineage")}<div class="nav-group-label">REPORT & DATA</div>${button("pages", "Report pages")}${button("queries", "Power Query")}<div class="nav-group-label">REVIEW</div>${button("reviews", "Reviews & findings")}<div class="nav-group-label">ANALYSIS</div>${button("check", "Analysis scope")}</nav>`;
 }
 function renderSidebar() {
   if (state.view === "lineage") ensureLineage();
@@ -189,7 +190,7 @@ function renderSidebar() {
   $(".sidebar").innerHTML =
     `<div class="project-label">OPEN ANALYSIS</div><div class="project-name">${state.fixture ? "Coverage study" : escape(state.source)}</div><div class="source-label">${state.fixture ? "Synthetic repository fixture" : "Local JSON inventory"}</div>
     ${workspaceNavigation()}
-    ${
+    <div class="sidebar-context">${
       state.view === "pages"
         ? reportNavigation(data, state)
         : ["relationships", "security"].includes(state.view)
@@ -213,12 +214,21 @@ function renderSidebar() {
                               )
                               .map(
                                 (t) =>
-                                  `<button data-table="${escape(t.Name)}" class="${state.table === t.Name ? "chosen" : ""}" title="${escape(t.Name)}"><span class="table-symbol">▦</span><span class="table-name">${escape(t.Name)}</span><span>${modelObjects.filter((o) => o.Table === t.Name).length}</span></button>`,
+                                  `<button data-table="${escape(t.Name)}" class="${state.table === t.Name ? "chosen" : ""}" title="${escape(t.Name)}">${glyph("Table")}<span class="table-name">${escape(t.Name)}</span><span>${modelObjects.filter((o) => o.Table === t.Name).length}</span></button>`,
                               )
                               .join("")}</nav>`
                       }</div>`
     }
-    <div class="sidebar-bottom"><span class="project-label">ANALYSIS SCOPE</span><p>${data.raw.Reports.length} reports · ${data.raw.SemanticModels.length} models</p><span class="source-label">Metadata only. No DAX execution.</span><button class="text-button" data-action="scope">View evidence boundaries ${icon("arrow")}</button></div>`;
+    </div><div class="sidebar-bottom"><span class="project-label">ANALYSIS SCOPE</span><p>${data.raw.Reports.length} reports · ${data.raw.SemanticModels.length} models</p><span class="source-label">Metadata only. No DAX execution.</span><button class="text-button" data-action="scope">Scope and limitations ${icon("arrow")}</button></div>`;
+  const controls = $(".context-controls");
+  controls.replaceChildren();
+  const selector = $(".sidebar-context select");
+  if (selector) {
+    const label = $(".sidebar-context label");
+    if (label) controls.append(label);
+    controls.append(selector);
+  }
+  controls.hidden = !selector;
 }
 function renderWorkspace() {
   document.querySelectorAll(".report-origin").forEach((el) => el.remove());
@@ -264,7 +274,7 @@ function renderWorkspace() {
             ? [
                 "MODEL / TRACE",
                 "Lineage",
-                "Explore every recorded branch. Keep the object at the centre.",
+                "Follow dependencies while keeping your starting object in view.",
               ]
             : state.view === "reviews"
               ? [
@@ -275,8 +285,8 @@ function renderWorkspace() {
               : state.view === "objects"
                 ? [
                     "MODEL / INVESTIGATE",
-                    "Objects",
-                    "Follow the evidence. Keep the context.",
+                    "Model objects",
+                    "Inspect usage, definitions and dependencies.",
                   ]
                 : state.view === "pages"
                   ? [
@@ -292,11 +302,11 @@ function renderWorkspace() {
                       ]
                     : [
                         "ANALYSIS / SCOPE",
-                        "What was checked",
-                        "Understand the evidence before interpreting an absence.",
+                        "Analysis scope",
+                        "Understand what this saved analysis can establish.",
                       ];
   $(".main-heading").innerHTML =
-    `<div><div class="eyebrow">${heading[0]}</div><h1 id="workspace-heading" tabindex="-1">${heading[1]}</h1><p>${heading[2]}</p></div><div class="heading-note">${state.fixture ? '<span class="fixture-mark">FIXTURE</span> Real scanner output<br><small>Synthetic PBIP · schema 0.26</small>' : '<span class="fixture-mark">LOCAL</span> Your analysis snapshot<br><small>Kept in this browser tab</small>'}</div>`;
+    `<div><div class="eyebrow">${heading[0]}</div><h1 id="workspace-heading" tabindex="-1">${heading[1]}</h1><p>${heading[2]}</p></div><div class="heading-note">${state.fixture ? '<span class="fixture-mark">FIXTURE</span> Saved analysis<br><small>Synthetic PBIP · schema 0.26</small>' : '<span class="fixture-mark">LOCAL</span> Your analysis snapshot<br><small>Kept in this browser tab</small>'}</div>`;
   if (
     state.reportOrigin &&
     !state.coreOrigin &&
@@ -413,7 +423,7 @@ function relationList(edges, side, limit = Infinity) {
     .map((e) => {
       const id = edgeId(e, side),
         object = data.byId.get(id);
-      return `<div class="relation-row">${glyph(e[side + "ObjectType"])}<div>${object ? `<button class="related-object" data-related="${escape(id)}">${escape(e[side + "ObjectName"])}${icon("arrow")}</button>` : `<strong>${escape(e[side + "ObjectName"])}</strong>`}<small>${escape(e[side + "Table"] || words(e[side + "ObjectType"]))} · ${escape(words(e.DependencyKind))}</small>${!object ? '<small class="quiet">Graph evidence · outside this object collection</small>' : ""}</div>${object ? `<span class="relation-state" title="${escape(STATES[object.UsageState].label)}">${escape(STATES[object.UsageState].label)}</span>` : ""}</div>`;
+      return `<div class="relation-row">${glyph(e[side + "ObjectType"])}<div>${object ? `<button class="related-object" data-related="${escape(id)}">${escape(e[side + "ObjectName"])}${icon("arrow")}</button>` : `<strong>${escape(e[side + "ObjectName"])}</strong>`}<small>${escape(e[side + "Table"] || words(e[side + "ObjectType"]))} · ${escape(words(e.DependencyKind))}</small>${!object ? '<small class="quiet">Related definition · no selectable object usage result</small>' : ""}</div>${object ? `<span class="relation-state" title="${escape(STATES[object.UsageState].label)}">${escape(STATES[object.UsageState].label)}</span>` : ""}</div>`;
     })
     .join("")}</div>`;
 }
@@ -426,7 +436,7 @@ function reportEvidence(o, full = false) {
     );
     const page = report?.Pages.find((p) => p.Name === loc.Page);
     const visual = page?.Visuals.find((v) => v.Name === loc.Visual);
-    return `<div class="report-location">${icon("pages")}<div><strong>${escape(page?.DisplayName || loc.Page || "Report-level reference")}</strong><small>${escape(report?.Name || loc.Report)} · ${escape(visual?.Accessibility?.TitleText || visual?.VisualType || loc.UsageContext || loc.LocationKind)}</small>${loc.Visual ? `<code>${escape(loc.Visual)}</code>` : ""}${full ? `<small>${escape(loc.LocationKind)}${visual?.IsHidden ? " · Hidden visual" : ""}</small>` : ""}</div></div>`;
+    return `<div class="report-location">${icon("pages")}<div><strong>${escape(page?.DisplayName || loc.Page || "Report-level reference")}</strong><small>${escape(report?.Name || loc.Report)} · ${escape(visual?.Accessibility?.TitleText || (visual?.VisualType ? visualType(visual.VisualType) : null) || loc.UsageContext || loc.LocationKind)}</small>${loc.Visual ? `<code>${escape(loc.Visual)}</code>` : ""}${full ? `<small>${escape(loc.LocationKind)}${visual?.IsHidden ? " · Hidden visual" : ""}</small>` : ""}</div></div>`;
   }).join("")}</div>`;
 }
 function expression(o, full = false) {
@@ -467,17 +477,17 @@ function renderInspector() {
   const outside = !visible().some((v) => v.id === o.id);
   $("#inspector").innerHTML =
     `<div class="inspector-toolbar"><div class="history-buttons"><button data-action="back" aria-label="Previous inspected object" ${state.cursor <= 0 ? "disabled" : ""}>${icon("back")}</button><button data-action="forward" aria-label="Next inspected object" ${state.cursor >= state.history.length - 1 ? "disabled" : ""}>${icon("arrow")}</button></div><span>OBJECT INSPECTOR</span><span class="history-count">${state.cursor + 1} / ${state.history.length}</span></div>
-    <div class="object-hero"><div class="object-breadcrumb">${escape(o.SemanticModel)} <span>/</span> ${escape(o.Table)}</div><div class="object-title">${glyph(o.ObjectType)}<h2 id="object-heading" tabindex="-1">${escape(o.ObjectName)}</h2></div><div class="object-meta"><span>${escape(words(o.ObjectType))}</span>${o.detail?.DataType ? `<span>${escape(o.detail.DataType)}</span>` : ""}${o.detail?.IsHidden ? "<span>Hidden</span>" : ""}${o.system ? "<span>System-generated</span>" : ""}</div><div class="hero-badges">${badge(o)}${o.ClassificationConfidence === "QualifiedByLimitation" ? '<button class="limit-badge" data-action="object-coverage">◐ Checks limited</button>' : '<span class="established">Established within scope</span>'}</div></div>
-    ${outside ? '<div class="outside-filter">Following a dependency outside your collection filters.<button data-action="reveal">Show in collection</button></div>' : ""}
+    <div class="object-hero"><div class="object-breadcrumb">${escape(o.SemanticModel)} <span>/</span> ${escape(o.Table)}</div><div class="object-title">${glyph(o.ObjectType)}<h2 id="object-heading" tabindex="-1">${escape(o.ObjectName)}</h2></div><div class="object-meta"><span>${escape(words(o.ObjectType))}</span>${o.detail?.DataType ? `<span>${escape(o.detail.DataType)}</span>` : ""}${o.detail?.IsHidden ? "<span>Hidden</span>" : ""}${o.system ? "<span>System-generated</span>" : ""}</div><div class="hero-badges">${badge(o)}${o.ClassificationConfidence === "QualifiedByLimitation" ? '<button class="limit-badge" data-action="object-coverage">◐ Checks limited</button>' : '<span class="established">No limitation recorded for this result</span>'}</div></div>
+    ${outside ? '<div class="outside-filter">Selected object is outside the current filters.<button data-action="reveal">Show in collection</button></div>' : ""}
     <div class="inspector-tabs" role="tablist" aria-label="Object information">${["Summary", "Dependencies", "DAX", "Evidence"].map((tab) => `<button role="tab" id="tab-${tab}" aria-controls="detail-panel" aria-selected="${state.tab === tab}" tabindex="${state.tab === tab ? "0" : "-1"}" data-tab="${tab}">${tab}${tab === "Dependencies" ? `<span>${inEdges.length + outEdges.length}</span>` : ""}</button>`).join("")}</div><div id="detail-panel" class="inspector-content" role="tabpanel" aria-labelledby="tab-${state.tab}" tabindex="0">${
       state.tab === "Summary"
-        ? `<section class="why-section"><div class="section-label"><span class="small-dot ${STATES[o.UsageState].tone}"></span>WHY ${escape(STATES[o.UsageState].label.toUpperCase())}</div><p class="why-text">${escape(STATES[o.UsageState].why)}</p>${support.length ? `<div class="supporting"><span>Supporting predecessor${support.length === 1 ? "" : "s"} from the scanner’s reachability</span>${relationList(uniqueEdges(support), "From", 2)}</div>` : ""}${["ApparentlyUnused", "UsedOnlyByUnusedBranch"].includes(o.UsageState) ? '<div class="review-note">Review candidate, never permission to delete. Other reports, external consumers and runtime behaviour may use this object.</div>' : ""}${o.ClassificationConfidence === "QualifiedByLimitation" ? '<p class="limitation-note">Incomplete analysis may affect this classification. Usage state and confidence are separate. <button data-action="object-coverage">Read model limitations →</button></p>' : ""}</section>
+        ? `<section class="why-section"><div class="section-label"><span class="small-dot ${STATES[o.UsageState].tone}"></span>WHY ${escape(STATES[o.UsageState].label.toUpperCase())}</div><p class="why-text">${escape(STATES[o.UsageState].why)}</p>${support.length ? `<div class="supporting"><span>Referenced by these objects with recorded report or model-structure use</span>${relationList(uniqueEdges(support), "From", 2)}</div>` : ""}${["ApparentlyUnused", "UsedOnlyByUnusedBranch"].includes(o.UsageState) ? '<div class="review-note">Review candidate, never permission to delete. Other reports, external consumers and runtime behaviour may use this object.</div>' : ""}${o.ClassificationConfidence === "QualifiedByLimitation" ? '<p class="limitation-note">Incomplete analysis may affect this classification. Usage state and confidence are separate. <button data-action="object-coverage">Read model limitations →</button></p>' : ""}</section>
       <section><div class="section-heading"><h3>Used by <span>${inEdges.length}</span></h3>${inEdges.length > 3 ? '<button class="text-button" data-go-tab="Dependencies">View all →</button>' : ""}</div>${relationList(inEdges, "From", 3)}</section><section><div class="section-heading"><h3>Used in the report <span>${o.DirectReportLocations.length}</span></h3><span class="subtle-label">DIRECT LOCATIONS</span></div>${reportEvidence(o)}</section><section>${expression(o)}</section>`
         : state.tab === "Dependencies"
-          ? `<div class="panel-intro"><h3>Follow the dependency chain</h3><p>Each link opens in this inspector. Your collection filters and position stay in place.</p></div><section><h3>Used by <span>${inEdges.length}</span></h3><p class="quiet">Immediate sources referencing this object. These may include unused branches.</p>${relationList(inEdges, "From")}</section><section><h3>Depends on <span>${outEdges.length}</span></h3>${relationList(outEdges, "To")}</section><p class="footnote">Report measures and other graph-only nodes retain their evidence but cannot be opened as model objects. Same-named report-measure owners are not distinguished by this JSON contract.</p>`
+          ? `<div class="panel-intro"><h3>Follow the dependency chain</h3><p>Each link opens in this inspector. Your collection filters and position stay in place.</p></div><section><h3>Used by <span>${inEdges.length}</span></h3><p class="quiet">Objects that directly reference this object, including objects with no detected report use.</p>${relationList(inEdges, "From")}</section><section><h3>Depends on <span>${outEdges.length}</span></h3>${relationList(outEdges, "To")}</section><p class="footnote">Some related definitions, including report measures, have no selectable object usage result. This analysis does not distinguish the owners of same-named report measures.</p>`
           : state.tab === "DAX"
             ? `<div class="panel-intro"><h3>Calculation definition</h3><p>Saved model metadata. Expressions are displayed, never executed.</p></div>${expression(o, true)}`
-            : `<div class="panel-intro"><h3>Evidence & provenance</h3><p>Inspect the saved references behind this result.</p></div><section><h3>Object definition</h3><dl class="metadata"><dt>Semantic model</dt><dd>${escape(o.SemanticModel)}</dd><dt>Table</dt><dd>${escape(o.Table)}</dd><dt>Source</dt><dd><code>${escape(o.table?.RelativePath || "Not published in JSON")}</code></dd><dt>Confidence</dt><dd>${o.ClassificationConfidence === "QualifiedByLimitation" ? "Checks limited" : "Established within analysed scope"}</dd>${o.detail?.SourceColumn ? `<dt>Source column</dt><dd>${escape(o.detail.SourceColumn)}</dd>` : ""}${o.detail?.SortByColumn ? `<dt>Sort by column</dt><dd>${escape(o.detail.SortByColumn)}</dd>` : ""}</dl></section><section><h3>Direct report evidence</h3>${reportEvidence(o, true)}${o.DirectReportReferences.map((e) => `<details class="evidence"><summary>${escape(words(e.UsageContext))}${e.Role ? " · " + escape(e.Role) : ""}</summary><code>${escape(e.ArtifactPath)}<br>${escape(e.EvidencePath)}</code></details>`).join("")}</section><section><h3>Dependency evidence</h3>${[...(data.incoming.get(o.id) || []), ...outEdges].map((e) => `<details class="evidence"><summary>${escape(words(e.DependencyKind))} · ${escape(e.FromObjectName)} → ${escape(e.ToObjectName)}</summary><code>${escape(e.EvidenceText)}<br><br>${escape(e.EvidencePath)}</code></details>`).join("") || '<p class="quiet">No dependency edges recorded.</p>'}</section><section><h3>Model-level limitations</h3><p class="quiet">These belong to this model. JSON does not publish the exact affected-object reach of each limitation; the object’s confidence above is authoritative.</p>${modelLimitations(o.SemanticModel)}<button class="text-button" data-action="scope">What was checked →</button></section>`
+            : `<div class="panel-intro"><h3>Evidence & provenance</h3><p>Inspect the saved references behind this result.</p></div><section><h3>Object definition</h3><dl class="metadata"><dt>Semantic model</dt><dd>${escape(o.SemanticModel)}</dd><dt>Table</dt><dd>${escape(o.Table)}</dd><dt>Source</dt><dd><code>${escape(o.table?.RelativePath || "Not included in this analysis")}</code></dd><dt>Confidence</dt><dd>${o.ClassificationConfidence === "QualifiedByLimitation" ? "Checks limited" : "No limitation recorded for this result within the analysed scope"}</dd>${o.detail?.SourceColumn ? `<dt>Source column</dt><dd>${escape(o.detail.SourceColumn)}</dd>` : ""}${o.detail?.SortByColumn ? `<dt>Sort by column</dt><dd>${escape(o.detail.SortByColumn)}</dd>` : ""}</dl></section><section><h3>Direct report evidence</h3>${reportEvidence(o, true)}${o.DirectReportReferences.map((e) => `<details class="evidence"><summary>${escape(words(e.UsageContext))}${e.Role ? " · " + escape(e.Role) : ""}</summary><code>${escape(e.ArtifactPath)}<br>${escape(e.EvidencePath)}</code></details>`).join("")}</section><section><h3>Dependency evidence</h3>${[...(data.incoming.get(o.id) || []), ...outEdges].map((e) => `<details class="evidence"><summary>${escape(words(e.DependencyKind))} · ${escape(e.FromObjectName)} → ${escape(e.ToObjectName)}</summary><code>${escape(e.EvidenceText)}<br><br>${escape(e.EvidencePath)}</code></details>`).join("") || '<p class="quiet">No dependencies recorded.</p>'}</section><section><h3>Model-level limitations</h3><p class="quiet">These limitations belong to this model. This analysis does not map each limitation to every affected object. Use this object’s confidence label when interpreting its usage.</p>${modelLimitations(o.SemanticModel)}<button class="text-button" data-action="scope">Analysis scope →</button></section>`
     }</div><div class="inspector-footer">${icon("check")} Evidence from saved metadata <span>Read-only</span></div>`;
 }
 function modelLimitations(model) {
@@ -488,7 +498,7 @@ function modelLimitations(model) {
     limitations
       .map(
         (l) =>
-          `<details class="evidence limitation"><summary>${escape(l.ConstructType)} · ${escape(words(l.SupportState))}</summary><p>${escape(l.Reason)}</p><code>${escape(l.ArtifactPath)}<br>${escape(l.EvidencePath)}</code></details>`,
+          `<details class="evidence limitation"><summary>${escape(constructLabel(l.ConstructType))} · ${escape(supportLabel(l.SupportState))}</summary><p>${escape(l.Reason)}</p><code>${escape(l.ArtifactPath)}<br>${escape(l.EvidencePath)}</code></details>`,
       )
       .join("") ||
     '<p class="quiet">No model-level limitations recorded by this scan. Permanent analysis boundaries still apply.</p>'
@@ -596,7 +606,7 @@ function startCoreVisit() {
     {
       relationships: "Relationships",
       security: "Security",
-      check: "What was checked",
+      check: "Analysis scope",
     }[state.view] || "workspace";
   const selection = ["relationships", "security"].includes(state.view)
     ? areaSelection(modelAreas, state).selected?.[
@@ -713,7 +723,7 @@ function renderLineage() {
   const session = ensureLineage();
   if (!session) {
     $(".workspace").innerHTML =
-      '<div class="empty"><h2>No semantic graph objects</h2><p>Open an analysis with semantic dependency data.</p></div>';
+      '<div class="empty"><h2>No objects available in Lineage</h2><p>Open an analysis with semantic dependency data.</p></div>';
     return;
   }
   $(".workspace").innerHTML = lineageWorkspace(lineageIndex, state, session);
@@ -736,7 +746,7 @@ function centreLineage(id, { push = true } = {}) {
   state.lineageSessions[id] ||= createLineageSession(id);
   renderSidebar();
   renderLineage();
-  announce(`Lineage centred on ${lineageIndex.nodes.get(id).ObjectName}.`);
+  announce(`Lineage starting from ${lineageIndex.nodes.get(id).ObjectName}.`);
   $("#lineage-node-heading")?.focus({ preventScroll: true });
 }
 function selectLineage(id, { focus = true } = {}) {
@@ -1012,8 +1022,10 @@ function renderReviewResults({ resetDetail = false } = {}) {
   $(".review-list").scrollTop = scroll;
   $("#review-inspector").innerHTML = reviewInspector(data, state);
   if ($(".review-detail")) $(".review-detail").scrollTop = detail;
-  $("#review-result-count").textContent =
-    `${reviewRows(data, state).length} results`;
+  const rows = reviewRows(data, state);
+  $("#review-result-count").textContent = state.reviewMode === "theme"
+    ? `${rows.filter((r) => r.theme.item).length} observations · ${rows.filter((r) => !r.theme.item).length} report summaries`
+    : `${rows.length} results`;
   announce(
     `${reviewRows(data, state).length} results in the selected review collection.`,
   );

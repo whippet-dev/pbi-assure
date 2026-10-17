@@ -103,13 +103,13 @@ test("keyboard navigation, absence honesty, direct report evidence and coverage"
     page.getByRole("tab", { name: "Evidence", exact: true }),
   ).toBeFocused();
   await expect(page.locator("#detail-panel")).toContainText(
-    "exact affected-object reach",
+    "does not map each limitation to every affected object",
   );
   await page
-    .getByRole("button", { name: "What was checked", exact: true })
+    .getByRole("button", { name: "Analysis scope", exact: true })
     .click();
   await expect(
-    page.getByRole("heading", { name: "Evidence has boundaries." }),
+    page.getByRole("heading", { name: "Analysis scope and limitations" }),
   ).toBeVisible();
   await page.getByRole("button", { name: "Report pages", exact: true }).click();
   await page
