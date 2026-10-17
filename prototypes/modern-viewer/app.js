@@ -436,7 +436,7 @@ function reportEvidence(o, full = false) {
     );
     const page = report?.Pages.find((p) => p.Name === loc.Page);
     const visual = page?.Visuals.find((v) => v.Name === loc.Visual);
-    return `<div class="report-location">${icon("pages")}<div><strong>${escape(page?.DisplayName || loc.Page || "Report-level reference")}</strong><small>${escape(report?.Name || loc.Report)} · ${escape(visual?.Accessibility?.TitleText || (visual?.VisualType ? visualType(visual.VisualType) : null) || loc.UsageContext || loc.LocationKind)}</small>${loc.Visual ? `<code>${escape(loc.Visual)}</code>` : ""}${full ? `<small>${escape(loc.LocationKind)}${visual?.IsHidden ? " · Hidden visual" : ""}</small>` : ""}</div></div>`;
+    return `<div class="report-location">${icon("pages")}<div><strong>${escape(page?.DisplayName || loc.Page || "Report-level reference")}</strong><small>${escape(report?.Name || loc.Report)} · ${escape(visual?.Accessibility?.TitleText || (visual?.VisualType ? visualType(visual.VisualType) : null) || loc.UsageContext || loc.LocationKind)}</small>${loc.Visual ? `<small class="technical-identity"><span>Visual ID</span> <code>${escape(loc.Visual)}</code></small>` : ""}${full ? `<small>${escape(loc.LocationKind)}${visual?.IsHidden ? " · Hidden visual" : ""}</small>` : ""}</div></div>`;
   }).join("")}</div>`;
 }
 function expression(o, full = false) {

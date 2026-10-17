@@ -80,7 +80,7 @@ export function scopeInspector(data, state) {
     );
   return `<div class="inspector-toolbar"><span>ANALYSIS SCOPE</span></div><div class="object-hero"><div class="object-breadcrumb">${escape(areaLabel[limitArea(l)])} / ${escape(l.SemanticModel || "Project")}</div><h2 id="scope-heading" tabindex="-1">${escape(constructLabel(l.ConstructType))}</h2><p>${escape(supportLabel(l.SupportState))}</p></div>${outside ? '<div class="outside-filter">Selected limitation is outside your filters.<button data-action="scope-reset">Show in collection</button></div>' : ""}<div class="inspector-tabs" role="tablist" aria-label="Limitation information">${SCOPE_TABS.map((t) => `<button role="tab" id="scope-tab-${t}" data-scope-tab="${t}" aria-controls="scope-panel" aria-selected="${state.checkTab === t}" tabindex="${state.checkTab === t ? 0 : -1}">${t}</button>`).join("")}</div><div class="inspector-content scope-detail" id="scope-panel" role="tabpanel" aria-labelledby="scope-tab-${state.checkTab}" tabindex="0">${
     state.checkTab === "Meaning"
-      ? `<section><h3>Why this matters</h3><p class="area-lead">${escape(l.Reason)}</p></section><section><h3>How to interpret results</h3><p class="area-lead">${escape(confidenceMeaning(l))}</p></section><section><h3>Recorded scope</h3>${facts(
+      ? `<section><h3>Why this matters</h3><p class="area-lead">${escape(l.Reason)}</p></section><section class="qualification-section"><h3>How to interpret results</h3><p class="area-lead">${escape(confidenceMeaning(l))}</p></section><section><h3>Recorded scope</h3>${facts(
           [
             ["Area", areaLabel[limitArea(l)]],
             ["Model", l.SemanticModel],

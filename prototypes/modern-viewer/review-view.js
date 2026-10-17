@@ -60,7 +60,7 @@ const severity = (f) =>
   `<span class="badge ${f.Severity === "Error" ? "severity-error" : f.Severity === "Warning" ? "severity-warning" : "severity-info"}">${escape(f.Severity)}</span>`;
 const assessment = (f) =>
   f.AssessmentType === "ReviewRequired"
-    ? '<span class="review-assessment">Review required</span>'
+    ? `<span class="review-assessment">${icon("reviews")}Review required</span>`
     : "";
 const options = (values, selected, label) =>
   `<option value="">${label}</option>${values.map((v) => `<option value="${escape(v.name ?? v)}" ${(v.name ?? v) === selected ? "selected" : ""}>${escape(v.label ?? v)}</option>`).join("")}`;

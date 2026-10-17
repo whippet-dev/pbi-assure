@@ -114,7 +114,7 @@ export function findingList(findings, empty) {
   return findings
     .map(
       (f) =>
-        `<article class="finding"><div class="finding-heading"><span class="badge ${f.Severity === "Error" ? "severity-error" : f.Severity === "Warning" ? "severity-warning" : "severity-info"}">${escape(f.Severity)}</span><strong>${f.AssessmentType === "ReviewRequired" ? "Review required" : "Finding"}</strong><span>${escape(words(f.Category))}</span></div><p>${escape(f.Message)}</p><p class="finding-recommendation">${escape(f.Recommendation)}</p>${evidence(f.RuleId + " · v" + f.RuleVersion + (f.VisualGroup ? " · Group: " + f.VisualGroup : ""), null, [f.ArtifactPath, ...(f.EvidencePaths || [])].join("\n"))}</article>`,
+        `<article class="finding"><div class="finding-heading"><span class="badge ${f.Severity === "Error" ? "severity-error" : f.Severity === "Warning" ? "severity-warning" : "severity-info"}">${escape(f.Severity)}</span>${f.AssessmentType === "ReviewRequired" ? `<span class="review-assessment">${icon("reviews")}Review required</span>` : "<strong>Finding</strong>"}<span>${escape(words(f.Category))}</span></div><p>${escape(f.Message)}</p><p class="finding-recommendation">${escape(f.Recommendation)}</p>${evidence(f.RuleId + " · v" + f.RuleVersion + (f.VisualGroup ? " · Group: " + f.VisualGroup : ""), null, [f.ArtifactPath, ...(f.EvidencePaths || [])].join("\n"))}</article>`,
     )
     .join("");
 }

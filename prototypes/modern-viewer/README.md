@@ -6,7 +6,7 @@ Started from `master` at `93ae2c6d35aebf382a9be402d4a2c9cafa909f4a` (merged fron
 
 ## Desktop coherence pass
 
-The prototype now uses cool neutral chrome, white analytical surfaces, slate text and a restrained deep-teal selection/action system. Error, warning, usage and confidence treatments remain distinct. Headers, collection rows and inspector spacing are more compact, while primary object names and body text remain readable. Model/report selectors sit above the workspace; contextual navigation has its own scroll area.
+The initial coherence pass established compact headers, collection rows and inspector spacing, while keeping primary object names and body text readable. Model/report selectors sit above the workspace; contextual navigation has its own scroll area.
 
 Lineage retains its progressive two-lane interaction, now using **Starting object**, **Depends on**, **Used by**, **Show connection** and **Start from this object**. Selecting a related object still only updates the inspector. Relationship endpoints, finding titles and interpreted security permissions lead their inspectors; technical identities and stored values remain available.
 
@@ -15,6 +15,14 @@ Lineage retains its progressive two-lane interaction, now using **Starting objec
 Validation is scoped to this prototype: 32 data tests, 24 existing browser workflows and two desktop/reflow checks. Visual inspection covered all nine workspaces at 1280–1440px, with a 1366×768 density check and 720 CSS-pixel reflow check (the layout width of a 1440px desktop at 200% zoom). The reflow check is not a full browser-zoom or accessibility audit. `tests/polish.spec.js` checks desktop overflow/control placement, collection density, reachable stacked inspectors and access to specialist/scope views. Screenshots are written under `artifacts/modern-viewer/` by the browser tests.
 
 The existing workspace architecture, usage semantics, explicit return paths and cautious unused-object guidance remain. No canvas graph, assurance score, new analysis features or production integration is introduced.
+
+## Visual depth and hierarchy
+
+The visual system builds on that density: a deep petrol sidebar, cool application background, tinted context/filter surfaces and entity headers, off-white collections and white inspector bodies. Mineral blue identifies interaction and selection. Usage states retain their wording with subdued neutral badges and different marker shapes; confidence qualifications use restrained plum, review-required uses an outlined label, and warnings/errors retain amber/red. The lineage starting object has a stable slate header and anchor marker; inspecting a related object adds a blue cue without moving the starting point.
+
+Supporting context is grouped in selective insets (model report locations, query/model connections, lineage paths, relationship ends and affected review context). Report Uses aligns roles with values. Technical evidence uses warm neutral surfaces and readable monospace text; raw security values remain secondary to interpreted permissions. Non-interactive report-location text stays neutral, so it does not suggest a destination that the viewer does not provide. No area-specific themes or new navigation actions were added.
+
+Validation for this pass: nine focused browser checks covering desktop overflow/density, reflow, sampled text contrast, lineage, report returns, security, scope and reviews; static build; visual inspection across the nine workspaces at 1366×768 and 1440×900. Sampled shell, selected-row, metadata, code, qualification, severity and action text meets 4.5:1 contrast. This is targeted validation, not a full accessibility audit. The current desktop screenshot is `artifacts/modern-viewer/visual-system-model-1440.png`.
 
 ## Run and compare
 

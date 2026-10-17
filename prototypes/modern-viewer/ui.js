@@ -8,6 +8,7 @@ export const escape = (value) =>
       ],
   );
 const icons = {
+  anchor: '<path d="m8 3 8 0-1 6 4 4H5l4-4-1-6m4 10v8"/>',
   relationships:
     '<rect x="2" y="5" width="7" height="14" rx="1"/><rect x="15" y="5" width="7" height="14" rx="1"/><path d="M9 12h6M5 9h1m12 6h1"/>',
   security:
