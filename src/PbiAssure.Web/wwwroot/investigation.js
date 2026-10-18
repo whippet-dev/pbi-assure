@@ -1,6 +1,6 @@
 // The analysis stays in memory. Only this newly opened, same-origin tab receives it.
 window.pbiAssureInvestigation = {
-    open(content, projectName, workspace) {
+    open(content, projectName, workspace, objectSummaries) {
         const url = new URL("investigation/index.html", document.baseURI);
         const viewer = window.open(url.href, "_blank");
         if (!viewer) return Promise.resolve("blocked");
@@ -18,7 +18,7 @@ window.pbiAssureInvestigation = {
                     delivered = true;
                     try {
                         viewer.postMessage({type: "pbi-assure-investigation", deliveryId,
-                            content, projectName, workspace}, url.origin);
+                            content, projectName, workspace, objectSummaries}, url.origin);
                     } catch { finish("failed"); }
                 }
                 if (event.data?.type === "pbi-assure-investigation-ack" && event.data.deliveryId === deliveryId)

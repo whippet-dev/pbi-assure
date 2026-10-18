@@ -3159,3 +3159,17 @@ h3 { font-size: 14px; }
   .context-controls { padding: 5px 10px; }
   .visual-use-row { grid-template-columns: minmax(0, 1fr) minmax(100px, .4fr); }
 }
+
+/* Focused review uses the existing collection and inspector, not a separate workspace. */
+.unused-review-intro { padding-bottom: 8px; margin-bottom: 8px; border-bottom: 1px solid var(--line); }
+.unused-review-intro p { margin: 0 0 4px; font-size: 13px; line-height: 1.45; color: var(--body); }
+.unused-review-intro > div { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+.unused-review-intro span { font-size: 12px; color: var(--muted); }
+.unused-review-intro .text-button { text-align: left; }
+.object-review-context .metadata { margin-block: 8px; }
+.object-preparation { margin-top: 12px; padding-top: 10px; border-top: 1px solid var(--line); }
+.object-preparation > summary { color: var(--accent); font-weight: 600; cursor: pointer; }
+.object-preparation > p { margin-top: 10px; }
+.preparation-operation { display: grid; gap: 4px; padding: 10px 0; border-bottom: 1px solid var(--line); }
+.preparation-operation > span { color: var(--muted); font-size: 13px; }
+.unused-origin { border-left: 3px solid var(--accent); }

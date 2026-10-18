@@ -1,5 +1,6 @@
 using PbiAssure.Core.Inventory;
 using PbiAssure.Core.Scanning;
+using PbiAssure.Reporting;
 
 namespace PbiAssure.Core.Tests;
 
@@ -64,6 +65,10 @@ public sealed class DirectUsageProvenanceAnalyzerTests
         AssertUserFacing(analysis, "Sort", UserFacingStates.No);
         AssertUserFacing(analysis, "Other", UserFacingStates.Unclear);
         AssertUserFacing(analysis, "Selector", UserFacingStates.No);
+        var viewer = InvestigationPresentation.ObjectSummaries(inventory);
+        Assert.Equal(UserFacingStates.Yes, Assert.Single(viewer, o => o.ObjectName == "Projection").UserFacing);
+        Assert.Equal(UserFacingStates.No, Assert.Single(viewer, o => o.ObjectName == "Filter").UserFacing);
+        Assert.Equal(UserFacingStates.Unclear, Assert.Single(viewer, o => o.ObjectName == "Other").UserFacing);
         Assert.Equal(before, inventory.SemanticObjectUsages.Select(usage => (usage.ObjectName, usage.UsageState, usage.ClassificationConfidence)).ToArray());
     }
 

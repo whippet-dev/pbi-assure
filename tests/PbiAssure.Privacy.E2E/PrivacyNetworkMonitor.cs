@@ -107,6 +107,7 @@ internal sealed class PrivacyNetworkMonitor
         "/investigation/index.html",
         "/investigation/app.js",
         "/investigation/hosted-entry.js",
+        "/investigation/unused-review.js",
         "/investigation/data.js",
         "/investigation/ui.js",
         "/investigation/report-data.js",

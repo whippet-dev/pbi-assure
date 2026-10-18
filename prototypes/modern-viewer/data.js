@@ -116,7 +116,9 @@ export function adaptInventory(raw) {
       id: objectId(usage),
       detail,
       table,
-      system: !!table?.IsSystemGenerated,
+      // Match ProjectInventory.IsSystemGeneratedSemanticObject, including case-insensitive names.
+      system: raw.SemanticModels.some(m => m.Name.toUpperCase() === usage.SemanticModel.toUpperCase() &&
+        m.Tables.some(t => t.IsSystemGenerated && t.Name.toUpperCase() === usage.Table.toUpperCase())),
     };
   });
   const byId = new Map(objects.map((o) => [o.id, o]));
@@ -163,7 +165,7 @@ export function filterObjects(data, state) {
       (o) =>
         (!state.model || o.SemanticModel === state.model) &&
         (!state.table || o.Table === state.table) &&
-        (state.system || !o.system) &&
+        ((state.usage !== "ApparentlyUnused" && state.system) || !o.system) &&
         (!state.type || o.ObjectType === state.type) &&
         (!state.usage || o.UsageState === state.usage) &&
         (!state.limited ||

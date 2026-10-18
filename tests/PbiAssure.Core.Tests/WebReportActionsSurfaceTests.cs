@@ -2,11 +2,7 @@ using PbiAssure.Web;
 
 namespace PbiAssure.Core.Tests;
 
-/// <summary>
-/// One analysis, two report experiences, one export area. After analysis the browser application offers
-/// the interactive report and the apparently unused review as a report-first hierarchy, each with an open
-/// action and a download, and keeps export work visibly apart from report delivery.
-/// </summary>
+/// <summary>One investigation application, with secondary portable downloads.</summary>
 public sealed class WebReportActionsSurfaceTests
 {
     [Fact]
@@ -15,8 +11,8 @@ public sealed class WebReportActionsSurfaceTests
         var actions = NextSteps(ReadHomePage());
         Assert.Contains(">Open investigation</button>", actions, StringComparison.Ordinal);
         Assert.Contains(">Download report</button>", actions, StringComparison.Ordinal);
-        Assert.Contains("class=\"secondary-button\" @onclick=\"OpenUnusedReviewAsync\"", actions, StringComparison.Ordinal);
-        Assert.Contains("Review apparently unused (@inventory.DeveloperApparentlyUnusedSemanticObjectCount)", actions, StringComparison.Ordinal);
+        Assert.DoesNotContain("OpenUnusedReviewAsync", actions, StringComparison.Ordinal);
+        Assert.Contains("Review apparently unused in Model Objects", actions, StringComparison.Ordinal);
         Assert.True(actions.IndexOf("OpenInvestigationAsync", StringComparison.Ordinal) < actions.IndexOf("other-outputs-heading", StringComparison.Ordinal));
         Assert.DoesNotContain("report-cards", actions, StringComparison.Ordinal);
         Assert.DoesNotContain("DeveloperApparentlyUnusedSemanticObjectCount == 0", actions, StringComparison.Ordinal);
@@ -51,7 +47,7 @@ public sealed class WebReportActionsSurfaceTests
         Assert.Equal("Download report", AccessibleName(actions, "DownloadHtmlAsync"));
         Assert.Equal("Download apparently unused review", AccessibleName(actions, "DownloadUnusedReviewAsync"));
         Assert.Equal("Download report", VisibleText(actions, "DownloadHtmlAsync"));
-        Assert.Equal("Download review", VisibleText(actions, "DownloadUnusedReviewAsync"));
+        Assert.Equal("Download apparently unused review", VisibleText(actions, "DownloadUnusedReviewAsync"));
         Assert.DoesNotContain("aria-label=\"Download", actions, StringComparison.Ordinal);
     }
 
@@ -135,7 +131,7 @@ public sealed class WebReportActionsSurfaceTests
         var script = File.ReadAllText(Path.Combine(repositoryRoot, "src", "PbiAssure.Web", "wwwroot", "download.js"));
         var viewer = File.ReadAllText(Path.Combine(repositoryRoot, "src", "PbiAssure.Web", "wwwroot", "report-viewer.js"));
 
-        Assert.Equal(1, CountOccurrences(markup, "JS.InvokeAsync<string>(\"pbiAssureDownload.open\", \"text/html;charset=utf-8\", html)"));
+        Assert.Equal(0, CountOccurrences(markup, "JS.InvokeAsync<string>(\"pbiAssureDownload.open\", \"text/html;charset=utf-8\", html)"));
         Assert.Contains("pbiAssureInvestigation.open", markup, StringComparison.Ordinal);
         Assert.DoesNotContain("window.open", markup, StringComparison.Ordinal);
         Assert.Contains("report-viewer.html?v=__PBIASSURE_ASSET_VERSION__", script, StringComparison.Ordinal);

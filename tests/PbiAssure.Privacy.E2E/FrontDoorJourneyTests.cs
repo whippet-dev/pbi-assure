@@ -119,6 +119,8 @@ public sealed class FrontDoorJourneyTests(PrivacyE2EFixture fixture)
         await Run(page);
         Assert.Equal(0, await page.Locator("article.metric, .results, .report-cards").CountAsync());
         Assert.Equal("Open investigation", await page.Locator(".output-actions button:not(.secondary-button)").First.InnerTextAsync());
+        Assert.False(await page.Locator("details.download-options").EvaluateAsync<bool>("e => e.open"));
+        await page.Locator("details.download-options > summary").ClickAsync();
         foreach (var name in new[] { "Download report", "Export data" })
             Assert.True(await page.GetByRole(AriaRole.Button, new() { Name = name, Exact = true }).IsVisibleAsync());
         Assert.True(await page.GetByRole(AriaRole.Button, new() { Name = "Review apparently unused", Exact = false }).IsVisibleAsync());
@@ -129,6 +131,7 @@ public sealed class FrontDoorJourneyTests(PrivacyE2EFixture fixture)
         await chooser.SetFilesAsync(fixture.FixtureDirectory);
         await Completed(page);
         Assert.Equal(before, await page.Locator("#page-title").InnerTextAsync());
+        await page.Locator("details.download-options > summary").ClickAsync();
         Assert.Contains("Keep a standalone HTML report", await page.Locator(".download-report").InnerTextAsync());
         Assert.Contains("URLs do not preserve this analysis", await page.Locator(".output-note").InnerTextAsync());
         Assert.Contains("Review before sharing", await page.Locator(".sensitivity").InnerTextAsync());
@@ -145,6 +148,7 @@ public sealed class FrontDoorJourneyTests(PrivacyE2EFixture fixture)
         var page = await Open(context);
         await SelectSnapshot(page, fixture.FixtureDirectory);
         await Run(page);
+        await page.Locator("details.download-options > summary").ClickAsync();
         await page.GetByRole(AriaRole.Button, new() { Name = "Export data", Exact = true }).ClickAsync();
         await page.GetByRole(AriaRole.Radio, new() { Name = "Usage mapping", Exact = true }).CheckAsync();
         var before = await page.Locator("#page-title").InnerTextAsync();

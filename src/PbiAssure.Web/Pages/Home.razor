@@ -62,6 +62,7 @@
                 <p id="interactive-report-help">Your project is ready to explore. Open the investigation to follow usage, inspect evidence and review findings.</p>
                 <div class="report-card-actions">
                     <button @onclick="() => OpenInvestigationAsync()" disabled="@isBusy" aria-describedby="interactive-report-help">Open investigation</button>
+                    <button class="text-button" @onclick='() => OpenInvestigationAsync("unused")' disabled="@isBusy">Review apparently unused in Model Objects</button>
                 </div>
                 <p class="report-card-status" role="status">@interactiveReportMessage</p>
             </section>
@@ -74,16 +75,16 @@
                 <button class="secondary-button" @ref="analysisTrigger" @onclick="RunAssuranceAsync" disabled="@isBusy" aria-describedby="@ProjectMessageId">@RunLabel</button>
                 <button class="secondary-button" @onclick="() => ChooseProjectAsync(false)" disabled="@isBusy" aria-describedby="@ProjectMessageId">Change project</button>
             </div>
-            <h3 id="other-outputs-heading">Other outputs</h3>
+            <details class="download-options">
+            <summary id="other-outputs-heading">Downloads &amp; exports</summary>
             <div class="download-report"><button class="secondary-button" @onclick="DownloadHtmlAsync" disabled="@isBusy">Download report</button><p>Keep a standalone HTML report of this analysis. It uses the existing report layout.</p></div>
             <p class="sensitivity">Downloads can contain sensitive project metadata. Review before sharing; outputs are not automatically redacted.</p>
             <div class="other-outputs" role="group" aria-labelledby="other-outputs-heading">
                 <section class="report-secondary" aria-labelledby="unused-review-heading">
-                    <h4 id="unused-review-heading">Apparently unused review</h4>
-                    <p id="unused-review-help">Review model items with no report or semantic-model usage found in this project.</p>
+                    <h4 id="unused-review-heading">Apparently unused review download</h4>
+                    <p id="unused-review-help">A focused, portable HTML review set for sharing or offline review. Investigate objects in Model Objects.</p>
                     <div class="report-card-actions">
-                        <button class="secondary-button" @onclick="OpenUnusedReviewAsync" disabled="@isBusy" aria-describedby="unused-review-help">Review apparently unused (@inventory.DeveloperApparentlyUnusedSemanticObjectCount)</button>
-                        <button class="secondary-button" @onclick="DownloadUnusedReviewAsync" disabled="@isBusy">Download <span class="visually-hidden">apparently unused </span>review</button>
+                        <button class="secondary-button" @onclick="DownloadUnusedReviewAsync" disabled="@isBusy">Download apparently unused review</button>
                     </div>
                     <p class="report-card-status" role="status">@unusedReviewMessage</p>
                 </section>
@@ -106,6 +107,7 @@
                     <ExportCsvPanel @key="exportPanelKey" Inventory="@inventory" ProjectDisplayName="@selection.DisplayName"
                                     OnClose="CloseExportPanelAsync" />
                 }
+            </details>
         </section>
     }
 
@@ -390,7 +392,8 @@
         try
         {
             var status = await JS.InvokeAsync<string>("pbiAssureInvestigation.open",
-                JsonSerializer.Serialize(inventory), selection!.DisplayName, workspace);
+                JsonSerializer.Serialize(inventory), selection!.DisplayName, workspace,
+                JsonSerializer.Serialize(InvestigationPresentation.ObjectSummaries(inventory)));
             interactiveReportMessage = status switch
             {
                 "opened" => "Investigation opened in a new tab.",
@@ -401,30 +404,6 @@
         catch (Exception)
         {
             interactiveReportMessage = "The investigation could not be opened. Your analysis is still here; please try again.";
-        }
-    }
-
-    /// <summary>
-    /// The review travels exactly as the interactive report does: rendered locally, handed to the
-    /// same-origin viewer, and reported as opened only once that viewer has acknowledged it.
-    /// </summary>
-    private async Task OpenUnusedReviewAsync()
-    {
-        if (inventory is null)
-        {
-            return;
-        }
-
-        unusedReviewMessage = WebReportViewerStatus.Opening(WebReportKind.ApparentlyUnusedReview);
-        try
-        {
-            var html = ApparentlyUnusedReportRenderer.Render(inventory);
-            var status = await JS.InvokeAsync<string>("pbiAssureDownload.open", "text/html;charset=utf-8", html);
-            unusedReviewMessage = WebReportViewerStatus.Describe(status, WebReportKind.ApparentlyUnusedReview);
-        }
-        catch (Exception)
-        {
-            unusedReviewMessage = WebReportViewerStatus.OpenFailed(WebReportKind.ApparentlyUnusedReview);
         }
     }
 

@@ -62,6 +62,7 @@ public sealed class PrivacyWorkflowTests(PrivacyE2EFixture fixture)
         monitor.Begin("Information");
         await AssertInformationPopupPreservesPageAsync(page);
         Assert.Equal(counts, await ReadCompletionAsync(page));
+        await page.Locator("details.download-options > summary").ClickAsync();
         Assert.True(await page.GetByRole(AriaRole.Button, new() { Name = "Export data", Exact = true }).IsVisibleAsync());
         Assert.Empty(monitor.ExternalEvents());
         Assert.Empty(monitor.CanaryLeaks());
@@ -117,6 +118,7 @@ public sealed class PrivacyWorkflowTests(PrivacyE2EFixture fixture)
 
         monitor.Begin("Exports");
         var outputRoot = PrepareOutputDirectory("online");
+        await page.Locator("details.download-options > summary").ClickAsync();
         var htmlDownload = await page.RunAndWaitForDownloadAsync(() =>
             page.GetByRole(AriaRole.Button, new() { Name = "Download report", Exact = true }).ClickAsync());
         var htmlPath = Path.Combine(outputRoot, htmlDownload.SuggestedFilename);
@@ -183,6 +185,7 @@ public sealed class PrivacyWorkflowTests(PrivacyE2EFixture fixture)
 
         monitor.Begin("Exports");
         var outputRoot = PrepareOutputDirectory("offline");
+        await page.Locator("details.download-options > summary").ClickAsync();
         var htmlDownload = await page.RunAndWaitForDownloadAsync(() =>
             page.GetByRole(AriaRole.Button, new() { Name = "Download report", Exact = true }).ClickAsync());
         var htmlPath = Path.Combine(outputRoot, htmlDownload.SuggestedFilename);
@@ -322,9 +325,12 @@ public sealed class PrivacyWorkflowTests(PrivacyE2EFixture fixture)
     {
         var popup = await page.RunAndWaitForPopupAsync(() =>
             page.GetByRole(AriaRole.Button, new() { NameRegex = new Regex("^Review apparently unused ") }).ClickAsync());
-        await ExerciseUnusedReviewAsync(popup);
-        Assert.Contains("/report-viewer", popup.Url, StringComparison.Ordinal);
-        Assert.True(await popup.EvaluateAsync<bool>("window.opener === null"));
+        await popup.Locator(".unused-review-intro").WaitForAsync();
+        Assert.Contains("/investigation/", popup.Url, StringComparison.Ordinal);
+        Assert.Equal("ApparentlyUnused", await popup.Locator("#usage-filter").InputValueAsync());
+        Assert.Contains("CanaryValue", await popup.Locator("#collection").InnerTextAsync());
+        Assert.Contains("never permission to delete", await popup.Locator(".unused-review-intro").InnerTextAsync());
+        Assert.DoesNotContain("Not included in this snapshot", await popup.Locator(".object-review-context").InnerTextAsync());
         await popup.CloseAsync();
     }
 

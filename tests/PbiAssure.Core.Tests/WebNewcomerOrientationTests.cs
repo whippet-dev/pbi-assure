@@ -37,15 +37,15 @@ public sealed class WebNewcomerOrientationTests
             Assert.Contains($">{heading}</h3>", about, StringComparison.Ordinal);
         }
 
-        foreach (var fact in new[] { "<h4>Investigation workspace</h4>", "<h4>Apparently unused review</h4>", "<h4>CSV exports</h4>", "Data Catalogue CSV", "Usage Mapping CSV", "zero detected usage", "optional metadata such as Description", "one row per logical direct report usage", "legacy technical/compatibility export", "Apparently unused does not mean safe to delete", "does not validate runtime data correctness","directly used does not automatically mean Yes", "No means no qualifying evidence was found", "application-managed persistent browser storage", "secure memory deletion is not guaranteed", "normal site/runtime requests", "static same-origin viewer shell", "ordinary request metadata", "after the application has loaded", "PRIVACY.md" })
+        foreach (var fact in new[] { "<h4>Investigation workspace</h4>", "<h4>Apparently unused review download</h4>", "<h4>CSV exports</h4>", "Data Catalogue CSV", "Usage Mapping CSV", "zero detected usage", "optional metadata such as Description", "one row per logical direct report usage", "legacy technical/compatibility export", "Apparently unused does not mean safe to delete", "does not validate runtime data correctness","directly used does not automatically mean Yes", "No means no qualifying evidence was found", "application-managed persistent browser storage", "secure memory deletion is not guaranteed", "normal site/runtime requests", "static same-origin viewer shell", "ordinary request metadata", "after the application has loaded", "PRIVACY.md" })
         {
             Assert.Contains(fact, about, StringComparison.Ordinal);
         }
 
-        // The review is a view of the same analysis, and no route is presented as the one to start with.
+        // Investigation is primary; the portable review keeps the same analysis and selection rule.
         Assert.Contains("no report or semantic-model usage was found in this project", about, StringComparison.Ordinal);
         Assert.Contains("Power Query preparation evidence may still exist", about, StringComparison.Ordinal);
-        Assert.Contains("not a separate analysis engine", about, StringComparison.Ordinal);
+        Assert.Contains("same analysis and selection rule", about, StringComparison.Ordinal);
         Assert.Contains("Open the investigation to explore the project", about, StringComparison.Ordinal);
         Assert.DoesNotContain("Start here", about, StringComparison.Ordinal);
         Assert.DoesNotContain("Start with the interactive", about, StringComparison.Ordinal);

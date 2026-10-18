@@ -1,3 +1,4 @@
+import { unusedReviewIntro, objectReviewContext } from "./unused-review.js";
 import { hosted, receiveAnalysis, returnToProject } from "./hosted-entry.js";
 import {
   adaptInventory,
@@ -145,6 +146,8 @@ const state = {
   fixture: true,
 };
 let data, queryIndex, lineageIndex, modelAreas;
+// A review checkpoint outlives nested workspace return contexts.
+let unusedOrigin = null;
 const announce = (text) => {
   $("#announcement").textContent = text;
 };
@@ -186,7 +189,7 @@ function renderSidebar() {
   const modelObjects = data.objects.filter(
     (o) =>
       (!state.model || o.SemanticModel === state.model) &&
-      (state.system || !o.system),
+      ((state.usage !== "ApparentlyUnused" && state.system) || !o.system),
   );
   $(".sidebar").innerHTML =
     `<div class="project-label">OPEN ANALYSIS</div><div class="project-name">${state.fixture ? "Coverage study" : escape(state.source)}</div><div class="source-label">${state.fixture ? "Synthetic repository fixture" : hosted ? "Local analysis · read-only" : "Local JSON inventory"}</div>
@@ -208,8 +211,8 @@ function renderSidebar() {
                     ? ""
                     : `    <div class="model-navigation"><label class="project-label" for="model-select">SEMANTIC MODEL</label><select id="model-select" aria-label="Semantic model"><option value="" ${!state.model ? "selected" : ""}>All models</option>${data.raw.SemanticModels.map((m) => `<option ${m.Name === state.model ? "selected" : ""}>${escape(m.Name)}</option>`).join("")}</select>${
                         !state.model
-                          ? `<div class="table-heading">Choose a model to browse its tables</div><nav class="table-nav" aria-label="Filter by model">${data.raw.SemanticModels.map((m) => `<button data-model="${escape(m.Name)}">${icon("objects")}<span class="table-name">${escape(m.Name)}</span><span>${modelObjects.filter((o) => o.SemanticModel === m.Name).length}</span></button>`).join("")}</nav>`
-                          : `<div class="table-heading">Tables <span>${tables.filter((t) => state.system || !t.IsSystemGenerated).length}</span></div><nav class="table-nav" aria-label="Filter by table"><button data-table="" class="${!state.table ? "chosen" : ""}">${icon("objects")}All tables<span>${modelObjects.length}</span></button>${tables
+                          ? `<div class="table-heading">Choose a model to browse its tables${state.usage === "ApparentlyUnused" ? " · counts include all usage states" : ""}</div><nav class="table-nav" aria-label="Filter by model">${data.raw.SemanticModels.map((m) => `<button data-model="${escape(m.Name)}">${icon("objects")}<span class="table-name">${escape(m.Name)}</span><span>${modelObjects.filter((o) => o.SemanticModel === m.Name).length}</span></button>`).join("")}</nav>`
+                          : `<div class="table-heading">${state.usage === "ApparentlyUnused" ? "Tables · all usage states" : "Tables"} <span>${tables.filter((t) => state.system || !t.IsSystemGenerated).length}</span></div><nav class="table-nav" aria-label="Filter by table"><button data-table="" class="${!state.table ? "chosen" : ""}">${icon("objects")}All tables<span>${modelObjects.length}</span></button>${tables
                               .filter(
                                 (t) => state.system || !t.IsSystemGenerated,
                               )
@@ -287,7 +290,7 @@ function renderWorkspace() {
                 ? [
                     "MODEL / INVESTIGATE",
                     "Model objects",
-                    "Inspect usage, definitions and dependencies.",
+                    state.usage === "ApparentlyUnused" ? "Apparently unused review · inspect evidence before making changes." : "Inspect usage, definitions and dependencies.",
                   ]
                 : state.view === "pages"
                   ? [
@@ -362,7 +365,7 @@ function renderWorkspace() {
     );
   if (state.view === "objects") {
     $(".workspace").innerHTML =
-      `<section class="collection-pane" aria-label="Model object collection"><div class="collection-tools"><div class="collection-title"><strong>${escape(state.table || (state.model ? "All tables" : "All models"))}</strong><span id="result-count"></span></div><div class="searchbox">${icon("search")}<input id="search" type="search" placeholder="Search objects or tables…" aria-label="Search objects or tables" value="${escape(state.search)}"><kbd>/</kbd></div><div class="filter-line"><label class="sr-only" for="usage-filter">Usage state</label><select id="usage-filter"><option value="">All usage states</option>${Object.entries(
+      `<section class="collection-pane" aria-label="Model object collection"><div class="collection-tools">${state.usage === "ApparentlyUnused" ? unusedReviewIntro(data) : ""}<div class="collection-title"><strong>${escape(state.table || (state.model ? "All tables" : "All models"))}</strong><span id="result-count"></span></div><div class="searchbox">${icon("search")}<input id="search" type="search" placeholder="Search objects or tables…" aria-label="Search objects or tables" value="${escape(state.search)}"><kbd>/</kbd></div><div class="filter-line"><label class="sr-only" for="usage-filter">Usage state</label><select id="usage-filter"><option value="">All usage states</option>${Object.entries(
         STATES,
       )
         .map(
@@ -384,7 +387,7 @@ function renderWorkspace() {
         )
         .join(
           "",
-        )}</div></div><div id="collection" class="collection-scroll" tabindex="-1"></div><div class="collection-footer"><label><input id="system" type="checkbox" ${state.system ? "checked" : ""}>Include system-generated</label><span>↑ ↓ to explore · Enter to select</span></div></section><aside id="inspector" class="inspector" aria-label="Selected object"></aside>`;
+        )}</div></div><div id="collection" class="collection-scroll" tabindex="-1"></div><div class="collection-footer"><label><input id="system" type="checkbox" ${state.usage === "ApparentlyUnused" ? "disabled" : state.system ? "checked" : ""}>Include system-generated</label><span>↑ ↓ to explore · Enter to select</span></div></section><aside id="inspector" class="inspector" aria-label="Selected object"></aside>`;
     renderCollection();
     renderInspector();
   } else if (state.view === "pages") renderPages();
@@ -404,10 +407,13 @@ function renderWorkspace() {
   else if (state.view === "reviews")
     $(".workspace").innerHTML = reviewsWorkspace(data, state);
   else $(".workspace").innerHTML = scopeWorkspace(data, state);
+  renderUnusedReturn();
 }
 function renderCollection() {
   const rows = visible();
-  $("#result-count").textContent = `${rows.length} objects`;
+  $("#result-count").textContent = state.usage === "ApparentlyUnused"
+    ? `${rows.length} of ${data.objects.filter(o => o.UsageState === "ApparentlyUnused" && !o.system).length} in project`
+    : `${rows.length} objects`;
   const active = rows.some((o) => o.id === state.selected)
     ? state.selected
     : rows[0]?.id;
@@ -467,6 +473,7 @@ function highlight(dax) {
 }
 function renderInspector() {
   const o = selected();
+  renderUnusedReturn();
   if (!o) {
     $("#inspector").innerHTML =
       '<div class="empty"><h2>Select an object</h2><p>Its evidence and dependencies will appear here.</p></div>';
@@ -483,7 +490,7 @@ function renderInspector() {
     <div class="inspector-tabs" role="tablist" aria-label="Object information">${["Summary", "Dependencies", "DAX", "Evidence"].map((tab) => `<button role="tab" id="tab-${tab}" aria-controls="detail-panel" aria-selected="${state.tab === tab}" tabindex="${state.tab === tab ? "0" : "-1"}" data-tab="${tab}">${tab}${tab === "Dependencies" ? `<span>${inEdges.length + outEdges.length}</span>` : ""}</button>`).join("")}</div><div id="detail-panel" class="inspector-content" role="tabpanel" aria-labelledby="tab-${state.tab}" tabindex="0">${
       state.tab === "Summary"
         ? `<section class="why-section"><div class="section-label"><span class="small-dot ${STATES[o.UsageState].tone}"></span>WHY ${escape(STATES[o.UsageState].label.toUpperCase())}</div><p class="why-text">${escape(STATES[o.UsageState].why)}</p>${support.length ? `<div class="supporting"><span>Referenced by these objects with recorded report or model-structure use</span>${relationList(uniqueEdges(support), "From", 2)}</div>` : ""}${["ApparentlyUnused", "UsedOnlyByUnusedBranch"].includes(o.UsageState) ? '<div class="review-note">Review candidate, never permission to delete. Other reports, external consumers and runtime behaviour may use this object.</div>' : ""}${o.ClassificationConfidence === "QualifiedByLimitation" ? '<p class="limitation-note">Incomplete analysis may affect this classification. Usage state and confidence are separate. <button data-action="object-coverage">Read model limitations →</button></p>' : ""}</section>
-      <section><div class="section-heading"><h3>Used by <span>${inEdges.length}</span></h3>${inEdges.length > 3 ? '<button class="text-button" data-go-tab="Dependencies">View all →</button>' : ""}</div>${relationList(inEdges, "From", 3)}</section><section><div class="section-heading"><h3>Used in the report <span>${o.DirectReportLocations.length}</span></h3><span class="subtle-label">DIRECT LOCATIONS</span></div>${reportEvidence(o)}</section><section>${expression(o)}</section>`
+      ${objectReviewContext(data, queryIndex, o)}<section><div class="section-heading"><h3>Used by <span>${inEdges.length}</span></h3>${inEdges.length > 3 ? '<button class="text-button" data-go-tab="Dependencies">View all →</button>' : ""}</div>${relationList(inEdges, "From", 3)}</section><section><div class="section-heading"><h3>Used in the report <span>${o.DirectReportLocations.length}</span></h3><span class="subtle-label">DIRECT LOCATIONS</span></div>${reportEvidence(o)}</section><section>${expression(o)}</section>`
         : state.tab === "Dependencies"
           ? `<div class="panel-intro"><h3>Follow the dependency chain</h3><p>Each link opens in this inspector. Your collection filters and position stay in place.</p></div><section><h3>Used by <span>${inEdges.length}</span></h3><p class="quiet">Objects that directly reference this object, including objects with no detected report use.</p>${relationList(inEdges, "From")}</section><section><h3>Depends on <span>${outEdges.length}</span></h3>${relationList(outEdges, "To")}</section><p class="footnote">Some related definitions, including report measures, have no selectable object usage result. This analysis does not distinguish the owners of same-named report measures.</p>`
           : state.tab === "DAX"
@@ -566,6 +573,34 @@ const modelContextKeys = [
   "history",
   "cursor",
 ];
+function rememberUnusedReview() {
+  if (unusedOrigin || state.view !== "objects" || state.usage !== "ApparentlyUnused") return;
+  rememberWorkspace();
+  unusedOrigin = structuredClone(state);
+}
+function renderUnusedReturn() {
+  document.querySelector(".unused-origin")?.remove();
+  if (!unusedOrigin) return;
+  document.querySelectorAll(".report-origin").forEach(el => el.remove());
+  $(".main-heading").insertAdjacentHTML("afterend", `<div class="report-origin unused-origin"><button data-action="return-unused">${icon("back")}Back to apparently unused</button><span>Review filters, selection and position preserved</span></div>`);
+}
+function returnToUnusedReview() {
+  const saved = unusedOrigin;
+  if (!saved) return;
+  unusedOrigin = null;
+  Object.assign(state, saved, {view: "objects"});
+  renderSidebar();
+  renderWorkspace();
+  scrollSelectors.objects.forEach((selector, i) => {
+    if ($(selector)) $(selector).scrollTop = state.workspaceScroll.objects?.[i] || 0;
+  });
+  ($("#object-heading") || $("#workspace-heading"))?.focus({preventScroll: true});
+}
+function resetObjectFilters() {
+  const review = state.usage === "ApparentlyUnused";
+  resetFilters();
+  if (review) state.usage = "ApparentlyUnused";
+}
 function renderAreaResults({ resetDetail = false } = {}) {
   const list = $("#collection").scrollTop,
     detail = resetDetail ? 0 : $(".area-detail")?.scrollTop || 0;
@@ -605,6 +640,7 @@ function startCoreVisit() {
   rememberWorkspace();
   const label =
     {
+      objects: "Model objects",
       relationships: "Relationships",
       security: "Security",
       check: "Analysis scope",
@@ -613,7 +649,7 @@ function startCoreVisit() {
     ? areaSelection(modelAreas, state).selected?.[
         state.view === "relationships" ? "relationship" : "role"
       ].Name || label
-    : "Confidence and scope";
+    : state.view === "objects" ? selected()?.ObjectName || "Model objects" : "Confidence and scope";
   const context = structuredClone(state);
   state.coreOrigin = { view: state.view, label, selection, context };
   state.reportOrigin = null;
@@ -1107,6 +1143,17 @@ function investigateReview() {
 document.addEventListener("click", async (event) => {
   const b = event.target.closest("button");
   if (!b) return;
+  if (b.dataset.related || (b.dataset.view && b.dataset.view !== "objects") ||
+      ["scope", "reveal", "object-lineage", "unused-branches"].includes(b.dataset.action) || b.dataset.objectQuery)
+    rememberUnusedReview();
+  if (b.dataset.objectQuery) {
+    if (!unusedOrigin) startCoreVisit();
+    resetQueryFilters();
+    state.queryModel = selected().SemanticModel;
+    showView("queries", {restore: false});
+    selectQuery(b.dataset.objectQuery, {focus: true});
+    return;
+  }
   if (b.dataset.coreTarget) {
     openCoreTarget(JSON.parse(b.dataset.coreTarget));
     return;
@@ -1329,13 +1376,17 @@ document.addEventListener("click", async (event) => {
   }
   if (b.dataset.model) {
     state.model = b.dataset.model;
-    resetFilters();
+    resetObjectFilters();
     renderSidebar();
     renderWorkspace();
     $("#model-select").focus();
     return;
   }
   if (b.dataset.view) {
+    if (b.dataset.view === "objects" && unusedOrigin) {
+      returnToUnusedReview();
+      return;
+    }
     if (b.dataset.view === "queries" && state.queryOrigin) {
       returnToQuery();
       return;
@@ -1409,6 +1460,19 @@ document.addEventListener("click", async (event) => {
     return;
   }
   switch (b.dataset.action) {
+    case "return-unused":
+      returnToUnusedReview();
+      break;
+    case "unused-branches":
+      openOverviewUsage("UsedOnlyByUnusedBranch");
+      break;
+    case "object-lineage": {
+      const id = state.selected;
+      if (!unusedOrigin) startCoreVisit();
+      showView("lineage", {restore: false});
+      centreLineage(id);
+      break;
+    }
     case "return-core": {
       const view = state.coreOrigin?.view;
       if (view) {
@@ -1565,7 +1629,7 @@ document.addEventListener("click", async (event) => {
       $("#file").click();
       break;
     case "reset":
-      resetFilters();
+      resetObjectFilters();
       renderSidebar();
       renderWorkspace();
       $("#search").focus();
@@ -1741,15 +1805,23 @@ document.addEventListener("change", async (event) => {
   }
   if (target.id === "model-select") {
     state.model = target.value;
-    resetFilters();
+    resetObjectFilters();
     renderSidebar();
     renderWorkspace();
     $("#model-select").focus();
   }
   if (target.id === "usage-filter") {
+    rememberUnusedReview();
     state.usage = target.value;
-    renderCollection();
-    renderInspector();
+    if (state.usage === "ApparentlyUnused") {
+      state.system = false;
+      state.selected = visible()[0]?.id || null;
+      state.history = state.selected ? [state.selected] : [];
+      state.cursor = state.selected ? 0 : -1;
+    }
+    renderSidebar();
+    renderWorkspace();
+    $("#usage-filter").focus();
   }
   if (target.id === "limited") {
     state.limited = target.checked;
@@ -1768,7 +1840,8 @@ document.addEventListener("change", async (event) => {
       previousQueries = queryIndex,
       previousLineage = lineageIndex,
       previousModelAreas = modelAreas,
-      previousState = structuredClone(state);
+      previousState = structuredClone(state),
+      previousUnusedOrigin = unusedOrigin;
     try {
       if (file.size > 30 * 1024 * 1024)
         throw new Error("This prototype opens JSON inventories up to 30 MB.");
@@ -1776,6 +1849,7 @@ document.addEventListener("change", async (event) => {
       const nextQueries = buildQueryData(next);
       const nextLineage = buildLineageData(next);
       const nextModelAreas = buildModelAreas(next);
+      unusedOrigin = null;
       data = next;
       queryIndex = nextQueries;
       lineageIndex = nextLineage;
@@ -1842,6 +1916,7 @@ document.addEventListener("change", async (event) => {
       toast("Analysis opened locally. Nothing was uploaded.");
     } catch (e) {
       // Opening is transactional: malformed nested metadata must not discard the investigation.
+      unusedOrigin = previousUnusedOrigin;
       data = previousData;
       queryIndex = previousQueries;
       lineageIndex = previousLineage;
@@ -2166,9 +2241,11 @@ try {
   if (hosted) {
     delivery = await receiveAnalysis();
     inventory = JSON.parse(delivery.content);
+    inventory.ViewerObjectSummaries = JSON.parse(delivery.objectSummaries || "[]");
     Object.assign(state, {fixture: false, source: String(delivery.projectName),
-      view: delivery.workspace === "check" ? "check" : "overview",
-      model: inventory.SemanticModels?.[0]?.Name || "",
+      view: delivery.workspace === "check" ? "check" : delivery.workspace === "unused" ? "objects" : "overview",
+      usage: delivery.workspace === "unused" ? "ApparentlyUnused" : "",
+      model: delivery.workspace === "unused" ? "" : inventory.SemanticModels?.[0]?.Name || "",
       lineageModel: inventory.SemanticModels?.[0]?.Name || ""});
   } else {
     const response = await fetch("./data/coverage.json");

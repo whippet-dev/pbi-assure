@@ -171,7 +171,7 @@ public sealed class WebConfidenceNoticeTests
         FindRepositoryRoot(), "src", "PbiAssure.Web", "Pages", "Home.razor"));
 
     private static string ResultsSection(string markup) =>
-        ExtractBetween(markup, "<section class=\"output-actions\"", "<h3 id=\"other-outputs-heading\">");
+        ExtractBetween(markup, "<section class=\"output-actions\"", "<summary id=\"other-outputs-heading\">");
 
     private static string ExtractBetween(string value, string start, string end)
     {

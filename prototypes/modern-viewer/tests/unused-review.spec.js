@@ -1,0 +1,75 @@
+import { test, expect } from "@playwright/test";
+import { mkdir } from "node:fs/promises";
+
+for (const viewport of [{ width: 1366, height: 768 }, { width: 1440, height: 900 }]) {
+  test(`unused review retains filters and selection through lineage, PQ and branch review at ${viewport.width}`, async ({ page }) => {
+    await page.setViewportSize(viewport);
+    const errors = [];
+    page.on("pageerror", e => errors.push(e.message));
+    await page.goto("/");
+    await page.getByRole("button", { name: /^Model objects/ }).click();
+    await page.getByLabel("Usage state", { exact: true }).selectOption("ApparentlyUnused");
+    await expect(page.locator("#system")).toBeDisabled();
+    await page.getByRole("button", { name: "Columns", exact: true }).click();
+    await page.getByLabel("Search objects or tables").fill("Lineage");
+    await page.locator("[data-object]").first().click();
+    const heading = await page.locator("#object-heading").innerText();
+    const rows = await page.locator("#collection").textContent();
+    await expect(page.locator(".review-note")).toContainText("never permission to delete");
+    await expect(page.locator(".hero-badges")).toContainText("Checks limited");
+    await page.locator("#collection").evaluate(el => { el.scrollTop = 180; });
+    const scroll = await page.locator("#collection").evaluate(el => el.scrollTop);
+    await page.getByRole("button", { name: /Explore lineage/ }).click();
+    await expect(page.locator("#workspace-heading")).toHaveText("Lineage");
+    await page.getByRole("button", { name: "Back to apparently unused" }).click();
+    await expect(page.locator("#object-heading")).toHaveText(heading);
+    await expect(page.locator("#search")).toHaveValue("Lineage");
+    await expect(page.locator("#collection")).toHaveText(rows);
+    expect(await page.locator("#collection").evaluate(el => el.scrollTop)).toBe(scroll);
+    await expect(page.getByRole("button", { name: "Columns", exact: true })).toHaveAttribute("aria-pressed", "true");
+    await page.locator(".object-preparation > summary").click();
+    await page.locator("[data-object-query]").first().click();
+    await expect(page.locator("#workspace-heading")).toHaveText("Power Query");
+    await page.getByRole("button", { name: "Back to apparently unused" }).click();
+    await expect(page.locator("#object-heading")).toHaveText(heading);
+    await page.locator('[data-action="unused-branches"]').click();
+    await expect(page.locator("#usage-filter")).toHaveValue("UsedOnlyByUnusedBranch");
+    await page.getByRole("button", { name: "Back to apparently unused" }).click();
+    await expect(page.locator("#usage-filter")).toHaveValue("ApparentlyUnused");
+    await expect(page.locator("#collection")).toHaveText(rows);
+    await expect(page.locator("#object-heading")).toHaveText(heading);
+    await page.locator('[data-action="object-coverage"]').first().click();
+    await expect(page.locator("#detail-panel")).toContainText("does not map each limitation to every affected object");
+    await page.locator('#detail-panel [data-action="scope"]').click();
+    await page.getByRole("button", { name: "Back to apparently unused" }).click();
+    await expect(page.locator("#search")).toHaveValue("Lineage");
+    await page.getByRole("tab", { name: "Summary", exact: true }).click();
+    await page.locator("#collection").evaluate(el => { el.scrollTop = 0; });
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+    await mkdir("../../artifacts/secondary-outputs", { recursive: true });
+    await page.screenshot({ path: `../../artifacts/secondary-outputs/unused-${viewport.width}.png` });
+    expect(errors).toEqual([]);
+  });
+}
+
+test("inspecting an unused branch and revealing it never loses the original review set", async ({ page }) => {
+  await page.goto("/");
+  await page.getByRole("button", { name: /^Model objects/ }).click();
+  await page.locator("#usage-filter").selectOption("ApparentlyUnused");
+  await page.locator("#search").fill("UnusedBranchMeasure");
+  await page.locator("[data-object]").click();
+  await page.getByRole("tab", { name: /Dependencies/ }).click();
+  await page.locator("#inspector [data-related]").filter({ hasText: "UnusedBranchColumn" }).click();
+  await expect(page.locator(".hero-badges")).toContainText("Used only by unused branch");
+  await expect(page.locator(".outside-filter")).toBeVisible();
+  await page.getByRole("button", { name: "Show in collection" }).click();
+  await expect(page.locator("#usage-filter")).toHaveValue("");
+  await page.getByRole("tab", { name: "Summary", exact: true }).click();
+  await expect(page.locator(".why-text")).toContainText("no use of that chain was found");
+  await page.getByRole("button", { name: /Explore lineage/ }).click();
+  await page.getByRole("button", { name: "Back to apparently unused" }).click();
+  await expect(page.locator("#usage-filter")).toHaveValue("ApparentlyUnused");
+  await expect(page.locator("#search")).toHaveValue("UnusedBranchMeasure");
+  await expect(page.locator("#object-heading")).toHaveText("UnusedBranchMeasure");
+  await expect(page.getByRole("tab", { name: /Dependencies/ })).toHaveAttribute("aria-selected", "true");
+});
