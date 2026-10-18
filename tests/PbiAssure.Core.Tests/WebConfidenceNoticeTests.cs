@@ -91,7 +91,7 @@ public sealed class WebConfidenceNoticeTests
 
         var markup = HomeMarkup();
         // The route reuses the report action already on this page rather than a new app route.
-        Assert.Contains("Open report", markup, StringComparison.Ordinal);
+        Assert.Contains("Open investigation", markup, StringComparison.Ordinal);
         Assert.DoesNotContain("href=\"coverage\"", ResultsSection(markup), StringComparison.Ordinal);
         Assert.DoesNotContain("@WebConfidenceSummary.Explanation", ResultsSection(markup), StringComparison.Ordinal);
     }
@@ -124,7 +124,7 @@ public sealed class WebConfidenceNoticeTests
         var markup = HomeMarkup();
         var results = ResultsSection(markup);
 
-        Assert.Contains("@if (confidence.HasQualifiedAbsence)", results, StringComparison.Ordinal);
+        Assert.Contains("@if (confidence.HasQualifiedAbsence || inventory.AnalysisLimitations.Count > 0)", results, StringComparison.Ordinal);
         Assert.Contains("class=\"confidence-notice\"", results, StringComparison.Ordinal);
         Assert.DoesNotContain("role=\"alert\"", results, StringComparison.Ordinal);
 

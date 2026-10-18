@@ -1,3 +1,4 @@
+import { hosted, receiveAnalysis, returnToProject } from "./hosted-entry.js";
 import {
   adaptInventory,
   STATES,
@@ -168,7 +169,7 @@ const resetFilters = () =>
 
 function shell() {
   $("#app").innerHTML =
-    `<header class="topbar"><a class="brand" href="./" aria-label="PBI Assure home"><img src="./mark.svg" alt="">PBI <strong>Assure</strong></a><span class="top-divider"></span><span class="workspace-name">Investigation workspace</span><span class="prototype">PROTOTYPE</span><div class="top-actions"><span class="local-dot"></span><span>Local & read-only</span><button class="open-button" data-action="import">${icon("folder")}Open analysis JSON</button><input type="file" id="file" accept=".json,application/json" hidden></div></header>
+    `<header class="topbar"><a class="brand" href="${hosted ? "../" : "./"}" ${hosted ? "data-project-return" : ""} aria-label="${hosted ? "Return to project" : "PBI Assure home"}"><img src="./mark.svg" alt="">PBI <strong>Assure</strong></a><span class="top-divider"></span><span class="workspace-name">Investigation workspace</span><span class="prototype">PROTOTYPE</span><div class="top-actions">${hosted ? '<a href="../" class="open-button" data-project-return>Return to project</a>' : ""}<span class="local-dot"></span><span>Local & read-only</span><button class="open-button" data-action="import">${icon("folder")}Open analysis JSON</button><input type="file" id="file" accept=".json,application/json" hidden></div></header>
     <div class="app-layout"><aside class="sidebar" aria-label="Workspace navigation"></aside><main id="main"><header class="main-heading"></header><div class="context-controls" aria-label="Workspace scope"></div><div class="workspace"></div></main></div><div id="toast" class="toast" role="alert" hidden></div>`;
   renderSidebar();
   renderWorkspace();
@@ -188,7 +189,7 @@ function renderSidebar() {
       (state.system || !o.system),
   );
   $(".sidebar").innerHTML =
-    `<div class="project-label">OPEN ANALYSIS</div><div class="project-name">${state.fixture ? "Coverage study" : escape(state.source)}</div><div class="source-label">${state.fixture ? "Synthetic repository fixture" : "Local JSON inventory"}</div>
+    `<div class="project-label">OPEN ANALYSIS</div><div class="project-name">${state.fixture ? "Coverage study" : escape(state.source)}</div><div class="source-label">${state.fixture ? "Synthetic repository fixture" : hosted ? "Local analysis · read-only" : "Local JSON inventory"}</div>
     ${workspaceNavigation()}
     <div class="sidebar-context">${
       state.view === "pages"
@@ -2159,10 +2160,22 @@ document.addEventListener("keydown", (event) => {
     $(`#tab-${state.tab}`).focus();
   }
 });
+let delivery;
 try {
-  const response = await fetch("./data/coverage.json");
-  if (!response.ok) throw new Error("The fixture could not be loaded.");
-  data = adaptInventory(await response.json());
+  let inventory;
+  if (hosted) {
+    delivery = await receiveAnalysis();
+    inventory = JSON.parse(delivery.content);
+    Object.assign(state, {fixture: false, source: String(delivery.projectName),
+      view: delivery.workspace === "check" ? "check" : "overview",
+      model: inventory.SemanticModels?.[0]?.Name || "",
+      lineageModel: inventory.SemanticModels?.[0]?.Name || ""});
+  } else {
+    const response = await fetch("./data/coverage.json");
+    if (!response.ok) throw new Error("The fixture could not be loaded.");
+    inventory = await response.json();
+  }
+  data = adaptInventory(inventory);
   queryIndex = buildQueryData(data);
   lineageIndex = buildLineageData(data);
   modelAreas = buildModelAreas(data);
@@ -2175,10 +2188,15 @@ try {
     state.cursor = 0;
   }
   shell();
+  delivery?.acknowledge(true);
   announce(
-    "Project overview loaded. Counts describe the saved analysis snapshot.",
+    `${state.view === "check" ? "Analysis scope" : "Project overview"} loaded. Counts describe the saved analysis snapshot.`,
   );
 } catch (e) {
+  delivery?.acknowledge(false);
   $("#app").innerHTML =
-    `<div class="empty"><h1>Could not open the workspace</h1><p>${escape(e.message)}</p><p>Start the local server with <code>npm run dev</code>.</p></div>`;
+    `<div class="empty"><h1>Could not open the workspace</h1><p>${escape(hosted && delivery ? "The analysis could not be opened. Your project is still available in its original tab." : e.message)}</p>${hosted ? '<p><a href="../" data-project-return>Return to project</a></p>' : '<p>Start the local server with <code>npm run dev</code>.</p>'}</div>`;
 }
+document.addEventListener("click", event => {
+  if (event.target.closest("[data-project-return]")) returnToProject(event);
+});

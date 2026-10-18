@@ -6,10 +6,10 @@
 
 <article class="shell information-page coverage-page" aria-labelledby="coverage-title">
     <header>
-        <p class="eyebrow">Model intelligence</p>
+        <p class="eyebrow">Supported analysis</p>
         <h1 id="coverage-title" tabindex="-1">What PBI Assure analyses</h1>
         <p>Coverage describes what is read from the files in a local Power BI project, and where the evidence in those files runs out. Everything below is what this version does today.</p>
-        <p class="coverage-distinction">This page describes the checks PBI Assure supports. Your report’s <strong>What was checked</strong> explains any limitations found in your project.</p>
+        <p class="coverage-distinction">This page describes the checks PBI Assure supports. Your investigation’s <strong>Analysis scope</strong> explains the limitations recorded for your project.</p>
         <ul class="coverage-scope" aria-label="Project files PBI Assure reads">
             <li><span>PBIP</span> the project launcher and its item folders</li>
             <li><span>PBIR</span> the report definition: pages, visuals, filters, bookmarks</li>
@@ -27,7 +27,7 @@
     </details>
 
     <section class="coverage-band" aria-labelledby="band-model">
-        <h2 id="band-model">Model intelligence</h2>
+        <h2 id="band-model">Supported analysis</h2>
         <p class="coverage-band-lede">What the semantic model contains, and what depends on what.</p>
 
         <details class="coverage-row">
@@ -332,7 +332,7 @@
                 <h3>What is analysed</h3>
                 <p>Definition artefacts that PBI Assure recognises are classified by how they are handled — parsed into the analysis, recognised content this version does not yet parse, packaging content that is correctly not parsed, or unrecognised. Unrecognised dependency-capable artefacts can qualify absence-based conclusions rather than being silently treated as understood.</p>
                 <p>Where a construct is only partly understood, the analysis says which part. Security roles are the clearest example: row-level filters and explicitly named object-level permissions are analysed, and the rest of a role's content is not claimed.</p>
-                <p>This matters most for conclusions based on <em>absence</em>. If a project contains metadata that was not analysed and that could create a dependency, the <strong>Apparently unused</strong> and <strong>Only used by unused items</strong> results that limitation could actually affect are reported as <strong>qualified by limitation</strong> — shown as <strong>Checks limited</strong> — rather than <strong>established</strong>. Where the unread metadata can be tied to particular objects, only those objects are qualified; where it could reach anything in the model, every absence result in that model is. Doubt that concerns only the Power Query graph is recorded in What was checked but does not qualify semantic usage, because no usage state is derived from Power Query references. Established means this analysis identified no qualifying limitation within its supported scope; it is not proof of complete knowledge. The usage state does not change; the confidence in it does. Checks limited means missing or partly understood metadata could affect that result, and is a prompt to look at the thing that was not read.</p>
+                <p>This matters most for conclusions based on <em>absence</em>. If a project contains metadata that was not analysed and that could create a dependency, the <strong>Apparently unused</strong> and <strong>Only used by unused items</strong> results that limitation could actually affect are reported as <strong>qualified by limitation</strong> — shown as <strong>Checks limited</strong> — rather than <strong>established</strong>. Where the unread metadata can be tied to particular objects, only those objects are qualified; where it could reach anything in the model, every absence result in that model is. Doubt that concerns only the Power Query graph is recorded in Analysis scope but does not qualify semantic usage, because no usage state is derived from Power Query references. Established means this analysis identified no qualifying limitation within its supported scope; it is not proof of complete knowledge. The usage state does not change; the confidence in it does. Checks limited means missing or partly understood metadata could affect that result, and is a prompt to look at the thing that was not read.</p>
                 <div class="coverage-boundary">
                     <h3>Boundaries</h3>
                     <p>Coverage reporting describes this version of PBI Assure against your project. It is not a claim that unread metadata does or does not create a dependency — only that it could, and was not analysed.</p>

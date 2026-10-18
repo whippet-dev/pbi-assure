@@ -10,9 +10,9 @@
 
 <article class="shell information-page" aria-labelledby="about-title">
     <header>
-        <p class="eyebrow">Model intelligence</p>
+        <p class="eyebrow">Local Power BI investigation</p>
         <h1 id="about-title" tabindex="-1">What PBI Assure does</h1>
-        <p>A practical guide to understanding your project and using the evidence it contains.</p>
+        <p>Understand your model, report and Power Query through local, read-only analysis.</p>
     </header>
 
     <div class="about-tabs" role="tablist" aria-label="About PBI Assure">
@@ -45,7 +45,7 @@
                 <li>Trace where fields and measures are used across report pages and visuals, and follow their semantic dependencies.</li>
                 <li>Understand Power Query dependencies, review model relationships, and inspect report, page and visual metadata.</li>
             </ul>
-            <p>Selected findings, Theme Review and Accessibility review provide supporting checks alongside this model intelligence. For exactly what is read from a project and where local evidence stops, see <a href="coverage">Coverage</a>.</p>
+            <p>Findings and specialist reviews provide supporting checks alongside your investigation. For exactly what is read from a project and where local evidence stops, see <a href="coverage">Supported analysis</a>.</p>
         </section>
     </section>
 
@@ -54,12 +54,12 @@
         <h2>@Outputs.Label</h2>
         <section aria-labelledby="about-outputs">
             <h3 id="about-outputs">What do I get after analysis?</h3>
-            <p>Open the report to explore your analysis. The apparently unused review and CSV exports are secondary outputs for focused review or further work. All outputs use the same analysis.</p>
+            <p>Open the investigation to explore your analysis. The apparently unused review and CSV exports are secondary outputs for focused review or further work. All outputs use the same analysis.</p>
             <div class="information-outputs">
                 <div class="information-output information-output-primary">
                     <p class="information-output-kicker">Full exploration</p>
-                    <h4>Interactive report</h4>
-                    <p>Explore semantic usage, dependency evidence, Power Query, relationships and the report/page/visual inventory, with findings, specialist reviews and What was checked alongside them. Open it in a new tab or download it as a self-contained HTML file.</p>
+                    <h4>Investigation workspace</h4>
+                    <p>Explore model objects, relationships, security, lineage, report pages and Power Query, with findings and Analysis scope alongside them. The investigation opens in a new tab. A standalone HTML download remains available in the existing report layout.</p>
                 </div>
                 <div class="information-output">
                     <p class="information-output-kicker">Focused review</p>
@@ -81,7 +81,7 @@
             <ol>
                 <li>Prepare and select a supported structured Power BI project. Analyse includes preparation guidance.</li>
                 <li>Run the analysis.</li>
-                <li>Open the report to explore the project. Use the Apparently unused review or CSV exports when you need a focused review or metadata for further work.</li>
+                <li>Open the investigation to explore the project. Use the Apparently unused review or CSV exports when you need a focused review or metadata for further work.</li>
                 <li>Review the evidence in context before making changes.</li>
                 <li>Check generated files for sensitive metadata before sharing.</li>
             </ol>
@@ -96,14 +96,14 @@
             <ul>
                 <li><strong>Apparently unused does not mean safe to delete.</strong> PBI Assure sees the analysed project, not every external report or service dependency.</li>
                 <li>Metadata analysis does not validate runtime data correctness, refresh success or data quality.</li>
-                <li>Where analysis is bounded, PBI Assure says so rather than implying completeness. <a href="coverage">Coverage</a> sets out what is read from a project, area by area, and the local boundaries of each.</li>
+                <li>Where analysis is bounded, PBI Assure says so rather than implying completeness. <a href="coverage">Supported analysis</a> sets out what is read from a project, area by area, and the local boundaries of each.</li>
             </ul>
         </section>
         <section class="information-panel" aria-labelledby="about-privacy">
             <h3 id="about-privacy">Privacy and read-only analysis</h3>
             <p>Selected project metadata is processed in your browser. Normal project selection and analysis are read-only: PBI Assure does not modify the selected source project. The application code does not upload selected project content or generated results as part of analysis or export.</p>
             <p>Projects and results are held in application memory, not application-managed persistent browser storage. Leaving or reloading Analyse loses that working state; secure memory deletion is not guaranteed. Downloads may contain sensitive metadata, so review them before sharing.</p>
-            <p>The only value PBI Assure stores in your browser is your Light, Dark or System appearance choice, so that the application and the reports it generates keep the appearance you picked. No project content or analysis result is stored.</p>
+            <p>The only value PBI Assure stores in your browser is your Light, Dark or System appearance choice, for these pages and the existing downloadable reports. The modern investigation uses its own visual system. No project content or analysis result is stored.</p>
             <p>Loading the website requires normal site/runtime requests, and online HTML viewing can request a static same-origin viewer shell. Hosting infrastructure can receive ordinary request metadata. Offline analysis has been tested after the application has loaded; this is not a promise of zero network traffic or offline first-load availability.</p>
             <p><a href="https://github.com/whippet-dev/pbi-assure/blob/master/PRIVACY.md" target="_blank" rel="noopener noreferrer">Read the detailed privacy statement (opens in new tab)</a>.</p>
         </section>

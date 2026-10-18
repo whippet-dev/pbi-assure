@@ -4,6 +4,7 @@ await mkdir(new URL("dist/", root), { recursive: true });
 for (const name of [
   "index.html",
   "app.js",
+  "hosted-entry.js",
   "data.js",
   "ui.js",
   "report-data.js",

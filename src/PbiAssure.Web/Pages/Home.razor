@@ -11,24 +11,25 @@
 
 <AppNavigation Current="AppPage.Analyse" HasActiveProject="@(selection is not null || inventory is not null || isBusy)" />
 
-<section class="shell" aria-labelledby="page-title" data-pbiassure-app-ready="true">
+<section class="shell front-door" aria-labelledby="page-title" data-pbiassure-app-ready="true">
     <header class="page-header @(HasProject ? "page-header-compact" : null)">
-        <p class="eyebrow">@(HasProject ? "Selected project" : "Model intelligence")</p>
+        <p class="eyebrow">@(HasProject ? "Selected project" : "Local Power BI investigation")</p>
         <h1 id="page-title" tabindex="-1">@(HasProject ? selection!.DisplayName : "Understand your Power BI project")</h1>
         @if (!HasProject)
         {
-            <p class="page-lede">Explore model usage, dependencies and report structure.</p>
+            <p class="page-lede">Explore your model, report and Power Query. Follow dependencies, review findings and understand the limits of the analysis.</p>
         }
     </header>
 
     @if (!HasProject)
     {
         <div class="picker">
-            <p id="folder-selection-help">Choose the folder containing your <code>.pbip</code> file. PBI Assure creates a standalone HTML report.</p>
+            <h2>Start with a local project</h2>
+            <p id="folder-selection-help">Choose the folder containing your <code>.pbip</code> file, then run the analysis.</p>
             <div class="picker-actions">
                 <button @onclick="() => ChooseProjectAsync(false)" disabled="@isBusy" aria-describedby="@PickerDescription">Choose project folder</button>
             </div>
-            <p class="privacy"><strong>Processed locally:</strong> your Power BI project is processed in your browser. Your project is not changed. Project files and analysis results are not uploaded to PBI Assure. <a href="https://github.com/whippet-dev/pbi-assure/blob/master/PRIVACY.md" target="_blank" rel="noopener noreferrer">How privacy works</a>.</p>
+            <p class="privacy"><strong>Local &amp; read-only.</strong> Analysis runs in your browser. Your project is never modified or uploaded. <a href="about#trust" target="_blank" rel="noopener noreferrer">Privacy details</a>.</p>
         </div>
     }
 
@@ -43,10 +44,12 @@
         </div>
     }
 
-    <p id="analysis-status" class="analysis-status @(IsAnalysing ? null : "visually-hidden")" role="status" aria-live="polite" aria-atomic="true">@analysisStatus</p>
+    <div class="analysis-progress @(HasProject ? null : "visually-hidden")">
+        <p id="analysis-status" class="analysis-status @(IsAnalysing ? "is-running" : "visually-hidden")" role="status" aria-live="polite" aria-atomic="true">@analysisStatus</p>
+    </div>
     @if (!string.IsNullOrWhiteSpace(message))
     {
-        <p id="project-message" class="message" role="alert">@message</p>
+        <p id="project-message" class="message @(message == BrowserProjectSelectionWorkflow.CancelledMessage ? "message-cancelled" : null)" role="alert">@message</p>
     }
 
     @if (inventory is not null)
@@ -54,23 +57,26 @@
         var confidence = WebConfidenceSummary.FromInventory(inventory);
         <section class="output-actions" aria-labelledby="output-actions-heading" aria-busy="@(IsAnalysing ? "true" : "false")">
             <h2 id="output-actions-heading" tabindex="-1" @ref="completionHeading">Analysis complete</h2>
-            <p class="output-project">@selection!.DisplayName · @CountLabel(inventory.ReportCount, "report") · @CountLabel(inventory.PageCount, "page") · @CountLabel(inventory.VisualCount, "visual")</p>
             <section class="primary-report" aria-labelledby="interactive-report-heading">
-                <h3 id="interactive-report-heading" class="visually-hidden">Report</h3>
-                <p id="interactive-report-help">Explore model usage, dependencies, report structure and findings.</p>
+                <h3 id="interactive-report-heading" class="visually-hidden">Investigation</h3>
+                <p id="interactive-report-help">Your project is ready to explore. Open the investigation to follow usage, inspect evidence and review findings.</p>
                 <div class="report-card-actions">
-                    <button @onclick="OpenHtmlAsync" disabled="@isBusy" aria-describedby="interactive-report-help">Open report</button>
-                    <button class="secondary-button" @onclick="DownloadHtmlAsync" disabled="@isBusy">Download report</button>
+                    <button @onclick="() => OpenInvestigationAsync()" disabled="@isBusy" aria-describedby="interactive-report-help">Open investigation</button>
                 </div>
                 <p class="report-card-status" role="status">@interactiveReportMessage</p>
             </section>
-            @if (confidence.HasQualifiedAbsence)
+            @if (confidence.HasQualifiedAbsence || inventory.AnalysisLimitations.Count > 0)
             {
-                <p class="confidence-notice"><strong>@WebConfidenceSummary.Headline</strong> @WebConfidenceSummary.Guidance</p>
+                <div class="confidence-notice"><div><strong>This analysis has limitations</strong><span>Review the scope before relying on absence of usage or findings.</span></div><button class="text-button" @onclick='() => OpenInvestigationAsync("check")' disabled="@isBusy">View analysis scope</button></div>
             }
-            <p class="output-note">Reports open in a new tab. Download the HTML to keep or share this report. The app and viewer URLs do not preserve this analysis.</p>
-            <p class="sensitivity"><strong>Before sharing:</strong> generated HTML and CSV files may contain sensitive project metadata, including paths, expressions, source details and model/report metadata. Review before sharing; outputs are not automatically redacted.</p>
+            <p class="output-note">Opens in a new tab; this project stays here for another analysis. App and viewer URLs do not preserve this analysis.</p>
+            <div class="project-bar-actions result-project-actions" role="group" aria-label="Project actions">
+                <button class="secondary-button" @ref="analysisTrigger" @onclick="RunAssuranceAsync" disabled="@isBusy" aria-describedby="@ProjectMessageId">@RunLabel</button>
+                <button class="secondary-button" @onclick="() => ChooseProjectAsync(false)" disabled="@isBusy" aria-describedby="@ProjectMessageId">Change project</button>
+            </div>
             <h3 id="other-outputs-heading">Other outputs</h3>
+            <div class="download-report"><button class="secondary-button" @onclick="DownloadHtmlAsync" disabled="@isBusy">Download report</button><p>Keep a standalone HTML report of this analysis. It uses the existing report layout.</p></div>
+            <p class="sensitivity">Downloads can contain sensitive project metadata. Review before sharing; outputs are not automatically redacted.</p>
             <div class="other-outputs" role="group" aria-labelledby="other-outputs-heading">
                 <section class="report-secondary" aria-labelledby="unused-review-heading">
                     <h4 id="unused-review-heading">Apparently unused review</h4>
@@ -100,10 +106,6 @@
                     <ExportCsvPanel @key="exportPanelKey" Inventory="@inventory" ProjectDisplayName="@selection.DisplayName"
                                     OnClose="CloseExportPanelAsync" />
                 }
-            <div class="project-bar-actions result-project-actions" role="group" aria-label="Project actions">
-                <button class="secondary-button" @ref="analysisTrigger" @onclick="RunAssuranceAsync" disabled="@isBusy" aria-describedby="@ProjectMessageId">@RunLabel</button>
-                <button class="secondary-button" @onclick="() => ChooseProjectAsync(false)" disabled="@isBusy" aria-describedby="@ProjectMessageId">Change project</button>
-            </div>
         </section>
     }
 
@@ -166,7 +168,6 @@
 
     private bool HasResults => inventory is not null;
 
-    private static string CountLabel(int count, string noun) => $"{count:N0} {noun}{(count == 1 ? "" : "s")}";
 
     // The project now stays on screen while a replacement is being chosen, so "busy with a project
     // selected" no longer means a scan is running. Choosing is excluded explicitly.
@@ -378,25 +379,28 @@
         }
     }
 
-    private async Task OpenHtmlAsync()
+    private async Task OpenInvestigationAsync(string workspace = "overview")
     {
         if (inventory is null)
         {
             return;
         }
 
-        interactiveReportMessage = WebReportViewerStatus.Opening(WebReportKind.InteractiveReport);
+        interactiveReportMessage = "Opening investigation…";
         try
         {
-            var html = HtmlReportRenderer.Render(inventory);
-            // Resolves only once the viewer acknowledges the report, so success is never claimed for
-            // a tab that opened but never received anything.
-            var status = await JS.InvokeAsync<string>("pbiAssureDownload.open", "text/html;charset=utf-8", html);
-            interactiveReportMessage = WebReportViewerStatus.Describe(status, WebReportKind.InteractiveReport);
+            var status = await JS.InvokeAsync<string>("pbiAssureInvestigation.open",
+                JsonSerializer.Serialize(inventory), selection!.DisplayName, workspace);
+            interactiveReportMessage = status switch
+            {
+                "opened" => "Investigation opened in a new tab.",
+                "blocked" => "Your browser blocked the new tab. Allow pop-ups for this site, then try again.",
+                _ => "The investigation could not be opened. Your analysis is still here; please try again.",
+            };
         }
         catch (Exception)
         {
-            interactiveReportMessage = WebReportViewerStatus.OpenFailed(WebReportKind.InteractiveReport);
+            interactiveReportMessage = "The investigation could not be opened. Your analysis is still here; please try again.";
         }
     }
 

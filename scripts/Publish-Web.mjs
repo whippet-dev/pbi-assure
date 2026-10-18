@@ -62,6 +62,8 @@ const assetVersionInputs = [
     "src/PbiAssure.Web/wwwroot/favicon.svg",
     "src/PbiAssure.Web/wwwroot/css/core.css",
     "src/PbiAssure.Web/wwwroot/css/app.css",
+    "src/PbiAssure.Web/wwwroot/css/site.css",
+    "src/PbiAssure.Web/wwwroot/investigation.js",
     "src/PbiAssure.Web/wwwroot/report-viewer.html",
     "src/PbiAssure.Web/wwwroot/report-viewer.js"
 ];
@@ -90,6 +92,11 @@ const requiredFiles = [
     "download.js",
     "analysis-focus.js",
     "appearance.js",
+    "investigation.js",
+    "investigation/index.html",
+    "investigation/app.js",
+    "investigation/hosted-entry.js",
+    "css/site.css",
     "favicon.svg",
     join("css", "core.css"),
     join("css", "app.css"),

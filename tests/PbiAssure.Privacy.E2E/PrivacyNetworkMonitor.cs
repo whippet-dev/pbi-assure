@@ -102,6 +102,31 @@ internal sealed class PrivacyNetworkMonitor
             socket.Url));
     }
 
+    private static readonly HashSet<string> ModernViewerAssets =
+    [
+        "/investigation/index.html",
+        "/investigation/app.js",
+        "/investigation/hosted-entry.js",
+        "/investigation/data.js",
+        "/investigation/ui.js",
+        "/investigation/report-data.js",
+        "/investigation/report-view.js",
+        "/investigation/overview-data.js",
+        "/investigation/overview-view.js",
+        "/investigation/review-data.js",
+        "/investigation/review-view.js",
+        "/investigation/lineage-data.js",
+        "/investigation/lineage-view.js",
+        "/investigation/model-area-data.js",
+        "/investigation/model-area-view.js",
+        "/investigation/scope-data.js",
+        "/investigation/scope-view.js",
+        "/investigation/query-data.js",
+        "/investigation/query-view.js",
+        "/investigation/styles.css",
+        "/investigation/mark.svg",
+    ];
+
     private bool IsUnexpected(CapturedNetworkEvent item)
     {
         if (item.Kind == "WebSocket" || IsExternalNetworkUrl(item.Url))
@@ -118,7 +143,8 @@ internal sealed class PrivacyNetworkMonitor
         {
             var uri = new Uri(item.Url);
             return !string.Equals(item.Method, "GET", StringComparison.OrdinalIgnoreCase) ||
-                uri.AbsolutePath is not "/report-viewer.html" and not "/report-viewer" and not "/report-viewer.js";
+                !(uri.AbsolutePath is "/report-viewer.html" or "/report-viewer" or "/report-viewer.js" ||
+                  ModernViewerAssets.Contains(uri.AbsolutePath));
         }
 
         return false;

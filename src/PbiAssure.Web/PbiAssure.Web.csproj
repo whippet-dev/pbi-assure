@@ -13,4 +13,19 @@
     <ProjectReference Include="../PbiAssure.Core/PbiAssure.Core.csproj" />
     <ProjectReference Include="../PbiAssure.Reporting/PbiAssure.Reporting.csproj" />
   </ItemGroup>
+  <!-- Prototype branch: serve the signed-off viewer from its single source, without fixture data. -->
+  <ItemGroup>
+    <ModernViewerAsset Include="../../prototypes/modern-viewer/*.js;../../prototypes/modern-viewer/styles.css;../../prototypes/modern-viewer/mark.svg" />
+    <Content Include="@(ModernViewerAsset)"
+             Link="wwwroot/investigation/%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+  <!-- Linked content is copied to the output, not the source wwwroot. Point the
+       development manifest there too so dotnet run serves the same viewer as publish. -->
+  <Target Name="ResolveModernViewerDevelopmentRoot" AfterTargets="ResolveProjectStaticWebAssets">
+    <ItemGroup>
+      <StaticWebAsset Update="@(ModernViewerAsset->'%(FullPath)')">
+        <ContentRoot>$([System.IO.Path]::GetFullPath('$(OutDir)wwwroot/', '$(MSBuildProjectDirectory)'))</ContentRoot>
+      </StaticWebAsset>
+    </ItemGroup>
+  </Target>
 </Project>
