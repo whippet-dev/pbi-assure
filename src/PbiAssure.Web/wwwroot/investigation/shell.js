@@ -1,0 +1,3 @@
+export const shellMarkup =
+  () => `<header class="topbar"><a class="brand" href="../" data-project-return aria-label="Return to project"><img src="./mark.svg" alt="">PBI <strong>Assure</strong></a><span class="top-divider"></span><span class="workspace-name">Investigation workspace</span><div class="top-actions"><a href="../" class="open-button" data-project-return>Return to project</a><span class="local-dot"></span><span>Local & read-only</span></div></header>
+    <div class="app-layout"><aside class="sidebar" aria-label="Workspace navigation"></aside><main id="main"><header class="main-heading"></header><div class="context-controls" aria-label="Workspace scope"></div><div class="workspace"></div></main></div><div id="toast" class="toast" role="alert" hidden></div>`;

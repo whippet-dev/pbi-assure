@@ -2,7 +2,8 @@
 
 `PbiAssure.Reporting.Viewer.ViewerSnapshotProjector.Project(ProjectInventory)` produces one
 serializable presentation payload. Contract version **1.0** is independent of the public CLI
-inventory schema **0.26**. No existing UI, CLI command, Desktop workflow or export consumes it yet.
+inventory schema **0.26**. The production-owned investigation assets consume it; the existing
+front door, CLI, Desktop workflow and exports still use their original paths.
 
 Core owns parsing, binding, dependencies, reachability, usage, confidence and provenance. The
 projector copies those conclusions, reuses Core/Reporting helpers, and supplies navigation targets.
@@ -58,3 +59,34 @@ the graph. Unknowns must stay visible. The snapshot is metadata, not redacted or
 
 Public JSON imports need a separate compatibility adapter in a later slice: they cannot recover facts
 omitted from 0.26. Existing exports continue to use the original `ProjectInventory`, never this snapshot.
+
+## Hosted viewer (Slice 2)
+
+The complete module tree lives in `src/PbiAssure.Web/wwwroot/investigation/`. It has no runtime
+dependencies on prototypes, fixtures, external libraries or persistent browser storage. The Web SDK
+publishes it; `scripts/Publish-Web.mjs` hashes the entire tree and versions its relative module/asset
+references. The current front door and legacy report launches are unchanged.
+
+`app.js` handles startup/errors, `hosted-entry.js` handles delivery, `shell.js` owns the shell markup,
+and `controller.js` coordinates the existing workspaces. `state.js` defines workspace-owned context
+keys and return checkpoints: selected context/scroll is copied, while immutable parent return links
+are retained without recursively cloning the application. The workspace data modules index and
+present `snapshot-data.js` projections; inventory-shaped aliases there are for retained templates,
+not an alternative public-JSON interpretation.
+
+Open `/investigation/` from a same-origin opener. The child sends
+`{type:"pbi-assure-viewer-snapshot-ready"}`. The opener replies to that child, with an exact target
+origin, using `{type:"pbi-assure-viewer-snapshot", deliveryId, snapshot, workspace?}`.
+`snapshot` is the single deserialized **1.0** envelope; optional `workspace` is `overview`, `unused`
+or `check`. The child accepts one message from that opener/origin, validates the contract and replies
+`{type:"pbi-assure-viewer-snapshot-ack", deliveryId, accepted}`. Project data never travels in a URL.
+No opener, timed-out delivery, invalid input and unsupported versions show an unavailable/error state.
+Refresh cannot restore an accepted snapshot. The opener should release its pending delivery after ack.
+Public JSON 0.26 import is intentionally unavailable pending an explicit compatibility adapter.
+
+Development only: from `tests/PbiAssure.Viewer.Tests`, run `npm ci`, `npx playwright install chromium`,
+then `npm test`. This freshly scans the coverage and Desktop-authored fixtures, exercises adapters and
+browser workflows, and captures the two desktop sizes. `npm run snapshots` followed by `npm run host`
+opens an isolated host at `http://127.0.0.1:4176/test/host.html`; choose a fixture or a local snapshot.
+The host/generator are test tooling and are not published. `VIEWER_BROWSER_CHANNEL=chrome` can use
+installed Chrome; `VIEWER_WEB_ROOT` can point to a clean published `wwwroot` for publish smoke tests.

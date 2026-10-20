@@ -1,0 +1,9 @@
+<!doctype html>
+<html lang="en"><meta charset="utf-8"><title>Viewer development host</title>
+<h1>ViewerSnapshot development host</h1>
+<p>Test tooling only. Choose a local snapshot or freshly scanned repository fixture.</p>
+<input id="snapshot" type="file" accept=".json">
+<select id="fixture"><option>pbi-assure-coverage</option><option>desktop-userelationship-evidence</option></select>
+<select id="workspace"><option value="overview">Overview</option><option value="unused">Apparently unused</option><option value="check">Analysis scope</option></select>
+<button id="open">Open snapshot</button><output id="result"></output>
+<script type="module" src="./host-client.js"></script></html>
