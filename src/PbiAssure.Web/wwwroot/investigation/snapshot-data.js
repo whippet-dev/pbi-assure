@@ -1,4 +1,4 @@
-// ViewerSnapshot 1.0 -> display models. Names below are labels/filter values, never binding keys.
+// ViewerSnapshot 1.0 -> display models. Names are labels/search text, never identity or binding keys.
 // The retained view templates use a few inventory-shaped property names; this is not a JSON 0.26 adapter.
 export const resolvedId = (ref) =>
   ref?.Status === "Resolved" && ref.TargetIds?.length === 1
@@ -242,7 +242,8 @@ export function projectSnapshot(input) {
       visual: visuals.get(target?.Id),
     };
   };
-  const directUsages = snapshot.DirectUsages.map((u) => ({
+  const directUsages = snapshot.DirectUsages.map((u, recordIndex) => ({
+    recordIndex,
     ...u,
     ...u.Evidence,
     ...location(u.Location),
@@ -253,10 +254,15 @@ export function projectSnapshot(input) {
     o.DirectReportLocations = [
       ...new Map(
         o.DirectReportReferences.map((u) => [
-          JSON.stringify([u.Location, u.Visual ? null : u.UsageContext]),
+          resolvedId(u.Location)
+            ? JSON.stringify([
+                resolvedId(u.Location),
+                u.target?.Kind === "Visual" ? null : u.UsageContext,
+              ])
+            : `unresolved-location:${u.recordIndex}`,
           {
             ...u,
-            LocationKind: u.Visual ? "Visual" : u.Page ? "Page" : "Report",
+            LocationKind: u.target?.Kind || "Unavailable location",
           },
         ]),
       ).values(),
@@ -306,14 +312,29 @@ export function projectSnapshot(input) {
     id: q.Id,
     Id: q.Id,
     projected: q,
+    ModelId: q.ModelId,
     IsParameter: q.IsParameter,
     ParameterType: q.ParameterType,
     IsParameterRequired: q.IsParameterRequired,
   }));
   const queryById = new Map(queries.map((q) => [q.id, q]));
+  const scopeOf = (ref) => {
+    const t = targets.get(resolvedId(ref));
+    return {
+      ModelId: t?.ModelId || (t?.Kind === "Model" ? t.Id : null),
+      ReportId: t?.ReportId || (t?.Kind === "Report" ? t.Id : null),
+      PageId: t?.PageId || (t?.Kind === "Page" ? t.Id : null),
+    };
+  };
   const findings = snapshot.Findings.map((f) => ({
     ...f.Evidence,
     Id: f.Id,
+    Scope: {
+      ...scopeOf(f.DefinitionContext),
+      ...Object.fromEntries(
+        Object.entries(scopeOf(f.AffectedEntity)).filter(([, v]) => v),
+      ),
+    },
     Target: f.AffectedEntity,
     DefinitionContext: f.DefinitionContext,
     ReferenceContexts: f.ReferenceContexts,
@@ -322,6 +343,8 @@ export function projectSnapshot(input) {
     ...l.Evidence,
     Id: l.Id,
     Context: l.Context,
+    ModelId: scopeOf(l.Context).ModelId,
+    ReportId: scopeOf(l.Context).ReportId,
     ReachKind: l.ReachKind,
     KnownReachObjectIds: l.KnownReachObjectIds,
     UnmappedReachKeys: l.UnmappedReachKeys,

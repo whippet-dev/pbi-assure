@@ -1,3 +1,4 @@
+import { coreTarget } from "./navigation.js";
 import { escape, icon } from "./ui.js";
 import { STATES, words, edgeId } from "./data.js";
 import {
@@ -14,9 +15,31 @@ export const AREA_TABS = {
   security: ["Permissions", "Objects", "Evidence"],
 };
 export const targetButton = (target, label = target?.label, primary = false) =>
-  target
-    ? `<button class="${primary ? "primary-button" : "text-button"}" data-core-target="${escape(JSON.stringify(target))}">${escape(label)} ${icon("arrow")}</button>`
-    : "";
+  target?.kind === "unavailable"
+    ? `<span class="quiet">${escape(target.reason)}</span>`
+    : target
+      ? `<button class="${primary ? "primary-button" : "text-button"}" data-core-target="${escape(
+          JSON.stringify(
+            Object.fromEntries(
+              [
+                "kind",
+                "id",
+                "modelId",
+                "tableId",
+                "reportId",
+                "pageId",
+                "visualId",
+                "view",
+                "tab",
+                "search",
+                "keepCollection",
+              ]
+                .filter((key) => target[key] !== undefined)
+                .map((key) => [key, target[key]]),
+            ),
+          ),
+        )}">${escape(label)} ${icon("arrow")}</button>`
+      : "";
 export const facts = (rows) =>
   `<dl class="area-facts">${rows
     .filter(([, v]) => v != null && v !== "")
@@ -46,7 +69,7 @@ export function modelAreaNavigation(index, state) {
   const key =
     state.view === "relationships" ? "relationshipModel" : "securityModel";
   return `<div class="area-navigation"><label class="project-label" for="area-model">SEMANTIC MODEL</label><select id="area-model" aria-label="${state.view === "relationships" ? "Relationship" : "Security"} semantic model">${options(
-    index.data.raw.SemanticModels.map((m) => [m.Name, m.Name]),
+    index.data.raw.SemanticModels.map((m) => [m.Id, m.Name]),
     state[key],
     "All models",
   )}</select><p class="source-label">${state.view === "relationships" ? "Saved relationship definitions and structural evidence." : "Saved role definitions. Service membership and effective user access are not tested."}</p></div>`;
@@ -143,7 +166,7 @@ function relationshipDetails(index, row) {
     ["Name", r.Name],
     ["Cross-filter value", r.CrossFilteringBehavior],
     ["Activation state", r.Activation?.State],
-  ])}</section><section><h3>Structural dependency evidence</h3>${edgeEvidence(evidence.edges)}</section>${evidence.unresolved.length ? `<section><h3>Unresolved endpoints</h3>${unresolvedEvidence(evidence.unresolved)}</section>` : ""}<section><h3>Model confidence context</h3><p class="quiet">Relationship endpoints do not establish runtime filter propagation. Object-level confidence and original limitations remain separate evidence.</p>${targetButton({ kind: "scope", model: row.model.Name }, "Inspect model limitations")}</section>`;
+  ])}</section><section><h3>Structural dependency evidence</h3>${edgeEvidence(evidence.edges)}</section>${evidence.unresolved.length ? `<section><h3>Unresolved endpoints</h3>${unresolvedEvidence(evidence.unresolved)}</section>` : ""}<section><h3>Model confidence context</h3><p class="quiet">Relationship endpoints do not establish runtime filter propagation. Object-level confidence and original limitations remain separate evidence.</p>${targetButton({ kind: "scope", modelId: row.model.Id }, "Inspect model limitations")}</section>`;
 }
 const permissionMeaning = (value) =>
   ({ none: "Metadata access denied (OLS)", read: "Metadata read permission" })[
@@ -154,7 +177,7 @@ function securityPermissions(index, row) {
   return `<p class="security-boundary">Saved definitions only. Effective user access and Service role membership are not tested.</p>${facts([["Model permission", role.ModelPermission === "read" ? "Read (saved role permission)" : role.ModelPermission || "Not recorded"]])}${
     role.TablePermissions.map(
       (p) =>
-        `<section class="security-permission"><div class="section-heading"><h3>${escape(p.Table)}</h3>${p.Target.Status === "Resolved" ? targetButton({ kind: "model", model: model.Name, table: index.data.tables.get(p.Target.TargetIds[0])?.Name }, "Browse table") : '<small class="quiet">Table not found in model inventory</small>'}</div><div class="security-row-filter"><h4>Row-level security (RLS)</h4>${p.FilterExpression.trim() ? `<pre class="security-expression"><code>${escape(p.FilterExpression)}</code></pre>` : '<p class="quiet">No row filter stored in this table permission.</p>'}</div>${p.MetadataPermission?.trim() ? `<div class="security-access"><span>Table metadata permission</span><strong>${escape(permissionMeaning(p.MetadataPermission))}</strong><small>Stored value: <code>${escape(p.MetadataPermission)}</code></small></div>` : ""}${
+        `<section class="security-permission"><div class="section-heading"><h3>${escape(p.Table)}</h3>${p.Target.Status === "Resolved" ? targetButton(coreTarget(index.data, p.Target), "Browse table") : '<small class="quiet">Table not found in model inventory</small>'}</div><div class="security-row-filter"><h4>Row-level security (RLS)</h4>${p.FilterExpression.trim() ? `<pre class="security-expression"><code>${escape(p.FilterExpression)}</code></pre>` : '<p class="quiet">No row filter stored in this table permission.</p>'}</div>${p.MetadataPermission?.trim() ? `<div class="security-access"><span>Table metadata permission</span><strong>${escape(permissionMeaning(p.MetadataPermission))}</strong><small>Stored value: <code>${escape(p.MetadataPermission)}</code></small></div>` : ""}${
           (p.ColumnPermissions || []).length
             ? `<h4>Column permissions (OLS)</h4>${p.ColumnPermissions.map(
                 (c) => {
@@ -174,7 +197,7 @@ function securityObjects(index, row) {
     evidence.edges
       .map((e) => {
         const object = index.data.byId.get(edgeId(e, "To"));
-        return `<div class="area-reference">${object ? objectButton(object, `${e.ToTable}[${e.ToObjectName}]`) : targetButton({ kind: "model", model: row.model.Name, table: e.ToTable }, e.ToTable)}<small>${escape(words(e.ToObjectType))} · ${e.DependencyKind === "TablePermission" ? "Row filter reference" : "Explicit object-level permission"}</small>${usage(object)}</div>`;
+        return `<div class="area-reference">${object ? objectButton(object, `${e.ToTable}[${e.ToObjectName}]`) : targetButton(coreTarget(index.data, e.Target), e.ToTable)}<small>${escape(words(e.ToObjectType))} · ${e.DependencyKind === "TablePermission" ? "Row filter reference" : "Explicit object-level permission"}</small>${usage(object)}</div>`;
       })
       .join("") ||
     '<p class="quiet">No matching security dependency edges recorded.</p>'
@@ -195,7 +218,7 @@ function securityDetails(index, row) {
           ? "Not fully accounted for"
           : "Not published",
     ],
-  ])}<p class="quiet">Dependency accounting describes reference discovery in this file, not complete role support or user-access verification.</p>${role.UnanalyzedConstructs?.length ? `<h4>Unanalysed constructs</h4><ul>${role.UnanalyzedConstructs.map((c) => `<li>${escape(c)}</li>`).join("")}</ul>` : ""}</section><section><h3>Security dependency evidence</h3>${edgeEvidence(evidence.edges)}</section>${evidence.unresolved.length ? `<section><h3>Unresolved references</h3>${unresolvedEvidence(evidence.unresolved)}</section>` : ""}<section><h3>Role/file limitations</h3>${evidence.limitations.map((l) => `<p class="quiet">${escape(l.Reason)}</p>`).join("") || '<p class="quiet">No limitation record matched to this role file. Runtime user access remains outside the scan.</p>'}${targetButton({ kind: "scope", model: row.model.Name }, "Inspect model limitations")}</section>`;
+  ])}<p class="quiet">Dependency accounting describes reference discovery in this file, not complete role support or user-access verification.</p>${role.UnanalyzedConstructs?.length ? `<h4>Unanalysed constructs</h4><ul>${role.UnanalyzedConstructs.map((c) => `<li>${escape(c)}</li>`).join("")}</ul>` : ""}</section><section><h3>Security dependency evidence</h3>${edgeEvidence(evidence.edges)}</section>${evidence.unresolved.length ? `<section><h3>Unresolved references</h3>${unresolvedEvidence(evidence.unresolved)}</section>` : ""}<section><h3>Role/file limitations</h3>${evidence.limitations.map((l) => `<p class="quiet">${escape(l.Reason)}</p>`).join("") || '<p class="quiet">No limitation record matched to this role file. Runtime user access remains outside the scan.</p>'}${targetButton({ kind: "scope", modelId: row.model.Id }, "Inspect model limitations")}</section>`;
 }
 export function modelAreaInspector(index, state) {
   const relationships = state.view === "relationships",

@@ -1,3 +1,4 @@
+import { coreTarget, targetReference } from "./navigation.js";
 import { escape, icon } from "./ui.js";
 import { words } from "./data.js";
 import {
@@ -28,6 +29,12 @@ export function scopeNavigation(data, state) {
       "",
     )}</nav><p class="source-label">A usage result describes what was found. Confidence describes the limits of that result.</p></div>`;
 }
+function qualificationLinks(data, l) {
+  const associations = data.snapshot.Qualifications.filter(
+    (q) => q.LimitationId === l.Id,
+  );
+  return `<section><h3>Recorded qualification associations</h3><p class="quiet">${l.ReachKind === "Unknown" ? "Affected-object reach is unknown." : "Core records bounded qualification reach."} Associations explain qualified results; they do not establish exact runtime impact.</p>${associations.length ? '<details class="evidence"><summary>' + associations.length + " object associations</summary>" + associations.map((q) => "<p>" + targetButton(coreTarget(data, targetReference(q.ObjectId)), data.targets.get(q.ObjectId)?.Label) + " <small>" + (q.Basis === "BoundedReach" ? "Bounded reach" : "Conservative model scope") + "</small></p>").join("") + "</details>" : '<p class="quiet">No object qualification associations are recorded for this limitation.</p>'}</section>`;
+}
 function scopeSelection(data, state) {
   const rows = scopeRows(data, state);
   if (!data.raw.AnalysisLimitations[state.checkSelected])
@@ -39,7 +46,7 @@ export function scopeWorkspace(data, state) {
   if (state.checkMode === "boundaries") return boundarySheet();
   const rows = scopeSelection(data, state),
     summary = scopeSummary(data);
-  return `<section class="collection-pane scope-collection" aria-label="Recorded analysis limitations"><div class="collection-tools"><div class="scope-intro"><h2>Analysis scope and limitations</h2><p>Usage and confidence are separate. This analysis does not include a complete register of successful checks.</p><div class="scope-summary-line">${targetButton({ kind: "limited", model: "" }, `${summary.limited.length} object results have Checks limited`)}<span>${summary.limitations.length} recorded limitations</span></div>${!summary.limitations.length ? '<p class="quiet">No identified limitations. This does not mean everything was checked.</p>' : ""}</div><div class="collection-title"><strong>Recorded limitations</strong><span id="scope-count">${rows.length} entries</span></div><div class="searchbox">${icon("search")}<input id="scope-search" type="search" aria-label="Search analysis limitations" placeholder="Reason, object or area…" value="${escape(state.checkSearch)}"><kbd>/</kbd></div><div class="filter-line"><label class="sr-only" for="scope-area">Limitation area</label><select id="scope-area"><option value="">All areas</option>${Object.entries(
+  return `<section class="collection-pane scope-collection" aria-label="Recorded analysis limitations"><div class="collection-tools"><div class="scope-intro"><h2>Analysis scope and limitations</h2><p>Usage and confidence are separate. This analysis does not include a complete register of successful checks.</p><div class="scope-summary-line">${targetButton({ kind: "limited", modelId: "" }, `${summary.limited.length} object results have Checks limited`)}<span>${summary.limitations.length} recorded limitations</span></div>${!summary.limitations.length ? '<p class="quiet">No identified limitations. This does not mean everything was checked.</p>' : ""}</div><div class="collection-title"><strong>Recorded limitations</strong><span id="scope-count">${rows.length} entries</span></div><div class="searchbox">${icon("search")}<input id="scope-search" type="search" aria-label="Search analysis limitations" placeholder="Reason, object or area…" value="${escape(state.checkSearch)}"><kbd>/</kbd></div><div class="filter-line"><label class="sr-only" for="scope-area">Limitation area</label><select id="scope-area"><option value="">All areas</option>${Object.entries(
     areaLabel,
   )
     .map(
@@ -48,7 +55,7 @@ export function scopeWorkspace(data, state) {
     )
     .join(
       "",
-    )}</select><label class="sr-only" for="scope-model">Limitation semantic model</label><select id="scope-model"><option value="">All models</option>${[...new Set(data.raw.AnalysisLimitations.map((l) => l.SemanticModel).filter(Boolean))].map((name) => `<option ${state.checkModel === name ? "selected" : ""}>${escape(name)}</option>`).join("")}</select><button class="text-button" data-action="scope-reset">Reset</button></div></div><div id="collection" class="collection-scroll scope-list" tabindex="-1">${scopeCollection(data, state)}</div><div class="collection-footer"><span>Original limitation records</span><span>↑ ↓ to explore · / to search</span></div></section><aside class="inspector" id="scope-inspector" aria-label="Selected analysis limitation">${scopeInspector(data, state)}</aside>`;
+    )}</select><label class="sr-only" for="scope-model">Limitation semantic model</label><select id="scope-model"><option value="">All models</option>${data.raw.SemanticModels.map((m) => `<option value="${escape(m.Id)}" ${state.checkModel === m.Id ? "selected" : ""}>${escape(m.Name)}</option>`).join("")}</select><button class="text-button" data-action="scope-reset">Reset</button></div></div><div id="collection" class="collection-scroll scope-list" tabindex="-1">${scopeCollection(data, state)}</div><div class="collection-footer"><span>Original limitation records</span><span>↑ ↓ to explore · / to search</span></div></section><aside class="inspector" id="scope-inspector" aria-label="Selected analysis limitation">${scopeInspector(data, state)}</aside>`;
 }
 export function scopeCollection(data, state) {
   const rows = scopeSelection(data, state),
@@ -75,7 +82,8 @@ export function scopeInspector(data, state) {
     target = limitationTarget(data, l),
     limited = data.objects.filter(
       (o) =>
-        o.SemanticModel === l.SemanticModel &&
+        l.ModelId &&
+        o.ModelId === l.ModelId &&
         o.ClassificationConfidence === "QualifiedByLimitation",
     );
   return `<div class="inspector-toolbar"><span>ANALYSIS SCOPE</span></div><div class="object-hero"><div class="object-breadcrumb">${escape(areaLabel[limitArea(l)])} / ${escape(l.SemanticModel || "Project")}</div><h2 id="scope-heading" tabindex="-1">${escape(constructLabel(l.ConstructType))}</h2><p>${escape(supportLabel(l.SupportState))}</p></div>${outside ? '<div class="outside-filter">Selected limitation is outside your filters.<button data-action="scope-reset">Show in collection</button></div>' : ""}<div class="inspector-tabs" role="tablist" aria-label="Limitation information">${SCOPE_TABS.map((t) => `<button role="tab" id="scope-tab-${t}" data-scope-tab="${t}" aria-controls="scope-panel" aria-selected="${state.checkTab === t}" tabindex="${state.checkTab === t ? 0 : -1}">${t}</button>`).join("")}</div><div class="inspector-content scope-detail" id="scope-panel" role="tabpanel" aria-labelledby="scope-tab-${state.checkTab}" tabindex="0">${
@@ -87,7 +95,7 @@ export function scopeInspector(data, state) {
             ["Table", l.Table],
             ["Object / query", l.ObjectName],
           ],
-        )}${l.DependencyImpact !== "MayCreateQueryDependencies" && l.SemanticModel ? `<p class="quiet">${limited.length} model result${limited.length === 1 ? " carries" : "s carry"} Checks limited. This model-wide count is separate from this limitation’s recorded associations.</p>${targetButton({ kind: "limited", model: l.SemanticModel }, "View model objects with Checks limited")}` : ""}</section>`
+        )}${l.DependencyImpact !== "MayCreateQueryDependencies" && l.ModelId ? `<p class="quiet">${limited.length} model result${limited.length === 1 ? " carries" : "s carry"} Checks limited. This model-wide count is separate from this limitation’s recorded associations.</p>${targetButton({ kind: "limited", modelId: l.ModelId }, "View model objects with Checks limited")}` : ""}</section>`
       : `<section><h3>Original limitation evidence</h3>${facts([
           ["Cause", words(l.Cause)],
           ["Source", l.ArtifactPath],
@@ -97,7 +105,7 @@ export function scopeInspector(data, state) {
           ["Dependency impact", l.DependencyImpact],
           ["Concerns", (l.Concerns || []).join(" · ")],
         ])}</section><p class="footnote">${l.ReachKind === "Bounded" ? `${l.KnownReachObjectIds.length} object targets have recorded bounded reach${l.UnmappedReachKeys.length ? `; ${l.UnmappedReachKeys.length} reach keys have no navigable target` : ""}.` : "The affected-object reach of this limitation is unknown."} ${data.snapshot.Qualifications.filter((q) => q.LimitationId === l.Id && q.Basis === "ConservativeModelScope").length} conservative model-scope qualification associations are recorded; these do not establish exact affected-object reach.</p>`
-  }</div><div class="inspector-footer scope-actions"><span>Saved analysis</span>${targetButton(target, target?.label, true)}</div>`;
+  }${qualificationLinks(data, l)}</div><div class="inspector-footer scope-actions"><span>Saved analysis</span>${targetButton(target, target?.label, true)}</div>`;
 }
 function evidenceSheet(data) {
   return `<section id="collection" class="scope-sheet" tabindex="-1"><div class="eyebrow">EVIDENCE AVAILABLE</div><h2>What is present in this snapshot</h2><p class="scope-lead">This snapshot contains definitions, usage results and recorded limitations. These are available evidence, not a pass/fail checklist. A complete register of successful checks is not included.</p><div class="scope-evidence-rows">${availableEvidence(

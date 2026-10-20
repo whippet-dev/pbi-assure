@@ -60,7 +60,7 @@ the graph. Unknowns must stay visible. The snapshot is metadata, not redacted or
 Public JSON imports need a separate compatibility adapter in a later slice: they cannot recover facts
 omitted from 0.26. Existing exports continue to use the original `ProjectInventory`, never this snapshot.
 
-## Hosted viewer (Slice 2)
+## Hosted viewer
 
 The complete module tree lives in `src/PbiAssure.Web/wwwroot/investigation/`. It has no runtime
 dependencies on prototypes, fixtures, external libraries or persistent browser storage. The Web SDK
@@ -68,11 +68,33 @@ publishes it; `scripts/Publish-Web.mjs` hashes the entire tree and versions its 
 references. The current front door and legacy report launches are unchanged.
 
 `app.js` handles startup/errors, `hosted-entry.js` handles delivery, `shell.js` owns the shell markup,
-and `controller.js` coordinates the existing workspaces. `state.js` defines workspace-owned context
-keys and return checkpoints: selected context/scroll is copied, while immutable parent return links
-are retained without recursively cloning the application. The workspace data modules index and
+and `controller.js` coordinates the existing workspaces. `state.js` owns independent workspace
+buckets (with accessors for retained templates). A flat return trail records the origin's context
+and the destination's previous context, never the application or return trail itself. Returning
+unwinds temporary visits, including visits back into the same workspace, and restores filters,
+selection, inspector tab, expansion, disclosures and scroll. Major navigation preserves each
+workspace's state; a new investigation from an unrelated workspace starts its own return trail.
+The workspace data modules index and
 present `snapshot-data.js` projections; inventory-shaped aliases there are for retained templates,
 not an alternative public-JSON interpretation.
+
+`navigation.js` resolves recorded references centrally. Controls carry IDs, not display labels;
+report measures retain their report-qualified identities. Unavailable/ambiguous/unsupported
+destinations are explicit and are never resolved by matching a name, path or finding message.
+Where a finding's affected destination cannot open, its separately recorded definition context
+can be offered with an explicit explanation. Routing attributes contain only navigation keys,
+not copies of entity records. Lineage's starting object and inspected object remain separate.
+
+Qualifications link objects to limitations only through `Qualifications`; conservative model
+associations do not imply bounded reach. Other model/report limitations are labelled contextual.
+Apparently unused membership uses exactly `UsageState === "ApparentlyUnused" && !IsSystemGenerated`.
+UserFacing, confidence, usage reasons, security definitions and Power Query resolution remain
+projected facts. Missing UserFacing is unavailable, never derived from presentation metadata.
+
+Remaining string processing is presentation-only: text search/sort, DAX syntax highlighting,
+friendly role/category/rule titles, and limitation-area grouping. None selects an entity,
+assigns confidence, establishes usage or maps limitation reach. Visible graph traversal and
+source expansion follow recorded resolved edges; ambiguous candidates are evidence, not edges.
 
 Open `/investigation/` from a same-origin opener. The child sends
 `{type:"pbi-assure-viewer-snapshot-ready"}`. The opener replies to that child, with an exact target
@@ -85,8 +107,9 @@ Refresh cannot restore an accepted snapshot. The opener should release its pendi
 Public JSON 0.26 import is intentionally unavailable pending an explicit compatibility adapter.
 
 Development only: from `tests/PbiAssure.Viewer.Tests`, run `npm ci`, `npx playwright install chromium`,
-then `npm test`. This freshly scans the coverage and Desktop-authored fixtures, exercises adapters and
-browser workflows, and captures the two desktop sizes. `npm run snapshots` followed by `npm run host`
+then `npm test`. This freshly scans the coverage and Desktop-authored fixtures plus a small
+two-report project with identically named report measures, exercises adapters and nested browser
+returns, and captures the two desktop sizes. `npm run snapshots` followed by `npm run host`
 opens an isolated host at `http://127.0.0.1:4176/test/host.html`; choose a fixture or a local snapshot.
 The host/generator are test tooling and are not published. `VIEWER_BROWSER_CHANNEL=chrome` can use
 installed Chrome; `VIEWER_WEB_ROOT` can point to a clean published `wwwroot` for publish smoke tests.

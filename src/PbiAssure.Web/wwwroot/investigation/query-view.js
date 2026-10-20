@@ -34,16 +34,13 @@ const locations = {
 
 export function queryNavigation(index, state) {
   const queries = index.queries.filter(
-    (q) => !state.queryModel || q.SemanticModel === state.queryModel,
+    (q) => !state.queryModel || q.ModelId === state.queryModel,
   );
-  return `<div class="query-navigation"><label class="project-label" for="query-model">SEMANTIC MODEL</label><select id="query-model" aria-label="Query semantic model"><option value="">All models</option>${index.data.raw.SemanticModels.map((m) => `<option ${m.Name === state.queryModel ? "selected" : ""}>${escape(m.Name)}</option>`).join("")}</select><div class="table-heading">Query usage <span>${queries.length}</span></div><nav class="table-nav" aria-label="Filter query usage">${[["", "All queries"], ...Object.entries(QUERY_STATES).map(([k, v]) => [k, v.label])].map(([value, label]) => `<button data-query-state="${value}" class="${state.queryState === value ? "chosen" : ""}" aria-pressed="${state.queryState === value}"><span>${label}</span><span>${queries.filter((q) => !value || q.UsageState === value).length}</span></button>`).join("")}</nav><p class="source-label query-scope">Usage in the analysed queries.<br>Separate from report/model object usage.</p></div>`;
+  return `<div class="query-navigation"><label class="project-label" for="query-model">SEMANTIC MODEL</label><select id="query-model" aria-label="Query semantic model"><option value="">All models</option>${index.data.raw.SemanticModels.map((m) => `<option value="${escape(m.Id)}" ${m.Id === state.queryModel ? "selected" : ""}>${escape(m.Name)}</option>`).join("")}</select><div class="table-heading">Query usage <span>${queries.length}</span></div><nav class="table-nav" aria-label="Filter query usage">${[["", "All queries"], ...Object.entries(QUERY_STATES).map(([k, v]) => [k, v.label])].map(([value, label]) => `<button data-query-state="${value}" class="${state.queryState === value ? "chosen" : ""}" aria-pressed="${state.queryState === value}"><span>${label}</span><span>${queries.filter((q) => !value || q.UsageState === value).length}</span></button>`).join("")}</nav><p class="source-label query-scope">Usage in the analysed queries.<br>Separate from report/model object usage.</p></div>`;
 }
 export function queryWorkspace(index, state) {
-  if (!index.byId.has(state.querySelected)) {
-    const first =
-      filterQueries(index, state).find(
-        (q) => q.QueryName === "LoadedFactQuery",
-      ) || filterQueries(index, state)[0];
+  if (!state.querySelected) {
+    const first = filterQueries(index, state)[0];
     if (first) {
       state.querySelected = first.id;
       state.queryHistory = [first.id];
@@ -70,7 +67,7 @@ export function queryCollection(index, state) {
 function modelLinks(index, query) {
   const bindings = loadedTables(index, query);
   return bindings.length
-    ? `<div class="query-relations">${bindings.map((b) => `<div class="query-relation"><button class="related-object" data-query-table="${escape(b.table.Name)}" data-query-model="${escape(b.model.Name)}">${escape(b.table.Name)} ${icon("arrow")}</button><small>${escape(b.model.Name)} · partition ${escape(b.partition.Name)}</small><span class="connection-meaning">${b.direct ? "Loads this table partition" : "Reached through recorded query dependencies"}</span></div>`).join("")}</div>`
+    ? `<div class="query-relations">${bindings.map((b) => `<div class="query-relation"><button class="related-object" data-query-table="${escape(b.table.Id)}">${escape(b.table.Name)} ${icon("arrow")}</button><small>${escape(b.model.Name)} · partition ${escape(b.partition.Name)}</small><span class="connection-meaning">${b.direct ? "Loads this table partition" : "Reached through recorded query dependencies"}</span></div>`).join("")}</div>`
     : empty(
         "No loaded model table was found through the recorded dependencies.",
       );

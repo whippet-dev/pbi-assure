@@ -105,7 +105,8 @@ export function queryObservations(index, query) {
   const findings = index.data.raw.Findings.filter((f) => matches(f.Target));
   const modelLimits = index.data.raw.AnalysisLimitations.filter(
     (l) =>
-      l.SemanticModel === query.SemanticModel &&
+      l.ModelId &&
+      l.ModelId === query.ModelId &&
       l.DependencyImpact === "MayCreateQueryDependencies",
   );
   const limits = modelLimits.filter((l) => matches(l.Context));
@@ -125,7 +126,7 @@ export function filterQueries(index, state) {
   return index.queries
     .filter(
       (q) =>
-        (!state.queryModel || q.SemanticModel === state.queryModel) &&
+        (!state.queryModel || q.ModelId === state.queryModel) &&
         (!state.queryState || q.UsageState === state.queryState) &&
         (!state.queryKind || q.SourceKind === state.queryKind) &&
         (!text ||

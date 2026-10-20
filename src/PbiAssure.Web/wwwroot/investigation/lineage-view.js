@@ -1,6 +1,8 @@
 import { escape, icon, glyph } from "./ui.js";
 import { STATES, words } from "./data.js";
 import { usedAs, visualLabel } from "./report-data.js";
+import { coreTarget } from "./navigation.js";
+import { targetButton } from "./model-area-view.js";
 import {
   BRANCH_SIZE,
   LINEAGE_TABS,
@@ -24,7 +26,7 @@ const status = (n) =>
       ? `<span class="source-label">Table usage: ${STATES[n.tableUsage.UsageState].label}</span>`
       : '<span class="source-label">Definition only · no object usage result</span>';
 export function lineageNavigation(index, state) {
-  return `<div class="lineage-navigation"><label class="project-label" for="lineage-model">SEMANTIC MODEL</label><select id="lineage-model" aria-label="Lineage semantic model"><option value="">All models</option>${index.data.raw.SemanticModels.map((m) => `<option ${m.Name === state.lineageModel ? "selected" : ""}>${escape(m.Name)}</option>`).join("")}</select><label class="project-label" for="lineage-search">STARTING OBJECT</label><div class="searchbox">${icon("search")}<input type="search" id="lineage-search" aria-label="Find lineage object" placeholder="Object, table or type…" value="${escape(state.lineageSearch)}"></div><div id="lineage-search-results">${lineageSearchResults(index, state)}</div>${index.data.byId.has(state.selected) ? '<button class="text-button lineage-current-model" data-action="lineage-current-model">Start from Model selection →</button>' : ""}</div>`;
+  return `<div class="lineage-navigation"><label class="project-label" for="lineage-model">SEMANTIC MODEL</label><select id="lineage-model" aria-label="Lineage semantic model"><option value="">All models</option>${index.data.raw.SemanticModels.map((m) => `<option value="${escape(m.Id)}" ${m.Id === state.lineageModel ? "selected" : ""}>${escape(m.Name)}</option>`).join("")}</select><label class="project-label" for="lineage-search">STARTING OBJECT</label><div class="searchbox">${icon("search")}<input type="search" id="lineage-search" aria-label="Find lineage object" placeholder="Object, table or type…" value="${escape(state.lineageSearch)}"></div><div id="lineage-search-results">${lineageSearchResults(index, state)}</div>${index.data.byId.has(state.selected) ? '<button class="text-button lineage-current-model" data-action="lineage-current-model">Start from Model selection →</button>' : ""}</div>`;
 }
 export function lineageSearchResults(index, state) {
   const rows = lineageSearch(index, state),
@@ -164,7 +166,7 @@ function reports(index, session) {
           )
           .join(
             "",
-          )}${endpoint.owners.size > (session.connectionLimit || BRANCH_SIZE) ? '<button class="text-button" data-action="lineage-more-connections">Show more owners</button>' : ""}</div>${endpoint.report && (!first.Page || endpoint.page) && (!first.Visual || endpoint.visual) ? `<button class="text-button" data-lineage-endpoint="${escape(endpoint.key)}">Inspect ${endpoint.visual ? "visual" : endpoint.page ? "page" : "report"} ${icon("arrow")}</button>` : '<p class="quiet">Location recorded; the exact saved entity is unavailable in this inventory.</p>'}</div>`;
+          )}${endpoint.owners.size > (session.connectionLimit || BRANCH_SIZE) ? '<button class="text-button" data-action="lineage-more-connections">Show more owners</button>' : ""}</div>${targetButton(coreTarget(index.data, first.Location), `Inspect ${endpoint.visual ? "visual" : endpoint.page ? "page" : "report"}`)}</div>`;
       })
       .join("") ||
     '<p class="quiet">No exact report locations were found through these dependencies. This does not establish no report use.</p>'

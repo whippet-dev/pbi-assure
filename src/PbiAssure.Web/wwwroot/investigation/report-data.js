@@ -7,13 +7,14 @@ export const pagesFor = (report) =>
     (a, b) => (a.Order ?? Infinity) - (b.Order ?? Infinity),
   );
 export function reportContext(data, state) {
-  const report =
-    data.raw.Reports.find((r) => r.RelativePath === state.report) ||
-    data.raw.Reports[0];
+  const report = state.report
+    ? data.reports.get(state.report)
+    : data.raw.Reports[0];
   const page =
     report &&
-    (report.Pages.find((p) => pageId(report, p) === state.page) ||
-      pagesFor(report)[0]);
+    (state.page
+      ? report.Pages.find((p) => p.Id === state.page)
+      : pagesFor(report)[0]);
   return { report, page };
 }
 export function boundModel(data, report) {

@@ -41,7 +41,7 @@ export function relationshipRows(index, state) {
   const search = state.relationshipSearch.trim().toLowerCase();
   return index.relationships.filter(
     ({ model, relationship: r }) =>
-      (!state.relationshipModel || model.Name === state.relationshipModel) &&
+      (!state.relationshipModel || model.Id === state.relationshipModel) &&
       (!state.relationshipActive ||
         (state.relationshipActive === "active") === r.IsActive) &&
       (!state.relationshipDirection ||
@@ -71,7 +71,7 @@ export function securityRows(index, state) {
   return index.roles.filter(({ model, role }) => {
     const counts = roleCounts(role);
     return (
-      (!state.securityModel || model.Name === state.securityModel) &&
+      (!state.securityModel || model.Id === state.securityModel) &&
       (!state.securityKind ||
         (state.securityKind === "rls"
           ? counts.filters > 0

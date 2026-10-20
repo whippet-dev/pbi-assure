@@ -65,7 +65,7 @@ export function scopeRows(data, state) {
   })).filter(
     ({ limitation: l }) =>
       (!state.checkArea || limitArea(l) === state.checkArea) &&
-      (!state.checkModel || l.SemanticModel === state.checkModel) &&
+      (!state.checkModel || l.ModelId === state.checkModel) &&
       (!search ||
         [
           l.Reason,

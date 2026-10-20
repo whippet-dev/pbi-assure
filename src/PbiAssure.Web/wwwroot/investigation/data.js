@@ -3,27 +3,22 @@ export const STATES = {
   DirectlyUsed: {
     label: "Directly used",
     tone: "direct",
-    why: "Referenced directly in the analysed report metadata.",
   },
   IndirectlyUsed: {
     label: "Indirectly used",
     tone: "indirect",
-    why: "Used by another object with recorded report use, directly or through further dependencies.",
   },
   StructurallyRequired: {
     label: "Structurally required",
     tone: "structural",
-    why: "Required by the analysed model structure or its dependencies.",
   },
   UsedOnlyByUnusedBranch: {
     label: "Used only by unused branch",
     tone: "branch",
-    why: "Other objects reference this object, but no use of that chain was found in the analysed reports or required model structure. Use outside this analysis may still exist.",
   },
   ApparentlyUnused: {
     label: "Apparently unused",
     tone: "unused",
-    why: "No report usage or semantic-model requirement was found within the analysed scope.",
   },
 };
 export { projectSnapshot as adaptSnapshot } from "./snapshot-data.js";
@@ -38,13 +33,13 @@ export function filterObjects(data, state) {
   return data.objects
     .filter(
       (o) =>
-        (!state.model || o.SemanticModel === state.model) &&
-        (!state.table || o.Table === state.table) &&
+        (!state.model || o.ModelId === state.model) &&
+        (!state.table || o.TableId === state.table) &&
         ((state.usage !== "ApparentlyUnused" && state.system) || !o.system) &&
         (!state.type || o.ObjectType === state.type) &&
         (!state.usage ||
           (state.usage === "ApparentlyUnused"
-            ? o.InApparentlyUnusedReview
+            ? o.UsageState === "ApparentlyUnused" && !o.IsSystemGenerated
             : o.UsageState === state.usage)) &&
         (!state.limited ||
           o.ClassificationConfidence === "QualifiedByLimitation") &&

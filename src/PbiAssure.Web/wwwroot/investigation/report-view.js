@@ -17,23 +17,25 @@ import {
 export const VISUAL_TABS = ["Uses", "Behaviour", "Reviews", "Evidence"];
 export function reportSelection(data, state) {
   const { report, page } = reportContext(data, state);
-  state.report = report?.RelativePath ?? null;
-  state.page = page ? pageId(report, page) : null;
+  // Initialise only an unset selection. An unavailable recorded ID must stay unavailable.
+  state.report ||= report?.Id ?? null;
+  state.page ||= page ? pageId(report, page) : null;
   state.reportVisuals ||= {};
   const visual =
     page &&
-    (page.Visuals.find((v) => v.Name === state.reportVisuals[state.page]) ||
-      [...page.Visuals].sort(
-        (a, b) =>
-          visualUses(data, report, page, b).confirmed.length -
-          visualUses(data, report, page, a).confirmed.length,
-      )[0]);
-  if (visual) state.reportVisuals[state.page] = visual.Name;
+    (state.reportVisuals[state.page]
+      ? page.Visuals.find((v) => v.Id === state.reportVisuals[state.page])
+      : [...page.Visuals].sort(
+          (a, b) =>
+            visualUses(data, report, page, b).confirmed.length -
+            visualUses(data, report, page, a).confirmed.length,
+        )[0]);
+  if (visual) state.reportVisuals[state.page] = visual.Id;
   return { report, page, visual };
 }
 export function reportNavigation(data, state) {
   const { report, page } = reportSelection(data, state);
-  return `<div class="report-navigation"><label class="project-label" for="report-select">REPORT</label><select id="report-select" aria-label="Report">${data.raw.Reports.map((r) => `<option value="${escape(r.RelativePath)}" ${r === report ? "selected" : ""}>${escape(r.Name)}</option>`).join("")}</select>
+  return `<div class="report-navigation"><label class="project-label" for="report-select">REPORT</label><select id="report-select" aria-label="Report">${data.raw.Reports.map((r) => `<option value="${escape(r.Id)}" ${r === report ? "selected" : ""}>${escape(r.Name)}</option>`).join("")}</select>
     ${
       report
         ? `<p class="source-label report-binding">${escape(bindingLabel(data, report))}</p><div class="table-heading">Pages <span>${report.Pages.length}</span></div><nav class="table-nav report-page-nav" aria-label="Report pages">${
@@ -77,7 +79,7 @@ export function visualCollection(data, state) {
     .map((v) => {
       const uses = visualUses(data, report, page, v),
         findings = scopedFindings(data, report, page, v);
-      return `<tr class="${v === visual && !state.reportPageDetails ? "selected" : ""}"><td><button class="object-select visual-select" data-visual="${escape(v.Name)}" tabindex="${v === active ? "0" : "-1"}" ${v === visual && !state.reportPageDetails ? 'aria-current="true"' : ""}>${icon("pages")}<span><strong>${escape(visualLabel(v))}</strong><small>${escape(visualType(v.VisualType))}${v.IsHidden ? " · Explicitly hidden" : ""}${v.ParentGroupName ? " · Grouped" : ""}</small><small class="visual-preview">${
+      return `<tr class="${v === visual && !state.reportPageDetails ? "selected" : ""}"><td><button class="object-select visual-select" data-visual="${escape(v.Id)}" tabindex="${v === active ? "0" : "-1"}" ${v === visual && !state.reportPageDetails ? 'aria-current="true"' : ""}>${icon("pages")}<span><strong>${escape(visualLabel(v))}</strong><small>${escape(visualType(v.VisualType))}${v.IsHidden ? " · Explicitly hidden" : ""}${v.ParentGroupName ? " · Grouped" : ""}</small><small class="visual-preview">${
         uses.confirmed.length
           ? escape(
               uses.confirmed
@@ -91,7 +93,7 @@ export function visualCollection(data, state) {
             : v.TooltipBindings?.length
               ? `${v.TooltipBindings.length} tooltip bindings`
               : "No confirmed model usage"
-      }</small></span></button></td><td class="numeric">${uses.confirmed.length}${uses.other.length ? `<small>${uses.other.length} other refs</small>` : ""}</td><td class="numeric">${findings.length ? `<button class="text-button" data-visual-review="${escape(v.Name)}" aria-label="Inspect ${findings.length} findings and reviews for ${escape(visualLabel(v))}">${findings.length}</button>` : '<span class="muted">—</span>'}</td></tr>`;
+      }</small></span></button></td><td class="numeric">${uses.confirmed.length}${uses.other.length ? `<small>${uses.other.length} other refs</small>` : ""}</td><td class="numeric">${findings.length ? `<button class="text-button" data-visual-review="${escape(v.Id)}" aria-label="Inspect ${findings.length} findings and reviews for ${escape(visualLabel(v))}">${findings.length}</button>` : '<span class="muted">—</span>'}</td></tr>`;
     })
     .join("")}</tbody></table>`;
 }
@@ -237,7 +239,7 @@ function interactionTarget(page, reference, name) {
     (v) => reference.Status === "Resolved" && v.Id === reference.TargetIds[0],
   );
   return target
-    ? `<button class="related-object" data-visual="${escape(target.Name)}">${escape(visualLabel(target))}</button>`
+    ? `<button class="related-object" data-visual="${escape(target.Id)}">${escape(visualLabel(target))}</button>`
     : escape(name || "Endpoint not specified") +
         " (" +
         escape(reference.Status.toLowerCase()) +

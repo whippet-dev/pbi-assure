@@ -1,3 +1,4 @@
+import { resolveNavigation } from "./navigation.js";
 import { escape, icon } from "./ui.js";
 import { words } from "./data.js";
 import { visualLabel } from "./report-data.js";
@@ -168,7 +169,7 @@ function sourceSection(data, row) {
             : row.theme.item?.VisualName,
         ],
       ];
-  return `<section class="review-source"><h3>Affected context</h3>${facts(affected)}${target?.note ? `<p class="quiet">${escape(target.note)}</p>` : ""}${!target ? `<p class="quiet">${f?.Report ? "The report is missing or cannot be identified uniquely in this inventory." : /^PBI-(QUERY|SOURCE)-/.test(f?.RuleId || "") ? "No unique query identity is available for this finding." : row.theme?.item ? "The source visual is not available." : "No dedicated source workspace is available for this record."} The original evidence remains here.</p>` : ""}</section>`;
+  return `<section class="review-source"><h3>Affected context</h3>${facts(affected)}${target?.note ? `<p class="quiet">${escape(target.note)}</p>` : ""}${!target ? `<p class="quiet">${f ? escape(resolveNavigation(data, f.Target).reason || "No dedicated destination is available for this record.") : "The saved observation has no resolved visual destination."} The original evidence remains here.</p>` : ""}</section>`;
 }
 function qualificationSummary(data, f) {
   const qualification = reviewQualifications(data, f);

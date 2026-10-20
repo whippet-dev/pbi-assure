@@ -10,13 +10,21 @@ import {
 import {
   buildLineageData,
   neighbours,
+  createLineageSession,
+  visibleLineage,
+  traverse,
+  cycles,
 } from "../../src/PbiAssure.Web/wwwroot/investigation/lineage-data.js";
 import {
   buildQueryData,
   sourceEvidence,
 } from "../../src/PbiAssure.Web/wwwroot/investigation/query-data.js";
 import { findingTarget } from "../../src/PbiAssure.Web/wwwroot/investigation/review-data.js";
-import { navigationTarget } from "../../src/PbiAssure.Web/wwwroot/investigation/navigation.js";
+import {
+  navigationTarget,
+  resolveNavigation,
+  targetReference,
+} from "../../src/PbiAssure.Web/wwwroot/investigation/navigation.js";
 import {
   buildModelAreas,
   relationshipEvidence,
@@ -26,7 +34,14 @@ import {
   checkpoint,
   restoreContext,
   createState,
+  beginVisit,
+  returnVisit,
+  unusedCheckpointIndex,
 } from "../../src/PbiAssure.Web/wwwroot/investigation/state.js";
+import { reportSelection } from "../../src/PbiAssure.Web/wwwroot/investigation/report-view.js";
+import { visualUses } from "../../src/PbiAssure.Web/wwwroot/investigation/report-data.js";
+import { scopeRows } from "../../src/PbiAssure.Web/wwwroot/investigation/scope-data.js";
+import { objectReviewContext } from "../../src/PbiAssure.Web/wwwroot/investigation/unused-review.js";
 const coverage = () =>
   JSON.parse(
     readFileSync(
@@ -37,23 +52,44 @@ const coverage = () =>
       "utf8",
     ),
   );
-test("published viewer is complete, versioned and has matching compressed copies", {skip:!process.env.VIEWER_WEB_ROOT}, ()=>{
-  const source=new URL("../../src/PbiAssure.Web/wwwroot/investigation/",import.meta.url);
-  const published=join(process.env.VIEWER_WEB_ROOT,"investigation");
-  for(const file of readdirSync(source)) {
-    const path=join(published,file), content=readFileSync(path,"utf8");
-    expect(content).not.toContain("prototypes/modern-viewer");
-    if(/\.(js|html)$/.test(file)){
-      const references=[...content.matchAll(/["']\.\/([\w./-]+\.(?:js|css|svg))(\?v=[a-f0-9]{12})?["']/g)];
-      for(const reference of references) {
-        expect(reference[2],`${file}: ${reference[1]} must be versioned`).toBeTruthy();
-        expect(existsSync(join(published,reference[1]))).toBe(true);
+test(
+  "published viewer is complete, versioned and has matching compressed copies",
+  { skip: !process.env.VIEWER_WEB_ROOT },
+  () => {
+    const source = new URL(
+      "../../src/PbiAssure.Web/wwwroot/investigation/",
+      import.meta.url,
+    );
+    const published = join(process.env.VIEWER_WEB_ROOT, "investigation");
+    for (const file of readdirSync(source)) {
+      const path = join(published, file),
+        content = readFileSync(path, "utf8");
+      expect(content).not.toContain("prototypes/modern-viewer");
+      if (/\.(js|html)$/.test(file)) {
+        const references = [
+          ...content.matchAll(
+            /["']\.\/([\w./-]+\.(?:js|css|svg))(\?v=[a-f0-9]{12})?["']/g,
+          ),
+        ];
+        for (const reference of references) {
+          expect(
+            reference[2],
+            `${file}: ${reference[1]} must be versioned`,
+          ).toBeTruthy();
+          expect(existsSync(join(published, reference[1]))).toBe(true);
+        }
       }
+      for (const [suffix, decompress] of [
+        [".gz", gunzipSync],
+        [".br", brotliDecompressSync],
+      ])
+        if (existsSync(path + suffix))
+          expect(decompress(readFileSync(path + suffix)).toString("utf8")).toBe(
+            content,
+          );
     }
-    for(const [suffix,decompress] of [[".gz",gunzipSync],[".br",brotliDecompressSync]])
-      if(existsSync(path+suffix))expect(decompress(readFileSync(path+suffix)).toString("utf8")).toBe(content);
-  }
-});
+  },
+);
 test("usage, UserFacing, qualification and structural facts survive independently", () => {
   const s = coverage(),
     d = adaptSnapshot(s);
@@ -62,7 +98,9 @@ test("usage, UserFacing, qualification and structural facts survive independentl
     usage: "ApparentlyUnused",
   });
   expect(review.map((o) => o.id).sort()).toEqual(
-    s.Objects.filter((o) => o.InApparentlyUnusedReview)
+    s.Objects.filter(
+      (o) => o.UsageState === "ApparentlyUnused" && !o.IsSystemGenerated,
+    )
       .map((o) => o.Id)
       .sort(),
   );
@@ -183,7 +221,7 @@ test("relationship endpoints, activation sources and role dependencies are recor
       securityEvidence(index, row).edges.every((e) => e.FromId === row.id),
     ).toBe(true);
 });
-test("workspace checkpoints isolate filters and retain nested return links without cloning them", () => {
+test("workspace checkpoints isolate filters and nested visits restore only their owned context", () => {
   const state = createState();
   Object.assign(state, {
     view: "objects",
@@ -191,12 +229,12 @@ test("workspace checkpoints isolate filters and retain nested return links witho
     selected: "object-1",
     tab: "Evidence",
     querySearch: "other workspace",
-    coreOrigin: { view: "pages", context: { page: "page-1" } },
+    usage: "ApparentlyUnused",
   });
   state.workspaceScroll.objects = [120, 45];
   const saved = checkpoint(state);
-  expect(saved.coreOrigin).toBe(state.coreOrigin);
-  expect(saved).not.toHaveProperty("querySearch");
+  expect(saved.values).not.toHaveProperty("querySearch");
+  expect(saved).not.toHaveProperty("returnTrail");
   state.search = "changed";
   state.querySearch = "new query filter";
   state.workspaceScroll.objects[0] = 0;
@@ -208,4 +246,184 @@ test("workspace checkpoints isolate filters and retain nested return links witho
     state.workspaceScroll.objects,
   ]).toEqual(["unused", "object-1", "Evidence", [120, 45]]);
   expect(state.querySearch).toBe("new query filter");
+  const original = checkpoint(state);
+  beginVisit(state, "queries", "apparently unused");
+  state.view = "queries";
+  state.querySearch = "temporary";
+  state.querySelected = "q1";
+  beginVisit(state, "objects", "Power Query");
+  state.view = "objects";
+  state.search = "related";
+  state.selected = "o2";
+  state.usage = "";
+  beginVisit(state, "lineage", "Model Objects");
+  state.view = "lineage";
+  state.lineageCentre = "o2";
+  state.lineageSessions.o2 = { selected: "o3", expanded: ["o2"] };
+  const nested = checkpoint(state);
+  state.lineageSessions.o2.selected = "o4";
+  restoreContext(state, nested);
+  expect(state.lineageCentre).toBe("o2");
+  expect(state.lineageSessions.o2.selected).toBe("o3");
+  returnVisit(state);
+  expect(state.view).toBe("objects");
+  expect(state.selected).toBe("o2");
+  returnVisit(state, unusedCheckpointIndex(state));
+  expect(state.view).toBe("objects");
+  expect(checkpoint(state)).toEqual(original);
+  expect(state.querySearch).toBe("new query filter");
+  expect(state.returnTrail).toEqual([]);
+});
+
+test("freshly scanned same-named report measures keep separate owners, usage locations and dependencies", () => {
+  const s = JSON.parse(
+    readFileSync(
+      new URL(
+        "../../artifacts/viewer-test-snapshots/two-report-measures.json",
+        import.meta.url,
+      ),
+    ),
+  );
+  const d = adaptSnapshot(s),
+    graph = buildLineageData(d);
+  expect(s.ReportMeasures).toHaveLength(2);
+  expect(new Set(s.ReportMeasures.map((m) => m.Definition.Name)).size).toBe(1);
+  expect(new Set(s.ReportMeasures.map((m) => m.Id)).size).toBe(2);
+  const dependencies = [];
+  for (const m of s.ReportMeasures) {
+    const report = d.reports.get(m.ReportId),
+      page = report.Pages[0],
+      visual = page.Visuals[0];
+    expect(visualUses(d, report, page, visual).other.map((r) => r.id)).toEqual([
+      m.Id,
+    ]);
+    expect(graph.nodes.get(m.Id).candidates[0].report.Id).toBe(m.ReportId);
+    const usage = s.DirectUsages.find((u) => u.ObjectId === m.Id);
+    expect(navigationTarget(d, usage.Location)).toMatchObject({
+      reportId: m.ReportId,
+      pageId: page.Id,
+      visualId: visual.Id,
+    });
+    dependencies.push(neighbours(graph, m.Id, "up").map((n) => n.id));
+  }
+  expect(dependencies[0].length).toBeGreaterThan(0);
+  expect(dependencies[0]).not.toEqual(dependencies[1]);
+});
+
+test("unavailable, ambiguous and unsupported destinations never fall back to names or owners", () => {
+  const s = coverage(),
+    visual = s.Reports.flatMap((r) => r.Pages).flatMap((p) => p.Visuals)[0],
+    d = adaptSnapshot(s);
+  expect(
+    resolveNavigation(d, {
+      Status: "Ambiguous",
+      TargetIds: s.ReportMeasures.map((m) => m.Id).slice(0, 2),
+    }).status,
+  ).toBe("Ambiguous");
+  const ref = targetReference(visual.Id);
+  d.visuals.delete(visual.Id);
+  expect(resolveNavigation(d, ref).status).toBe("Unavailable");
+  const unsupported = s.Targets.find((t) => t.Kind === "Bookmark");
+  expect(resolveNavigation(d, targetReference(unsupported.Id)).status).toBe(
+    "Unsupported",
+  );
+  const state = createState();
+  state.report = "absent-report";
+  expect(reportSelection(d, state).report).toBeUndefined();
+  expect(reportSelection(d, state).report).toBeUndefined();
+  expect(state.report).toBe("absent-report");
+  const finding = d.raw.Findings.find(
+    (f) => f.Target.TargetIds[0] === visual.Id,
+  );
+  finding.DefinitionContext = { Status: "Unavailable", TargetIds: [] };
+  finding.Report = s.Reports[0].Name;
+  finding.Page = s.Reports[0].Pages[0].Name;
+  expect(findingTarget(d, finding)).toBeNull();
+});
+
+test("shared nodes and cycles retain one identity while inspection leaves the starting object stable", () => {
+  const s = coverage(),
+    ids = s.Objects.slice(0, 4).map((o) => o.Id),
+    [a, b, c, d] = ids;
+  // Adversarial graph topology over real projected entities, independent of labels.
+  s.Dependencies = [
+    [a, b],
+    [a, c],
+    [b, d],
+    [c, d],
+    [d, a],
+  ].map(([from, to], i) => ({
+    Id: `test-edge-${i}`,
+    Source: targetReference(from),
+    Target: targetReference(to),
+    DependencyKind: "DaxReference",
+    EvidenceText: "same display label",
+  }));
+  const graph = buildLineageData(adaptSnapshot(s)),
+    session = createLineageSession(a);
+  session.expanded.up = ids;
+  session.selected = d;
+  const visible = visibleLineage(graph, session, "up");
+  expect(session.centre).toBe(a);
+  expect(new Set(visible.ids).size).toBe(3);
+  expect(visible.parents.get(d)).toEqual(new Set([b, c]));
+  expect(traverse(graph, a, "up").ids).toHaveLength(4);
+  expect(cycles(graph).get(a).members).toHaveLength(4);
+});
+
+test("qualification links stay exact and unknown reach cannot be recovered from matching labels", () => {
+  const s = coverage(),
+    q = s.Qualifications.find((q) => q.Basis === "BoundedReach"),
+    unknown = s.Limitations.find((l) => l.ReachKind === "Unknown");
+  unknown.Context = { Status: "Unavailable", TargetIds: [] };
+  unknown.Evidence.SemanticModel = s.Models[0].Name;
+  unknown.Evidence.ObjectName = s.Objects[0].Name;
+  const d = adaptSnapshot(s);
+  expect(d.qualifications.get(q.ObjectId)).toContainEqual(q);
+  expect(navigationTarget(d, targetReference(q.LimitationId))).toMatchObject({
+    kind: "limitation",
+    id: q.LimitationId,
+  });
+  expect(navigationTarget(d, targetReference(q.ObjectId))).toMatchObject({
+    kind: "object",
+    id: q.ObjectId,
+  });
+  const record = d.raw.AnalysisLimitations.find((l) => l.Id === unknown.Id);
+  expect(record.ModelId).toBeNull();
+  expect(record.KnownReachObjectIds).toBeNull();
+  const state = createState();
+  state.checkModel = s.Models[0].Id;
+  expect(scopeRows(d, state).some((r) => r.limitation?.Id === unknown.Id)).toBe(
+    false,
+  );
+});
+
+test("UserFacing and the exact unused predicate ignore conflicting display evidence and supplements", () => {
+  const s = coverage(),
+    unused = s.Objects.find(
+      (o) => o.UsageState === "ApparentlyUnused" && !o.IsSystemGenerated,
+    );
+  unused.UserFacing = "Yes";
+  unused.InApparentlyUnusedReview = false; // Convenience flag cannot change the stipulated predicate.
+  const d = adaptSnapshot(s),
+    state = createState();
+  state.usage = "ApparentlyUnused";
+  expect(filterObjects(d, state).map((o) => o.Id)).toContain(unused.Id);
+  expect(d.byId.get(unused.Id).UserFacing).toBe("Yes");
+  delete unused.UserFacing;
+  const missing = adaptSnapshot(s),
+    object = missing.byId.get(unused.Id);
+  expect(object.UserFacing).toBeUndefined();
+  expect(
+    objectReviewContext(missing, buildQueryData(missing), object),
+  ).toContain("does not publish a UserFacing result");
+  unused.IsSystemGenerated = true;
+  expect(filterObjects(adaptSnapshot(s), state).map((o) => o.Id)).not.toContain(
+    unused.Id,
+  );
+  unused.IsSystemGenerated = false;
+  unused.UsageState = "UsedOnlyByUnusedBranch";
+  expect(filterObjects(adaptSnapshot(s), state).map((o) => o.Id)).not.toContain(
+    unused.Id,
+  );
 });

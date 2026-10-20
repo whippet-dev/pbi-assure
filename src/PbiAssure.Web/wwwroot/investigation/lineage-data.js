@@ -1,4 +1,3 @@
-const path = (value) => String(value || "").replaceAll("\\", "/");
 import { edgeId } from "./data.js";
 export const BRANCH_SIZE = 8;
 export const LINEAGE_TABS = ["Connections", "Reports", "Evidence"];
@@ -32,15 +31,13 @@ export function buildLineageData(data) {
   for (const u of data.raw.UnresolvedSemanticDependencies)
     nodes.get(u.FromId)?.unresolved.push(u);
   for (const u of data.directUsages)
-    nodes
-      .get(u.ObjectId)
-      ?.endpoints.push({
-        reference: u,
-        report: u.report,
-        page: u.page,
-        visual: u.visual,
-        owner: u.ObjectId,
-      });
+    nodes.get(u.ObjectId)?.endpoints.push({
+      reference: u,
+      report: u.report,
+      page: u.page,
+      visual: u.visual,
+      owner: u.ObjectId,
+    });
   for (const n of nodes.values())
     if (n.ObjectType === "ReportMeasure") {
       const report = data.reports.get(n.ReportId),
@@ -199,12 +196,10 @@ export function lineageEndpoints(index, session) {
   for (const id of downstream.ids)
     for (const endpoint of index.nodes.get(id).endpoints) {
       const ref = endpoint.reference,
-        key = JSON.stringify([
-          endpoint.report?.RelativePath || ref.Report,
-          ref.Page,
-          ref.Visual,
-          path(ref.ArtifactPath),
-        ]);
+        key =
+          ref.Location.Status === "Resolved"
+            ? ref.Location.TargetIds[0]
+            : "unresolved-location:" + ref.recordIndex;
       if (!groups.has(key))
         groups.set(key, {
           key,
@@ -258,7 +253,7 @@ export function lineageSearch(index, state) {
   return [...index.nodes.values()]
     .filter(
       (n) =>
-        (!state.lineageModel || n.SemanticModel === state.lineageModel) &&
+        (!state.lineageModel || n.ModelId === state.lineageModel) &&
         (!search ||
           [n.ObjectName, n.Table, n.ObjectType]
             .join(" ")
@@ -290,7 +285,7 @@ export function lineageNodeEvidence(index, node) {
     links.some((q) => q.LimitationId === l.Id && q.Basis === "BoundedReach"),
   );
   const context = index.data.raw.AnalysisLimitations.filter(
-    (l) => l.SemanticModel === node.SemanticModel && !direct.includes(l),
+    (l) => l.ModelId && l.ModelId === node.ModelId && !direct.includes(l),
   );
   return {
     definition,

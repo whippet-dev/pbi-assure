@@ -1,4 +1,5 @@
-import { navigationTarget } from "./navigation.js";
+import { navigationTarget, resolveNavigation } from "./navigation.js";
+import { resolvedId } from "./snapshot-data.js";
 
 export const REVIEW_TABS = ["Review", "Evidence"];
 export const REVIEW_DEFAULTS = {
@@ -83,12 +84,14 @@ export function reviewRows(data, state) {
     .filter((row) => {
       const f = row.finding,
         theme = row.theme;
-      const report = f?.Report || theme?.report.Name,
-        page = f?.Page || theme?.item?.PageName;
+      const scope =
+        f?.Scope || data.targets.get(resolvedId(theme?.item?.Target)) || {};
+      const report = scope.ReportId || theme?.report.Id,
+        page = scope.PageId;
       return (
         (!state.reviewReport || report === state.reviewReport) &&
         (!state.reviewPage || page === state.reviewPage) &&
-        (!state.reviewModel || f?.SemanticModel === state.reviewModel) &&
+        (!state.reviewModel || f?.Scope.ModelId === state.reviewModel) &&
         (!f ||
           ((!state.reviewCategory || f.Category === state.reviewCategory) &&
             (!state.reviewSeverity || f.Severity === state.reviewSeverity) &&
@@ -140,28 +143,27 @@ export function reviewOptions(data, state) {
   const rows = allReviewRows(data, state.reviewMode);
   const unique = (values) =>
     [...new Set(values.filter(Boolean))].sort((a, b) => a.localeCompare(b));
-  const pageRows = rows.filter(
+  const scopes = rows.map(
     (row) =>
-      (row.finding?.Report || row.theme?.report.Name) === state.reviewReport,
+      row.finding?.Scope ||
+      data.targets.get(resolvedId(row.theme?.item?.Target)) || {
+        ReportId: row.theme?.report.Id,
+      },
   );
+  const options = (ids) =>
+    unique(ids).map((id) => ({
+      name: id,
+      label: data.targets.get(id)?.Label || "Unavailable label",
+    }));
   return {
     categories: unique(rows.map((row) => row.finding?.Category)),
-    reports: unique(
-      rows.map((row) => row.finding?.Report || row.theme?.report.Name),
+    reports: options(scopes.map((s) => s.ReportId)),
+    models: options(scopes.map((s) => s.ModelId)),
+    pages: options(
+      scopes
+        .filter((s) => s.ReportId === state.reviewReport)
+        .map((s) => s.PageId),
     ),
-    models: unique(rows.map((row) => row.finding?.SemanticModel)),
-    pages: unique(
-      pageRows.map((row) => row.finding?.Page || row.theme?.item?.PageName),
-    ).map((name) => ({
-      name,
-      label:
-        pageRows.find(
-          (row) => (row.finding?.Page || row.theme?.item?.PageName) === name,
-        )?.finding?.PageDisplayName ||
-        pageRows.find((row) => row.theme?.item?.PageName === name)?.theme.item
-          .PageDisplayName ||
-        name,
-    })),
   };
 }
 export function findingContext(f) {
@@ -181,17 +183,17 @@ export function findingContext(f) {
 export function findingTarget(data, finding) {
   if (!finding) return null;
   // A known source can be opened while the affected destination remains unavailable.
+  const affected = resolveNavigation(data, finding.Target);
   const target =
-    navigationTarget(data, finding.Target) ||
-    navigationTarget(data, finding.DefinitionContext);
+    affected.route || navigationTarget(data, finding.DefinitionContext);
   return target
     ? {
         ...target,
         note:
-          finding.Target.Status === "Resolved"
+          affected.status === "Resolved"
             ? ""
             : "The affected destination is " +
-              finding.Target.Status.toLowerCase() +
+              affected.status.toLowerCase() +
               ". This opens the recorded definition context.",
       }
     : null;
@@ -216,8 +218,8 @@ export function reviewQualifications(data, finding) {
   const context = data.raw.AnalysisLimitations.filter(
     (l) =>
       !direct.includes(l) &&
-      (finding.SemanticModel
-        ? l.SemanticModel === finding.SemanticModel
+      (finding.Scope.ModelId
+        ? l.ModelId === finding.Scope.ModelId
         : target?.report &&
           data.location(l.Context).report?.Id === target.report.Id),
   );
