@@ -15,6 +15,7 @@ const types = {
   ".html": "text/html",
   ".css": "text/css",
   ".svg": "image/svg+xml",
+  ".wasm": "application/wasm",
 };
 http
   .createServer(async (req, res) => {
@@ -29,7 +30,7 @@ http
       .replace(/^\//, "");
     const path = resolve(
       base,
-      relative.endsWith("/") ? relative + "index.html" : relative,
+      !relative || relative.endsWith("/") ? relative + "index.html" : relative,
     );
     if (!path.startsWith(resolve(base) + sep)) {
       res.writeHead(403).end();
@@ -41,7 +42,7 @@ http
         "Content-Type": types[extname(path)] || "application/octet-stream",
         "Cache-Control": "no-store",
         "Content-Security-Policy":
-          "default-src 'self'; script-src 'self'; style-src 'self'; connect-src 'self'; img-src 'self' data:; object-src 'none'; base-uri 'self'; frame-ancestors 'none'",
+          "default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self'; connect-src 'self'; img-src 'self' data:; object-src 'none'; base-uri 'self'; frame-ancestors 'none'",
       });
       res.end(body);
     } catch {

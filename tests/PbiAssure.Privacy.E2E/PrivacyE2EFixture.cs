@@ -53,6 +53,7 @@ public sealed class PrivacyE2EFixture : IAsyncLifetime
         Browser = await Playwright.Chromium.LaunchAsync(new BrowserTypeLaunchOptions
         {
             Headless = true,
+            Channel = Environment.GetEnvironmentVariable("VIEWER_BROWSER_CHANNEL"),
         })
             .WaitAsync(TimeSpan.FromSeconds(30));
         Console.WriteLine("Privacy E2E setup: ready.");

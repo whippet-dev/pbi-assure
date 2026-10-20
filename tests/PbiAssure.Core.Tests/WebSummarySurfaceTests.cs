@@ -6,15 +6,15 @@ namespace PbiAssure.Core.Tests;
 public sealed class WebSummarySurfaceTests
 {
     [Fact]
-    public void CompletionKeepsScaleWithoutDuplicatingTheReportDashboard()
+    public void CompletionHandsOffWithoutDuplicatingTheInvestigationDashboard()
     {
         var markup = File.ReadAllText(Path.Combine(FindRepositoryRoot(), "src", "PbiAssure.Web", "Pages", "Home.razor"));
-        foreach (var (count, noun) in new[] { ("ReportCount", "report"), ("PageCount", "page"), ("VisualCount", "visual") })
-            Assert.Contains($"@CountLabel(inventory.{count}, \"{noun}\")", markup, StringComparison.Ordinal);
+        Assert.Contains(">Open investigation</button>", markup);
+        Assert.DoesNotContain("@CountLabel(inventory.", markup);
         Assert.DoesNotContain("<Metric", markup, StringComparison.Ordinal);
         Assert.DoesNotContain("Analysis summary", markup, StringComparison.Ordinal);
         Assert.DoesNotContain("WebAssuranceSummary.FromFindings", markup, StringComparison.Ordinal);
-        Assert.Contains("WebConfidenceSummary.FromInventory", markup, StringComparison.Ordinal);
+        Assert.Contains("OpenInvestigationAsync(\"check\")", markup);
     }
 
     [Fact]

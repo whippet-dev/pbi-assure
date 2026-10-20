@@ -3,37 +3,19 @@ using PbiAssure.Reporting;
 
 namespace PbiAssure.Core.Tests;
 
-/// <summary>
-/// After a successful analysis the browser application offers two report experiences: the interactive
-/// report and the apparently unused review. The review travels through exactly the same acknowledged
-/// viewer handshake as the interactive report, and is saved through exactly the same browser save path,
-/// with its own file name.
-/// </summary>
+/// <summary>The focused workflow uses Model Objects; portable HTML remains an export.</summary>
 public sealed class WebUnusedReviewSurfaceTests
 {
     [Fact]
-    public void TheFocusedReviewRemainsAvailableUnderOtherOutputs()
+    public void FocusedReviewOpensThePrimaryViewerAndRetainsADownload()
     {
         var markup = ReadHomePage();
-        Assert.True(markup.IndexOf("other-outputs-heading", StringComparison.Ordinal) < markup.IndexOf("unused-review-heading", StringComparison.Ordinal));
-        Assert.Contains("class=\"secondary-button\" @onclick=\"OpenUnusedReviewAsync\"", markup, StringComparison.Ordinal);
-        Assert.Contains("aria-describedby=\"unused-review-help\"", markup, StringComparison.Ordinal);
-        Assert.Contains("<p class=\"report-card-status\" role=\"status\">@unusedReviewMessage</p>", markup, StringComparison.Ordinal);
-    }
-
-    [Fact]
-    public void TheReviewUsesTheAcknowledgedViewerPath()
-    {
-        var markup = ReadHomePage();
-        var body = Method(markup, "OpenUnusedReviewAsync");
-
-        Assert.Contains("ApparentlyUnusedReportRenderer.Render(inventory)", body, StringComparison.Ordinal);
-        Assert.Contains("JS.InvokeAsync<string>(\"pbiAssureDownload.open\", \"text/html;charset=utf-8\", html)", body, StringComparison.Ordinal);
-        Assert.Contains("WebReportViewerStatus.Describe(status, WebReportKind.ApparentlyUnusedReview)", body, StringComparison.Ordinal);
-        Assert.Contains("WebReportViewerStatus.Opening(WebReportKind.ApparentlyUnusedReview)", body, StringComparison.Ordinal);
-        // No second delivery mechanism: the only opener in the page is the one download.js provides.
-        Assert.DoesNotContain("window.open", markup, StringComparison.Ordinal);
-        Assert.DoesNotContain("pbiAssureDownload.save", body, StringComparison.Ordinal);
+        Assert.Contains("OpenInvestigationAsync(\"unused\")", markup);
+        Assert.DoesNotContain("OpenUnusedReviewAsync", markup);
+        Assert.Contains("<details class=\"download-options\">", markup);
+        Assert.True(markup.IndexOf("other-outputs-heading", StringComparison.Ordinal) < markup.IndexOf("DownloadUnusedReviewAsync", StringComparison.Ordinal));
+        Assert.Contains("portable HTML review set for sharing or offline review", markup);
+        Assert.Contains("ViewerSnapshotProjector.Project(inventory)", markup);
     }
 
     /// <summary>
@@ -73,17 +55,6 @@ public sealed class WebUnusedReviewSurfaceTests
         Assert.DoesNotContain(ApparentlyUnusedReportRenderer.Lede, interactive, StringComparison.Ordinal);
         Assert.DoesNotContain("id=\"findings\"", review, StringComparison.Ordinal);
         Assert.Contains("id=\"findings\"", interactive, StringComparison.Ordinal);
-    }
-
-    [Fact]
-    public void TheInteractiveReportRouteIsUnchanged()
-    {
-        var markup = ReadHomePage();
-        var body = Method(markup, "OpenHtmlAsync");
-
-        Assert.Contains("HtmlReportRenderer.Render(inventory)", body, StringComparison.Ordinal);
-        Assert.Contains("JS.InvokeAsync<string>(\"pbiAssureDownload.open\", \"text/html;charset=utf-8\", html)", body, StringComparison.Ordinal);
-        Assert.Contains("<button class=\"secondary-button\" @onclick=\"DownloadHtmlAsync\"", markup, StringComparison.Ordinal);
     }
 
     private static string ReadHomePage() =>

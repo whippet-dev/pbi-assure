@@ -1,0 +1,141 @@
+/* Outer application only. The signed-off investigation and downloadable reports
+   retain their own styles; shared legacy core.css is intentionally unchanged. */
+:root {
+  --pa-r2: 4px;
+  --pa-r3: 6px;
+  --site-shell: #203b46;
+  --site-qualification: #6b5078;
+  --site-qualification-bg: #f4eff6;
+  --site-evidence: #f3f0ea;
+}
+:root[data-theme="light"] {
+  --pa-canvas: #e8edf1;
+  --pa-surface-2: #eef2f5;
+  --pa-line: #c5cfd7;
+  --pa-line-strong: #aebdc8;
+  --pa-text: #263743;
+  --pa-text-2: #4d5e6b;
+  --pa-text-3: #566571;
+  --pa-accent: #245d86;
+  --pa-accent-hover: #194b70;
+  --pa-accent-soft: #e1edf6;
+  --pa-accent-line: #87a9c2;
+  --pa-focus: #245d86;
+}
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme="dark"]) {
+    --pa-canvas: #e8edf1;
+    --pa-surface-2: #eef2f5;
+    --pa-line: #c5cfd7;
+    --pa-line-strong: #aebdc8;
+    --pa-text: #263743;
+    --pa-text-2: #4d5e6b;
+    --pa-text-3: #566571;
+    --pa-accent: #245d86;
+    --pa-accent-hover: #194b70;
+    --pa-accent-soft: #e1edf6;
+    --pa-accent-line: #87a9c2;
+    --pa-focus: #245d86;
+  }
+}
+:root[data-theme="dark"] {
+  --site-qualification: #d7bddf;
+  --site-qualification-bg: #352e3b;
+  --site-evidence: #302e29;
+  --pa-accent: #90bcdb;
+  --pa-accent-hover: #b3d5ed;
+  --pa-focus: #90bcdb;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --site-qualification: #d7bddf;
+    --site-qualification-bg: #352e3b;
+    --site-evidence: #302e29;
+    --pa-accent: #90bcdb;
+    --pa-accent-hover: #b3d5ed;
+    --pa-focus: #90bcdb;
+  }
+}
+body { font-size: 15px; }
+.app-bar { background: var(--site-shell); border: 0; }
+.app-bar-inner { width: 100%; min-height: 54px; padding: 0 22px; gap: 2rem; }
+.app-bar .brand { color: #fff; font-size: 17px; font-weight: 400; gap: 0; }
+.app-bar .brand strong { font-weight: 650; margin-left: 0.25em; }
+.brand-mark { width: 30px; height: 30px; margin-right: 12px; }
+.app-navigation { gap: 1rem; align-self: stretch; }
+.app-navigation a { border-radius: 0; border-bottom: 3px solid transparent; padding: 0.75rem 0.125rem 0.5625rem; color: #d1dee4; font-size: 14px; }
+.app-navigation a:hover { color: white; background: transparent; border-bottom-color: #789cae; }
+.app-navigation a[aria-current="page"] { background: transparent; color: white; border-bottom-color: #a5cbe4; }
+.app-bar .navigation-note { color: #d1dee4; font-size: 14px; }
+.app-bar :focus-visible { outline-color: #b6dcf4; outline-offset: 3px; }
+.app-bar .appearance-control { background: #2b4753; border-color: #657d88; }
+.app-bar .appearance-option { color: #e0e9ee; background: transparent; }
+.app-bar .appearance-option[aria-pressed="true"] { background: #dce8f0; color: #203b46; }
+.shell { width: min(72rem, 100%); gap: 1.25rem; padding: 2rem 2rem 2.5rem; }
+.front-door { max-width: 64rem; }
+.page-header { gap: 0.625rem; padding: 0.25rem 0 0.5rem; }
+.eyebrow { color: var(--pa-text-2); font-size: 12px; letter-spacing: 0.08em; }
+h1 { font-size: 30px; line-height: 1.2; font-weight: 650; }
+.page-header-compact h1 { font-size: 26px; }
+.page-lede { max-width: 67ch; font-size: 16px; line-height: 1.6; }
+.picker { max-width: none; padding: 1.75rem; border-top: 3px solid var(--site-shell); gap: 1rem; }
+.picker h2 { font-size: 19px; margin: 0; }
+.picker > p { color: var(--pa-text-2); }
+.picker-actions { margin: 0.25rem 0; }
+.picker button { padding: 0.625rem 1.125rem; font-weight: 600; }
+.privacy { border-top: 1px solid var(--pa-line); padding-top: 1rem; max-width: none; line-height: 1.6; }
+.privacy strong { color: var(--pa-text); }
+.project-bar { padding: 1rem 1.25rem; }
+.project-bar-facts { font-size: 14px; }
+.analysis-progress:not(.visually-hidden) { min-height: 1.5rem; margin-block: -0.5rem; }
+.analysis-status { font-size: 14px; }
+.is-running::before { content: ""; display: inline-block; width: 0.6rem; height: 0.6rem; border: 2px solid var(--pa-accent); border-top-color: transparent; border-radius: 50%; margin-right: 0.625rem; animation: analysis-spin 1s linear infinite; }
+@keyframes analysis-spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .is-running::before { animation: none; } }
+.message { border-left: 3px solid var(--pa-error); padding: 1rem; font-size: 14px; }
+.message.message-cancelled { color: var(--pa-text-2); background: var(--pa-surface-2); border-color: var(--pa-line-strong); }
+.output-actions { padding: 1.5rem; border: 1px solid var(--pa-line); border-top: 3px solid var(--site-shell); border-radius: var(--pa-r3); background: var(--pa-surface); gap: 0.75rem; }
+.output-actions > h2 { font-size: 22px; }
+.primary-report > p { font-size: 15px; max-width: 70ch; }
+.primary-report .report-card-actions > button:first-child { min-height: 2.625rem; font-size: 15px; font-weight: 600; }
+.confidence-notice { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 0.5rem 1rem; max-width: none; margin: 0; border: 0; border-left: 3px solid var(--site-qualification); background: var(--site-qualification-bg); color: var(--site-qualification); font-size: 14px; padding: 0.75rem 1rem; }
+.confidence-notice strong { color: var(--site-qualification); }
+.text-button, .text-button:disabled:hover { background: transparent; border-color: transparent; color: var(--pa-accent); font-size: 14px; text-decoration: underline; text-underline-offset: 3px; padding: 0.25rem; }
+.text-button:hover { background: var(--pa-accent-soft); color: var(--pa-accent-hover); border-color: transparent; }
+.output-note, .sensitivity { font-size: 13px; line-height: 1.5; color: var(--pa-text-2); }
+.sensitivity { max-width: none; border: 0; padding: 0; background: transparent; }
+.result-project-actions { margin: 0; padding: 0.5rem 0 1rem; border-top: 0; border-bottom: 1px solid var(--pa-line); }
+.output-actions > h3 { margin: 0.25rem 0 0; font-size: 16px; }
+.download-report { display: flex; flex-wrap: wrap; gap: 0.5rem 1rem; align-items: center; }
+.download-report p { font-size: 14px; color: var(--pa-text-2); }
+.other-outputs { border-top: 0; padding-top: 0.5rem; gap: 1.5rem; }
+.other-outputs .export-area { padding: 0 0 0 1.5rem; border: 0; border-left: 1px solid var(--pa-line); background: transparent; }
+.setup-support, .setup-support-compact { max-width: none; display: grid; grid-template-columns: 1fr; gap: 0.5rem; }
+.setup-support details { max-width: none; margin: 0; padding: 0.75rem 1rem; border-left: 1px solid var(--pa-line); background: transparent; }
+.setup-support details[open] { background: var(--pa-surface); }
+.setup-support details > summary, .setup-support-compact > details > summary { font-size: 14px; }
+.guidance-content, .picker-help-content { font-size: 14px; }
+.folder-example { background: var(--site-evidence); border-color: var(--pa-line); }
+.information-page > header { display: grid; gap: 0.75rem; }
+.about-panel, .coverage-group { padding: 1.5rem; background: var(--pa-surface); border-radius: var(--pa-r2); }
+.about-panel[hidden] { display: none; }
+.about-tabs { border-bottom: 1px solid var(--pa-line); }
+.about-tab { border-radius: 0; }
+.about-tab[aria-selected="true"] { background: transparent; color: var(--pa-accent); border-bottom-color: var(--pa-accent); }
+.information-output { border: 0; border-left: 2px solid var(--pa-line); border-radius: 0; background: transparent; }
+.information-output-primary { border-color: var(--pa-accent); background: var(--pa-surface-2); }
+.information-output-kicker { font-size: 12px; }
+.app-footer { width: min(72rem, 100%); padding-inline: 2rem; font-size: 13px; }
+@media (max-width: 700px) {
+  .app-bar-inner { flex-wrap: wrap; padding: 0.625rem 1rem; gap: 0.5rem 1rem; }
+  .app-navigation { order: 3; flex-basis: 100%; }
+  .app-bar .appearance-control { margin-left: auto; }
+  .shell { padding: 1.25rem 1rem; }
+  .picker, .output-actions, .about-panel { padding: 1rem; }
+  .other-outputs .export-area { border: 0; padding: 0; }
+}
+
+.download-options > summary { color: var(--pa-accent); font-weight: 600; cursor: pointer; padding: 0.5rem 0; }
+.download-options[open] > summary { margin-bottom: 0.75rem; }
+.download-options .sensitivity { margin-block: 0.75rem; }
+.primary-report .report-card-actions { align-items: center; gap: 0.75rem 1.25rem; }

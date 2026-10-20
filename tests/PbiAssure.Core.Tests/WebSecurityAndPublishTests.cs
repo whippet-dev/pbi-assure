@@ -19,8 +19,9 @@ public sealed class WebSecurityAndPublishTests
         Assert.Contains("Private Vulnerability Reporting", security, StringComparison.Ordinal);
         Assert.Contains("[Privacy](PRIVACY.md)", readme, StringComparison.Ordinal);
         Assert.Contains("[Security](SECURITY.md)", readme, StringComparison.Ordinal);
-        Assert.Contains(">How privacy works</a>", browserMarkup, StringComparison.Ordinal);
-        Assert.Contains("/blob/master/PRIVACY.md", browserMarkup, StringComparison.Ordinal);
+        Assert.Contains(">Privacy details</a>", browserMarkup, StringComparison.Ordinal);
+        Assert.Contains("about#trust", browserMarkup, StringComparison.Ordinal);
+        Assert.Contains("/blob/master/PRIVACY.md", File.ReadAllText(Path.Combine(repositoryRoot, "src", "PbiAssure.Web", "Pages", "About.razor")));
         Assert.Contains("target=\"_blank\" rel=\"noopener noreferrer\"", browserMarkup, StringComparison.Ordinal);
     }
 

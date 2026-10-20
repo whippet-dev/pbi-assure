@@ -66,6 +66,8 @@ const assetVersionInputs = [
     "src/PbiAssure.Web/wwwroot/index.html",
     "src/PbiAssure.Web/wwwroot/project-picker.js",
     "src/PbiAssure.Web/wwwroot/download.js",
+    "src/PbiAssure.Web/wwwroot/investigation.js",
+    "src/PbiAssure.Web/wwwroot/css/site.css",
     "src/PbiAssure.Web/wwwroot/analysis-focus.js",
     "src/PbiAssure.Web/wwwroot/appearance.js",
     "src/PbiAssure.Web/wwwroot/favicon.svg",
@@ -98,6 +100,8 @@ const requiredFiles = [
     "index.html",
     "_headers",
     "download.js",
+    "investigation.js",
+    "css/site.css",
     "analysis-focus.js",
     "appearance.js",
     "favicon.svg",
@@ -115,7 +119,7 @@ for (const relativePath of requiredFiles) {
     }
 }
 
-for (const relativePath of ["index.html", "download.js", "report-viewer.html"]) {
+for (const relativePath of ["index.html", "download.js", "investigation.js", "report-viewer.html"]) {
     const versionedFile = join(publishedRoot, relativePath);
     const content = readFileSync(versionedFile, "utf8");
     if (!content.includes(assetVersionPlaceholder)) {
@@ -125,7 +129,7 @@ for (const relativePath of ["index.html", "download.js", "report-viewer.html"]) 
     writeVersionedAsset(versionedFile, content.replaceAll(assetVersionPlaceholder, assetVersion));
 }
 
-for (const relativePath of ["index.html", "download.js", "report-viewer.html"]) {
+for (const relativePath of ["index.html", "download.js", "investigation.js", "report-viewer.html"]) {
     const output = readFileSync(join(publishedRoot, relativePath), "utf8");
     if (output.includes(assetVersionPlaceholder)) {
         throw new Error(`An asset-version placeholder remains in published ${relativePath}.`);

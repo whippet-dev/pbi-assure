@@ -2,8 +2,8 @@
 
 `PbiAssure.Reporting.Viewer.ViewerSnapshotProjector.Project(ProjectInventory)` produces one
 serializable presentation payload. Contract version **1.0** is independent of the public CLI
-inventory schema **0.26**. The production-owned investigation assets consume it; the existing
-front door, CLI, Desktop workflow and exports still use their original paths.
+inventory schema **0.26**. The production web front door hands it to the investigation viewer.
+CLI, Desktop and exports still use their original analysis/rendering paths.
 
 Core owns parsing, binding, dependencies, reachability, usage, confidence and provenance. The
 projector copies those conclusions, reuses Core/Reporting helpers, and supplies navigation targets.
@@ -65,7 +65,7 @@ omitted from 0.26. Existing exports continue to use the original `ProjectInvento
 The complete module tree lives in `src/PbiAssure.Web/wwwroot/investigation/`. It has no runtime
 dependencies on prototypes, fixtures, external libraries or persistent browser storage. The Web SDK
 publishes it; `scripts/Publish-Web.mjs` hashes the entire tree and versions its relative module/asset
-references. The current front door and legacy report launches are unchanged.
+references. The front door now opens this viewer; legacy HTML remains available as a download.
 
 `app.js` handles startup/errors, `hosted-entry.js` handles delivery, `shell.js` owns the shell markup,
 and `controller.js` coordinates the existing workspaces. `state.js` owns independent workspace
@@ -103,7 +103,15 @@ origin, using `{type:"pbi-assure-viewer-snapshot", deliveryId, snapshot, workspa
 or `check`. The child accepts one message from that opener/origin, validates the contract and replies
 `{type:"pbi-assure-viewer-snapshot-ack", deliveryId, accepted}`. Project data never travels in a URL.
 No opener, timed-out delivery, invalid input and unsupported versions show an unavailable/error state.
-Refresh cannot restore an accepted snapshot. The opener should release its pending delivery after ack.
+Refresh cannot restore an accepted snapshot. Acknowledgement follows successful viewer rendering.
+The production sender (`wwwroot/investigation.js`) validates source, origin and delivery ID, releases
+pending delivery resources on completion, and reports blocked, closed, rejected or timed-out opens.
+The front door retains the result for retry without rescanning. `Home.razor` serializes the snapshot
+once per successful analysis; each viewer gets its own structured clone. Reruns create a new snapshot
+and cannot update existing viewers. Only the originating application retains the folder handle;
+Return to project focuses that tab where possible. A fresh navigation cannot restore its session.
+Exports still consume the original inventory and renderers. The old report-viewer assets/transport
+remain temporarily for the next cleanup slice, but no front-door action opens them.
 Public JSON 0.26 import is intentionally unavailable pending an explicit compatibility adapter.
 
 Development only: from `tests/PbiAssure.Viewer.Tests`, run `npm ci`, `npx playwright install chromium`,
@@ -113,3 +121,5 @@ returns, and captures the two desktop sizes. `npm run snapshots` followed by `np
 opens an isolated host at `http://127.0.0.1:4176/test/host.html`; choose a fixture or a local snapshot.
 The host/generator are test tooling and are not published. `VIEWER_BROWSER_CHANNEL=chrome` can use
 installed Chrome; `VIEWER_WEB_ROOT` can point to a clean published `wwwroot` for publish smoke tests.
+With that variable set, `npx playwright test front-door.spec.js` exercises actual published Blazor
+analysis, in-memory handoff, focused entry points, reruns, failures/retries and retained downloads.

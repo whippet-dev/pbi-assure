@@ -14,10 +14,10 @@ public sealed class WebNewcomerOrientationTests
         Assert.Contains("Understand your Power BI project", home, StringComparison.Ordinal);
         Assert.Contains("Choose the folder containing your <code>.pbip</code> file", home, StringComparison.Ordinal);
         Assert.Contains("standalone HTML report", home, StringComparison.Ordinal);
-        Assert.Contains("Your project is not changed", home, StringComparison.Ordinal);
-        Assert.Contains("Project files and analysis results are not uploaded", home, StringComparison.Ordinal);
+        Assert.Contains("Your project is never modified or uploaded", home, StringComparison.Ordinal);
+        Assert.Contains("Analysis runs in your browser", home, StringComparison.Ordinal);
         Assert.True(home.IndexOf(">Choose project folder</button>", StringComparison.Ordinal) < home.IndexOf("guidance-panel", StringComparison.Ordinal));
-        foreach (var retained in new[] { "Check or prepare your Power BI project", "folder-example", "<strong>project root</strong>", "ChooseProjectAsync(false)", "ChooseProjectAsync(true)", "RunAssuranceAsync", "projects-overview", "projects-report", "projects-dataset", "How privacy works" })
+        foreach (var retained in new[] { "Check or prepare your Power BI project", "folder-example", "<strong>project root</strong>", "ChooseProjectAsync(false)", "ChooseProjectAsync(true)", "RunAssuranceAsync", "projects-overview", "projects-report", "projects-dataset", "Privacy details" })
             Assert.Contains(retained, home, StringComparison.Ordinal);
         Assert.DoesNotContain("orientation-outcomes", home, StringComparison.Ordinal);
     }
@@ -37,16 +37,16 @@ public sealed class WebNewcomerOrientationTests
             Assert.Contains($">{heading}</h3>", about, StringComparison.Ordinal);
         }
 
-        foreach (var fact in new[] { "<h4>Interactive report</h4>", "<h4>Apparently unused review</h4>", "<h4>CSV exports</h4>", "Data Catalogue CSV", "Usage Mapping CSV", "zero detected usage", "optional metadata such as Description", "one row per logical direct report usage", "legacy technical/compatibility export", "Apparently unused does not mean safe to delete", "does not validate runtime data correctness","directly used does not automatically mean Yes", "No means no qualifying evidence was found", "application-managed persistent browser storage", "secure memory deletion is not guaranteed", "normal site/runtime requests", "static same-origin viewer shell", "ordinary request metadata", "after the application has loaded", "PRIVACY.md" })
+        foreach (var fact in new[] { "<h4>Investigation workspace</h4>", "<h4>Apparently unused review download</h4>", "<h4>CSV exports</h4>", "Data Catalogue CSV", "Usage Mapping CSV", "zero detected usage", "optional metadata such as Description", "one row per logical direct report usage", "legacy technical/compatibility export", "Apparently unused does not mean safe to delete", "does not validate runtime data correctness","directly used does not automatically mean Yes", "No means no qualifying evidence was found", "application-managed persistent browser storage", "secure memory deletion is not guaranteed", "normal site/runtime requests", "static same-origin viewer shell", "ordinary request metadata", "after the application has loaded", "PRIVACY.md" })
         {
             Assert.Contains(fact, about, StringComparison.Ordinal);
         }
 
-        // The review is a view of the same analysis, and no route is presented as the one to start with.
+        // Investigation is primary; the portable review keeps the same analysis and selection rule.
         Assert.Contains("no report or semantic-model usage was found in this project", about, StringComparison.Ordinal);
         Assert.Contains("Power Query preparation evidence may still exist", about, StringComparison.Ordinal);
-        Assert.Contains("not a separate analysis engine", about, StringComparison.Ordinal);
-        Assert.Contains("Open the report to explore the project", about, StringComparison.Ordinal);
+        Assert.Contains("same analysis and selection rule", about, StringComparison.Ordinal);
+        Assert.Contains("Open the investigation to explore the project", about, StringComparison.Ordinal);
         Assert.DoesNotContain("Start here", about, StringComparison.Ordinal);
         Assert.DoesNotContain("Start with the interactive", about, StringComparison.Ordinal);
         Assert.DoesNotContain("Interactive HTML report", about, StringComparison.Ordinal);
@@ -73,7 +73,7 @@ public sealed class WebNewcomerOrientationTests
 
         Assert.Contains("target=\"@(LeavesWorkingState ? \"_blank\" : null)\"", navigation, StringComparison.Ordinal);
         Assert.Contains("noopener noreferrer", navigation, StringComparison.Ordinal);
-        Assert.Contains("(opens in new tab)", navigation, StringComparison.Ordinal);
+        Assert.Contains("opens in new tab", navigation, StringComparison.Ordinal);
         Assert.Contains("<AppNavigation Current=\"AppPage.About\" />", ReadWeb("Pages/About.razor"), StringComparison.Ordinal);
         Assert.Contains("<AppNavigation Current=\"AppPage.Coverage\" />", ReadWeb("Pages/Coverage.razor"), StringComparison.Ordinal);
         Assert.Contains("Current=\"AppPage.Analyse\"", home, StringComparison.Ordinal);

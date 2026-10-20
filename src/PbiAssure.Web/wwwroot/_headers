@@ -22,6 +22,9 @@
 /analysis-focus.js
   Cache-Control: no-cache
 
+/investigation.js
+  Cache-Control: no-cache
+
 /investigation/*
   Cache-Control: no-cache
 

@@ -2,22 +2,18 @@ using PbiAssure.Web;
 
 namespace PbiAssure.Core.Tests;
 
-/// <summary>
-/// One analysis, two report experiences, one export area. After analysis the browser application offers
-/// the interactive report and the apparently unused review as a report-first hierarchy, each with an open
-/// action and a download, and keeps export work visibly apart from report delivery.
-/// </summary>
+/// <summary>One investigation application, with secondary portable downloads.</summary>
 public sealed class WebReportActionsSurfaceTests
 {
     [Fact]
     public void ReportLeadsAndFocusedReviewRemainsSecondary()
     {
         var actions = NextSteps(ReadHomePage());
-        Assert.Contains(">Open report</button>", actions, StringComparison.Ordinal);
+        Assert.Contains(">Open investigation</button>", actions, StringComparison.Ordinal);
         Assert.Contains(">Download report</button>", actions, StringComparison.Ordinal);
-        Assert.Contains("class=\"secondary-button\" @onclick=\"OpenUnusedReviewAsync\"", actions, StringComparison.Ordinal);
-        Assert.Contains("Review apparently unused (@inventory.DeveloperApparentlyUnusedSemanticObjectCount)", actions, StringComparison.Ordinal);
-        Assert.True(actions.IndexOf("OpenHtmlAsync", StringComparison.Ordinal) < actions.IndexOf("other-outputs-heading", StringComparison.Ordinal));
+        Assert.DoesNotContain("OpenUnusedReviewAsync", actions, StringComparison.Ordinal);
+        Assert.Contains("Review apparently unused in Model Objects", actions, StringComparison.Ordinal);
+        Assert.True(actions.IndexOf("OpenInvestigationAsync", StringComparison.Ordinal) < actions.IndexOf("other-outputs-heading", StringComparison.Ordinal));
         Assert.DoesNotContain("report-cards", actions, StringComparison.Ordinal);
         Assert.DoesNotContain("DeveloperApparentlyUnusedSemanticObjectCount == 0", actions, StringComparison.Ordinal);
     }
@@ -28,10 +24,10 @@ public sealed class WebReportActionsSurfaceTests
         var actions = NextSteps(ReadHomePage());
 
         Assert.Contains("<h2 id=\"output-actions-heading\" tabindex=\"-1\" @ref=\"completionHeading\">Analysis complete</h2>", actions, StringComparison.Ordinal);
-        Assert.Contains("Explore model usage, dependencies, report structure and findings.", actions, StringComparison.Ordinal);
+        Assert.Contains("Your project is ready to explore.", actions, StringComparison.Ordinal);
         Assert.Contains("<h4 id=\"export-data-heading\">Export data</h4>", actions, StringComparison.Ordinal);
         Assert.Contains("Export a Data Catalogue or Usage Mapping CSV for further work.", actions, StringComparison.Ordinal);
-        Assert.Contains("Download the HTML to keep or share this report.", actions, StringComparison.Ordinal);
+        Assert.Contains("Keep a standalone HTML report of this analysis.", actions, StringComparison.Ordinal);
         // Retired wording from the single-report era.
         foreach (var retired in new[] { "Next steps", "Download HTML report", "Start here", "no usage evidence", "review list" })
         {
@@ -51,7 +47,7 @@ public sealed class WebReportActionsSurfaceTests
         Assert.Equal("Download report", AccessibleName(actions, "DownloadHtmlAsync"));
         Assert.Equal("Download apparently unused review", AccessibleName(actions, "DownloadUnusedReviewAsync"));
         Assert.Equal("Download report", VisibleText(actions, "DownloadHtmlAsync"));
-        Assert.Equal("Download review", VisibleText(actions, "DownloadUnusedReviewAsync"));
+        Assert.Equal("Download apparently unused review", VisibleText(actions, "DownloadUnusedReviewAsync"));
         Assert.DoesNotContain("aria-label=\"Download", actions, StringComparison.Ordinal);
     }
 
@@ -62,7 +58,7 @@ public sealed class WebReportActionsSurfaceTests
         var export = actions[actions.IndexOf("<section class=\"export-area\"", StringComparison.Ordinal)..];
 
         Assert.Contains("aria-labelledby=\"export-data-heading\"", export, StringComparison.Ordinal);
-        Assert.Contains("<button class=\"secondary-button\" @ref=\"exportToggle\" @onclick=\"ToggleExportPanel\" disabled=\"@isBusy\" aria-expanded=\"@(exportPanelOpen ? \"true\" : \"false\")\" aria-describedby=\"export-data-help\">Export data</button>", export, StringComparison.Ordinal);
+        Assert.Contains("<button class=\"secondary-button\" @ref=\"exportToggle\" @onclick=\"ToggleExportPanel\" disabled=\"@ActionsDisabled\" aria-expanded=\"@(exportPanelOpen ? \"true\" : \"false\")\" aria-describedby=\"export-data-help\">Export data</button>", export, StringComparison.Ordinal);
         // A bool bound straight to aria-expanded renders as an empty attribute when true and vanishes when
         // false, which is not valid ARIA; the state is written as the literal strings.
         Assert.DoesNotContain("aria-expanded=\"@exportPanelOpen\"", export, StringComparison.Ordinal);
@@ -75,7 +71,7 @@ public sealed class WebReportActionsSurfaceTests
         Assert.True(actions.IndexOf("<section class=\"export-area\"", StringComparison.Ordinal) > actions.IndexOf("DownloadUnusedReviewAsync", StringComparison.Ordinal));
         Assert.DoesNotContain("export-area", actions[..actions.IndexOf("<p class=\"output-note\">", StringComparison.Ordinal)], StringComparison.Ordinal);
         // The sharing warning still closes the section.
-        Assert.Contains("HTML and CSV files may contain sensitive project metadata, including paths, expressions, source details and model/report metadata.", actions, StringComparison.Ordinal);
+        Assert.Contains("Downloads can contain sensitive project metadata.", actions, StringComparison.Ordinal);
         Assert.Contains("outputs are not automatically redacted", actions, StringComparison.Ordinal);
     }
 
@@ -135,7 +131,8 @@ public sealed class WebReportActionsSurfaceTests
         var script = File.ReadAllText(Path.Combine(repositoryRoot, "src", "PbiAssure.Web", "wwwroot", "download.js"));
         var viewer = File.ReadAllText(Path.Combine(repositoryRoot, "src", "PbiAssure.Web", "wwwroot", "report-viewer.js"));
 
-        Assert.Equal(2, CountOccurrences(markup, "JS.InvokeAsync<string>(\"pbiAssureDownload.open\", \"text/html;charset=utf-8\", html)"));
+        Assert.Equal(0, CountOccurrences(markup, "JS.InvokeAsync<string>(\"pbiAssureDownload.open\", \"text/html;charset=utf-8\", html)"));
+        Assert.Contains("pbiAssureInvestigation.open", markup, StringComparison.Ordinal);
         Assert.DoesNotContain("window.open", markup, StringComparison.Ordinal);
         Assert.Contains("report-viewer.html?v=__PBIASSURE_ASSET_VERSION__", script, StringComparison.Ordinal);
         Assert.Contains("window.open(viewerUrl.href, \"_blank\")", script, StringComparison.Ordinal);

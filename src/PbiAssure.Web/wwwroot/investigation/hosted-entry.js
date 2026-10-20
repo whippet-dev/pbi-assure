@@ -21,7 +21,8 @@ export function receiveAnalysis() {
       if (
         event.origin !== location.origin ||
         event.source !== source ||
-        event.data?.type !== "pbi-assure-viewer-snapshot"
+        event.data?.type !== "pbi-assure-viewer-snapshot" ||
+        typeof event.data.deliveryId !== "string" || !event.data.deliveryId
       )
         return;
       cleanup();
