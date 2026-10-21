@@ -33,7 +33,7 @@
       </GroupBox>
       <TextBlock x:Name="PresetDescriptionTextBlock" Margin="0,10,0,0" TextWrapping="Wrap" />
       <TextBlock Margin="0,8,0,0" Foreground="#52606D" TextWrapping="Wrap"
-                 Text="User-facing means PBI Assure found direct report evidence that contributes to report presentation or intentional user interaction. It is separate from semantic usage classification." />
+                 Text="User-facing means PBI Project Lens found direct report evidence that contributes to report presentation or intentional user interaction. It is separate from semantic usage classification." />
     </StackPanel>
 
     <GroupBox Grid.Row="2" Margin="0,18,0,0" Header="Columns">

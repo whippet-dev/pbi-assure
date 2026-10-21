@@ -4,7 +4,7 @@ namespace PbiAssure.Core.Inventory;
 /// A perspective: a curated subset of the model that an author deliberately exposes to consumers.
 ///
 /// Only the parts that name model objects are modelled. A perspective also carries presentation meaning
-/// that PBI Assure does not interpret, so the presence of this type is not complete perspective support.
+/// that PBI Project Lens does not interpret, so the presence of this type is not complete perspective support.
 /// </summary>
 public sealed record SemanticPerspectiveInventory(
     string Name,

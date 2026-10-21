@@ -81,7 +81,7 @@ public sealed class UnresolvedSemanticDependencyFindingTests
             "Sales.tmdl");
         var revisedWording = originalWording with
         {
-            Reason = "PBI Assure could not resolve the configured sort-by target.",
+            Reason = "PBI Project Lens could not resolve the configured sort-by target.",
         };
 
         Assert.Single(UnresolvedSemanticDependencyRule.CreateFindings([originalWording]));
@@ -158,7 +158,7 @@ public sealed class UnresolvedSemanticDependencyFindingTests
         var json = JsonSerializer.Serialize(inventory);
         var csvWithoutFindings = SemanticUsageCsvRenderer.Render(inventory with { Findings = [] });
 
-        Assert.Contains("PBI Assure could not find the object referenced by the sort-by setting", html, StringComparison.Ordinal);
+        Assert.Contains("PBI Project Lens could not find the object referenced by the sort-by setting", html, StringComparison.Ordinal);
         Assert.Contains("Sales&lt;script&gt;[Month&lt;img&gt;]", html, StringComparison.Ordinal);
         Assert.Contains("Missing&amp;Column", html, StringComparison.Ordinal);
         Assert.DoesNotContain("Sales<script>", html, StringComparison.Ordinal);

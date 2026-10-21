@@ -229,7 +229,7 @@ public static partial class HtmlReportRenderer
         AppendFact(html, "Parent group", visual.ParentGroupName ?? "Not set");
         AppendFact(html, "Schema", visual.SchemaUri ?? "Not set", true); AppendFact(html, "Source file", DisplayPath(visual.RelativePath), true);
         AppendFact(html, "Position", FormatCoordinates(visual.Position)); AppendFact(html, "Saved tab order", visual.Position.TabOrder?.ToString(CultureInfo.InvariantCulture) ?? "Not set");
-        html.AppendLine("</dl><h4>All saved field references</h4><p class=\"secondary\">Includes references PBI Assure doesn't count as use.</p>");
+        html.AppendLine("</dl><h4>All saved field references</h4><p class=\"secondary\">Includes references PBI Project Lens doesn't count as use.</p>");
         AppendGroupedFieldReferenceList(html, lineage, report, visual.FieldReferences, true);
         AppendAccessibilitySummary(html, visual, hierarchy, "tab-order-help-" + card.Id);
         AppendLineageGroup(html, "not-resolved", "Couldn't be matched", card.UnresolvedReportReferences, null, reference => AppendLineageReportReferenceNote(html, reference), unresolved: true);

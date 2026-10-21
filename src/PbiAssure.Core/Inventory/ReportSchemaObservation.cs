@@ -1,7 +1,7 @@
 namespace PbiAssure.Core.Inventory;
 
 /// <summary>
-/// A report-side PBIR schema declaration encountered during a scan. This describes what PBI Assure has
+/// A report-side PBIR schema declaration encountered during a scan. This describes what PBI Project Lens has
 /// verified about its own report-format coverage; it does not assess whether the user's report is valid.
 /// </summary>
 public sealed record ReportSchemaObservation(

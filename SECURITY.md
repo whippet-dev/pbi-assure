@@ -2,7 +2,7 @@
 
 ## Supported versions
 
-PBI Assure is currently an early-stage project without versioned support branches. Security fixes are
+PBI Project Lens is currently an early-stage project without versioned support branches. Security fixes are
 made against the current `master` branch and the latest deployment at
 [pbiassure.pages.dev](https://pbiassure.pages.dev/). Older source revisions, local builds and copied
 deployments are not supported after a fix is available.
@@ -26,7 +26,7 @@ Repository maintainers can manage this setting under **Settings → Security →
 
 Include what you can safely provide:
 
-- the affected PBI Assure version, commit or deployed build revision;
+- the affected PBI Project Lens version, commit or deployed build revision;
 - the affected frontend: browser, command line or Windows desktop;
 - a concise description of the issue and its likely impact;
 - reproducible steps using synthetic data where possible;
@@ -41,7 +41,7 @@ agreed with the maintainer.
 
 Examples include unintended project-data transmission, unsafe local-file access or path handling,
 cross-site scripting in generated output, sensitive-data exposure, bypass of browser security controls,
-compromised build or deployment behaviour, and vulnerable dependencies with a practical PBI Assure
+compromised build or deployment behaviour, and vulnerable dependencies with a practical PBI Project Lens
 impact.
 
 Normal assurance false positives, feature requests and Power BI product issues are not security

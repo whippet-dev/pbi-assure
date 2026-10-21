@@ -7,7 +7,7 @@
 namespace PbiAssure.Reporting;
 
 /// <summary>
-/// The PBI Assure design system as compiled text.
+/// The PBI Project Lens design system as compiled text.
 ///
 /// The browser application links these stylesheets as files. A generated report has to travel as
 /// one self-contained document, so the same bytes are inlined into its head. Keeping a single
@@ -17,7 +17,7 @@ public static class DesignSystem
 {
     /// <summary>Design tokens and the primitives shared with the browser application.</summary>
     public const string Core = """
-        /* PBI Assure design system — tokens and shared primitives.
+        /* PBI Project Lens design system — tokens and shared primitives.
            Shared verbatim by the browser application and the generated HTML report so that both
            surfaces stay one product. Edit this file, then run: node scripts/Sync-DesignTokens.mjs
            DesignSystemSourceTests fails the build when the copies drift. */
@@ -595,7 +595,7 @@ public static class DesignSystem
 
     /// <summary>Presentation for the generated report, layered on top of <see cref="Core"/>.</summary>
     public const string Report = """
-        /* PBI Assure generated report — presentation layer on top of the shared design system.
+        /* PBI Project Lens generated report — presentation layer on top of the shared design system.
            Edit this file, then run: node scripts/Sync-DesignTokens.mjs
            The report is the denser expression of the product: the same tokens, controls and status
            vocabulary as the application, on a tighter spacing rhythm and a two-column workspace. */

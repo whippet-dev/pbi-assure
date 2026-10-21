@@ -77,7 +77,7 @@ This uses a local synthetic folder selection; it does not upload the fixture or 
 
 ### Manual offline verification
 
-1. Use a clean browser profile where practical and load PBI Assure fully.
+1. Use a clean browser profile where practical and load PBI Project Lens fully.
 2. Wait until the project picker and **Run analysis** control are usable.
 3. Open browser developer tools, select **Network**, clear the log, then enable Offline mode.
 4. Select the synthetic privacy fixture and run the scan.
@@ -96,7 +96,7 @@ every future code path remains local.
 
 ### Manual online network verification
 
-1. Use a clean browser profile where practical, open developer tools and load PBI Assure fully.
+1. Use a clean browser profile where practical, open developer tools and load PBI Project Lens fully.
 2. In **Network**, wait for startup requests to finish, clear the log and enable **Preserve log**.
 3. Select the synthetic privacy fixture and run the complete scan.
 4. Open the investigation and its Apparently unused focused review, then download both HTML
@@ -112,4 +112,4 @@ with synthetic data, store them securely and do not commit them to the repositor
 
 The automated and manual checks establish that no observable browser network request occurred during the
 tested scan/export workflow beyond the expected same-origin investigation assets. They do not cover
-every theoretical browser side channel or software outside PBI Assure's page context.
+every theoretical browser side channel or software outside PBI Project Lens's page context.

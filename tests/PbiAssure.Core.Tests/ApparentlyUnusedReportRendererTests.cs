@@ -216,7 +216,7 @@ public sealed class ApparentlyUnusedReportRendererTests
         var html = ApparentlyUnusedReportRenderer.Render(inventory);
 
         Assert.StartsWith("<!doctype html>", html, StringComparison.Ordinal);
-        Assert.Contains("<title>Apparently unused — Model</title>", html, StringComparison.Ordinal);
+        Assert.Contains("<title>PBI Project Lens · Apparently unused — Model</title>", html, StringComparison.Ordinal);
         Assert.Contains("--pa-unused:", html, StringComparison.Ordinal);
         Assert.Contains(".review-card", html, StringComparison.Ordinal);
         Assert.DoesNotContain("Analysis coverage</h2>", html, StringComparison.Ordinal);
@@ -281,7 +281,7 @@ public sealed class ApparentlyUnusedReportRendererTests
         foreach (var html in new[] { limited, complete })
         {
             Assert.Contains("<p class=\"eyebrow\">Model</p>", html, StringComparison.Ordinal);
-            Assert.Contains("PBI Assure found no report or semantic-model usage for these items. Review them before removing anything.", html, StringComparison.Ordinal);
+            Assert.Contains("PBI Project Lens found no report or semantic-model usage for these items. Review them before removing anything.", html, StringComparison.Ordinal);
             Assert.Contains("Power Query preparation evidence may still exist", html, StringComparison.Ordinal);
             Assert.DoesNotContain("class=\"metric", html, StringComparison.Ordinal);
             Assert.DoesNotContain("all checks complete", html, StringComparison.OrdinalIgnoreCase);

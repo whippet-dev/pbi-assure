@@ -1,17 +1,17 @@
 # Privacy
 
-PBI Assure is designed to analyse Power BI projects locally. This document explains what the browser
+PBI Project Lens is designed to analyse Power BI projects locally. This document explains what the browser
 application processes, what network activity still occurs, and how the local-processing claim can be
 checked independently.
 
-## What PBI Assure processes
+## What PBI Project Lens processes
 
 You choose a Power BI Project (PBIP) that uses Power BI's structured PBIR report format and TMDL
-semantic-model format. PBI Assure reads the project metadata needed for its checks, including report and
+semantic-model format. PBI Project Lens reads the project metadata needed for its checks, including report and
 visual definitions, semantic-model metadata, tables, columns, measures, DAX, relationships, Power Query
 M and relevant project resources.
 
-PBI Assure does not inspect imported model rows as part of this metadata analysis.
+PBI Project Lens does not inspect imported model rows as part of this metadata analysis.
 Power Query expressions can nevertheless contain inline data, hard-coded credentials or other
 sensitive values. Those expressions are project metadata and can appear in the detailed HTML report.
 
@@ -21,8 +21,8 @@ In the browser application, your Power BI project is processed locally in your b
 process. The investigation snapshot, findings, portable full HTML, Apparently unused HTML, Data Catalogue,
 Usage Mapping and Semantic Usage CSV files are created in browser memory.
 
-PBI Assure's project-processing code does not upload selected project files, their contents, analysis
-results or generated HTML/CSV files to PBI Assure, Cloudflare or another service. No account is required.
+PBI Project Lens's project-processing code does not upload selected project files, their contents, analysis
+results or generated HTML/CSV files to PBI Project Lens, Cloudflare or another service. No account is required.
 
 ## Cloudflare and normal website requests
 
@@ -33,20 +33,20 @@ time and browser headers. These application-delivery requests do not contain the
 project or its generated results.
 
 Cloudflare infrastructure headers such as `NEL` or `Report-To` may be present in responses. They are
-Cloudflare platform behaviour, not PBI Assure project telemetry. PBI Assure does not make claims here
+Cloudflare platform behaviour, not PBI Project Lens project telemetry. PBI Project Lens does not make claims here
 about Cloudflare's contractual retention or processing beyond the behaviour that has been technically
 verified.
 
 ## Analytics, cookies and browser storage
 
-PBI Assure application code contains no analytics or telemetry. On 1 October 2026, a read-only
+PBI Project Lens application code contains no analytics or telemetry. On 1 October 2026, a read-only
 Cloudflare dashboard check confirmed that Web Analytics was disabled for the production Pages project
 and Zaraz had no domains configured in the hosting account. The deployed application HTML contained no
 Cloudflare Web Analytics or Zaraz script, and the tested project workflows produced no observable
 cross-origin requests. Cloudflare account settings can change independently of this repository and
 should be rechecked when deployment assurance is required.
 
-PBI Assure does not require an account and does not create application-managed cookies. It does not use
+PBI Project Lens does not require an account and does not create application-managed cookies. It does not use
 `localStorage`, `sessionStorage` or IndexedDB to store selected projects or results. Project data is held
 in browser memory while the page is open.
 
@@ -144,6 +144,6 @@ theoretical browser side channel is impossible or that every future revision wil
 
 ## Environment boundary
 
-PBI Assure cannot control browser extensions, enterprise proxies, endpoint monitoring, browser or
+PBI Project Lens cannot control browser extensions, enterprise proxies, endpoint monitoring, browser or
 operating-system telemetry, compromised hosting or dependencies, or code changes outside the tested
 revision. Organisations should evaluate those controls as part of their own environment and risk model.

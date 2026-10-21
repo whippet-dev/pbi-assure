@@ -1,5 +1,5 @@
 // Regenerates src/PbiAssure.Reporting/DesignSystem.cs from the stylesheets that own the
-// PBI Assure design system.
+// PBI Project Lens design system.
 //
 //   src/PbiAssure.Web/wwwroot/css/core.css             design tokens and shared primitives
 //   src/PbiAssure.Reporting/Styles/report.css          the generated report's presentation layer
@@ -45,7 +45,7 @@ function renderDesignSystem(coreCss, reportCss, unusedReviewCss) {
 namespace PbiAssure.Reporting;
 
 /// <summary>
-/// The PBI Assure design system as compiled text.
+/// The PBI Project Lens design system as compiled text.
 ///
 /// The browser application links these stylesheets as files. A generated report has to travel as
 /// one self-contained document, so the same bytes are inlined into its head. Keeping a single

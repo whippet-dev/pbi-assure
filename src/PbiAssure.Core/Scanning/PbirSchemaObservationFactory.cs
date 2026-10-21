@@ -5,7 +5,7 @@ namespace PbiAssure.Core.Scanning;
 
 /// <summary>
 /// Classifies the schema declaration on a PBIR artifact without affecting how that artifact is parsed.
-/// The baseline records PBI Assure's Desktop-fixture evidence, not Microsoft's support lifecycle.
+/// The baseline records PBI Project Lens's Desktop-fixture evidence, not Microsoft's support lifecycle.
 /// </summary>
 internal static class PbirSchemaObservationFactory
 {

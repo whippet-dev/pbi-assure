@@ -101,7 +101,7 @@ public static class DefaultScanOutputPath
 public sealed record ScanOutputPlan(string HistoricalPath, string? LatestPath)
 {
     /// <summary>
-    /// True when PBI Assure chose the historical name. Such a file records one run and is never
+    /// True when PBI Project Lens chose the historical name. Such a file records one run and is never
     /// replaced; an explicitly requested path is the caller's to overwrite as they see fit.
     /// </summary>
     public bool IsGeneratedName { get; init; }

@@ -1,6 +1,6 @@
 # Usage classification
 
-PBI Assure classifies semantic-model objects by traversing an evidence-backed dependency graph. These classifications describe only the selected PBIP project and the dependency types that the current scanner understands.
+PBI Project Lens classifies semantic-model objects by traversing an evidence-backed dependency graph. These classifications describe only the selected PBIP project and the dependency types that the current scanner understands.
 
 ## Evidence currently included
 
@@ -20,7 +20,7 @@ Every edge records its source and target identities, dependency kind, source fil
 
 ## Power BI-generated objects
 
-Power BI-generated Auto Date/Time tables remain full participants in dependency and structural analysis. PBI Assure identifies them from the explicit `__PBI_LocalDateTable = true` or `__PBI_TemplateDateTable = true` annotation, or — because Desktop drops that annotation when it proxies a remote model's date table into a composite model — from the structure only Desktop produces, all of which must be present: a `LocalDateTable_<guid>` name, `showAsVariationsOnly`, and a `variation` on another table's column whose default hierarchy names the table. A hidden table, a matching-looking name, `showAsVariationsOnly` on its own, or an unused object is not sufficient evidence.
+Power BI-generated Auto Date/Time tables remain full participants in dependency and structural analysis. PBI Project Lens identifies them from the explicit `__PBI_LocalDateTable = true` or `__PBI_TemplateDateTable = true` annotation, or — because Desktop drops that annotation when it proxies a remote model's date table into a composite model — from the structure only Desktop produces, all of which must be present: a `LocalDateTable_<guid>` name, `showAsVariationsOnly`, and a `variation` on another table's column whose default hierarchy names the table. A hidden table, a matching-looking name, `showAsVariationsOnly` on its own, or an unused object is not sufficient evidence.
 
 Developer-facing cleanup counts exclude objects owned by these generated tables and report their total separately. The HTML semantic-model view defaults to developer-authored objects, with a filter for all or Power BI-generated objects. This changes presentation and review emphasis only; it does not change any object's usage state.
 
@@ -42,7 +42,7 @@ A table is directly used when it contains a directly used object. Otherwise, its
 
 When a report uses a field-parameter table, every statically declared `NAMEOF(...)` choice is treated as reachable because the saved PBIR metadata does not prove which choices a reader may select at runtime. Numeric what-if parameters based on expressions such as `GENERATESERIES(...)` are retained as ordinary calculated tables and are not labelled as field parameters.
 
-Report-level measures are kept separate from semantic-model measures. A visual that uses a report measure makes that report measure a dependency root; PBI Assure then follows the structured measure references stored in `reportExtensions.json`. Referenced model measures are classified as indirectly used, and references to other report measures are followed transitively. If Power BI marks a report measure as containing unrecognized references, the inventory preserves that warning for manual review.
+Report-level measures are kept separate from semantic-model measures. A visual that uses a report measure makes that report measure a dependency root; PBI Project Lens then follows the structured measure references stored in `reportExtensions.json`. Referenced model measures are classified as indirectly used, and references to other report measures are followed transitively. If Power BI marks a report measure as containing unrecognized references, the inventory preserves that warning for manual review.
 
 When a report uses a calculation-group table, every calculation item is treated as reachable. Explicit object references in calculation-item DAX and format-string expressions then participate in normal dependency traversal. Functions such as `SELECTEDMEASURE()` are contextual and do not create an invented dependency to every measure in the model; the report's explicit measure references remain the evidence for those base measures.
 
@@ -50,7 +50,7 @@ When a report uses a calculation-group table, every calculation item is treated 
 
 A column referenced only by a role's table permission filter, or named explicitly by a column-level object-level security permission, is required by stored model security metadata and is not a deletion candidate. Such objects are `StructurallyRequired`: the model requires them, but no report references them, which is exactly what that state means. They are deliberately not `DirectlyUsed`, because that state means report metadata references the object.
 
-PBI Assure inventories table-level metadata permissions and explicitly named column permissions. A table-level permission is shown in Security roles but does not make every column in that table structurally required: it does not explicitly name those columns. Other role metadata can remain unanalysed, so roles remain a partially analysed construct. Role membership is held in the Power BI service and never appears in a project, so it is outside the analysed scope entirely rather than an unanalysed construct.
+PBI Project Lens inventories table-level metadata permissions and explicitly named column permissions. A table-level permission is shown in Security roles but does not make every column in that table structurally required: it does not explicitly name those columns. Other role metadata can remain unanalysed, so roles remain a partially analysed construct. Role membership is held in the Power BI service and never appears in a project, so it is outside the analysed scope entirely rather than an unanalysed construct.
 
 ## Perspectives
 
@@ -58,19 +58,19 @@ A perspective is a curated subset of the model that an author deliberately expos
 
 Membership is exactly what the perspective lists. Naming a table does not expose its columns or measures; Microsoft documents that each member must be added individually unless `includeAll` is set, which includes every column, hierarchy and measure of that table. Treating a listed table as exposing all its fields would be a large source of false "used" conclusions.
 
-This is a statement about intent recorded in the model, not a claim that any consumer has used the perspective. PBI Assure cannot observe that.
+This is a statement about intent recorded in the model, not a claim that any consumer has used the perspective. PBI Project Lens cannot observe that.
 
 ## Classification confidence
 
 Every classification also carries a confidence, and it is deliberately a separate axis rather than a
-sixth state. The state says what PBI Assure found. The confidence says how complete the evidence behind
+sixth state. The state says what PBI Project Lens found. The confidence says how complete the evidence behind
 that answer is.
 
 - **Established**: this scan identified no limitation that qualifies the object's state within the analysed scope. It does not prove that unknown syntax or external consumers cannot matter.
 - **Checks limited** (`QualifiedByLimitation` in JSON/CSV): missing or partly understood metadata could affect this result.
   The state itself is unchanged and remains the best answer available.
 
-Checks limited is not the same as low confidence. PBI Assure may hold strong positive
+Checks limited is not the same as low confidence. PBI Project Lens may hold strong positive
 evidence and simply not have read one more possible source of references. The marker is context about
 the check, not a defect in the object, and it never means the object is definitely used — that is not
 known either.
@@ -106,12 +106,12 @@ every absence in its model, as does an ambiguity inside a report-level measure, 
 another report-level measure the model lookup does not hold.
 
 The HTML report shows this in two places. An **Analysis coverage** section states, per semantic model,
-what PBI Assure could not fully check and whether that could change any used or unused result. Each
+what PBI Project Lens could not fully check and whether that could change any used or unused result. Each
 affected object then carries a small **Checks limited** marker beside its status, linking to
 that model's entry. The cause is explained once at model scope rather than repeated beside every
 affected object, because one unchecked construct can affect most of a model.
 
-PBI Assure gains coverage for more Power BI metadata over time, so a limitation describes what the
+PBI Project Lens gains coverage for more Power BI metadata over time, so a limitation describes what the
 current version reads rather than a problem with the analysed project.
 
 ## Why an object has its state
@@ -131,7 +131,7 @@ reference rather than claiming to be the only one.
 
 ## Unresolved evidence
 
-An unresolved report reference or semantic dependency is retained as a separate record. PBI Assure does not silently correct names or invent a target because doing so would make removal recommendations unsafe. For example, a visual reference to `Sales[Dates]` remains unresolved when the model contains only `Sales[Date]`. Each report reference records its report, optional page and visual, artifact path, JSON evidence path, and usage context.
+An unresolved report reference or semantic dependency is retained as a separate record. PBI Project Lens does not silently correct names or invent a target because doing so would make removal recommendations unsafe. For example, a visual reference to `Sales[Dates]` remains unresolved when the model contains only `Sales[Date]`. Each report reference records its report, optional page and visual, artifact path, JSON evidence path, and usage context.
 
 ## Current limits
 

@@ -40,7 +40,7 @@ public partial class MainWindow : Window
         ClearOutputState();
         ProjectPathTextBox.Text = projectPath;
         RunAssuranceButton.IsEnabled = true;
-        StatusTextBlock.Text = "Ready to run assurance.";
+        StatusTextBlock.Text = "Ready to analyse your project.";
     }
 
     private async void RunAssurance_Click(object sender, RoutedEventArgs e)
@@ -83,7 +83,7 @@ public partial class MainWindow : Window
                 CsvPathTextBox.Text = Path.GetFullPath(latestSemanticUsageCsvPath);
                 OutputFolderTextBox.Text = Path.GetFullPath(outputFolderPath!);
                 OpenSemanticCsvButton.IsEnabled = true;
-                StatusTextBlock.Text = $"Assurance completed: {result.inventory.ErrorFindingCount} errors · {result.inventory.WarningFindingCount} warnings · {result.inventory.ReviewRequiredCount} reviews. HTML and semantic CSV created.";
+                StatusTextBlock.Text = $"Analysis completed: {result.inventory.ErrorFindingCount} errors · {result.inventory.WarningFindingCount} warnings · {result.inventory.ReviewRequiredCount} reviews. HTML and semantic CSV created.";
             }
             else
             {
@@ -102,7 +102,7 @@ public partial class MainWindow : Window
         catch (Exception exception)
         {
             ClearOutputState();
-            StatusTextBlock.Text = $"Could not run assurance: {exception.Message}";
+            StatusTextBlock.Text = $"Could not analyse the project: {exception.Message}";
         }
         finally
         {
@@ -124,7 +124,7 @@ public partial class MainWindow : Window
     {
         if (currentInventory is null)
         {
-            StatusTextBlock.Text = "Run assurance again before exporting CSV.";
+            StatusTextBlock.Text = "Run analysis again before exporting CSV.";
             ExportCsvButton.IsEnabled = false;
             return;
         }
@@ -143,7 +143,7 @@ public partial class MainWindow : Window
     {
         if (string.IsNullOrWhiteSpace(outputFolderPath) || !Directory.Exists(outputFolderPath))
         {
-            StatusTextBlock.Text = "The output folder could not be found. Run assurance again.";
+            StatusTextBlock.Text = "The output folder could not be found. Run analysis again.";
             OpenOutputFolderButton.IsEnabled = false;
             return;
         }
@@ -155,7 +155,7 @@ public partial class MainWindow : Window
     {
         if (string.IsNullOrWhiteSpace(filePath) || !File.Exists(filePath))
         {
-            StatusTextBlock.Text = $"The latest {description} could not be found. Run assurance again.";
+            StatusTextBlock.Text = $"The latest {description} could not be found. Run analysis again.";
             button.IsEnabled = false;
             return;
         }

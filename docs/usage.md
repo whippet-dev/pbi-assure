@@ -1,4 +1,4 @@
-# Using PBI Assure
+# Using PBI Project Lens
 
 ## Browser workflow
 
@@ -11,7 +11,7 @@ limitations. Each opens a new tab with a fixed snapshot. Return to project focus
 tab where available; refreshing either tab does not restore a project session. Hidden or supporting
 report references can be used without being user-facing.
 
-Save changes in Power BI Desktop before selecting **Analyse again**. With the primary folder picker, PBI Assure enumerates the folder again and reads current files, including additions and deletions. The alternate picker supplies a snapshot and requires folder reselection for another analysis. A failed refresh does not replace the previous completed result with partial results.
+Save changes in Power BI Desktop before selecting **Analyse again**. With the primary folder picker, PBI Project Lens enumerates the folder again and reads current files, including additions and deletions. The alternate picker supplies a snapshot and requires folder reselection for another analysis. A failed refresh does not replace the previous completed result with partial results.
 
 If the primary picker is blocked, use **Having trouble selecting a folder?** for the alternate picker. Firefox and Safari are best effort with the alternate picker; mobile and older enterprise browsers are not supported. Organisation policies can also block folder access, WebAssembly or downloads.
 

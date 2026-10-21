@@ -16,7 +16,7 @@ public sealed class SupportedProjectInputTests
         Assert.Contains("Sales.SemanticModel", exception.Message, StringComparison.Ordinal);
         Assert.Contains("TMSL format (model.bim)", exception.Message, StringComparison.Ordinal);
         Assert.Contains("TMDL format", exception.Message, StringComparison.Ordinal);
-        Assert.Contains("No assurance output was generated.", exception.Message, StringComparison.Ordinal);
+        Assert.Contains("No analysis output was generated.", exception.Message, StringComparison.Ordinal);
     }
 
     [Fact]

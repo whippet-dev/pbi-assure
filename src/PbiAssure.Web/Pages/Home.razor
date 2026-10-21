@@ -8,7 +8,7 @@
 @using PbiAssure.Reporting.Viewer
 @inject IJSRuntime JS
 
-<PageTitle>Analyse — PBI Assure</PageTitle>
+<PageTitle>Analyse — PBI Project Lens</PageTitle>
 
 <AppNavigation Current="AppPage.Analyse" HasActiveProject="@(selection is not null || inventory is not null || isBusy)" />
 
@@ -127,7 +127,7 @@
             <summary>Check or prepare your Power BI project</summary>
             <div class="guidance-content">
                 <p>Only have a <code>.pbix</code> file? Save it as a Power BI Project first.</p>
-                <p class="guidance-intro">PBIR and TMDL store the report and semantic model as structured project files that PBI Assure can analyse locally in your browser.</p>
+                <p class="guidance-intro">PBIR and TMDL store the report and semantic model as structured project files that PBI Project Lens can analyse locally in your browser.</p>
                 <div class="guidance-steps">
                     <ol>
                         <li>Open the PBIX in Power BI Desktop.</li>
@@ -325,7 +325,7 @@
         }
         catch (UnsupportedProjectInputException exception)
         {
-            message = exception.Message.Replace("assurance output", "report", StringComparison.OrdinalIgnoreCase);
+            message = exception.Message;
             inventory = null;
             snapshotJson = null;
         }
@@ -349,7 +349,7 @@
         }
         catch (Exception)
         {
-            message = "PBI Assure could not complete the analysis. Choose the project again and retry.";
+            message = "PBI Project Lens could not complete the analysis. Choose the project again and retry.";
             inventory = null;
             snapshotJson = null;
         }

@@ -155,7 +155,7 @@ Before publishing:
 
 1. Build from a committed and identifiable revision with the clean publish script.
 2. Confirm the footer shows the expected version and short revision without `-dirty`.
-3. Confirm only one current set of fingerprinted PBI Assure application assemblies exists in the clean
+3. Confirm only one current set of fingerprinted PBI Project Lens application assemblies exists in the clean
    output.
 4. Test the exact response headers in current desktop Edge and Chrome.
 5. Test startup, primary and alternate folder selection, a complete controlled scan, result navigation,

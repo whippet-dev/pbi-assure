@@ -5,7 +5,7 @@ public sealed class WebNewcomerOrientationTests
     /// <summary>
     /// The first screen has to answer what this tool does, what it can do for me, whether it will
     /// change my project, and what I have to choose — in the words a Power BI user already has.
-    /// PBI Assure's own vocabulary belongs on Coverage.
+    /// PBI Project Lens's own vocabulary belongs on Coverage.
     /// </summary>
     [Fact]
     public void SelectionComesBeforePreparationWithAnOutputPromiseAndLocalReassurance()
@@ -27,17 +27,17 @@ public sealed class WebNewcomerOrientationTests
     {
         var about = ReadWeb("Pages/About.razor");
         Assert.Contains("@page \"/about\"", about, StringComparison.Ordinal);
-        Assert.Contains("<PageTitle>What PBI Assure does — PBI Assure</PageTitle>", about, StringComparison.Ordinal);
-        Assert.Contains("<h1 id=\"about-title\" tabindex=\"-1\">What PBI Assure does</h1>", about, StringComparison.Ordinal);
+        Assert.Contains("<PageTitle>What PBI Project Lens does — PBI Project Lens</PageTitle>", about, StringComparison.Ordinal);
+        Assert.Contains("<h1 id=\"about-title\" tabindex=\"-1\">What PBI Project Lens does</h1>", about, StringComparison.Ordinal);
         // "What does it analyse?" moved to /coverage. About must not carry a second copy of it.
         Assert.DoesNotContain("What does it analyse?", about, StringComparison.Ordinal);
         Assert.DoesNotContain("information-definitions", about, StringComparison.Ordinal);
-        foreach (var heading in new[] { "What is PBI Assure?", "What can it help me understand?", "What do I get after analysis?", "Typical workflow", "Important limitations", "Privacy and read-only analysis" })
+        foreach (var heading in new[] { "What is PBI Project Lens?", "What can it help me understand?", "What do I get after analysis?", "Typical workflow", "Important limitations", "Privacy and read-only analysis" })
         {
             Assert.Contains($">{heading}</h3>", about, StringComparison.Ordinal);
         }
 
-        foreach (var fact in new[] { "<h4>Investigation workspace</h4>", "<h4>Apparently unused review download</h4>", "<h4>CSV exports</h4>", "Data Catalogue CSV", "Usage Mapping CSV", "zero detected usage", "optional metadata such as Description", "one row per logical direct report usage", "legacy technical/compatibility export", "Apparently unused does not mean safe to delete", "does not validate runtime data correctness","directly used does not automatically mean Yes", "No means no qualifying evidence was found", "application-managed persistent browser storage", "secure memory deletion is not guaranteed", "normal site/runtime requests", "static same-origin viewer shell", "ordinary request metadata", "after the application has loaded", "PRIVACY.md" })
+        foreach (var fact in new[] { "<h4>Investigation workspace</h4>", "<h4>Apparently unused review download</h4>", "<h4>CSV exports</h4>", "Data Catalogue CSV", "Usage Mapping CSV", "zero detected usage", "optional metadata such as Description", "one row per logical direct report usage", "legacy technical/compatibility export", "Apparently unused does not mean safe to delete", "does not validate runtime data correctness","directly used does not automatically mean Yes", "No means no qualifying evidence was found", "application-managed persistent browser storage", "secure memory deletion is not guaranteed", "normal site/runtime requests", "same-origin viewer assets", "ordinary request metadata", "after the application has loaded", "PRIVACY.md" })
         {
             Assert.Contains(fact, about, StringComparison.Ordinal);
         }

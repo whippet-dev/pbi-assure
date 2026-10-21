@@ -76,6 +76,9 @@ async function investigate(page, name = 'Open investigation') {
 test('published first-use journey, focused entry points, exports and return',async({page,context},info)=>{
   const external=[]; context.on('request',r=>{if(!r.url().startsWith('http://127.0.0.1:4176/'))external.push(r.url())});
   await start(page);
+  await expect(page.locator('.brand')).toHaveText('PBI Project Lens');
+  await expect(page).toHaveTitle('Analyse — PBI Project Lens');
+  await expect(page.locator('body')).not.toContainText('PBI Assure');
   await expect(page.locator('.privacy')).toContainText('Local & read-only');
   await page.screenshot({path:info.outputPath('front-door-1366.png')});
   await choose(page); await analyse(page);
@@ -84,6 +87,10 @@ test('published first-use journey, focused entry points, exports and return',asy
   await page.setViewportSize({width:1440,height:900});
   await page.screenshot({path:info.outputPath('completion-1440.png')});
   const viewer=await investigate(page);
+  await expect(viewer.locator('.brand')).toHaveText('PBI Project Lens');
+  await expect(viewer).toHaveTitle('PBI Project Lens · Investigation workspace');
+  await viewer.setViewportSize({width:1366,height:768});
+  await viewer.screenshot({path:info.outputPath('viewer-brand-1366.png')});
   await expect(viewer.locator('#workspace-heading')).toHaveText('Overview');
   const payload=await page.evaluate(()=>window.deliveries[0]);
   expect(payload.snapshot.ContractVersion).toBe('1.0');
@@ -103,8 +110,14 @@ test('published first-use journey, focused entry points, exports and return',asy
     const pending=page.waitForEvent('download');await page.getByRole('button',{name,exact:true}).click();
     const file=await pending; return readFileSync(await file.path(),'utf8');
   };
-  expect((await download('Download report')).toLowerCase().startsWith('<!doctype html>')).toBe(true);
-  expect((await download('Download apparently unused review')).includes('Apparently unused')).toBe(true);
+  const fullHtml=await download('Download report');
+  const unusedHtml=await download('Download apparently unused review');
+  expect(fullHtml.toLowerCase().startsWith('<!doctype html>')).toBe(true);
+  expect(unusedHtml.includes('Apparently unused')).toBe(true);
+  for(const html of [fullHtml,unusedHtml]) {
+    expect(html.includes('PBI Project Lens')).toBe(true);
+    expect(html.includes('PBI Assure')).toBe(false);
+  }
   await page.getByRole('button',{name:'Export data',exact:true}).click();
   const catalogue=await download('Download CSV');
   expect(catalogue.split('\n')[0]).toContain('UserFacing');

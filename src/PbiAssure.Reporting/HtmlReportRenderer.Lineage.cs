@@ -15,7 +15,7 @@ namespace PbiAssure.Reporting;
 public static partial class HtmlReportRenderer
 {
     internal const string LineageScopeNote =
-        "Lineage shows the dependencies PBI Assure found in this project's files. Some usage can't be checked, and anything outside this project isn't visible.";
+        "Lineage shows the dependencies PBI Project Lens found in this project's files. Some usage can't be checked, and anything outside this project isn't visible.";
 
     /// <summary>A path with more steps than this, the report location included, shows its middle collapsed.</summary>
     internal const int LineagePathStepLimit = 10;

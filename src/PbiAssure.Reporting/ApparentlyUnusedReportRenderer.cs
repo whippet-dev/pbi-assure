@@ -22,10 +22,10 @@ namespace PbiAssure.Reporting;
 public static class ApparentlyUnusedReportRenderer
 {
     internal const string Lede =
-        "PBI Assure found no report or semantic-model usage for these items. Review them before removing anything.";
+        "PBI Project Lens found no report or semantic-model usage for these items. Review them before removing anything.";
 
     internal const string Caution =
-        "PBI Assure checks the project you selected. An item could still be used by something outside this project, so this is a review list rather than a deletion recommendation. Power Query preparation evidence may still exist and is shown where it was found; it is not report or semantic-model usage.";
+        "PBI Project Lens checks the project you selected. An item could still be used by something outside this project, so this is a review list rather than a deletion recommendation. Power Query preparation evidence may still exist and is shown where it was found; it is not report or semantic-model usage.";
 
     internal const string ZeroStateHeading = "No apparently unused items found";
 
@@ -112,7 +112,7 @@ public static class ApparentlyUnusedReportRenderer
         html.AppendLine("<head>");
         html.AppendLine("  <meta charset=\"utf-8\">");
         html.AppendLine("  <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">");
-        html.Append("  <title>Apparently unused — ").Append(Encode(projectName)).AppendLine("</title>");
+        html.Append("  <title>PBI Project Lens · Apparently unused — ").Append(Encode(projectName)).AppendLine("</title>");
         html.Append("  <link rel=\"icon\" href=\"").Append(BrandIdentity.FaviconDataUri).AppendLine("\">");
         html.AppendLine("  <style>");
         html.AppendLine(DesignSystem.Core);
@@ -127,7 +127,7 @@ public static class ApparentlyUnusedReportRenderer
         html.AppendLine("    <div class=\"content\">");
         html.AppendLine("      <div class=\"review-bar\">");
         html.Append("        <span class=\"brand\">").Append(BrandIdentity.MarkSvg)
-            .AppendLine("PBI Assure<span class=\"brand-qualifier\">Apparently unused</span></span>");
+            .AppendLine("PBI Project Lens<span class=\"brand-qualifier\">Apparently unused</span></span>");
         HtmlReportRenderer.AppendAppearanceControl(html, "        ");
         html.AppendLine("      </div>");
         html.Append("      <p class=\"eyebrow\">").Append(Encode(projectName)).AppendLine("</p>");
@@ -174,7 +174,7 @@ public static class ApparentlyUnusedReportRenderer
 
         html.AppendLine("    <section class=\"review-limitations\" id=\"review-limitations\" aria-labelledby=\"review-limitations-title\">");
         html.AppendLine("      <h2 id=\"review-limitations-title\">Why some checks are limited</h2>");
-        html.Append("      <p>").Append(LimitedExplanation).AppendLine(" PBI Assure could not fully analyse the metadata " +
+        html.Append("      <p>").Append(LimitedExplanation).AppendLine(" PBI Project Lens could not fully analyse the metadata " +
                     "below, and it could bear on the items marked “" + LimitedLabel + "”.</p>");
         html.AppendLine("      <ul>");
         foreach (var limitation in limitations)
@@ -365,7 +365,7 @@ public static class ApparentlyUnusedReportRenderer
 
     private static void AppendDocumentEnd(StringBuilder html, ProjectInventory inventory, bool interactive)
     {
-        html.Append("    <p class=\"review-footer\">Generated locally by PBI Assure · inventory schema ")
+        html.Append("    <p class=\"review-footer\">Generated locally by PBI Project Lens · inventory schema ")
             .Append(Encode(inventory.SchemaVersion)).AppendLine(" · the full report holds every classification and the analysis coverage.</p>");
         html.AppendLine("  </main>");
         html.AppendLine("  <script>");

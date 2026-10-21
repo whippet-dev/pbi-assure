@@ -17,7 +17,7 @@ public static partial class HtmlReportRenderer
         html.AppendLine("    <section id=\"theme-review\" class=\"report-section\" data-report-section=\"theme-review\" aria-labelledby=\"theme-review-heading\">");
         html.AppendLine("      <h2 id=\"theme-review-heading\" tabindex=\"-1\">Theme review</h2>");
         html.AppendLine("      <p class=\"section-intro\">See which theme is applied, which formatting differs from it and whether similar visuals use noticeably different formatting.</p>");
-        html.AppendLine("      <div class=\"theme-early-access\" role=\"note\"><strong>Beta coverage</strong><p>PBI Assure compares only the theme settings it can assess confidently. A report with no flagged differences may still contain properties that were not checked. Coverage will expand over time; use Theme review to support, not replace, human design and governance review.</p></div>");
+        html.AppendLine("      <div class=\"theme-early-access\" role=\"note\"><strong>Beta coverage</strong><p>PBI Project Lens compares only the theme settings it can assess confidently. A report with no flagged differences may still contain properties that were not checked. Coverage will expand over time; use Theme review to support, not replace, human design and governance review.</p></div>");
         html.AppendLine("      <div class=\"theme-boundary\"><strong>Interpret differences in context</strong><p>Intentional design exceptions can be valid. Theme review does not grade the report or reproduce Power BI’s full formatting engine.</p></div>");
         AppendThemeSummary(html, inventory);
         AppendThemeReviewFilters(html, inventory);
@@ -94,7 +94,7 @@ public static partial class HtmlReportRenderer
         }
         if (deviations.Length == 0)
         {
-            html.AppendLine("        <p class=\"theme-empty-state\">No differences were found in the theme settings PBI Assure could compare.</p>");
+            html.AppendLine("        <p class=\"theme-empty-state\">No differences were found in the theme settings PBI Project Lens could compare.</p>");
         }
         else
         {
@@ -182,7 +182,7 @@ public static partial class HtmlReportRenderer
         html.AppendLine("      <section class=\"theme-review-group\" aria-labelledby=\"theme-accessibility-heading\">");
         html.AppendLine("        <h3 id=\"theme-accessibility-heading\">Theme accessibility coverage</h3>");
         if (observations == 0)
-            html.AppendLine("        <p class=\"theme-empty-state\">Automated theme accessibility checks are not available yet. Contrast will be reported only when PBI Assure can determine the colours used by Power BI reliably.</p>");
+            html.AppendLine("        <p class=\"theme-empty-state\">Automated theme accessibility checks are not available yet. Contrast will be reported only when PBI Project Lens can determine the colours used by Power BI reliably.</p>");
         foreach (var report in inventory.Reports)
         foreach (var observation in report.ThemeReview.AccessibilityObservations)
         {
@@ -407,7 +407,7 @@ public static partial class HtmlReportRenderer
     {
         html.AppendLine("      <section class=\"theme-review-group\" aria-labelledby=\"persisted-formatting-heading\">");
         html.AppendLine("        <h3 id=\"persisted-formatting-heading\">Formatting details</h3>");
-        html.AppendLine("        <p class=\"group-explanation\">Formatting values PBI Assure could read from visuals. Counts represent visual and property combinations, not visuals. When no value is saved in a visual, Power BI or the theme may still provide it.</p>");
+        html.AppendLine("        <p class=\"group-explanation\">Formatting values PBI Project Lens could read from visuals. Counts represent visual and property combinations, not visuals. When no value is saved in a visual, Power BI or the theme may still provide it.</p>");
         html.AppendLine("        <dl class=\"metrics theme-metrics\">");
         AppendMetric(html, "Formatting values reviewed", headline.Length);
         AppendMetric(html, "No value saved in visual", Count(headline, PersistedFormattingClassifications.NoPersistedValue));
@@ -493,7 +493,7 @@ public static partial class HtmlReportRenderer
         else if (!string.IsNullOrWhiteSpace(observation.NormalizedValue)) html.Append("                <p><strong>Saved evidence:</strong> ").Append(Encode(observation.NormalizedValue)).AppendLine("</p>");
         if (observation.IsSelectorScoped) html.Append("                <p><strong>Applies to:</strong> ").Append(Encode(observation.SelectorScope ?? "A specific series or category")).AppendLine("</p>");
         if (!string.IsNullOrWhiteSpace(observation.ExpressionSource)) html.Append("                <p><strong>Value comes from:</strong> ").Append(Encode(observation.ExpressionSource)).AppendLine("</p>");
-        if (observation.IsAmbiguous) html.AppendLine("                <p class=\"secondary\">PBI Assure could not determine exactly which series or category this setting applies to, so it is shown for review only.</p>");
+        if (observation.IsAmbiguous) html.AppendLine("                <p class=\"secondary\">PBI Project Lens could not determine exactly which series or category this setting applies to, so it is shown for review only.</p>");
         if (!observation.IncludeInHeadline) html.AppendLine("                <p class=\"secondary\">This setting appears to belong to an item no longer used by the visual, so it is excluded from the summary.</p>");
         html.AppendLine("                <details class=\"technical-details\"><summary>Technical details</summary><dl class=\"technical-list\">");
         AppendDefinition(html, "Visual definition", DisplayPath(context.Visual.RelativePath));

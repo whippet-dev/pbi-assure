@@ -11,7 +11,7 @@ public sealed class DesktopTmslModelBimEvidenceFixtureTests
             ProjectScanner.Scan(FixturePath("desktop-tmsl-model-bim-evidence")));
 
         Assert.Contains("TMSL format (model.bim)", exception.Message, StringComparison.Ordinal);
-        Assert.Contains("No assurance output was generated.", exception.Message, StringComparison.Ordinal);
+        Assert.Contains("No analysis output was generated.", exception.Message, StringComparison.Ordinal);
     }
 
     [Fact]

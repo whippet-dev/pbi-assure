@@ -48,7 +48,7 @@ internal static class AnalysisLimitationDetector
     }
 
     /// <summary>
-    /// A reference PBI Assure read but could not bind is doubt about the dependency graph, so it has to
+    /// A reference PBI Project Lens read but could not bind is doubt about the dependency graph, so it has to
     /// reach confidence the same way every other doubt does — as an <see cref="AnalysisLimitation"/>
     /// carrying <see cref="ConstructDependencyImpacts.MayCreateDependencies"/>. Routing it here keeps
     /// <see cref="SemanticUsageConfidenceQualifier"/> with a single input rather than giving confidence

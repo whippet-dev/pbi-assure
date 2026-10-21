@@ -87,7 +87,7 @@ internal static class ReportDefinitionFileRegistry
         SupportState: ConstructSupportStates.Unrecognized,
         DependencyImpact: ConstructDependencyImpacts.MayCreateDependencies,
         Concerns: [AnalysisConcerns.Dependency],
-        Reason: "This report metadata file is not recognised by this version of PBI Assure and was not " +
+        Reason: "This report metadata file is not recognised by this version of PBI Project Lens and was not " +
                 "analysed. It could contain semantic references that are absent from the usage graph.");
 
     public static ReportDefinitionFileRule Classify(string reportRelativePath)

@@ -26,9 +26,9 @@ public sealed class PrivacyWorkflowTests(PrivacyE2EFixture fixture)
         await page.Locator("details.guidance-panel > summary").FocusAsync();
         Assert.Equal("2px", await page.Locator("details.guidance-panel > summary").EvaluateAsync<string>("element => getComputedStyle(element).outlineWidth"));
         await page.GotoAsync(fixture.BaseUrl + "/about");
-        var heading = page.GetByRole(AriaRole.Heading, new() { Name = "What PBI Assure does", Exact = true });
+        var heading = page.GetByRole(AriaRole.Heading, new() { Name = "What PBI Project Lens does", Exact = true });
         await heading.WaitForAsync();
-        Assert.Equal("What PBI Assure does — PBI Assure", await page.TitleAsync());
+        Assert.Equal("What PBI Project Lens does — PBI Project Lens", await page.TitleAsync());
         var navigation = page.GetByRole(AriaRole.Navigation, new() { Name = "Application" });
         Assert.Equal("page", await navigation.GetByRole(AriaRole.Link, new() { Name = "About", Exact = true }).GetAttributeAsync("aria-current"));
         await navigation.GetByRole(AriaRole.Link, new() { Name = "Analyse", Exact = true }).FocusAsync();
@@ -83,7 +83,7 @@ public sealed class PrivacyWorkflowTests(PrivacyE2EFixture fixture)
         Assert.Equal("noopener noreferrer", await link.GetAttributeAsync("rel"));
         await link.FocusAsync();
         var popup = await page.RunAndWaitForPopupAsync(() => page.Keyboard.PressAsync("Enter"));
-        await popup.GetByRole(AriaRole.Heading, new() { Name = "What PBI Assure does", Exact = true }).WaitForAsync();
+        await popup.GetByRole(AriaRole.Heading, new() { Name = "What PBI Project Lens does", Exact = true }).WaitForAsync();
         await popup.WaitForLoadStateAsync(LoadState.NetworkIdle);
         Assert.Equal(fixture.BaseUrl + "/about", popup.Url);
         Assert.True(await popup.EvaluateAsync<bool>("window.opener === null"));
