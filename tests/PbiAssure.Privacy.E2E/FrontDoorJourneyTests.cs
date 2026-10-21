@@ -255,7 +255,7 @@ public sealed class FrontDoorJourneyTests(PrivacyE2EFixture fixture)
         var error = page.Locator("#project-message");
         await error.WaitForAsync();
         var text = await error.InnerTextAsync();
-        Assert.Contains("No report was generated", text);
+        Assert.Contains("No investigation was generated", text);
         Assert.Contains("Keep a backup", text);
         Assert.DoesNotContain("assurance output", text);
         Assert.Equal("alert", await error.GetAttributeAsync("role"));
