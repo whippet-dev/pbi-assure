@@ -58,36 +58,15 @@ The complete Cloudflare Pages policy is source-controlled in
 If a future feature introduces a report iframe or a Web Worker, review and narrowly amend `frame-src`
 or `worker-src` at that time. They are deliberately disabled now.
 
-The generated standalone HTML report contains its own inline CSS and JavaScript. A Blob document opened
-directly from the application inherits the main CSP and therefore cannot use that inline presentation.
-PBI Assure instead opens the same-origin `report-viewer.html` shell and transfers the generated report
-to it locally with `postMessage`. The selected project and report content are not included in the viewer
-page request.
+The web investigation loads production assets under `investigation/` and accepts one
+ViewerSnapshot 1.0 from its same-origin opening tab. Source, origin and delivery ID are validated;
+acceptance is acknowledged after rendering. Project data stays in memory, never in URLs or browser
+storage. The application and viewer use the policy above; neither needs inline-script allowances.
+See [the snapshot contract](../viewer-snapshot-contract.md) for the handoff and lifecycle.
 
-Cloudflare serves `.html` files at extensionless URLs, so `/report-viewer.html` redirects to
-`/report-viewer`. Cloudflare's `_headers` matching rules are cumulative. Both viewer routes therefore
-detach the main Content-Security-Policy before applying this narrow viewer-only policy:
-
-```text
-default-src 'none';
-base-uri 'none';
-object-src 'none';
-script-src 'self' 'unsafe-inline';
-style-src 'unsafe-inline';
-connect-src 'none';
-img-src 'self' data:;
-font-src 'none';
-media-src 'none';
-frame-src 'none';
-worker-src 'none';
-form-action 'none';
-frame-ancestors 'none';
-```
-
-Inline script and style are permitted only on the report-viewer document because they are intrinsic to
-the self-contained generated report. The viewer cannot make fetch, WebSocket, beacon or other
-CSP-governed connections. It accepts content only from its same-origin opener, clears the opener
-relationship before rendering, and the main application policy remains unchanged.
+Full HTML and Apparently unused HTML are portable downloads with self-contained CSS and JavaScript.
+They are not hosted interactive web applications. CLI and Desktop retain their saved-HTML workflows;
+no special hosting routes or CSP exceptions are required for those files.
 
 ## Clean, identifiable publish
 
@@ -116,7 +95,7 @@ PowerShell files are thin Windows launchers for the same workflow. The publish r
 in the small browser-helper URLs with a content-derived version.
 The HTML and non-fingerprinted helper files use `Cache-Control: no-cache`, so browsers revalidate them
 while fingerprinted framework assets retain their normal caching. This prevents a current WebAssembly
-build from being combined with an older folder picker or report-opening script.
+build from being combined with an older folder picker or investigation handoff script.
 
 Cloudflare builds normally start from a clean checkout, but the current Pages v2/v3 build images do
 not include the .NET SDK. The Cloudflare launcher installs the exact SDK pinned by `global.json` when
@@ -180,7 +159,8 @@ Before publishing:
    output.
 4. Test the exact response headers in current desktop Edge and Chrome.
 5. Test startup, primary and alternate folder selection, a complete controlled scan, result navigation,
-   **Open report**, HTML download and CSV download. Confirm the opened report is styled and interactive.
+   **Open investigation**, both focused review routes, HTML download and CSV download. Confirm the
+   investigation renders and the downloaded HTML works independently.
 6. Confirm the browser console contains no CSP or runtime errors.
 7. Clear the Network panel after startup and confirm project selection, analysis and export cause no
    unexpected outbound requests.

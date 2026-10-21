@@ -31,8 +31,8 @@ public sealed class WebUnusedReviewSurfaceTests
         Assert.Contains("ApparentlyUnusedReportRenderer.Render(inventory)", body, StringComparison.Ordinal);
         Assert.DoesNotContain("HtmlReportRenderer.Render", body, StringComparison.Ordinal);
         Assert.Contains("JS.InvokeVoidAsync(\"pbiAssureDownload.save\", BrowserDownloadFileNames.ApparentlyUnusedHtml(selection.DisplayName), \"text/html;charset=utf-8\", html)", body, StringComparison.Ordinal);
-        Assert.Contains("WebReportViewerStatus.DownloadStarted(WebReportKind.ApparentlyUnusedReview)", body, StringComparison.Ordinal);
-        Assert.Contains("WebReportViewerStatus.DownloadFailed(WebReportKind.ApparentlyUnusedReview)", body, StringComparison.Ordinal);
+        Assert.Contains("WebDownloadStatus.Started(\"apparently unused review\")", body, StringComparison.Ordinal);
+        Assert.Contains("WebDownloadStatus.Failed(\"apparently unused review\")", body, StringComparison.Ordinal);
         Assert.DoesNotContain("pbiAssureDownload.open", body, StringComparison.Ordinal);
     }
 

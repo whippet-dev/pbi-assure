@@ -18,7 +18,7 @@ sensitive values. Those expressions are project metadata and can appear in the d
 ## Where processing happens
 
 In the browser application, your Power BI project is processed locally in your browser's WebAssembly
-process. The generated findings, interactive HTML report, Apparently Unused review, Data Catalogue,
+process. The investigation snapshot, findings, portable full HTML, Apparently unused HTML, Data Catalogue,
 Usage Mapping and Semantic Usage CSV files are created in browser memory.
 
 PBI Assure's project-processing code does not upload selected project files, their contents, analysis
@@ -87,9 +87,9 @@ that the application origin has no cookies, session storage, IndexedDB databases
 registrations, and that local storage contains only a valid appearance preference, if present.
 
 The verified scan and export workflow produced no observable browser network requests after the
-application-ready baseline. Opening a report used only the expected same-origin static viewer shell
-requests; generated report content was transferred locally to that shell and was not included in those
-requests.
+application-ready baseline. Opening the modern investigation loads only same-origin viewer assets;
+the snapshot is transferred locally in memory and is not included in those requests. Each opened
+viewer retains its own analysis when the originating tab reruns.
 
 ### Latest deployed verification
 
@@ -139,7 +139,7 @@ The complete manual offline and online Network-panel procedure is in
 [Browser privacy and local processing](docs/development/testing.md#reproducible-privacy-verification).
 
 These checks demonstrate that no observable browser network request occurred during the tested
-scan/export workflow beyond the expected same-origin report-viewer shell. They do not prove that every
+scan/export workflow beyond the expected same-origin viewer assets. They do not prove that every
 theoretical browser side channel is impossible or that every future revision will behave identically.
 
 ## Environment boundary

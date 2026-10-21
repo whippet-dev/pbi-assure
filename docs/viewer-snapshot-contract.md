@@ -110,8 +110,10 @@ The front door retains the result for retry without rescanning. `Home.razor` ser
 once per successful analysis; each viewer gets its own structured clone. Reruns create a new snapshot
 and cannot update existing viewers. Only the originating application retains the folder handle;
 Return to project focuses that tab where possible. A fresh navigation cannot restore its session.
-Exports still consume the original inventory and renderers. The old report-viewer assets/transport
-remain temporarily for the next cleanup slice, but no front-door action opens them.
+Exports still consume the original inventory and renderers. The generated-HTML web launch path has
+been removed. `download.js` only saves files; `investigation.js` owns the sole interactive web handoff.
+Full HTML remains a portable browser export and the CLI/Desktop saved document. Apparently unused
+HTML remains a portable export; its interactive web workflow is inside Model Objects.
 Public JSON 0.26 import is intentionally unavailable pending an explicit compatibility adapter.
 
 Development only: from `tests/PbiAssure.Viewer.Tests`, run `npm ci`, `npx playwright install chromium`,

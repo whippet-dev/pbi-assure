@@ -13,7 +13,8 @@ PBIP project
   -> normalised artifact inventory
   -> dependency graph
   -> versioned assurance rules
-  -> JSON inventory / interactive HTML / Semantic Usage CSV / Data Catalogue / Usage Mapping
+  -> ViewerSnapshot 1.0 -> modern web investigation
+  -> portable HTML / JSON 0.26 / Semantic Usage CSV / Data Catalogue / Usage Mapping
 ```
 
 Each stage has one responsibility:
@@ -37,7 +38,7 @@ Provides automation, default output naming, and file writing. A default scan cre
 
 ### `PbiAssure.Reporting`
 
-Renders normalized inventories into interactive HTML and the Semantic Usage, Data Catalogue and Usage Mapping CSV outputs. It depends on the core domain model but contains no scanning or Power BI parsing logic.
+Projects authoritative inventories into ViewerSnapshot 1.0 and renders portable HTML and the Semantic Usage, Data Catalogue and Usage Mapping CSV outputs. It depends on the core domain model but contains no scanning or Power BI parsing logic.
 
 ### `PbiAssure.Desktop`
 
@@ -47,7 +48,10 @@ Provides the lightweight Windows workflow over the shared scanner and output wri
 
 Provides a standalone Blazor WebAssembly frontend over Core and Reporting. Browser directory APIs create
 a bounded, canonical, in-memory project-file source; analysis and report rendering then run locally in
-the browser. Web contains no independent semantic analysis, backend, upload or telemetry path. See
+the browser. Open investigation delivers a snapshot in memory to production assets under
+`wwwroot/investigation/`; portable HTML is a download, not a second hosted viewer. Core remains
+authoritative for semantics. See [the snapshot contract](../viewer-snapshot-contract.md).
+Web contains no independent semantic analysis, backend, upload or telemetry path. See
 [usage](../usage.md) and [privacy verification](testing.md).
 
 ## Dependency graph

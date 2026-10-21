@@ -429,6 +429,7 @@ public sealed class PrivacyWorkflowTests(PrivacyE2EFixture fixture)
         Assert.DoesNotContain("zaraz", appHtml, StringComparison.OrdinalIgnoreCase);
         var viewerResponse = await api.GetAsync($"{fixture.BaseUrl}/investigation/index.html");
         Assert.True(viewerResponse.Ok);
+        Assert.Equal("no-cache", viewerResponse.Headers["cache-control"]);
         var csp = viewerResponse.Headers["content-security-policy"];
         Assert.Contains("script-src 'self'", csp, StringComparison.Ordinal);
         Assert.Contains("connect-src 'self'", csp, StringComparison.Ordinal);

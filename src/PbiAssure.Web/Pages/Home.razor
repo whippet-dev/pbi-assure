@@ -88,7 +88,7 @@
             <details class="download-options">
             <summary id="other-outputs-heading">Downloads &amp; exports</summary>
             <div class="download-report"><button class="secondary-button" @onclick="DownloadHtmlAsync" disabled="@ActionsDisabled">Download report</button><p>Keep a standalone HTML report of this analysis. It uses the existing report layout.</p></div>
-            <p class="report-card-status" role="status">@interactiveReportMessage</p>
+            <p class="report-card-status" role="status">@htmlDownloadMessage</p>
             <p class="sensitivity">Downloads can contain sensitive project metadata. Review before sharing; outputs are not automatically redacted.</p>
             <div class="other-outputs" role="group" aria-labelledby="other-outputs-heading">
                 <section class="report-secondary" aria-labelledby="unused-review-heading">
@@ -165,7 +165,7 @@
     private bool isOpeningViewer;
     private bool ActionsDisabled => isBusy || isOpeningViewer;
     private string? message;
-    private string? interactiveReportMessage;
+    private string? htmlDownloadMessage;
     private string? unusedReviewMessage;
     private string? legacyCsvMessage;
     private ElementReference exportToggle;
@@ -385,7 +385,7 @@
     private void ClearActionFeedback()
     {
         investigationMessage = null;
-        interactiveReportMessage = null;
+        htmlDownloadMessage = null;
         unusedReviewMessage = null;
         legacyCsvMessage = null;
     }
@@ -406,16 +406,16 @@
             return;
         }
 
-        interactiveReportMessage = null;
+        htmlDownloadMessage = null;
         try
         {
             var html = HtmlReportRenderer.Render(inventory);
             await JS.InvokeVoidAsync("pbiAssureDownload.save", BrowserDownloadFileNames.Html(selection.DisplayName), "text/html;charset=utf-8", html);
-            interactiveReportMessage = WebReportViewerStatus.DownloadStarted(WebReportKind.InteractiveReport);
+            htmlDownloadMessage = WebDownloadStatus.Started("full HTML report");
         }
         catch (Exception)
         {
-            interactiveReportMessage = WebReportViewerStatus.DownloadFailed(WebReportKind.InteractiveReport);
+            htmlDownloadMessage = WebDownloadStatus.Failed("full HTML report");
         }
     }
 
@@ -436,7 +436,7 @@
         finally { isOpeningViewer = false; }
     }
 
-    /// <summary>The review is saved through the same browser save path as the interactive report.</summary>
+    /// <summary>Both portable HTML exports use the same browser save path.</summary>
     private async Task DownloadUnusedReviewAsync()
     {
         if (inventory is null || selection is null)
@@ -449,11 +449,11 @@
         {
             var html = ApparentlyUnusedReportRenderer.Render(inventory);
             await JS.InvokeVoidAsync("pbiAssureDownload.save", BrowserDownloadFileNames.ApparentlyUnusedHtml(selection.DisplayName), "text/html;charset=utf-8", html);
-            unusedReviewMessage = WebReportViewerStatus.DownloadStarted(WebReportKind.ApparentlyUnusedReview);
+            unusedReviewMessage = WebDownloadStatus.Started("apparently unused review");
         }
         catch (Exception)
         {
-            unusedReviewMessage = WebReportViewerStatus.DownloadFailed(WebReportKind.ApparentlyUnusedReview);
+            unusedReviewMessage = WebDownloadStatus.Failed("apparently unused review");
         }
     }
 
@@ -470,11 +470,11 @@
             var csv = SemanticUsageCsvRenderer.Render(inventory);
             var csvWithBom = "\uFEFF" + csv;
             await JS.InvokeVoidAsync("pbiAssureDownload.save", BrowserDownloadFileNames.SemanticUsageCsv(selection.DisplayName), "text/csv;charset=utf-8", csvWithBom);
-            legacyCsvMessage = "Download started: semantic usage CSV.";
+            legacyCsvMessage = WebDownloadStatus.Started("semantic usage CSV");
         }
         catch (Exception)
         {
-            legacyCsvMessage = "The semantic usage CSV could not be generated or downloaded.";
+            legacyCsvMessage = WebDownloadStatus.Failed("semantic usage CSV");
         }
     }
 

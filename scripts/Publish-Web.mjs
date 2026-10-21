@@ -73,8 +73,6 @@ const assetVersionInputs = [
     "src/PbiAssure.Web/wwwroot/favicon.svg",
     "src/PbiAssure.Web/wwwroot/css/core.css",
     "src/PbiAssure.Web/wwwroot/css/app.css",
-    "src/PbiAssure.Web/wwwroot/report-viewer.html",
-    "src/PbiAssure.Web/wwwroot/report-viewer.js"
 ];
 const assetVersion = createHash("sha256")
     .update(assetVersionInputs
@@ -107,8 +105,6 @@ const requiredFiles = [
     "favicon.svg",
     join("css", "core.css"),
     join("css", "app.css"),
-    "report-viewer.html",
-    "report-viewer.js",
     join("_framework", "blazor.webassembly.js")
 ];
 
@@ -119,7 +115,7 @@ for (const relativePath of requiredFiles) {
     }
 }
 
-for (const relativePath of ["index.html", "download.js", "investigation.js", "report-viewer.html"]) {
+for (const relativePath of ["index.html", "investigation.js"]) {
     const versionedFile = join(publishedRoot, relativePath);
     const content = readFileSync(versionedFile, "utf8");
     if (!content.includes(assetVersionPlaceholder)) {
@@ -129,7 +125,7 @@ for (const relativePath of ["index.html", "download.js", "investigation.js", "re
     writeVersionedAsset(versionedFile, content.replaceAll(assetVersionPlaceholder, assetVersion));
 }
 
-for (const relativePath of ["index.html", "download.js", "investigation.js", "report-viewer.html"]) {
+for (const relativePath of ["index.html", "investigation.js"]) {
     const output = readFileSync(join(publishedRoot, relativePath), "utf8");
     if (output.includes(assetVersionPlaceholder)) {
         throw new Error(`An asset-version placeholder remains in published ${relativePath}.`);

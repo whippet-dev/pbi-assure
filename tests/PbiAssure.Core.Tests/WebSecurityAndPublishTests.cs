@@ -41,11 +41,7 @@ public sealed class WebSecurityAndPublishTests
         var repositoryRoot = FindRepositoryRoot();
         var headers = File.ReadAllText(
             Path.Combine(repositoryRoot, "src", "PbiAssure.Web", "wwwroot", "_headers"));
-        var htmlViewerRuleStart = headers.IndexOf("/report-viewer.html", StringComparison.Ordinal);
-        var extensionlessViewerRuleStart = headers.IndexOf("/report-viewer\n", StringComparison.Ordinal);
-        var htmlViewerRule = headers[htmlViewerRuleStart..extensionlessViewerRuleStart];
-        var extensionlessViewerRule = headers[extensionlessViewerRuleStart..];
-        var applicationRule = headers[..htmlViewerRuleStart];
+        var applicationRule = headers;
 
         Assert.Contains("default-src 'self'", applicationRule, StringComparison.Ordinal);
         Assert.Contains("script-src 'self' 'wasm-unsafe-eval'", applicationRule, StringComparison.Ordinal);
@@ -63,17 +59,8 @@ public sealed class WebSecurityAndPublishTests
             "Permissions-Policy: camera=(), microphone=(), geolocation=()",
             headers,
             StringComparison.Ordinal);
-        Assert.StartsWith("/report-viewer.html", htmlViewerRule, StringComparison.Ordinal);
-        Assert.StartsWith("/report-viewer", extensionlessViewerRule, StringComparison.Ordinal);
-        foreach (var viewerRule in new[] { htmlViewerRule, extensionlessViewerRule })
-        {
-            Assert.Contains("! Content-Security-Policy", viewerRule, StringComparison.Ordinal);
-            Assert.Contains("default-src 'none'", viewerRule, StringComparison.Ordinal);
-            Assert.Contains("script-src 'self' 'unsafe-inline'", viewerRule, StringComparison.Ordinal);
-            Assert.Contains("style-src 'unsafe-inline'", viewerRule, StringComparison.Ordinal);
-            Assert.Contains("connect-src 'none'", viewerRule, StringComparison.Ordinal);
-            Assert.Contains("frame-ancestors 'none'", viewerRule, StringComparison.Ordinal);
-        }
+        Assert.DoesNotContain("report-viewer", headers);
+        Assert.DoesNotContain("! Content-Security-Policy", headers);
         Assert.DoesNotContain("report-uri", headers, StringComparison.OrdinalIgnoreCase);
         Assert.DoesNotContain("report-to", headers, StringComparison.OrdinalIgnoreCase);
     }
@@ -103,8 +90,8 @@ public sealed class WebSecurityAndPublishTests
         Assert.Contains("resolve(repositoryRoot, \"artifacts\", \"web\")", script, StringComparison.Ordinal);
         Assert.Contains("rmSync(outputDirectory, { recursive: true, force: true })", script, StringComparison.Ordinal);
         Assert.Contains("`-p:SourceRevisionId=${buildRevision}`", script, StringComparison.Ordinal);
-        Assert.Contains("report-viewer.html", script, StringComparison.Ordinal);
-        Assert.Contains("report-viewer.js", script, StringComparison.Ordinal);
+        Assert.DoesNotContain("report-viewer", script, StringComparison.Ordinal);
+        Assert.Contains("investigationAssets", script, StringComparison.Ordinal);
         Assert.Contains("__PBIASSURE_ASSET_VERSION__", script, StringComparison.Ordinal);
         Assert.Contains("Browser asset version", script, StringComparison.Ordinal);
         Assert.Contains("--source-revision", script, StringComparison.Ordinal);

@@ -39,18 +39,6 @@ internal sealed class PrivacyTestHost : IAsyncDisposable
                 rule.Apply(context.Response.Headers);
             }
 
-            if (string.Equals(originalPath, "/report-viewer.html", StringComparison.Ordinal))
-            {
-                context.Response.StatusCode = StatusCodes.Status308PermanentRedirect;
-                context.Response.Headers.Location = "/report-viewer" + context.Request.QueryString;
-                return;
-            }
-
-            if (string.Equals(originalPath, "/report-viewer", StringComparison.Ordinal))
-            {
-                context.Request.Path = "/report-viewer.html";
-            }
-
             await next();
         });
         app.UseDefaultFiles(new DefaultFilesOptions { FileProvider = fileProvider });
@@ -60,7 +48,7 @@ internal sealed class PrivacyTestHost : IAsyncDisposable
             ServeUnknownFileTypes = true,
             DefaultContentType = "application/octet-stream",
         });
-        // Apply SPA fallback only after static files, so the viewer rewrite still serves its shell.
+        // Apply SPA fallback only after static files, so investigation assets are served before application routes.
         app.Run(async context =>
         {
             if (HttpMethods.IsGet(context.Request.Method) && !Path.HasExtension(context.Request.Path.Value))
@@ -95,8 +83,9 @@ internal sealed class PrivacyTestHost : IAsyncDisposable
 
     private sealed record CloudflareHeaderRule(string Path, IReadOnlyList<HeaderOperation> Operations)
     {
-        public bool Matches(string requestPath) =>
-            Path == "/*" || string.Equals(Path, requestPath, StringComparison.Ordinal);
+        public bool Matches(string requestPath) => Path.EndsWith('*')
+            ? requestPath.StartsWith(Path[..^1], StringComparison.Ordinal)
+            : string.Equals(Path, requestPath, StringComparison.Ordinal);
 
         public void Apply(IHeaderDictionary headers)
         {

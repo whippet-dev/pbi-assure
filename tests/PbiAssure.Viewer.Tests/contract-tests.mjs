@@ -60,11 +60,16 @@ test(
       "../../src/PbiAssure.Web/wwwroot/investigation/",
       import.meta.url,
     );
+    for (const asset of ["report-viewer.html", "report-viewer.js"])
+      for (const suffix of ["", ".gz", ".br"])
+        expect(existsSync(join(process.env.VIEWER_WEB_ROOT, asset + suffix))).toBe(false);
     const published = join(process.env.VIEWER_WEB_ROOT, "investigation");
     for (const file of readdirSync(source)) {
       const path = join(published, file),
         content = readFileSync(path, "utf8");
       expect(content).not.toContain("prototypes/modern-viewer");
+      expect(content).not.toContain("pbi-assure-report-content");
+      expect(content).not.toContain("report-viewer.html");
       if (/\.(js|html)$/.test(file)) {
         const references = [
           ...content.matchAll(

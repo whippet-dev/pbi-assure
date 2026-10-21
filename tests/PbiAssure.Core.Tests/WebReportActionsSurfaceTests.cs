@@ -124,24 +124,15 @@ public sealed class WebReportActionsSurfaceTests
     }
 
     [Fact]
-    public void TheViewerHandshakeStillGuardsBothDeliveries()
+    public void OnlyTheSnapshotViewerCanOpenAnInvestigation()
     {
-        var repositoryRoot = FindRepositoryRoot();
         var markup = ReadHomePage();
-        var script = File.ReadAllText(Path.Combine(repositoryRoot, "src", "PbiAssure.Web", "wwwroot", "download.js"));
-        var viewer = File.ReadAllText(Path.Combine(repositoryRoot, "src", "PbiAssure.Web", "wwwroot", "report-viewer.js"));
-
-        Assert.Equal(0, CountOccurrences(markup, "JS.InvokeAsync<string>(\"pbiAssureDownload.open\", \"text/html;charset=utf-8\", html)"));
-        Assert.Contains("pbiAssureInvestigation.open", markup, StringComparison.Ordinal);
-        Assert.DoesNotContain("window.open", markup, StringComparison.Ordinal);
-        Assert.Contains("report-viewer.html?v=__PBIASSURE_ASSET_VERSION__", script, StringComparison.Ordinal);
-        Assert.Contains("window.open(viewerUrl.href, \"_blank\")", script, StringComparison.Ordinal);
-        Assert.Contains("event.source !== reportWindow", script, StringComparison.Ordinal);
-        Assert.Contains("reportWindow.postMessage", script, StringComparison.Ordinal);
-        Assert.Contains("event.origin !== window.location.origin", viewer, StringComparison.Ordinal);
-        Assert.Contains("event.source !== sourceWindow", viewer, StringComparison.Ordinal);
-        Assert.Contains("window.opener = null", viewer, StringComparison.Ordinal);
-        Assert.Contains("document.write(event.data.content)", viewer, StringComparison.Ordinal);
+        var script = File.ReadAllText(Path.Combine(FindRepositoryRoot(), "src", "PbiAssure.Web", "wwwroot", "download.js"));
+        Assert.Contains("pbiAssureInvestigation.open", markup);
+        Assert.DoesNotContain("pbiAssureDownload.open", markup);
+        Assert.DoesNotContain("window.open", script);
+        Assert.DoesNotContain("postMessage", script);
+        Assert.Contains("save(filename, mimeType, content)", script);
     }
 
     // ---- Helpers ----------------------------------------------------------------------------
