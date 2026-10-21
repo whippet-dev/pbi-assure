@@ -1,6 +1,6 @@
-# Prepare a Power BI project for PBI Assure
+# Prepare a Power BI project for PBI Project Lens
 
-PBI Assure analyses a Power BI Project (PBIP) that uses the Power BI enhanced report format (PBIR) and Tabular Model Definition Language (TMDL) semantic model format. These formats store the report and model as structured project files that PBI Assure can analyse locally.
+PBI Project Lens analyses a Power BI Project (PBIP) that uses the Power BI enhanced report format (PBIR) and Tabular Model Definition Language (TMDL) semantic model format. These formats store the report and model as structured project files that PBI Project Lens can analyse locally.
 
 ## Start with a PBIX
 
@@ -9,7 +9,7 @@ PBI Assure analyses a Power BI Project (PBIP) that uses the Power BI enhanced re
 3. Enable **Power BI Project (.pbip) save option** if it is shown in your version of Desktop.
 4. Enable **Store reports using enhanced metadata format (PBIR)**.
 5. Enable **Store semantic model using TMDL format**.
-6. Save the report as a Power BI Project and select the resulting project root folder in PBI Assure.
+6. Save the report as a Power BI Project and select the resulting project root folder in PBI Project Lens.
 
 Power BI Desktop preview features and their labels can change. If the options differ in your version, use the Microsoft guidance below to find the current setting.
 
@@ -28,13 +28,13 @@ Do not select the `.Report` or `.SemanticModel` folder by itself.
 
 The supported local semantic-model layout includes both `definition.pbism` and a `definition/` folder
 containing TMDL files. A local semantic model stored as `model.bim` uses TMSL and is not supported yet.
-PBI Assure stops without generating output rather than producing an incomplete result. Keep a backup,
+PBI Project Lens stops without generating output rather than producing an incomplete result. Keep a backup,
 enable **Store semantic model using TMDL format**, then choose **Upgrade** when Power BI Desktop prompts
 you to save the conversion. That conversion cannot be undone.
 
-## What PBI Assure analyses
+## What PBI Project Lens analyses
 
-PBI Assure reads the structured report, semantic-model, DAX, relationship, and Power Query metadata in the selected project. It processes selected files locally in your browser; project files and analysis results are not uploaded to PBI Assure.
+PBI Project Lens reads the structured report, semantic-model, DAX, relationship, and Power Query metadata in the selected project. It processes selected files locally in your browser; project files and analysis results are not uploaded to PBI Project Lens.
 
 A PBIX is not a supported scan input. Save as PBIP with PBIR and a local TMDL semantic model to expose the structured metadata used by this analysis. These formats enable the supported workflow; they do not make every dependency or runtime behaviour knowable. See [usage classification](usage-classification.md) for the evidence boundaries.
 

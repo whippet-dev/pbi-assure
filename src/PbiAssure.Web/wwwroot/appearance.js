@@ -1,4 +1,4 @@
-// Colour-scheme preference for the PBI Assure browser application.
+// Colour-scheme preference for the PBI Project Lens browser application.
 //
 // Loaded synchronously in the document head so a stored Light or Dark choice is on the root
 // element before the first paint. Readers on System need nothing applied: the stylesheet already

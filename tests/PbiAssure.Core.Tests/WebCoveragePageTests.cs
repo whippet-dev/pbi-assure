@@ -24,7 +24,7 @@ public sealed class WebCoveragePageTests
         var coverage = ReadWeb("Pages/Coverage.razor");
 
         Assert.Contains("@page \"/coverage\"", coverage, StringComparison.Ordinal);
-        Assert.Contains("<h1 id=\"coverage-title\" tabindex=\"-1\">What PBI Assure analyses</h1>", coverage, StringComparison.Ordinal);
+        Assert.Contains("<h1 id=\"coverage-title\" tabindex=\"-1\">What PBI Project Lens analyses</h1>", coverage, StringComparison.Ordinal);
 
         // The scope rail, the legend and the closing boundary section are the page's frame.
         foreach (var frame in new[] { "coverage-scope", "How to read this page", "Where the boundary sits" })
@@ -33,7 +33,7 @@ public sealed class WebCoveragePageTests
         }
 
         // Four bands, each a section rather than a card.
-        foreach (var band in new[] { "Model intelligence", "Query intelligence", "Report intelligence", "Reviews &amp; confidence" })
+        foreach (var band in new[] { "Supported analysis", "Query intelligence", "Report intelligence", "Reviews &amp; confidence" })
         {
             Assert.Contains(band, coverage, StringComparison.Ordinal);
         }
@@ -161,7 +161,7 @@ public sealed class WebCoveragePageTests
         Assert.Contains("only those objects are qualified", coverage, StringComparison.Ordinal);
         Assert.Contains("does not qualify semantic usage, because no usage state is derived from Power Query references", coverage, StringComparison.Ordinal);
         // Coverage the page, against Analysis coverage the section of a generated report.
-        Assert.Contains("This page describes the checks PBI Assure supports. Your report’s <strong>What was checked</strong> explains any limitations found in your project.", coverage, StringComparison.Ordinal);
+        Assert.Contains("This page describes the checks PBI Project Lens supports. Your investigation’s <strong>Analysis scope</strong> explains the limitations recorded for your project.", coverage, StringComparison.Ordinal);
 
         // Counts we deliberately kept out of public copy, and a claim the architecture cannot support.
         Assert.DoesNotContain("of the 32", coverage, StringComparison.Ordinal);

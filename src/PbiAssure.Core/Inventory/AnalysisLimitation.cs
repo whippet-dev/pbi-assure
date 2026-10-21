@@ -3,7 +3,7 @@ using System.Text.Json.Serialization;
 namespace PbiAssure.Core.Inventory;
 
 /// <summary>
-/// Why PBI Assure could not fully analyse a construct it encountered.
+/// Why PBI Project Lens could not fully analyse a construct it encountered.
 /// </summary>
 public static class AnalysisLimitationCauses
 {
@@ -31,7 +31,7 @@ public static class AnalysisLimitationCauses
 }
 
 /// <summary>
-/// How well this version of PBI Assure supports a construct type. This describes PBI Assure, not the
+/// How well this version of PBI Project Lens supports a construct type. This describes PBI Project Lens, not the
 /// analysed project, and is read from the construct registry rather than observed during a scan.
 /// </summary>
 public static class ConstructSupportStates
@@ -66,7 +66,7 @@ public static class ConstructClassifications
     /// <summary>Manifest or control content that is correctly not parsed and is not a limitation.</summary>
     public const string Packaging = "Packaging";
 
-    /// <summary>Not known to this version of PBI Assure.</summary>
+    /// <summary>Not known to this version of PBI Project Lens.</summary>
     public const string Unrecognized = "Unrecognized";
 }
 
@@ -127,7 +127,7 @@ public static class AnalysisLimitationScopes
 }
 
 /// <summary>
-/// A record that PBI Assure encountered metadata in the analysed project but did not fully analyse it.
+/// A record that PBI Project Lens encountered metadata in the analysed project but did not fully analyse it.
 ///
 /// This is deliberately distinct from <see cref="UnresolvedSemanticDependency"/>. An unresolved
 /// dependency is a bounded uncertainty: the source, kind and reference text are known and exactly one

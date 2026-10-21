@@ -2,7 +2,7 @@
 
 ## Objective
 
-PBI Assure turns Power BI report and semantic-model metadata into a normalised inventory and dependency graph. Versioned rules evaluate that graph for maintainability, model quality, compatibility, and accessibility concerns.
+PBI Project Lens is a read-only investigation workspace for Power BI projects. Core analyses semantic models, reports and Power Query into an evidence-led inventory; the viewer presents their structure, usage and dependencies. Findings support investigation.
 
 ## Processing flow
 
@@ -12,8 +12,9 @@ PBIP project
   -> PBIR and TMDL parsers
   -> normalised artifact inventory
   -> dependency graph
-  -> versioned assurance rules
-  -> JSON inventory / interactive HTML / Semantic Usage CSV / Data Catalogue / Usage Mapping
+  -> versioned analysis rules
+  -> ViewerSnapshot 1.0 -> modern web investigation
+  -> portable HTML / JSON 0.26 / Semantic Usage CSV / Data Catalogue / Usage Mapping
 ```
 
 Each stage has one responsibility:
@@ -37,22 +38,25 @@ Provides automation, default output naming, and file writing. A default scan cre
 
 ### `PbiAssure.Reporting`
 
-Renders normalized inventories into interactive HTML and the Semantic Usage, Data Catalogue and Usage Mapping CSV outputs. It depends on the core domain model but contains no scanning or Power BI parsing logic.
+Projects authoritative inventories into ViewerSnapshot 1.0 and renders portable HTML and the Semantic Usage, Data Catalogue and Usage Mapping CSV outputs. It depends on the core domain model but contains no scanning or Power BI parsing logic.
 
 ### `PbiAssure.Desktop`
 
-Provides the lightweight Windows workflow over the shared scanner and output writers. It selects a local PBIP/PBIR project, runs assurance, and opens the latest HTML report, semantic CSV, or output folder without embedding a report viewer.
+Provides the lightweight Windows workflow over the shared scanner and output writers. It selects a local PBIP/PBIR project, runs analysis, and opens the latest HTML report, semantic CSV, or output folder without embedding a report viewer.
 
 ### `PbiAssure.Web`
 
 Provides a standalone Blazor WebAssembly frontend over Core and Reporting. Browser directory APIs create
 a bounded, canonical, in-memory project-file source; analysis and report rendering then run locally in
-the browser. Web contains no independent semantic analysis, backend, upload or telemetry path. See
+the browser. Open investigation delivers a snapshot in memory to production assets under
+`wwwroot/investigation/`; portable HTML is a download, not a second hosted viewer. Core remains
+authoritative for semantics. See [the snapshot contract](../viewer-snapshot-contract.md).
+Web contains no independent semantic analysis, backend, upload or telemetry path. See
 [usage](../usage.md) and [privacy verification](testing.md).
 
 ## Dependency graph
 
-Report-to-model binding happens before field reconciliation. An explicit `byPath` reference is matched by normalized project-relative model path rather than by folder-name similarity. A `byConnection` reference is recorded as remote and is not compared with local model objects. Name matching remains only as a compatibility fallback for incomplete or older fixtures with no explicit dataset reference. If an explicit local target is missing, PBI Assure emits one model-level finding and suppresses cascading field-resolution errors until the model is available.
+Report-to-model binding happens before field reconciliation. An explicit `byPath` reference is matched by normalized project-relative model path rather than by folder-name similarity. A `byConnection` reference is recorded as remote and is not compared with local model objects. Name matching remains only as a compatibility fallback for incomplete or older fixtures with no explicit dataset reference. If an explicit local target is missing, PBI Project Lens emits one model-level finding and suppresses cascading field-resolution errors until the model is available.
 
 The semantic graph uses directed edges. A report visual provides direct roots, while a measure has edges to the columns, measures, and tables referenced by its DAX expression. A field-parameter table links to every statically declared choice. A used calculation-group table links to all of its calculation items, whose expressions then link to their explicit semantic dependencies. Sort-by columns, hierarchy levels, relationship endpoints, and containing tables provide structural edges. Starting at report-facing and structural roots and traversing these edges makes usage classification explainable.
 

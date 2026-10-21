@@ -29,7 +29,7 @@ public sealed class SupportedProjectInputSurfaceTests
         // What the newcomer copy says instead: which folder to choose.
         Assert.Contains("Choose the folder containing your <code>.pbip</code> file", alwaysVisibleIntro, StringComparison.Ordinal);
         Assert.Contains("catch (UnsupportedProjectInputException exception)", browser, StringComparison.Ordinal);
-        Assert.Contains("exception.Message.Replace(\"assurance output\", \"report\", StringComparison.OrdinalIgnoreCase)", browser, StringComparison.Ordinal);
+        Assert.Contains("message = exception.Message;", browser, StringComparison.Ordinal);
         Assert.Contains("catch (UnsupportedProjectInputException exception)", desktop, StringComparison.Ordinal);
         Assert.Contains("ClearOutputState();", desktop, StringComparison.Ordinal);
         Assert.Contains("OpenReportButton.IsEnabled = false;", desktop, StringComparison.Ordinal);

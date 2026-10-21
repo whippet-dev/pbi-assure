@@ -25,7 +25,7 @@ public sealed class HtmlReportRendererTests : IDisposable
 
         Assert.StartsWith("<!doctype html>", html, StringComparison.Ordinal);
         Assert.Contains("<html lang=\"en-GB\">", html, StringComparison.Ordinal);
-        Assert.Contains("<title>PBI Assure report — Assurance</title>", html, StringComparison.Ordinal);
+        Assert.Contains("<title>PBI Project Lens report — Assurance</title>", html, StringComparison.Ordinal);
         Assert.Contains("href=\"#main-content\">Skip to main content", html, StringComparison.Ordinal);
         Assert.Contains("<main id=\"main-content\"", html, StringComparison.Ordinal);
         Assert.Contains("class=\"section-navigator\" aria-label=\"Report navigation\"", html, StringComparison.Ordinal);
@@ -283,7 +283,7 @@ public sealed class HtmlReportRendererTests : IDisposable
             inventory.Findings.All(finding => !string.Equals(finding.RuleId, rule.RuleId, StringComparison.Ordinal)));
         Assert.True(missingBookmarkCount > 0);
 
-        Assert.Contains("<details class=\"section-help rule-catalogue\"><summary>Checks in PBI Assure", html, StringComparison.Ordinal);
+        Assert.Contains("<details class=\"section-help rule-catalogue\"><summary>Checks in PBI Project Lens", html, StringComparison.Ordinal);
         Assert.Equal(
             AssuranceRuleCatalog.ActiveRules.Count(rule => rule.Category != AssuranceCategories.Accessibility),
             CountOccurrences(html, "class=\"rule-catalogue-item\""));
@@ -457,9 +457,9 @@ public sealed class HtmlReportRendererTests : IDisposable
         Assert.Contains("What needs attention and where to investigate next.", html, StringComparison.Ordinal);
         Assert.Contains("Keep these limits in mind", html, StringComparison.Ordinal);
         Assert.Contains("See which queries load data into the model", html, StringComparison.Ordinal);
-        Assert.Contains("What PBI Assure couldn't fully check here", html, StringComparison.Ordinal);
-        Assert.Contains("Issues and review points from PBI Assure", html, StringComparison.Ordinal);
-        Assert.Contains("Saved accessibility settings PBI Assure can check", html, StringComparison.Ordinal);
+        Assert.Contains("What PBI Project Lens couldn't fully check here", html, StringComparison.Ordinal);
+        Assert.Contains("Issues and review points from PBI Project Lens", html, StringComparison.Ordinal);
+        Assert.Contains("Saved accessibility settings PBI Project Lens can check", html, StringComparison.Ordinal);
         Assert.Contains("How to use findings", html, StringComparison.Ordinal);
         Assert.Contains("Suggested action gives a practical next step", html, StringComparison.Ordinal);
         Assert.Contains("Find a report, page or visual", html, StringComparison.Ordinal);
@@ -790,18 +790,18 @@ public sealed class HtmlReportRendererTests : IDisposable
         var html = HtmlReportRenderer.Render(ProjectScanner.Scan(testRoot));
         var summary = html[html.IndexOf("<section id=\"summary\"", StringComparison.Ordinal)..
             html.IndexOf("<section id=\"semantic-usage\"", StringComparison.Ordinal)];
-        Assert.DoesNotContain("Things PBI Assure cannot always detect", html, StringComparison.Ordinal);
+        Assert.DoesNotContain("Things PBI Project Lens cannot always detect", html, StringComparison.Ordinal);
         Assert.DoesNotContain("scope report-section", html, StringComparison.Ordinal);
         Assert.Contains("<details class=\"scope section-help\" aria-labelledby=\"scope-heading\">", summary, StringComparison.Ordinal);
         Assert.Contains("<summary id=\"scope-heading\">Important limits before acting on this report</summary>", summary, StringComparison.Ordinal);
         string[] caveats =
         [
-            "<strong>Apparently unused</strong> means PBI Assure found no use within this project. It requires review before any removal.",
+            "<strong>Apparently unused</strong> means PBI Project Lens found no use within this project. It requires review before any removal.",
             "A model table can look unused in the report while its Power Query is still needed by another query.",
             "Power Query dependencies built dynamically may not be detected, including column lists or query names created while the query runs.",
-            "Uses outside this project, some bookmark state and details hidden inside a data source may not be visible to PBI Assure.",
+            "Uses outside this project, some bookmark state and details hidden inside a data source may not be visible to PBI Project Lens.",
             "Accessibility findings support manual WCAG and assistive-technology testing; they do not prove that the report conforms.",
-            "PBI Assure performs read-only analysis of the selected Power BI project.",
+            "PBI Project Lens performs read-only analysis of the selected Power BI project.",
         ];
         foreach (var caveat in caveats)
         {

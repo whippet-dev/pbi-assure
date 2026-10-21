@@ -64,8 +64,8 @@ public static partial class HtmlReportRenderer
         {
             var hasQueryUse = card.PowerQuery?.ColumnEvidence.Count > 0;
             html.Append("<p>").Append(hasQueryUse
-                ? "PBI Assure didn't find any model or report use for this object in the project. Power Query use is shown in Details."
-                : "PBI Assure didn't find any use for this object in the project.")
+                ? "PBI Project Lens didn't find any model or report use for this object in the project. Power Query use is shown in Details."
+                : "PBI Project Lens didn't find any use for this object in the project.")
                 .AppendLine(" Check before removing it: other reports and dynamic behaviour can't be seen here.</p>");
         }
         AppendObjectSummaryPreview(html, inventory, card);
@@ -191,7 +191,7 @@ public static partial class HtmlReportRenderer
             html.AppendLine("<section><h3>Checks limited</h3>");
             var modelCoverage = coverage.Models.FirstOrDefault(model => string.Equals(model.ModelName, card.SemanticModel, StringComparison.OrdinalIgnoreCase));
             if (modelCoverage is not null)
-                html.Append("<p><a href=\"#").Append(Encode(modelCoverage.AnchorId)).AppendLine("\">See what PBI Assure couldn't fully check</a></p>");
+                html.Append("<p><a href=\"#").Append(Encode(modelCoverage.AnchorId)).AppendLine("\">See what PBI Project Lens couldn't fully check</a></p>");
             html.AppendLine("</section>");
         }
         if (card.PowerQuery is not null)

@@ -92,14 +92,14 @@ internal static class AnalysisCoveragePresentation
     private static string ReportSchemaMessage(string state) => state switch
     {
         ReportSchemaObservationStates.RecognisedUnverifiedVersion =>
-            "PBI Assure has not verified this report-format version yet.",
+            "PBI Project Lens has not verified this report-format version yet.",
         ReportSchemaObservationStates.UnknownFamily =>
-            "PBI Assure could not verify coverage for this report-format family.",
+            "PBI Project Lens could not verify coverage for this report-format family.",
         ReportSchemaObservationStates.MetadataMissing =>
             "Schema metadata was not available for this file.",
         ReportSchemaObservationStates.MetadataMalformed =>
-            "PBI Assure could not interpret this schema declaration.",
-        _ => "PBI Assure could not verify this report-format metadata.",
+            "PBI Project Lens could not interpret this schema declaration.",
+        _ => "PBI Project Lens could not verify this report-format metadata.",
     };
 
     private static string ReportSchemaArtifactLabel(string artifactKind) => artifactKind switch
@@ -320,7 +320,7 @@ internal sealed record AnalysisCoverageGroup(
     IReadOnlyList<string> ArtifactPaths);
 
 /// <summary>
-/// Report-format metadata that this version of PBI Assure could not verify exactly. It is kept outside
+/// Report-format metadata that this version of PBI Project Lens could not verify exactly. It is kept outside
 /// semantic-model limitations because it describes parser coverage, never a qualifier on used/unused
 /// classifications.
 /// </summary>

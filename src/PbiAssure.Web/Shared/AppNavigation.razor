@@ -1,32 +1,26 @@
 <header class="app-bar">
     <div class="app-bar-inner">
         <span class="brand">
-            <svg class="brand-mark" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"
-                 stroke-linecap="round" aria-hidden="true" focusable="false">
-                <path d="M11.1 6.4 6.1 17.3M12.9 6.4l5 10.9M8.4 14.2h7.2" />
-                <circle cx="12" cy="4.4" r="2.1" fill="currentColor" stroke="none" />
-                <circle cx="5.2" cy="19.2" r="2.1" fill="currentColor" stroke="none" />
-                <circle cx="18.8" cy="19.2" r="2.1" fill="currentColor" stroke="none" />
-            </svg>PBI Assure
+            <img class="brand-mark" src="investigation/mark.svg" alt="" />PBI <strong>Project Lens</strong>
         </span>
         <nav class="app-navigation" aria-label="Application">
             <a href="" aria-current="@AriaCurrent(AppPage.Analyse)">Analyse</a>
             <a href="coverage" aria-current="@AriaCurrent(AppPage.Coverage)"
                target="@(LeavesWorkingState ? "_blank" : null)"
                rel="@(LeavesWorkingState ? "noopener noreferrer" : null)">
-                Coverage
+                Supported analysis
                 @if (LeavesWorkingState)
                 {
-                    <span class="navigation-note">(opens in new tab)</span>
+                    <span class="navigation-note" aria-label="opens in new tab">↗</span>
                 }
             </a>
             <a href="about" aria-current="@AriaCurrent(AppPage.About)"
                target="@(LeavesWorkingState ? "_blank" : null)"
                rel="@(LeavesWorkingState ? "noopener noreferrer" : null)">
-                What PBI Assure does
+                About
                 @if (LeavesWorkingState)
                 {
-                    <span class="navigation-note">(opens in new tab)</span>
+                    <span class="navigation-note" aria-label="opens in new tab">↗</span>
                 }
             </a>
         </nav>

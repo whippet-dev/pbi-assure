@@ -275,7 +275,7 @@ internal static class SemanticDefinitionFileRegistry
         SupportState: ConstructSupportStates.Unrecognized,
         DependencyImpact: ConstructDependencyImpacts.MayCreateDependencies,
         Concerns: [AnalysisConcerns.Dependency],
-        Reason: "This definition file is not recognised by this version of PBI Assure and was not analysed.");
+        Reason: "This definition file is not recognised by this version of PBI Project Lens and was not analysed.");
 
     /// <summary>
     /// Classifies a model-relative definition-artifact path. Total: every path receives exactly one rule.

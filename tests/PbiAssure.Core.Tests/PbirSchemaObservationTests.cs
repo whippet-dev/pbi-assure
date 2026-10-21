@@ -6,7 +6,7 @@ using PbiAssure.Reporting;
 namespace PbiAssure.Core.Tests;
 
 /// <summary>
-/// Report-format schema declarations describe the evidence PBI Assure has for its PBIR parser. They
+/// Report-format schema declarations describe the evidence PBI Project Lens has for its PBIR parser. They
 /// must remain observational: a new declaration can be useful to show without preventing the
 /// property-wise parser from reading the report.
 /// </summary>
@@ -151,10 +151,10 @@ public sealed class PbirSchemaObservationTests
 
         Assert.DoesNotContain(Assert.Single(exact.Reports).SchemaObservations, observation =>
             observation.State != ReportSchemaObservationStates.VerifiedExact);
-        Assert.DoesNotContain("PBI Assure recorded report-format metadata it has not verified exactly.", exactHtml, StringComparison.Ordinal);
+        Assert.DoesNotContain("PBI Project Lens recorded report-format metadata it has not verified exactly.", exactHtml, StringComparison.Ordinal);
         Assert.Contains("id=\"analysis-coverage\"", unverifiedHtml, StringComparison.Ordinal);
         Assert.Contains("Report definition", unverifiedHtml, StringComparison.Ordinal);
-        Assert.Contains("PBI Assure has not verified this report-format version yet.", unverifiedHtml, StringComparison.Ordinal);
+        Assert.Contains("PBI Project Lens has not verified this report-format version yet.", unverifiedHtml, StringComparison.Ordinal);
         Assert.Equal(
             exact.Findings.Select(finding => (finding.RuleId, finding.Message, finding.Severity)),
             unverified.Findings.Select(finding => (finding.RuleId, finding.Message, finding.Severity)));

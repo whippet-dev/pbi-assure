@@ -54,7 +54,7 @@ internal sealed class UnresolvedSemanticDependencyRule : IAssuranceRule
             RuleVersion,
             AssuranceCategories.ModelIntegrity,
             FindingSeverities.Warning,
-            $"PBI Assure could not find the object referenced by {SourceDescription(dependency)}: {dependency.ReferenceText}.",
+            $"PBI Project Lens could not find the object referenced by {SourceDescription(dependency)}: {dependency.ReferenceText}.",
             "Check whether the referenced object was renamed or removed, then repair or remove the reference.",
             Report: null,
             Page: null,

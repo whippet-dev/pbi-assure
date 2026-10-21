@@ -1,0 +1,13 @@
+{
+  "name": "pbi-assure-viewer-tests",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "snapshots": "dotnet run --project Snapshots/ViewerTestSnapshots.csproj",
+    "test": "npm run snapshots && node contract-tests.mjs && playwright test",
+    "host": "node host.mjs"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.58.2"
+  }
+}

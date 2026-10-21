@@ -53,7 +53,7 @@ public sealed record BrowserProjectAnalysisInput(
 public static class BrowserProjectAnalysis
 {
     public const string ReselectionRequiredMessage =
-        "This browser gave PBI Assure a one-time snapshot of the folder, so it cannot check for changes " +
+        "This browser gave PBI Project Lens a one-time snapshot of the folder, so it cannot check for changes " +
         "you have saved since. Choose the project folder again to analyse its current contents.";
 
     public static BrowserProjectRerunAction Decide(BrowserProjectSelection? selection, bool hasResults)
@@ -99,7 +99,7 @@ public static class BrowserProjectAnalysis
             }
 
             // Validated before it is used, exactly as a first selection is: a folder that has become
-            // something PBI Assure cannot analyse must fail here, not part-way through a scan.
+            // something PBI Project Lens cannot analyse must fail here, not part-way through a scan.
             current = BrowserProjectSelectionValidator.Validate(
                 reenumerated with { CanRefresh = selection.CanRefresh }, limits);
         }

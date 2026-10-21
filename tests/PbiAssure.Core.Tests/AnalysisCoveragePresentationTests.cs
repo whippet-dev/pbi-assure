@@ -8,7 +8,7 @@ namespace PbiAssure.Core.Tests;
 /// User-facing presentation of analysis limitations and classification confidence.
 ///
 /// Two concepts are deliberately separate in the domain and must stay separate on screen: the usage
-/// state says what PBI Assure found, the classification confidence says how complete the evidence behind
+/// state says what PBI Project Lens found, the classification confidence says how complete the evidence behind
 /// that answer is. Neither may be inferred from the other, and qualification must never read as a defect
 /// in the object.
 ///
@@ -187,7 +187,7 @@ public sealed class AnalysisCoveragePresentationTests
     // ---- 10. A limitation that cannot affect confidence -----------------------------------------
 
     /// <summary>
-    /// Every model emits a few files PBI Assure does not read but has established carry no object
+    /// Every model emits a few files PBI Project Lens does not read but has established carry no object
     /// references. They are still disclosed, because hiding them would misrepresent coverage, but they
     /// must not imply that any classification is qualified.
     /// </summary>
@@ -211,7 +211,7 @@ public sealed class AnalysisCoveragePresentationTests
         Assert.DoesNotContain("class=\"confidence-flag\"", html, StringComparison.Ordinal);
         Assert.DoesNotContain("Could hide extra usage", html, StringComparison.Ordinal);
         // Nothing is "more" when nothing qualifies, and the marker is not explained where none appears.
-        Assert.Contains("<summary>What PBI Assure could not fully check</summary>", html, StringComparison.Ordinal);
+        Assert.Contains("<summary>What PBI Project Lens could not fully check</summary>", html, StringComparison.Ordinal);
         Assert.DoesNotContain("more files were not fully checked", html, StringComparison.Ordinal);
         Assert.DoesNotContain("class=\"usage-guide-note\"", html, StringComparison.Ordinal);
     }

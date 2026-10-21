@@ -62,7 +62,7 @@ public sealed class ReportEntityContextTests
             foreach (var use in card.Uses.Items)
                 Assert.Contains($"href=\"#sum-{use.Object.CardId![4..]}\"", objects, StringComparison.Ordinal);
             Assert.DoesNotContain("page-level", objects, StringComparison.OrdinalIgnoreCase);
-            Assert.Contains("Includes references PBI Assure doesn't count as use", article, StringComparison.Ordinal);
+            Assert.Contains("Includes references PBI Project Lens doesn't count as use", article, StringComparison.Ordinal);
             Assert.Contains($"<dt>Model objects used</dt><dd>{card.Uses.TotalCount}</dd>", article, StringComparison.Ordinal);
         }
         Assert.Contains("Objects used at page level", html, StringComparison.Ordinal);

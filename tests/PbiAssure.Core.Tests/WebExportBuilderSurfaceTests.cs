@@ -24,7 +24,7 @@ public sealed class WebExportBuilderSurfaceTests
         Assert.Contains("<legend>Export type</legend>", panel, StringComparison.Ordinal);
         Assert.DoesNotContain("<legend>Preset</legend>", panel, StringComparison.Ordinal);
         Assert.Contains("<fieldset class=\"export-column-options\">", panel, StringComparison.Ordinal);
-        Assert.Contains("User-facing means PBI Assure found direct report evidence", panel, StringComparison.Ordinal);
+        Assert.Contains("User-facing means PBI Project Lens found direct report evidence", panel, StringComparison.Ordinal);
         Assert.DoesNotContain("SemanticUsageCsvRenderer.Render", panel, StringComparison.Ordinal);
     }
 

@@ -2,7 +2,7 @@ using System.Text;
 
 namespace PbiAssure.Reporting;
 
-/// <summary>Shared RFC-style CSV writing with the spreadsheet-safety policy used by PBI Assure exports.</summary>
+/// <summary>Shared RFC-style CSV writing with the spreadsheet-safety policy used by PBI Project Lens exports.</summary>
 internal static class CsvWriter
 {
     public static void AppendRow(StringBuilder csv, IEnumerable<string?> values)

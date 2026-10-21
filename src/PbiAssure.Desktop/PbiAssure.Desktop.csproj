@@ -4,6 +4,7 @@
     <TargetFramework>net10.0-windows</TargetFramework>
     <UseWPF>true</UseWPF>
     <RootNamespace>PbiAssure.Desktop</RootNamespace>
+    <AssemblyTitle>PBI Project Lens</AssemblyTitle>
   </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="../PbiAssure.Cli/PbiAssure.Cli.csproj" />

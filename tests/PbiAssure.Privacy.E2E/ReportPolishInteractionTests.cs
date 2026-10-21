@@ -174,8 +174,22 @@ public sealed class ReportPolishInteractionTests(PrivacyE2EFixture fixture) : IA
         else if (view == "lineage") Assert.Equal(await Object(page).Locator("h2").InnerTextAsync(), await page.EvaluateAsync<string>("document.activeElement.textContent"));
         else if (view == "findings") Assert.True(await page.Locator("#" + id + " > summary").EvaluateAsync<bool>("element => element === document.activeElement"));
         else Assert.Equal(id, await page.EvaluateAsync<string>("document.activeElement.id"));
-        var box = await page.EvaluateAsync<double[]>("() => { const r = document.activeElement.getBoundingClientRect(); return [r.top, r.bottom, innerHeight]; }");
-        Assert.True(box[0] >= 0 && box[0] < box[2]);
+        // Two animation frames do not finish a smooth deep-link scroll. Wait for the same focused
+        // target to settle in view; allow one CSS pixel for fractional layout/integer scroll rounding.
+        await using var landing = await page.EvaluateHandleAsync(
+            "() => ({ target: document.activeElement, top: null, bottom: null, stableFrames: 0 })");
+        await page.WaitForFunctionAsync("""
+            landing => {
+              const rect = landing.target.getBoundingClientRect();
+              landing.stableFrames = rect.top === landing.top && rect.bottom === landing.bottom
+                ? landing.stableFrames + 1 : 0;
+              landing.top = rect.top;
+              landing.bottom = rect.bottom;
+              return landing.stableFrames >= 2 && document.activeElement === landing.target
+                && rect.height > 0 && rect.top >= -1 && rect.top < innerHeight
+                && (rect.height > innerHeight || rect.bottom <= innerHeight + 1);
+            }
+            """, landing);
         Assert.Empty(errors);
     }
 }

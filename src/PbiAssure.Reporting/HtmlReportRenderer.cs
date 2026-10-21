@@ -57,7 +57,7 @@ public static partial class HtmlReportRenderer
         html.AppendLine("<head>");
         html.AppendLine("  <meta charset=\"utf-8\">");
         html.AppendLine("  <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">");
-        html.Append("  <title>PBI Assure report — ").Append(Encode(projectName)).AppendLine("</title>");
+        html.Append("  <title>PBI Project Lens report — ").Append(Encode(projectName)).AppendLine("</title>");
         html.Append("  <link rel=\"icon\" href=\"").Append(BrandIdentity.FaviconDataUri).AppendLine("\">");
         html.AppendLine("  <style>");
         html.AppendLine(DesignSystem.Core);
@@ -73,7 +73,7 @@ public static partial class HtmlReportRenderer
         html.AppendLine("    <div class=\"content\">");
         html.AppendLine("      <div class=\"site-header-bar\">");
         html.Append("        <span class=\"brand\">").Append(BrandIdentity.MarkSvg)
-            .AppendLine("PBI Assure</span>");
+            .AppendLine("PBI Project Lens</span>");
         AppendAppearanceControl(html, "        ");
         html.AppendLine("      </div>");
         html.AppendLine("      <div class=\"site-header-identity\">");
@@ -108,7 +108,7 @@ public static partial class HtmlReportRenderer
     }
 
     /// <summary>
-    /// What PBI Assure read in this project's semantic models, and what it did not.
+    /// What PBI Project Lens read in this project's semantic models, and what it did not.
     ///
     /// The contextual destination remains available even without recorded limitations, with an explicit
     /// boundary rather than reassurance. The
@@ -130,13 +130,13 @@ public static partial class HtmlReportRenderer
 
         html.AppendLine("    <section id=\"analysis-coverage\" class=\"report-section\" data-report-section=\"analysis-coverage\" aria-labelledby=\"analysis-coverage-heading\">");
         html.AppendLine("      <h2 id=\"analysis-coverage-heading\" tabindex=\"-1\">What was checked</h2>");
-        html.AppendLine("      <p class=\"section-intro\">What PBI Assure couldn't fully check here, and whether it could change any results. These are limits of the analysis, not problems with your project.</p>");
+        html.AppendLine("      <p class=\"section-intro\">What PBI Project Lens couldn't fully check here, and whether it could change any results. These are limits of the analysis, not problems with your project.</p>");
 
         foreach (var report in coverage.Reports)
         {
             html.Append("      <section class=\"coverage-model\" id=\"").Append(Encode(report.AnchorId)).AppendLine("\">");
             html.Append("        <h3>Report: ").Append(Encode(report.ReportName)).AppendLine("</h3>");
-            html.AppendLine("        <p class=\"coverage-headline\">PBI Assure recorded report-format metadata it has not verified exactly. Analysis continues normally.</p>");
+            html.AppendLine("        <p class=\"coverage-headline\">PBI Project Lens recorded report-format metadata it has not verified exactly. Analysis continues normally.</p>");
             html.AppendLine("        <ul class=\"coverage-list\">");
             foreach (var group in report.Groups)
             {
@@ -183,7 +183,7 @@ public static partial class HtmlReportRenderer
                 }
                 else
                 {
-                    html.Append("What PBI Assure could not fully check");
+                    html.Append("What PBI Project Lens could not fully check");
                 }
 
                 html.AppendLine("</summary>");
@@ -213,7 +213,7 @@ public static partial class HtmlReportRenderer
         html.Append("        <p class=\"coverage-headline\">");
         if (model.QualifyingGroups.Count == 0)
         {
-            html.Append("PBI Assure could not fully check ")
+            html.Append("PBI Project Lens could not fully check ")
                 .Append(model.ArtifactCount.ToString(CultureInfo.InvariantCulture)).Append(' ')
                 .Append(Pluralize(model.ArtifactCount, "file", "files"))
                 .Append(" in this model. <strong>This cannot change a used or unused result.</strong>");
@@ -221,7 +221,7 @@ public static partial class HtmlReportRenderer
             return;
         }
 
-        html.Append("<strong>PBI Assure could not fully check ")
+        html.Append("<strong>PBI Project Lens could not fully check ")
             .Append(model.QualifyingGroups.Count.ToString(CultureInfo.InvariantCulture))
             .Append(' ').Append(Pluralize(model.QualifyingGroups.Count, "source", "sources"))
             .Append(" of usage in this model.</strong> ");
@@ -233,7 +233,7 @@ public static partial class HtmlReportRenderer
                 .Append(Pluralize(model.ObjectCount, "model object", "model objects"))
                 .Append(", so each is marked <span class=\"confidence-flag confidence-flag-sample\">")
                 .Append(CoverageMarkerLabel)
-                .Append("</span>. Those results are still the best answer available — they simply may miss usage PBI Assure cannot yet see.");
+                .Append("</span>. Those results are still the best answer available — they simply may miss usage PBI Project Lens cannot yet see.");
         }
         else
         {
@@ -381,12 +381,12 @@ public static partial class HtmlReportRenderer
         html.AppendLine("      <summary id=\"scope-heading\">Important limits before acting on this report</summary>");
         html.AppendLine("      <p class=\"section-intro\">Keep these limits in mind before changing or removing anything.</p>");
         html.AppendLine("      <ul>");
-        html.AppendLine("        <li><strong>Apparently unused</strong> means PBI Assure found no use within this project. It requires review before any removal.</li>");
+        html.AppendLine("        <li><strong>Apparently unused</strong> means PBI Project Lens found no use within this project. It requires review before any removal.</li>");
         html.AppendLine("        <li>A model table can look unused in the report while its Power Query is still needed by another query.</li>");
         html.AppendLine("        <li>Power Query dependencies built dynamically may not be detected, including column lists or query names created while the query runs.</li>");
-        html.AppendLine("        <li>Uses outside this project, some bookmark state and details hidden inside a data source may not be visible to PBI Assure.</li>");
+        html.AppendLine("        <li>Uses outside this project, some bookmark state and details hidden inside a data source may not be visible to PBI Project Lens.</li>");
         html.AppendLine("        <li>Accessibility findings support manual WCAG and assistive-technology testing; they do not prove that the report conforms.</li>");
-        html.AppendLine("        <li>PBI Assure performs read-only analysis of the selected Power BI project.</li>");
+        html.AppendLine("        <li>PBI Project Lens performs read-only analysis of the selected Power BI project.</li>");
         html.AppendLine("      </ul>");
         html.AppendLine("    </details>");
     }
@@ -400,7 +400,7 @@ public static partial class HtmlReportRenderer
         html.AppendLine("      <p class=\"section-intro\">See which queries load data into the model and which queries depend on one another. Expand a query to review its known dependencies.</p>");
         if (inventory.PowerQueryUsages.Count == 0)
         {
-            AppendSectionEmptyState(html, "No Power Query queries found", "PBI Assure did not find any Power Query queries it can analyse in this project.", "unavailable");
+            AppendSectionEmptyState(html, "No Power Query queries found", "PBI Project Lens did not find any Power Query queries it can analyse in this project.", "unavailable");
             html.AppendLine("    </section>");
             return;
         }
@@ -515,12 +515,12 @@ public static partial class HtmlReportRenderer
     {
         html.AppendLine("    <section id=\"accessibility-review\" class=\"report-section\" data-report-section=\"accessibility-review\" aria-labelledby=\"accessibility-review-heading\">");
         html.AppendLine("      <h2 id=\"accessibility-review-heading\" tabindex=\"-1\">Accessibility review</h2>");
-        html.AppendLine("      <p class=\"section-intro\">Saved accessibility settings PBI Assure can check, such as alt text and tab order. Use alongside manual testing.</p>");
-        html.AppendLine("      <div class=\"accessibility-boundary\" role=\"note\"><strong>Review support, not a compliance verdict</strong><p>PBI Assure identifies selected metadata concerns; it does not prove WCAG conformance or replace testing with assistive technology.</p></div>");
+        html.AppendLine("      <p class=\"section-intro\">Saved accessibility settings PBI Project Lens can check, such as alt text and tab order. Use alongside manual testing.</p>");
+        html.AppendLine("      <div class=\"accessibility-boundary\" role=\"note\"><strong>Review support, not a compliance verdict</strong><p>PBI Project Lens identifies selected metadata concerns; it does not prove WCAG conformance or replace testing with assistive technology.</p></div>");
 
         if (findings.Length == 0)
         {
-            AppendSectionEmptyState(html, "No accessibility observations", "PBI Assure did not identify any observations from its current accessibility checks. Manual accessibility review is still recommended.", "success");
+            AppendSectionEmptyState(html, "No accessibility observations", "PBI Project Lens did not identify any observations from its current accessibility checks. Manual accessibility review is still recommended.", "success");
             html.AppendLine("    </section>");
             return;
         }
@@ -755,8 +755,8 @@ public static partial class HtmlReportRenderer
     {
         html.AppendLine("    <section id=\"findings\" class=\"report-section\" data-report-section=\"findings\" aria-labelledby=\"findings-heading\">");
         html.AppendLine("      <h2 id=\"findings-heading\" tabindex=\"-1\">Findings</h2>");
-        html.AppendLine("      <p class=\"section-intro\">Issues and review points from PBI Assure's automated checks. Accessibility is reviewed separately. Expand one to see where it is and what to do.</p>");
-        html.AppendLine("      <details class=\"section-help\"><summary>How to use findings</summary><p>A finding is an automated observation, not a verdict on the whole report. Its location shows where PBI Assure found it and Suggested action gives a practical next step. Items marked Review required can be intentional, depending on your report's context.</p></details>");
+        html.AppendLine("      <p class=\"section-intro\">Issues and review points from PBI Project Lens's automated checks. Accessibility is reviewed separately. Expand one to see where it is and what to do.</p>");
+        html.AppendLine("      <details class=\"section-help\"><summary>How to use findings</summary><p>A finding is an automated observation, not a verdict on the whole report. Its location shows where PBI Project Lens found it and Suggested action gives a practical next step. Items marked Review required can be intentional, depending on your report's context.</p></details>");
         AppendRuleCatalogue(html, findings, includeAccessibility: false);
         if (findings.Length == 0)
         {
@@ -811,8 +811,8 @@ public static partial class HtmlReportRenderer
         var counts = findings
             .GroupBy(finding => finding.RuleId, StringComparer.OrdinalIgnoreCase)
             .ToDictionary(group => group.Key, group => group.Count(), StringComparer.OrdinalIgnoreCase);
-        html.AppendLine("      <details class=\"section-help rule-catalogue\"><summary>Checks in PBI Assure <span class=\"rule-catalogue-hint\">Rule catalogue</span></summary>");
-        html.AppendLine("        <p>PBI Assure runs these automated checks. No findings from a check does not prove full compliance.</p>");
+        html.AppendLine("      <details class=\"section-help rule-catalogue\"><summary>Checks in PBI Project Lens <span class=\"rule-catalogue-hint\">Rule catalogue</span></summary>");
+        html.AppendLine("        <p>PBI Project Lens runs these automated checks. No findings from a check does not prove full compliance.</p>");
         foreach (var category in AssuranceRuleCatalog.ActiveRules
                      .Where(rule => includeAccessibility == IsAccessibilityCategory(rule.Category))
                      .GroupBy(rule => rule.Category))
@@ -1137,7 +1137,7 @@ public static partial class HtmlReportRenderer
         html.AppendLine("    <section id=\"row-level-security\" class=\"report-section\" data-report-section=\"row-level-security\" aria-labelledby=\"row-level-security-heading\">");
         html.AppendLine("      <h2 id=\"row-level-security-heading\" tabindex=\"-1\">Security roles</h2>");
         html.AppendLine("      <p class=\"section-intro\">Review the security role definitions, row-level filters and object-level permissions saved in each semantic model.</p>");
-        html.AppendLine("      <div class=\"rls-boundary\" role=\"note\"><strong>Project definitions only</strong><p>Only the role definitions saved in this project are shown here. PBI Assure can't see who is assigned to roles in the Power BI Service, or whether data can be reached another way. It reads row-level filters, table-level metadata permissions and explicitly named column permissions; other role settings may not be fully checked.</p></div>");
+        html.AppendLine("      <div class=\"rls-boundary\" role=\"note\"><strong>Project definitions only</strong><p>Only the role definitions saved in this project are shown here. PBI Project Lens can't see who is assigned to roles in the Power BI Service, or whether data can be reached another way. It reads row-level filters, table-level metadata permissions and explicitly named column permissions; other role settings may not be fully checked.</p></div>");
         html.AppendLine("      <div class=\"rls-model-list\">");
         foreach (var model in models)
         {
@@ -1715,13 +1715,13 @@ public static partial class HtmlReportRenderer
         AppendUsageGuideItem(html, "Indirectly used", "Not used directly in the report, but needed by something that is.", SemanticUsageStates.IndirectlyUsed);
         AppendUsageGuideItem(html, "Structurally required", "Needed for the model to work, for example in a relationship, hierarchy or sort-by setting.", SemanticUsageStates.StructurallyRequired);
         AppendUsageGuideItem(html, "Only used by unused items", "Only used by other model items that themselves have no detected report usage.", SemanticUsageStates.UsedOnlyByUnusedBranch);
-        AppendUsageGuideItem(html, "Apparently unused", "PBI Assure didn't find any model or report use in this project. Check before removing it: other reports and dynamic behaviour can't be seen here.", SemanticUsageStates.ApparentlyUnused);
+        AppendUsageGuideItem(html, "Apparently unused", "PBI Project Lens didn't find any model or report use in this project. Check before removing it: other reports and dynamic behaviour can't be seen here.", SemanticUsageStates.ApparentlyUnused);
         html.AppendLine("        </dl>");
         if (coverage.QualifiedObjectCount > 0)
         {
             html.Append("        <p class=\"usage-guide-note\">A result can also be marked <span class=\"confidence-flag confidence-flag-sample\">")
                 .Append(CoverageMarkerLabel)
-                .AppendLine("</span>. <strong>That is not another status.</strong> The status above is unchanged and remains the best answer available; the marker means PBI Assure could not check every possible source of usage in this model. See <a href=\"#analysis-coverage\">What was checked</a>.</p>");
+                .AppendLine("</span>. <strong>That is not another status.</strong> The status above is unchanged and remains the best answer available; the marker means PBI Project Lens could not check every possible source of usage in this model. See <a href=\"#analysis-coverage\">What was checked</a>.</p>");
         }
 
         html.AppendLine("        </div>");
@@ -2317,9 +2317,9 @@ public static partial class HtmlReportRenderer
             "PBI-NAV-004" => "A bookmark contains a reference to a visual that is no longer on this page.",
             "PBI-NAV-013" => "This visual's header tooltip links to a report page that no longer exists.",
             _ => finding.Message
-                .Replace("cannot be fully reconciled from static PBIR metadata", "PBI Assure can't fully check from the saved report files", StringComparison.Ordinal)
+                .Replace("cannot be fully reconciled from static PBIR metadata", "PBI Project Lens can't fully check from the saved report files", StringComparison.Ordinal)
                 .Replace("This Power Query expression constructs references dynamically, so its complete query lineage cannot be determined from static metadata.",
-                    "PBI Assure can't see every query this expression uses because it builds references dynamically.", StringComparison.Ordinal),
+                    "PBI Project Lens can't see every query this expression uses because it builds references dynamically.", StringComparison.Ordinal),
         };
 
         if (context?.Visual.VisualType is not { Length: > 0 } visualType)
@@ -2574,7 +2574,7 @@ public static partial class HtmlReportRenderer
         html.AppendLine("  </main>");
         html.AppendLine("  </div>");
         html.AppendLine("  <footer class=\"site-footer\"><div class=\"content\">");
-        html.Append("    <p>Generated locally by PBI Assure (output format ").Append(Encode(inventory.SchemaVersion))
+        html.Append("    <p>Generated locally by PBI Project Lens (output format ").Append(Encode(inventory.SchemaVersion))
             .AppendLine(").</p>");
         html.AppendLine("  </div></footer>");
         html.AppendLine("  <script>");

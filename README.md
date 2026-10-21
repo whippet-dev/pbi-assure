@@ -1,21 +1,21 @@
-# PBI Assure
+# PBI Project Lens
 
-**Understand your Power BI project: how it is built, what is being used, and what may be worth investigating.**
+**Understand your Power BI project.**
 
-[Open PBI Assure](https://pbiassure.pages.dev/) in desktop Edge or Chrome. No installation or account is needed.
+[Open PBI Project Lens](https://pbiassure.pages.dev/) in desktop Edge or Chrome. No installation or account is needed.
 
-PBI Assure gives you a read-only snapshot of the tables, fields, calculations, queries and report pages in a Power BI project. Explore where objects are used and what depends on them, with evidence behind the results. Your source project is not changed.
+A read-only investigation workspace for Power BI projects. Explore the structure, usage and dependencies of your Power BI project across semantic models, reports and Power Query. Your source project is not changed.
 
 ## Start with your project
 
 1. Save a Power BI Project (**PBIP**) using the structured **PBIR** report and **TMDL** model formats. See [preparation guidance](docs/preparing-power-bi-project.md) if you currently have a PBIX.
 2. Open the tool and choose the folder containing the `.pbip` file and its report and model folders.
-3. Select **Run analysis**, then choose the route that fits your task: open the **interactive report** to explore the project, open the **Apparently unused review** to work through cleanup candidates, or export metadata.
+3. Select **Run analysis**, then **Open investigation**. Review apparently unused objects inside Model Objects; use **Downloads & exports** for portable outputs.
 4. Export a catalogue or usage mapping when you want to work with the metadata in a spreadsheet.
 
 After saving changes in Power BI Desktop, use **Analyse again** to read the current folder, including added, changed and deleted files. If you used the alternate folder picker, choose the folder again: that picker supplies a snapshot that cannot be refreshed in place.
 
-See [using PBI Assure](docs/usage.md) for browser limits, exports and local command-line/Windows options.
+See [using PBI Project Lens](docs/usage.md) for browser limits, exports and local command-line/Windows options.
 
 ## What you can investigate
 
@@ -29,14 +29,15 @@ Custom visual instance bindings are read from ordinary report metadata. Recognis
 
 The tool reads metadata. It does not run DAX or M, contact data sources, reproduce Power BI rendering, or assess refresh performance. Power Query column lineage follows supported static transformations; missing lineage is not proof of no use. Accessibility review is not WCAG certification. Theme Review reports saved values and limited comparisons, not manual editing history or final rendered appearance.
 
-See [what PBI Assure analyses](https://pbiassure.pages.dev/coverage) and the [rule catalog](docs/rule-catalog.md).
+See [what PBI Project Lens analyses](https://pbiassure.pages.dev/coverage) and the [rule catalog](docs/rule-catalog.md).
 
 ## Results and exports
 
 | Output | Use it for |
 | --- | --- |
-| **Interactive report** | Explore model usage, dependencies, Power Query, relationships, report structure, findings and Analysis Coverage. Search and filter the evidence; open it in a new tab or download a self-contained HTML file. |
-| **Apparently unused review** | A focused working list of the model items you authored for which no report or semantic-model usage was found in this project. Power Query preparation evidence may still exist; it is a review candidate, not a deletion recommendation. A focused view of the same analysis, not a separate one; open it in a new tab or download a self-contained HTML file. |
+| **Investigation viewer** | Explore model objects, lineage, Power Query, relationships, security, report structure, findings and Analysis scope. Opens from the completed analysis in a new tab. |
+| **Full HTML download** | A self-contained portable report using the existing report layout, also used by CLI and Desktop. |
+| **Apparently unused review** | Investigate the focused set inside Model Objects. A separate portable HTML download remains for sharing or offline review. Apparently unused does not mean safe to delete; Power Query context remains separate. |
 | **Data Catalogue CSV** | One row per eligible developer-authored column or measure, including objects with no detected usage. Choose metadata such as usage, confidence, counts, user-facing evidence and descriptions. |
 | **Usage Mapping CSV** | One row per logical direct report usage: where and how an object is referenced, with optional technical provenance. This is not a transitive dependency export. |
 | **Semantic Usage CSV** | The existing fixed technical export, including semantic usage, Power Query column evidence, review flags, `ClassificationConfidence` and `QualifyingLimitations`. |
@@ -53,7 +54,7 @@ Confidence is separate. **Established** means this scan identified no limitation
 
 ## Local and read-only
 
-Your project is processed locally in your browser. Application code does not upload selected project files or generated results. Loading the site still requests application assets from its static host; opening the report loads a same-origin viewer shell and transfers report content locally.
+Your project is processed locally in your browser. Application code does not upload selected project files or generated results. Loading the site still requests application assets from its static host; opening the investigation loads same-origin viewer assets and transfers a ViewerSnapshot locally.
 
 Generated outputs can contain sensitive project metadata. In particular, the detailed HTML includes full Power Query expressions, which may contain paths, server names or hard-coded values. Review exports before sharing them.
 
@@ -65,6 +66,9 @@ The same Core and Reporting libraries serve the browser, command-line and Window
 
 Start with [Contributing](CONTRIBUTING.md), [architecture](docs/development/architecture.md), [testing](docs/development/testing.md) and [hosting](docs/development/hosting.md). Local builds require the SDK pinned in `global.json`; browser users do not need it.
 
+The product brand is PBI Project Lens; existing technical identifiers and repository URLs remain stable.
+See the [branding compatibility note](docs/development/product-brand.md).
+
 ## Licence
 
-PBI Assure is open-source software licensed under the [MIT License](LICENSE).
+PBI Project Lens is open-source software licensed under the [MIT License](LICENSE).

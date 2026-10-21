@@ -5,7 +5,7 @@ namespace PbiAssure.Core.Inventory;
 /// analyse. This is orthogonal to <see cref="SemanticUsageStates"/>: the state says what was found, the
 /// confidence says whether something skipped could change that answer.
 ///
-/// It describes this scan of this model. It is not a statement about how well the PBI Assure authors
+/// It describes this scan of this model. It is not a statement about how well the PBI Project Lens authors
 /// understand Power BI — that distinction stays in engineering documentation and never reaches the
 /// product surface, because a reader would take it as uncertainty about their own model.
 /// </summary>

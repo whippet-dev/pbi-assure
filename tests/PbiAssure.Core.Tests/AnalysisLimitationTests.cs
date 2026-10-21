@@ -239,7 +239,7 @@ public sealed class AnalysisLimitationTests
             ProjectScanner.Scan(BuildModelSource("Sales", ("model.bim", "{}"))));
 
         Assert.Contains("TMSL format (model.bim)", exception.Message, StringComparison.Ordinal);
-        Assert.Contains("No assurance output was generated.", exception.Message, StringComparison.Ordinal);
+        Assert.Contains("No analysis output was generated.", exception.Message, StringComparison.Ordinal);
     }
 
     /// <summary>

@@ -1,4 +1,4 @@
-# PBI Assure visual identity
+# PBI Project Lens visual identity
 
 The design system shared by the browser application and the generated HTML report. It exists so the
 two surfaces read as one product rather than as a web tool that happens to emit a corporate report.
@@ -24,14 +24,14 @@ node scripts/Sync-DesignTokens.mjs
 
 ## The idea
 
-PBI Assure is an instrument, not a dashboard and not a compliance document. It reads a Power BI
+PBI Project Lens is an instrument, not a dashboard and not a compliance document. It reads a Power BI
 project and reports what the evidence supports. The thing it has that a general-purpose tool does
 not is a pair of classification vocabularies, and those vocabularies are the identity.
 
 They answer different questions and are not points on one scale:
 
 - **Finding severity** — *how much should this concern me?* Error, Warning, Review required,
-  Informational. A judgement about something PBI Assure found.
+  Informational. A judgement about something PBI Project Lens found.
 - **Semantic usage** — *what evidence of use exists for this model object?* Directly used,
   Indirectly used, Structurally required, Only used by unused items, Apparently unused. A statement
   about evidence, not a verdict.
@@ -89,7 +89,7 @@ glowing.
 choice is applied before the first paint — by `wwwroot/appearance.js` in the application, and by an
 inline head script in the report — so nobody sees the wrong theme flash past.
 
-The preference is the only value PBI Assure writes to browser storage. See `PRIVACY.md`.
+The preference is the only value PBI Project Lens writes to browser storage. See `PRIVACY.md`.
 
 ## Typography
 
@@ -128,7 +128,7 @@ product name and as the thing the product does — following a dependency from o
 objects beneath it. One stroke weight, so it survives at favicon size, and drawn in `currentColor` so
 it inherits the theme.
 
-The lockup is the mark plus "PBI Assure". In the report a `/ Report` qualifier follows it.
+The lockup is the mark plus "PBI Project Lens". In the report a `/ Report` qualifier follows it.
 
 ## How the two surfaces differ
 

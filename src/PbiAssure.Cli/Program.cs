@@ -191,7 +191,7 @@ static string OutputDescription(OutputFormat format) => format switch
 
 static void WriteUsage(TextWriter writer)
 {
-    writer.WriteLine("PBI Assure - read-only Power BI project assurance");
+    writer.WriteLine("PBI Project Lens - read-only investigation of Power BI projects");
     writer.WriteLine();
     writer.WriteLine("Usage:");
     writer.WriteLine("  pbiassure scan <project-directory> [--output <file>] [--format json|html|csv]");

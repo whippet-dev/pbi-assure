@@ -48,17 +48,16 @@ The test fails if it observes:
 - any HTTP(S), WebSocket or other Playwright-observable request during project selection, scanning or
   HTML/CSV generation and download;
 - any cross-origin request after the startup baseline;
-- any report-viewer request other than the expected same-origin viewer document/script;
+- any investigation request other than expected same-origin production viewer assets;
 - any fixture canary in an observable outbound URL, request headers or request body;
-- a missing or weakened report-viewer CSP;
-- a scan, interaction with either HTML report, HTML download or CSV download failure;
+- a missing or weakened application/investigation CSP;
+- a scan, investigation, portable HTML interaction, HTML download or CSV download failure;
 - application-origin cookies, session storage, IndexedDB databases or service-worker registrations,
   or local storage other than a valid appearance preference.
 
-Each report open uses three expected same-origin viewer requests: the `.html` route that redirects,
-the final extensionless viewer document, and the viewer script. Both reports are opened. These requests load only the
-static viewer shell. The generated report content is transferred locally with `postMessage` and is not
-included in those requests.
+Investigation opens load only the same-origin production viewer modules and assets. ViewerSnapshot
+1.0 is delivered locally with postMessage, not included in those requests. Tests exercise Overview,
+the integrated Apparently unused review and Analysis scope separately from portable downloads.
 
 Compact JSON evidence and the generated synthetic HTML/CSV outputs are written under
 `artifacts/privacy-e2e/`. The directory is ignored by Git. Large traffic logs and HAR files are not retained
@@ -78,7 +77,7 @@ This uses a local synthetic folder selection; it does not upload the fixture or 
 
 ### Manual offline verification
 
-1. Use a clean browser profile where practical and load PBI Assure fully.
+1. Use a clean browser profile where practical and load PBI Project Lens fully.
 2. Wait until the project picker and **Run analysis** control are usable.
 3. Open browser developer tools, select **Network**, clear the log, then enable Offline mode.
 4. Select the synthetic privacy fixture and run the scan.
@@ -86,10 +85,9 @@ This uses a local synthetic folder selection; it does not upload the fixture or 
 6. Open both downloaded standalone HTML files and exercise their navigation/filter controls.
 7. Confirm the complete processing/export workflow succeeds while the browser remains offline.
 
-The app's report-opening buttons load the same-origin report-viewer shell before transferring the
-locally generated report to it. That shell is deliberately served with `Cache-Control: no-cache`, so
-opening a new viewer tab is not part of the offline guarantee. The online test verifies that viewer route,
-its restrictive CSP and the local `postMessage` transfer separately.
+Open investigation loads same-origin assets with revalidation, so opening a new viewer tab is not
+part of the offline guarantee. Online tests verify the production viewer, CSP and in-memory handoff.
+Offline tests verify analysis and the standalone downloads without needing that hosted viewer.
 
 This demonstrates that project processing and output generation do not require a remote service once the
 application is loaded. It does not prove that an online version can never transmit data, that deployed
@@ -98,10 +96,10 @@ every future code path remains local.
 
 ### Manual online network verification
 
-1. Use a clean browser profile where practical, open developer tools and load PBI Assure fully.
+1. Use a clean browser profile where practical, open developer tools and load PBI Project Lens fully.
 2. In **Network**, wait for startup requests to finish, clear the log and enable **Preserve log**.
 3. Select the synthetic privacy fixture and run the complete scan.
-4. Review results, open the interactive report and Apparently Unused review, then download both HTML
+4. Open the investigation and its Apparently unused focused review, then download both HTML
    reports and all three CSV outputs.
 5. Inspect HTTP(S), WebSocket and EventSource activity, including request URLs, headers and payloads where
    the browser exposes them. Check for beacon traffic as well.
@@ -113,5 +111,5 @@ HAR files can contain cookies, headers, URLs and content from other browsing act
 with synthetic data, store them securely and do not commit them to the repository.
 
 The automated and manual checks establish that no observable browser network request occurred during the
-tested scan/export workflow beyond the expected local/same-origin report-viewer shell. They do not cover
-every theoretical browser side channel or software outside PBI Assure's page context.
+tested scan/export workflow beyond the expected same-origin investigation assets. They do not cover
+every theoretical browser side channel or software outside PBI Project Lens's page context.

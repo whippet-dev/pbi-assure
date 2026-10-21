@@ -1,7 +1,7 @@
 namespace PbiAssure.Reporting;
 
 /// <summary>
-/// The PBI Assure mark.
+/// The PBI Project Lens mark.
 ///
 /// Three nodes joined into an "A": one above, two below, with a crossbar. It reads as the
 /// initial of the product name and as the thing the product actually does — following a

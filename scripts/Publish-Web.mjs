@@ -1,9 +1,11 @@
 import { createHash } from "node:crypto";
+import { brotliCompressSync, gzipSync } from "node:zlib";
 import { spawnSync } from "node:child_process";
 import {
     existsSync,
     mkdirSync,
     readFileSync,
+    readdirSync,
     rmSync,
     writeFileSync
 } from "node:fs";
@@ -53,17 +55,24 @@ if (buildInputsChanged && !options.allowDirty) {
 
 const sourceRevision = options.sourceRevision ?? revision;
 const buildRevision = buildInputsChanged ? `${sourceRevision}-dirty` : sourceRevision;
+// The entire production viewer module tree participates in the asset version.
+function assetFiles(directory, prefix = "") {
+    return readdirSync(directory, {withFileTypes: true}).sort((a,b)=>a.name.localeCompare(b.name)).flatMap(entry =>
+        entry.isDirectory() ? assetFiles(join(directory,entry.name),prefix+entry.name+"/") : [prefix+entry.name]);
+}
+const investigationAssets = assetFiles(join(repositoryRoot,"src/PbiAssure.Web/wwwroot/investigation"));
 const assetVersionInputs = [
+    ...investigationAssets.map(path=>"src/PbiAssure.Web/wwwroot/investigation/"+path),
     "src/PbiAssure.Web/wwwroot/index.html",
     "src/PbiAssure.Web/wwwroot/project-picker.js",
     "src/PbiAssure.Web/wwwroot/download.js",
+    "src/PbiAssure.Web/wwwroot/investigation.js",
+    "src/PbiAssure.Web/wwwroot/css/site.css",
     "src/PbiAssure.Web/wwwroot/analysis-focus.js",
     "src/PbiAssure.Web/wwwroot/appearance.js",
     "src/PbiAssure.Web/wwwroot/favicon.svg",
     "src/PbiAssure.Web/wwwroot/css/core.css",
     "src/PbiAssure.Web/wwwroot/css/app.css",
-    "src/PbiAssure.Web/wwwroot/report-viewer.html",
-    "src/PbiAssure.Web/wwwroot/report-viewer.js"
 ];
 const assetVersion = createHash("sha256")
     .update(assetVersionInputs
@@ -85,16 +94,17 @@ run("dotnet", [
 
 const publishedRoot = join(outputDirectory, "wwwroot");
 const requiredFiles = [
+    ...investigationAssets.map(path=>"investigation/"+path),
     "index.html",
     "_headers",
     "download.js",
+    "investigation.js",
+    "css/site.css",
     "analysis-focus.js",
     "appearance.js",
     "favicon.svg",
     join("css", "core.css"),
     join("css", "app.css"),
-    "report-viewer.html",
-    "report-viewer.js",
     join("_framework", "blazor.webassembly.js")
 ];
 
@@ -105,21 +115,38 @@ for (const relativePath of requiredFiles) {
     }
 }
 
-for (const relativePath of ["index.html", "download.js", "report-viewer.html"]) {
+for (const relativePath of ["index.html", "investigation.js"]) {
     const versionedFile = join(publishedRoot, relativePath);
     const content = readFileSync(versionedFile, "utf8");
     if (!content.includes(assetVersionPlaceholder)) {
         throw new Error(`The web publish could not version browser asset references in ${versionedFile}.`);
     }
 
-    writeFileSync(versionedFile, content.replaceAll(assetVersionPlaceholder, assetVersion), "utf8");
+    writeVersionedAsset(versionedFile, content.replaceAll(assetVersionPlaceholder, assetVersion));
 }
 
-for (const relativePath of ["index.html", "download.js", "report-viewer.html"]) {
+for (const relativePath of ["index.html", "investigation.js"]) {
     const output = readFileSync(join(publishedRoot, relativePath), "utf8");
     if (output.includes(assetVersionPlaceholder)) {
         throw new Error(`An asset-version placeholder remains in published ${relativePath}.`);
     }
+}
+
+// Version relative ES-module imports as well as the entry stylesheet/script.
+// This prevents a new entry module from combining with stale cached children.
+for (const relativePath of investigationAssets.filter(path=>/\.(js|html)$/.test(path))) {
+    const file=join(publishedRoot,"investigation",relativePath);
+    const content=readFileSync(file,"utf8");
+    writeVersionedAsset(file,content.replace(/(["'])\.\/([\w./-]+\.(?:js|css|svg))\1/g,
+        (_,quote,path)=>quote+"./"+path+"?v="+assetVersion+quote));
+}
+
+function writeVersionedAsset(file, content) {
+    const bytes = Buffer.from(content, "utf8");
+    writeFileSync(file, bytes);
+    // Blazor precompresses static assets before this post-publish versioning step.
+    if (existsSync(file + ".gz")) writeFileSync(file + ".gz", gzipSync(bytes));
+    if (existsSync(file + ".br")) writeFileSync(file + ".br", brotliCompressSync(bytes));
 }
 
 console.log(`Published clean web application: ${publishedRoot}`);

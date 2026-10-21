@@ -118,7 +118,7 @@ internal sealed class PrivacyNetworkMonitor
         {
             var uri = new Uri(item.Url);
             return !string.Equals(item.Method, "GET", StringComparison.OrdinalIgnoreCase) ||
-                uri.AbsolutePath is not "/report-viewer.html" and not "/report-viewer" and not "/report-viewer.js";
+                !uri.AbsolutePath.StartsWith("/investigation/", StringComparison.Ordinal);
         }
 
         return false;

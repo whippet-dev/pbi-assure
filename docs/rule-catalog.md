@@ -1,6 +1,6 @@
 # Rule catalog
 
-PBI Assure rules turn parsed facts into reviewable results. Rule identifiers and versions are stable output contracts. Severity describes likely impact; assessment type separately distinguishes a detected metadata condition from a risk requiring human judgment.
+PBI Project Lens rules turn parsed facts into reviewable results. Rule identifiers and versions are stable output contracts. Severity describes likely impact; assessment type separately distinguishes a detected metadata condition from a risk requiring human judgment.
 
 ## Implemented rules
 
